@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'">
+  <title>问阶 · AI文字面试设计预览</title>
+  <link rel="stylesheet" href="ai.css">
+  <script src="ai.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要内容</a>
+  <div class="preview-banner"><strong>合成流式交互演示 · 非真实AI／非SSE</strong> · 本页内存，刷新清空 · 请勿输入真实履历、业务资料或密钥</div>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">阶</span><div><strong>问阶</strong><small>INTERVIEW STUDIO</small></div></div>
+      <nav aria-label="AI训练工作区">
+        <button class="nav-item" data-view="setup" aria-current="page"><span>01</span>准备与出题</button>
+        <button class="nav-item" data-view="interview"><span>02</span>文字面试</button>
+        <button class="nav-item" data-view="review"><span>03</span>证据复盘</button>
+        <button class="nav-item" data-view="comparison"><span>04</span>独立复练对照</button>
+      </nav>
+      <div class="sidebar-note"><strong>先独立回答，再看反馈</strong><p>模型能力尚未接入。问题、追问、评价与比较均为预设合成样例；自写文本不会被本演示分析。</p><a href="../core/index.html">查看无模型核心原型</a><br><a href="../../docs/12-ai-experience.md">AI体验规格</a></div>
+    </aside>
+    <div class="main-column">
+      <header class="topbar"><span>Java后端 <span class="divider">／</span> 事前训练</span><span class="tag" id="mode-badge">AI设计预览 · 未接模型</span></header>
+      <main id="main" class="workspace" tabindex="-1">
+        <p id="notice" class="notice" role="status" aria-live="polite"></p>
+        <section id="task-panel" class="paper task-panel" aria-labelledby="task-heading" hidden>
+          <div class="section-heading"><h2 id="task-heading">生成状态</h2><span class="tag warm" id="task-state"></span></div>
+          <p id="task-meta" class="small-print"></p><p id="task-progress" role="status" aria-live="polite"></p>
+          <pre id="task-output" class="stream-copy"></pre><div id="candidate-detail" class="candidate-detail"></div>
+          <p class="small-print">定时分段展示，不是供应商输出。暂态不可作答／转动作；本页没有实际发送或费用。</p>
+          <div class="button-row">
+            <button id="adopt-candidate" class="button primary" hidden>采用这份候选</button>
+            <button id="discard-candidate" class="button" hidden>丢弃这份候选</button>
+            <button id="open-task-result" class="button" hidden>查看完整结果</button>
+            <button id="disconnect-task" class="button">演示展示断线</button>
+            <button id="reconnect-task" class="button" hidden>重连同一任务</button>
+            <button id="reset-stream" class="button">演示缓冲重置</button>
+            <button id="cancel-task" class="button">取消本页接纳</button>
+            <button id="retry-task" class="button" hidden>显式演示新任务</button>
+          </div>
+        </section>
+
+        <section data-panel="setup">
+          <div class="page-heading"><p class="eyebrow">从一题，开始有依据的练习</p><h1 tabindex="-1">答清前提，再谈判断。</h1><p class="subtitle">AI不只是给题单。先确定问题与条件，模拟提问，再把原答中的待补信息变成一次独立复练。</p></div>
+          <div class="editorial-grid">
+            <div class="stack">
+              <section class="paper padded">
+                <h2>准备这次文字练习</h2>
+                <div class="form-grid">
+                  <div><label for="practice-mode">练习模式</label><select id="practice-mode"><option value="training">文字专项 · 提交后按需评价</option><option value="simulation">文字短模拟 · 结束后复盘</option></select></div>
+                  <div><label for="practice-topic">专项主问题</label><select id="practice-topic"><option value="P01">项目深挖 · 发奖超时结果未知</option><option value="B01">技术基础 · 线程池接收任务</option></select></div>
+                </div>
+                <p id="plan-summary" class="inline-note"></p>
+                <details><summary>本次合成项目事实与责任</summary><ul><li>F1：本人负责扫码入口与资格校验。</li><li>F2：本人负责预算预占接口对接。</li><li>F3：参与了解按发奖请求号查单，不声称本人实现。</li><li>U1：发奖幂等保证、查单一致性、回调契约均待核实。</li></ul></details>
+                <label class="checkbox-row"><input id="fact-use" type="checkbox"><span>本页项目训练使用上述合成事实；不是供应商外发同意</span></label>
+                <div class="send-preview"><h3>本次发送清单预览</h3><p id="send-scope"></p><p class="small-print">供应商／模型／地区／币种／预算：未配置。本页不会发送，也不接收密钥。正式产品需逐次确认确切字段与费用上限。</p></div>
+                <div class="sheet-footer"><button id="generate-questions" class="button primary">演示AI出题与采用</button><button id="start-preset" class="text-button">直接采用合成种子题</button></div>
+                <p id="setup-error" class="field-error" role="alert"></p>
+              </section>
+              <section class="paper padded"><h2>这一版AI主线</h2><ol class="outline"><li>生成题时一起固定条件和参考标准，不看完答案再编标准。</li><li>专项可主动获取评价；短模拟只提问，默认结束后复盘。</li><li>反馈展示原文、条件与限制，用户接受或争议。</li><li>新尝试空答；比较建议不自动结项。</li></ol></section>
+            </div>
+            <aside class="margin-column">
+              <section class="paper padded"><p class="eyebrow">本页演示规则</p><h2>文字，不冒充口语。</h2><p class="small-print space-top">不录音、不摄像、不推断语速、自信度、人格或录用概率。所有技术标准均标未审，不出确定对错或分数。</p></section>
+              <section class="paper padded"><h2>下一次生成故障</h2><label for="fault-mode">仅合成状态演示</label><select id="fault-mode"><option value="normal">正常生成与校验</option><option value="invalid">完整输出但校验失败</option><option value="unknown">发送／费用状态未知</option></select><p class="small-print space-top">未知费用在真实产品不能记0或静默重试；本页只是状态示例，没有实际账单。</p></section>
+              <details class="paper padded"><summary>本页逻辑自检</summary><p class="small-print">检查引用范围、不可变快照、旧代次拒绝和轮数边界；不是GUI、服务端或AI质量验收。</p><button id="run-checks" class="button space-top">运行本页逻辑自检</button><pre id="check-result" class="small-print"></pre></details>
+            </aside>
+          </div>
+        </section>
+
+        <section data-panel="interview" hidden>
+          <div class="page-heading"><p class="eyebrow">AI面试官 · 合成预设</p><h1 tabindex="-1">一次只问一个主要问题。</h1><p id="attempt-summary" class="subtitle"></p></div>
+          <label for="attempt-select">本页尝试</label><select id="attempt-select"></select>
+          <div id="interview-empty" class="paper padded empty-state"><h2>还没有开始</h2><p>从准备页采用问题；题干与标准固定之后，再独立回答。</p><button class="button primary" data-view="setup">准备一次练习</button></div>
+          <div id="interview-content" class="editorial-grid space-top" hidden>
+            <div class="stack">
+              <section class="paper padded answer-sheet">
+                <div class="section-heading"><span id="question-label" class="tag"></span><span class="tag warm">合成未审标准</span></div>
+                <h2 id="question-title" class="question-title"></h2><pre id="question-body" class="question-copy"></pre><p id="basis-note" class="small-print"></p>
+                <details id="criterion-details"><summary>合成参考条件 · 不作为权威判题</summary><p id="criterion-copy" class="question-copy"></p></details>
+                <div id="hint-tools" class="hint-tools"><label for="hint-level">专项提示层级</label><div class="button-row"><select id="hint-level"><option value="0">澄清方向</option><option value="1">关键条件</option><option value="2">参考讲解</option></select><button id="open-hint" class="button">查看并记录提示</button></div><p id="hint-copy" class="inline-note" hidden></p></div>
+                <label for="answer-input">本轮独立回答 · 仅合成文本</label><textarea id="answer-input" rows="8" placeholder="请仅用虚构示例练习；本页不会分析自写内容。" aria-describedby="answer-status answer-error"></textarea>
+                <p id="answer-status" class="small-print" role="status" aria-live="polite"></p><p id="answer-error" class="field-error" role="alert"></p>
+                <div class="button-row space-top"><button id="submit-answer" class="button primary">提交本轮回答</button><button id="edit-revision" class="button">补充新修订</button><button id="fill-sample" class="text-button">填入合成原答</button></div>
+                <details class="space-top"><summary>已提交原文与不可变修订</summary><div id="revision-list"></div></details>
+                <div class="sheet-footer"><div class="button-row"><button id="evaluate-answer" class="button">演示获取本轮评价</button><button id="generate-followup" class="button">演示生成追问</button><button id="next-question" class="button">下一道主问题</button></div><button id="finish-attempt" class="text-button">结束本次尝试</button></div>
+                <label for="skip-reason">跳过原因（仅跳过时需要）</label><input id="skip-reason" type="text" placeholder="例如：本次先练其他条件"><button id="skip-question" class="text-button">按原因跳过当前问题</button>
+              </section>
+            </div>
+            <aside class="margin-column"><section class="paper padded"><h2>本次轮次</h2><p id="round-limit" class="small-print"></p><div id="round-list" class="round-list"></div></section><section class="paper padded"><h2>原答先保存</h2><p class="small-print space-top">提交不结束、不自动调用评价。生成中仍以那份确切修订为依据；提交新修订、跳题或结束会阻旧实时候选。</p><p id="simulation-note" class="inline-note" hidden>短模拟进行中不展示提示、参考或纠错。结束后主动生成复盘。</p><button id="attempt-report" class="button space-top" hidden>演示生成结束复盘</button></section></aside>
+          </div>
+        </section>
+
+        <section data-panel="review" hidden>
+          <div class="page-heading"><p class="eyebrow">原文 · 条件 · 限制 · 动作</p><h1 tabindex="-1">反馈有出处，也允许争议。</h1><p class="subtitle">以下仅为与确切合成回答匹配的预设评价，不分析任意输入。技术依据待审，不输出确定等级或精确总分。</p></div>
+          <div class="editorial-grid"><div class="stack" id="report-list"></div><aside class="margin-column"><section class="paper padded"><h2>已接受的来源行动</h2><div id="action-list"></div></section><section class="paper padded"><h2>AI与自检分开</h2><p class="small-print space-top">此处展示AI反馈形态的合成候选；用户决定另记。真实自检路径在无模型核心原型，不能把两种来源混存。</p></section></aside></div>
+        </section>
+
+        <section data-panel="comparison" hidden>
+          <div class="page-heading"><p class="eyebrow">独立新答，不是覆盖旧答</p><h1 tabindex="-1">这次，具体补上了什么？</h1><p class="subtitle">原动作、旧答和新答一起看。AI只能建议，用户用新答证据确认；提交或答案更长都不自动完成。</p></div>
+          <div class="form-grid"><div><label for="compare-action">来源行动</label><select id="compare-action"></select></div><div><label for="compare-attempt">已结束的新尝试</label><select id="compare-attempt"></select></div></div>
+          <p id="comparison-context" class="inline-note"></p><div class="comparison-grid space-top"><section class="paper padded"><h2>来源原答</h2><p id="old-meta" class="small-print"></p><pre id="old-answer" class="answer-copy"></pre></section><section class="paper padded"><h2>独立新答</h2><p id="new-meta" class="small-print"></p><pre id="new-answer" class="answer-copy"></pre></section></div>
+          <section class="paper padded space-top"><button id="request-comparison" class="button">演示AI辅助对照</button><p id="comparison-suggestion" class="inline-note" hidden></p><p class="small-print space-top">比较建议不会选择下面的结论，也不会修改行动状态。</p>
+            <label for="comparison-outcome">用户确认的结论</label><select id="comparison-outcome"><option value="">请选择，不预选</option><option value="ADDRESSED">已处理 · 仅关闭本来源</option><option value="PARTIAL">部分处理 · 继续复练</option><option value="NOT_ADDRESSED">未处理 · 继续复练</option><option value="UNDETERMINED">无法判断 · 继续复练</option></select>
+            <label for="comparison-evidence">新答证据（已处理／部分处理必填）</label><textarea id="comparison-evidence" class="compact" rows="3" placeholder="从新答复制一个完整、唯一的片段；不是粘贴旧答。"></textarea><label for="comparison-reason">判断理由与限制（所有结论必填）</label><textarea id="comparison-reason" class="compact" rows="3" placeholder="写明处理了什么、仍缺什么或为什么无法比较。"></textarea><p id="comparison-error" class="field-error" role="alert"></p><button id="save-comparison" class="button primary space-top">保存本页对照结论</button>
+          </section><div id="comparison-records" class="stack space-top"></div>
+        </section>
+      </main>
+      <footer class="page-footer">设计产物，不是正式应用 · <a href="../../PRD.md">PRD v0.4</a> · <a href="README.md">预览能力边界与未验证项</a></footer>
+    </div>
+  </div>
+  <dialog id="finish-dialog" aria-labelledby="finish-heading"><h2 id="finish-heading">结束前，确认纳入的内容</h2><p class="small-print space-top">只纳入已采用的问题和正式提交；未提交草稿不自动进入复盘。在途实时候选将停止本页接纳。</p><div id="finish-manifest"></div><p id="finish-error" class="field-error" role="alert"></p><div class="dialog-actions"><button id="finish-back" class="button">返回编辑／等待</button><button id="finish-committed" class="button">仅纳入已提交并结束</button><button id="finish-submit" class="button primary">提交非空新草稿后结束</button></div></dialog>
+  <dialog id="retry-dialog" aria-labelledby="retry-heading"><h2 id="retry-heading">这是新任务，不是断线重连</h2><p class="space-top">真实产品中，旧任务发送或费用可能未知；新任务要单独预留，旧未知占用不能归零。本页没有实际模型或账单。</p><div class="dialog-actions"><button id="retry-back" class="button">取消</button><button id="retry-confirm" class="button primary">明确演示新的合成任务</button></div></dialog>
+  <noscript><p class="notice">本页交互需要启用脚本；静态内容仍可阅读，没有网络或模型连接。</p></noscript>
+</body>
+</html>
