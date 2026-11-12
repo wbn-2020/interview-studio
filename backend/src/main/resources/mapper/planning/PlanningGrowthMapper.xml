@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.planning.PlanningGrowthMapper">
+  <!-- 只把显式 STATUS 到 DONE 当完成候选；不从当前任务状态倒推过去。 -->
+  <select id="candidates" resultType="com.wenjie.studio.planning.PlanningGrowthRows$Candidate">
+    SELECT task_id,revision,created_at AS occurred_at FROM preparation_task_history
+    WHERE owner_id=#{owner} AND action='STATUS' AND JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.status'))='DONE'
+      AND created_at&gt;=#{from} AND created_at&lt;#{until}
+    <if test="after != null">
+      AND (created_at&lt;#{after.occurredAt}
+        OR (created_at=#{after.occurredAt} AND task_id&gt;#{after.taskId})
+        OR (created_at=#{after.occurredAt} AND task_id=#{after.taskId} AND revision&gt;#{after.revision}))
+    </if>
+    ORDER BY created_at DESC,task_id ASC,revision ASC LIMIT #{limit}
+  </select>
+
+  <select id="completions" resultType="com.wenjie.studio.planning.PlanningGrowthRows$CompletionRow">
+    SELECT h.owner_id,h.task_id,h.revision,h.action,h.created_at AS occurred_at,t.id AS owned_task_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.id')) AS snapshot_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.revision')) AS snapshot_revision,
+      JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.revision')) AS snapshot_revision_type,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.status')) AS status,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.completedAt')) AS completed_at,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.updatedAt')) AS updated_at,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.createdAt')) AS created_at,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.startedAt')) AS started_at,
+      JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.target')) AS target_type,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.target.itemId')) AS target_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.target.versionId')) AS target_version_id,
+      v.id AS owned_target_version_id,p.task_id AS previous_task_id,p.revision AS previous_revision,
+      JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.status')) AS previous_status,
+      JSON_UNQUOTE(JSON_EXTRACT(p.snapshot_json,'$.completedAt')) AS previous_completed_at,
+      (JSON_CONTAINS_PATH(h.snapshot_json,'all','$.id','$.revision','$.status','$.completedAt','$.updatedAt','$.createdAt','$.startedAt','$.target')=1
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.id'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.revision'))='INTEGER'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.status'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.completedAt'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.updatedAt'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.createdAt'))='STRING'
+        AND (JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.startedAt'))='NULL'
+          OR (JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.startedAt'))='STRING'
+            AND JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.startedAt'))&lt;&gt;'null'))
+        AND (JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.target'))='NULL'
+          OR (JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.target'))='OBJECT'
+            AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.target.itemId'))='STRING'
+            AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.target.versionId'))='STRING'))
+        AND JSON_TYPE(JSON_EXTRACT(p.snapshot_json,'$.status'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(p.snapshot_json,'$.completedAt'))='NULL') AS metadata_types_valid
+    FROM preparation_task_history h
+    LEFT JOIN preparation_task t ON t.owner_id=h.owner_id AND t.id=h.task_id
+    LEFT JOIN preparation_task_history p ON p.owner_id=h.owner_id AND p.task_id=h.task_id AND p.revision=h.revision-1
+    LEFT JOIN preparation_item i ON i.owner_id=h.owner_id AND i.kind='TARGET'
+      AND i.id=JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.target.itemId'))
+    LEFT JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id
+      AND v.id=JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.target.versionId'))
+    WHERE h.owner_id=#{owner} AND
+      <foreach collection="keys" item="key" open="(" separator=" OR " close=")">
+        (h.task_id=#{key.taskId} AND h.revision=#{key.revision})
+      </foreach>
+  </select>
+</mapper>

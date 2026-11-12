@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.RelationAiFeedbackSourceMapper">
+  <!-- LEFT JOIN 保留缺失绑定，交由来源校验区分任务不存在与持久结构损坏。 -->
+  <select id="metadata" resultType="com.wenjie.studio.ai.RelationAiFeedbackSourceRows$Metadata" timeout="5">
+    SELECT t.owner_id,t.id AS task_id,t.purpose,t.status,t.current_attempt_id,t.attempt_count,
+      e.owner_id AS binding_owner_id,e.task_id AS binding_task_id,e.session_id,e.question_id,e.answer_id,
+      a.owner_id AS attempt_owner_id,a.task_id AS attempt_task_id,a.id AS attempt_id,
+      a.attempt_number,a.status AS attempt_status,
+      r.owner_id AS answer_owner_id,r.session_id AS answer_session_id,r.question_id AS answer_question_id,
+      r.id AS actual_answer_id,r.version_number AS answer_number,r.answer_condition
+    FROM ai_task t
+    LEFT JOIN ai_evaluation e ON e.owner_id=t.owner_id AND e.task_id=t.id
+    LEFT JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    LEFT JOIN training_answer r ON r.owner_id=e.owner_id AND r.session_id=e.session_id
+      AND r.question_id=e.question_id AND r.id=e.answer_id
+    WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+  </select>
+  <select id="candidate" resultType="com.wenjie.studio.ai.RelationAiFeedbackSourceRows$Candidate" timeout="5">
+    SELECT owner_id,id AS task_id,candidate_json FROM ai_task WHERE owner_id=#{owner} AND id=#{taskId}
+  </select>
+  <select id="latestDecision" resultType="com.wenjie.studio.ai.RelationAiFeedbackSourceRows$Decision" timeout="5">
+    SELECT owner_id,task_id,feedback_id,id,revision,choice FROM ai_feedback_decision
+    WHERE owner_id=#{owner} AND task_id=#{taskId} AND feedback_id=#{feedbackId}
+    ORDER BY revision DESC LIMIT 1
+  </select>
+  <select id="decision" resultType="com.wenjie.studio.ai.RelationAiFeedbackSourceRows$Decision" timeout="5">
+    SELECT owner_id,task_id,feedback_id,id,revision,choice FROM ai_feedback_decision
+    WHERE owner_id=#{owner} AND task_id=#{taskId} AND feedback_id=#{feedbackId} AND revision=#{revision}
+  </select>
+</mapper>

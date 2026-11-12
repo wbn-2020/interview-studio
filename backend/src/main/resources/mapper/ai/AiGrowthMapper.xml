@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.AiGrowthMapper">
+  <select id="candidates" resultType="com.wenjie.studio.ai.AiGrowthRows$Candidate">
+    SELECT t.id AS task_id,o.observation_id AS part_id,a.finished_at AS occurred_at
+    FROM ai_task t
+      LEFT JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+      LEFT JOIN JSON_TABLE(
+        CASE WHEN JSON_TYPE(JSON_EXTRACT(t.candidate_json,'$.observations'))='ARRAY'
+          THEN JSON_EXTRACT(t.candidate_json,'$.observations') ELSE JSON_ARRAY() END,
+        '$[*]' COLUMNS(observation_id VARCHAR(16) PATH '$.id' NULL ON EMPTY ERROR ON ERROR)
+      ) AS o ON TRUE
+    WHERE t.owner_id=#{owner} AND t.purpose='ANSWER_EVALUATION' AND t.status='SUCCEEDED'
+      AND (a.finished_at IS NULL OR (a.finished_at&gt;=#{startAt} AND a.finished_at&lt;#{observedUntil}))
+    <if test="afterAt != null">
+      AND (a.finished_at IS NULL OR a.finished_at&lt;#{afterAt}
+        OR (a.finished_at=#{afterAt} AND (t.id&gt;#{afterTaskId}
+          OR (t.id=#{afterTaskId} AND CAST(o.observation_id AS BINARY)&gt;CAST(#{afterPartId} AS BINARY)))))
+    </if>
+    <!-- 缺成功尝试或空报告保留为异常候选，不能被 INNER JOIN 悄悄抹成零。 -->
+    ORDER BY (a.finished_at IS NULL) DESC,a.finished_at DESC,t.id ASC,CAST(o.observation_id AS BINARY) ASC LIMIT #{limit}
+  </select>
+
+  <select id="tasks" resultType="com.wenjie.studio.ai.AiGrowthRows$TaskRow">
+    SELECT t.id,t.owner_id,t.purpose,t.status,t.title,t.current_attempt_id,
+      JSON_UNQUOTE(JSON_EXTRACT(t.manifest_json,'$.purpose')) AS manifest_purpose,
+      JSON_EXTRACT(t.manifest_json,'$.evaluation') AS evaluation_json,t.candidate_json,
+      a.id AS attempt_id,a.owner_id AS attempt_owner_id,a.task_id AS attempt_task_id,
+      a.status AS attempt_status,a.finished_at,
+      e.task_id AS binding_task_id,e.session_id,e.question_id,e.answer_id,g.answer_id AS access_answer_id
+    FROM ai_task t
+      LEFT JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+      LEFT JOIN ai_evaluation e ON e.owner_id=t.owner_id AND e.task_id=t.id
+      LEFT JOIN ai_evaluation_access g ON g.owner_id=e.owner_id AND g.session_id=e.session_id
+        AND g.question_id=e.question_id AND g.answer_id=e.answer_id
+    WHERE t.owner_id=#{owner} AND t.id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
+
+  <select id="input" resultType="com.wenjie.studio.ai.AiGrowthRows$InputRow">
+    SELECT s.id AS session_id,q.id AS question_id,a.id AS answer_id,s.status AS session_status,s.mode,
+      JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming')) AS feedback_timing,
+      a.version_number AS answer_number,a.answer_condition,q.source_question_id,q.source_version_id,
+      JSON_EXTRACT(t.manifest_json,'$.evaluation.question')=JSON_OBJECT(
+        'title',JSON_EXTRACT(q.snapshot_json,'$.content.title'),
+        'prompt',JSON_EXTRACT(q.snapshot_json,'$.content.prompt'),
+        'conditions',JSON_EXTRACT(q.snapshot_json,'$.content.conditions'),
+        'technology',JSON_EXTRACT(q.snapshot_json,'$.content.technology'),
+        'scenario',JSON_EXTRACT(q.snapshot_json,'$.content.scenario'),
+        'type',JSON_EXTRACT(q.snapshot_json,'$.content.type')) AS question_matches,
+      (JSON_EXTRACT(t.manifest_json,'$.evaluation.answer.text')=JSON_EXTRACT(a.content_json,'$.text')
+        AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))='ARRAY'
+        AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram.edges'))='ARRAY'
+        AND JSON_LENGTH(JSON_EXTRACT(t.manifest_json,'$.evaluation.answer.nodes'))=JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))
+        AND JSON_LENGTH(JSON_EXTRACT(t.manifest_json,'$.evaluation.answer.edges'))=JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.edges'))
+        AND NOT EXISTS (
+          SELECT 1 FROM JSON_TABLE(JSON_EXTRACT(t.manifest_json,'$.evaluation.answer.nodes'),
+            '$[*]' COLUMNS(position_index FOR ORDINALITY)) AS n
+          WHERE NOT (JSON_EXTRACT(t.manifest_json,CONCAT('$.evaluation.answer.nodes[',n.position_index-1,']'))&lt;=&gt;JSON_OBJECT(
+            'id',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.nodes[',n.position_index-1,'].id')),
+            'label',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.nodes[',n.position_index-1,'].label')),
+            'description',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.nodes[',n.position_index-1,'].description')))))
+        AND NOT EXISTS (
+          SELECT 1 FROM JSON_TABLE(JSON_EXTRACT(t.manifest_json,'$.evaluation.answer.edges'),
+            '$[*]' COLUMNS(position_index FOR ORDINALITY)) AS e2
+          WHERE NOT (JSON_EXTRACT(t.manifest_json,CONCAT('$.evaluation.answer.edges[',e2.position_index-1,']'))&lt;=&gt;JSON_OBJECT(
+            'id',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.edges[',e2.position_index-1,'].id')),
+            'source',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.edges[',e2.position_index-1,'].source')),
+            'target',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.edges[',e2.position_index-1,'].target')),
+            'label',JSON_EXTRACT(a.content_json,CONCAT('$.diagram.edges[',e2.position_index-1,'].label')))))) AS answer_matches,
+      v.id AS standard_version_id,
+      CASE WHEN q.source_question_id IS NULL
+        THEN JSON_TYPE(JSON_EXTRACT(t.manifest_json,'$.evaluation.standard'))='NULL'
+        ELSE JSON_EXTRACT(t.manifest_json,'$.evaluation.standard')=JSON_OBJECT(
+          'questionId',q.source_question_id,'versionId',q.source_version_id,'status',v.standard_status,
+          'referenceAnswer',v.reference_answer,'checkpoints',CAST(v.checkpoints_json AS JSON))
+      END AS standard_matches
+    FROM ai_task t
+      LEFT JOIN ai_evaluation e ON e.owner_id=t.owner_id AND e.task_id=t.id
+      LEFT JOIN training_session s ON s.owner_id=e.owner_id AND s.id=e.session_id
+      LEFT JOIN training_question q ON q.owner_id=e.owner_id AND q.session_id=e.session_id AND q.id=e.question_id
+      LEFT JOIN training_answer a ON a.owner_id=e.owner_id AND a.session_id=e.session_id AND a.question_id=e.question_id AND a.id=e.answer_id
+      LEFT JOIN question_version v ON v.owner_id=q.owner_id AND v.question_id=q.source_question_id AND v.id=q.source_version_id
+    WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+  </select>
+
+  <select id="decisions" resultType="com.wenjie.studio.ai.AiGrowthRows$DecisionRow">
+    SELECT d.id,d.owner_id,d.task_id,d.feedback_id,d.revision,d.choice,d.created_at
+    FROM ai_feedback_decision d
+    WHERE d.owner_id=#{owner} AND d.task_id=#{taskId}
+      AND NOT EXISTS (SELECT 1 FROM ai_feedback_decision n
+        WHERE n.owner_id=d.owner_id AND n.task_id=d.task_id AND n.feedback_id=d.feedback_id AND n.revision&gt;d.revision)
+    ORDER BY d.feedback_id ASC LIMIT 13
+  </select>
+</mapper>

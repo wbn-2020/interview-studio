@@ -1,0 +1,152 @@
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { pathToFileURL } = require('node:url');
+
+(async () => {
+  const runDir = path.join(__dirname, 'evidence', new Date().toISOString().replace(/[:.]/g, '-'));
+  fs.mkdirSync(runDir, {recursive:true});
+  const context = await chromium.launchPersistentContext(path.join(runDir, 'browser-profile'), {
+    executablePath: process.env.STUDIO_BROWSER,
+    headless:true, viewport:{width:1440,height:1000}, deviceScaleFactor:1, reducedMotion:'reduce'
+  });
+  const page = await context.newPage();
+  const checks=[], errors=[], remoteRequests=[];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {if(/^https?:/.test(request.url()))remoteRequests.push(request.url());});
+  const check=(name,value)=>{assert(value,name);checks.push(name);};
+  const screenshot=async name=>{await page.locator('#toast.visible').waitFor({state:'hidden',timeout:4500});return page.screenshot({path:path.join(runDir,name+'.png'),fullPage:true});};
+  const nav=id=>page.locator(`#main-nav [data-nav="${id}"]`).click();
+  try {
+    await page.goto(pathToFileURL(path.join(__dirname,'index.html')).href);
+    await page.locator('.galaxy-node').first().waitFor();
+    check('six top-level routes render', await page.locator('#main-nav .nav-item').count()===6);
+    check('18 concept nodes and 26 declared connections render', await page.locator('.galaxy-node').count()===18 && await page.locator('.galaxy-edge').count()===26);
+    check('graph is connected', await page.evaluate(()=>{const ids=[...document.querySelectorAll('.galaxy-node')].map(x=>x.dataset.concept),edges=[...document.querySelectorAll('[data-edge]')].map(x=>x.dataset.edge.split('/'));const seen=new Set([ids[0]]);let change=true;while(change){change=false;for(const[a,b]of edges){if(seen.has(a)&&!seen.has(b)){seen.add(b);change=true;}if(seen.has(b)&&!seen.has(a)){seen.add(a);change=true;}}}return seen.size===ids.length;}));
+    check('initial inspector opens cache concept', await page.locator('.inspector h2').innerText()==='缓存一致性');
+    await screenshot('knowledge-desktop');
+    const positions=await page.locator('.galaxy-node').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform')));
+    await page.locator('[data-topic="storage"]').click();
+    check('topic focus preserves every node coordinate', JSON.stringify(positions)===JSON.stringify(await page.locator('.galaxy-node').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform')))));
+    check('topic focus retains cross-topic network', await page.locator('.galaxy-node').count()===18);
+    await page.locator('g[data-concept="retry"]').click();
+    check('node selection updates inspector and exploration trail', (await page.locator('.inspector h2').innerText())==='重试与补偿' && (await page.locator('.knowledge-footnote').innerText()).includes('重试与补偿'));
+    await page.locator('[data-action="focus-neighbors"]').click();
+    check('neighbor focus dims unrelated nodes', await page.locator('.galaxy-node.dimmed').count()>0);
+    await page.locator('[data-action="favorite"]').click();
+    check('favorite has a visible selected state', await page.locator('[data-action="favorite"]').getAttribute('aria-pressed')==='true');
+    await page.locator('[data-action="zoom-in"]').click();
+    check('zoom control updates the map transform', await page.locator('#zoom-label').innerText()==='110%');
+    await page.locator('[data-action="reset-map"]').click();
+    check('map reset restores overview', await page.locator('#zoom-label').innerText()==='100%');
+    await page.keyboard.press('Control+k');
+    await page.locator('#search-input').fill('没有这样的知识');
+    check('global search has a useful empty state', (await page.locator('#search-results').innerText()).includes('没有找到'));
+    await page.locator('#search-input').fill('缓存');
+    check('search includes matching concepts and notes', await page.locator('.search-result').count()>=2);
+    await page.locator('[data-search-kind="concept"][data-search-id="cache"]').click();
+    check('search result routes to its source', await page.locator('.inspector h2').innerText()==='缓存一致性');
+    await page.locator('.heading-actions [data-action="new-note"]').click();
+    await page.locator('#new-note-title').fill('我的自由笔记 <img src=x>');
+    await page.locator('#new-note-body').fill('保留一个尚未整理的想法。<script>window.injected=true</script>');
+    await page.locator('#note-form button[type="submit"]').click();
+    check('free note can be saved without a concept', (await page.locator('.editor-meta').innerText()).includes('自由笔记'));
+    check('user content is rendered as text', await page.locator('img').count()===0 && !(await page.evaluate(()=>window.injected)));
+    await page.locator('#note-body').fill('修改后的理解，切换页面也要保留。');
+    await nav('today'); await nav('knowledge');
+    check('unsaved note edit survives route navigation', await page.locator('#note-body').inputValue()==='修改后的理解，切换页面也要保留。');
+    await page.locator('[data-action="save-note"]').click();
+    check('saving a note creates a new displayed version', (await page.locator('.editor-meta').innerText()).includes('v2'));
+    await page.locator('[data-view="galaxy"]').click();
+    check('free notes do not silently replace a concept primary note', (await page.locator('.note-excerpt h3').innerText())==='缓存失败路径：我的理解');
+    await page.locator('[data-view="board"]').click();
+    const before=await page.locator('[data-board-card="cache"]').boundingBox();
+    const handle=await page.locator('[data-board-handle="cache"]').boundingBox();
+    await page.mouse.move(handle.x+40,handle.y+8);await page.mouse.down();await page.mouse.move(handle.x+75,handle.y+33,{steps:6});await page.mouse.up();
+    const after=await page.locator('[data-board-card="cache"]').boundingBox();
+    check('board cards can be dragged', after.x>before.x+20 && after.y>before.y+15);
+    await page.locator('[data-board-handle="cache"]').focus();await page.keyboard.press('ArrowRight');
+    check('board cards can be moved with a keyboard', (await page.locator('[data-board-card="cache"]').boundingBox()).x>after.x);
+    await screenshot('knowledge-board');
+    await page.locator('[data-board-open="cache"]').click();
+    check('board references open the original note', await page.locator('#note-title').inputValue()==='缓存失败路径：我的理解');
+    await page.locator('[data-view="galaxy"]').click();
+    await page.locator('.heading-actions [data-action="recall"]').click();
+    await page.locator('#recall-answer').fill('先交代条件，再说明失败处理和验证。');
+    await page.keyboard.press('Escape');
+    await page.locator('.heading-actions [data-action="recall"]').click();
+    check('closing recall keeps its draft in this page', await page.locator('#recall-answer').inputValue()==='先交代条件，再说明失败处理和验证。');
+    await page.locator('[data-action="reveal-recall"]').click();
+    check('recall requires self-rating after revealing reference', await page.locator('[data-action="save-recall"]').isDisabled());
+    await page.locator('[data-rating="需要一点提示"]').click();await page.locator('[data-action="save-recall"]').click();
+    await nav('growth');
+    check('recall appears separately in growth evidence', (await page.locator('main').innerText()).includes('已有回忆记录'));
+    await nav('training'); await page.locator('[data-action="start-session"]').click();
+    check('new practice starts with an empty answer', await page.locator('#answer-input').inputValue()==='');
+    check('blank answer cannot be submitted', await page.locator('[data-action="submit-answer"]').isDisabled());
+    await page.locator('#answer-input').fill('先确认缓存删除的结果，再说明后续处理。\n\n需要核实负责执行的任务以及怎样验证恢复。');
+    await nav('today');await nav('training');
+    check('answer draft survives navigation', (await page.locator('#answer-input').inputValue()).includes('先确认'));
+    await page.locator('[data-action="toggle-pause"]').click();
+    check('pause makes the draft readonly and disables submission', await page.locator('#answer-input').getAttribute('readonly')!==null && await page.locator('[data-action="submit-answer"]').isDisabled());
+    await page.locator('[data-action="toggle-pause"]').click();
+    await nav('knowledge');
+    check('independent answer protects linked notes across pages', await page.locator('.inspector .locked').count()===1);
+    await page.locator('[data-action="assist-knowledge"]').click();await page.locator('[data-action="confirm-assistance"]').click();
+    check('explicit assisted transition unlocks notes', await page.locator('.inspector .locked').count()===0);
+    await nav('training');
+    check('assisted mode remains recorded on return', (await page.locator('.question-meta').innerText()).includes('辅助练习'));
+    await screenshot('training-desktop');
+    await page.locator('[data-action="submit-answer"]').click();
+    check('submission preserves original input as readonly', (await page.locator('.read-only-answer').innerText()).includes('先确认') && await page.locator('#answer-input').count()===0);
+    await page.locator('[data-action="next-question"]').click();
+    check('review is explicitly a demo and contains submitted text', (await page.locator('main').innerText()).includes('未调用 AI') && (await page.locator('.answer-document').innerText()).includes('先确认'));
+    await page.locator('[data-evidence="0"]').click();
+    check('feedback focus highlights original text', await page.locator('[data-quote="0"].highlight').count()===1);
+    await screenshot('review-desktop');
+    await page.locator('.heading-actions [data-action="retry"]').click();
+    check('repractice starts empty without copying old answer', await page.locator('#answer-input').inputValue()==='');
+    await page.locator('#answer-input').fill('新的独立回答：先说明已知条件，再写出执行者、终止边界与需要观察的结果。');
+    await page.locator('[data-action="submit-answer"]').click();await page.locator('[data-action="next-question"]').click();
+    check('repractice opens old and new answers side by side', await page.locator('.comparison .answer-document').count()===2 && (await page.locator('.comparison').innerText()).includes('新的独立回答'));
+    await page.locator('#comparison-choice').selectOption('yes');await page.locator('[data-action="save-comparison"]').click();
+    check('comparison judgment remains visible after saving', await page.locator('#comparison-choice').inputValue()==='yes');
+    await nav('growth');
+    check('personal comparison judgment updates evidence without a score', (await page.locator('main').innerText()).includes('已记录个人判断') && !(await page.locator('main').innerText()).includes('100分'));
+    await nav('training');await page.locator('[data-mode="mock"]').click();await page.locator('[data-action="start-session"]').click();
+    for(let i=0;i<3;i++){await page.locator('[data-action="skip-question"]').click();await page.locator('[data-action="next-question"]').click();}
+    check('three-question mock can complete with explicit unanswered records', (await page.locator('.answer-document').innerText()).includes('未提交回答'));
+    await nav('training');await page.locator('[data-mode="independent"]').click();await page.locator('[data-action="start-session"]').click();
+    await page.locator('#answer-input').fill('未提交的思路需要保留，但不能当成正式答案。');
+    await page.locator('[data-action="end-session"]').click();await page.locator('[data-action="confirm-end"]').click();
+    await page.locator('.draft-recovery summary').click();
+    check('ending a session keeps unsubmitted draft accessible and separate', (await page.locator('.draft-recovery').innerText()).includes('未提交的思路需要保留') && (await page.locator('.draft-recovery summary').innerText()).includes('未用于复盘'));
+    await page.reload();
+    check('refresh resets the preview instead of claiming persistence', !(await page.locator('main').innerText()).includes('新的独立回答'));
+    await nav('knowledge');
+    for(const [width,height] of [[1440,1000],[1280,900],[768,1024],[390,844],[360,800]]) {
+      await page.setViewportSize({width,height});
+      for(const route of ['knowledge','today','prepare','training','review','growth']) {
+        await nav(route);
+        check(`${route} has no page horizontal overflow at ${width}px`, await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+      }
+      await nav('knowledge');
+      if(width<=1050){await page.locator('#compact-concept').selectOption('retry');check(`compact selector opens a concept at ${width}px`,await page.locator('.inspector h2').innerText()==='重试与补偿');await page.locator('#compact-concept').selectOption('cache');}
+      await screenshot('knowledge-'+width);
+    }
+    await page.setViewportSize({width:1440,height:1000});await nav('today');await screenshot('today-desktop');
+    await nav('prepare');await screenshot('prepare-desktop');
+    await nav('knowledge');
+    await page.locator('g[data-concept="idempotency"]').focus();await page.keyboard.press('Enter');
+    check('graph selection is keyboard accessible', await page.locator('.inspector h2').innerText()==='幂等设计');
+    check('reduced-motion preference is respected', await page.evaluate(()=>matchMedia('(prefers-reduced-motion: reduce)').matches && getComputedStyle(document.querySelector('.galaxy-node')).transitionDuration==='0s'));
+    check('no uncaught runtime errors',errors.length===0);
+    check('no remote requests or model calls',remoteRequests.length===0);
+    fs.writeFileSync(path.join(runDir,'results.json'),JSON.stringify({passed:true,count:checks.length,checks,errors,remoteRequests},null,2));
+    console.log(JSON.stringify({passed:true,count:checks.length,errors,remoteRequests,runDir},null,2));
+  } catch(error) {
+    fs.writeFileSync(path.join(runDir,'results.json'),JSON.stringify({passed:false,count:checks.length,checks,error:error.stack,errors,remoteRequests},null,2));
+    await screenshot('failure').catch(()=>{});console.error(error);console.log('Evidence: '+runDir);process.exitCode=1;
+  } finally { await context.close(); }
+})();

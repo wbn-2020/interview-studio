@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.growth.GrowthStoreMapper">
+  <sql id="useColumns">id,owner_id,target_id,target_version_id,requirement_id,evidence_kind,evidence_object_id,
+    evidence_version_id,evidence_revision,evidence_part_id,evidence_key,revision,coverage,comparability_json,
+    reason,status,created_at,updated_at</sql>
+  <sql id="preferenceColumns">id,owner_id,subject_kind,subject_key,source_kind,source_id,target_id,
+    target_version_id,requirement_id,revision,visibility,created_at,updated_at</sql>
+  <select id="use" resultType="com.wenjie.studio.growth.GrowthStoreRows$UseRow">
+    SELECT <include refid="useColumns"/> FROM growth_evidence_use WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="useByIdentity" resultType="com.wenjie.studio.growth.GrowthStoreRows$UseRow">
+    SELECT <include refid="useColumns"/> FROM growth_evidence_use
+    WHERE owner_id=#{owner} AND target_version_id=#{targetVersionId}
+      AND requirement_id=#{requirementId} AND evidence_key=#{evidenceKey}
+  </select>
+  <select id="uses" resultType="com.wenjie.studio.growth.GrowthStoreRows$UseRow">
+    SELECT <include refid="useColumns"/> FROM growth_evidence_use
+    WHERE owner_id=#{owner} AND target_id=#{targetId} AND target_version_id=#{targetVersionId}
+      AND created_at &lt; #{asOf}
+    <if test="requirementId != null">AND requirement_id=#{requirementId}</if>
+    <if test="status != null">AND status=#{status}</if>
+    <if test="afterCreatedAt != null">
+      AND (created_at &lt; #{afterCreatedAt} OR (created_at=#{afterCreatedAt} AND id &gt; #{afterId}))
+    </if>
+    ORDER BY created_at DESC,id ASC LIMIT #{limit}
+  </select>
+  <select id="useHistory" resultType="com.wenjie.studio.growth.GrowthStoreRows$UseHistoryRow">
+    SELECT owner_id,use_id,revision,change_kind,snapshot_json,source_stamp_json,target_stamp,preview_hash,created_at
+    FROM growth_evidence_use_history WHERE owner_id=#{owner} AND use_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <insert id="insertUse">
+    INSERT INTO growth_evidence_use (<include refid="useColumns"/>)
+    VALUES (#{row.id},#{row.ownerId},#{row.targetId},#{row.targetVersionId},#{row.requirementId},
+      #{row.evidenceKind},#{row.evidenceObjectId},#{row.evidenceVersionId},#{row.evidenceRevision},
+      #{row.evidencePartId},#{row.evidenceKey},#{row.revision},#{row.coverage},#{row.comparabilityJson},
+      #{row.reason},#{row.status},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <update id="updateUse">
+    UPDATE growth_evidence_use SET revision=#{row.revision},coverage=#{row.coverage},
+      comparability_json=#{row.comparabilityJson},reason=#{row.reason},status=#{row.status},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND id=#{row.id} AND revision=#{expected}
+  </update>
+  <insert id="insertUseHistory">
+    INSERT INTO growth_evidence_use_history
+      (owner_id,use_id,revision,change_kind,snapshot_json,source_stamp_json,target_stamp,preview_hash,created_at)
+    VALUES (#{row.ownerId},#{row.useId},#{row.revision},#{row.changeKind},#{row.snapshotJson},
+      #{row.sourceStampJson},#{row.targetStamp},#{row.previewHash},#{row.createdAt})
+  </insert>
+
+  <select id="preference" resultType="com.wenjie.studio.growth.GrowthStoreRows$PreferenceRow">
+    SELECT <include refid="preferenceColumns"/> FROM growth_next_step_preference WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="preferenceBySubject" resultType="com.wenjie.studio.growth.GrowthStoreRows$PreferenceRow">
+    SELECT <include refid="preferenceColumns"/> FROM growth_next_step_preference
+    WHERE owner_id=#{owner} AND subject_kind=#{subjectKind} AND subject_key=#{subjectKey}
+  </select>
+  <select id="preferences" resultType="com.wenjie.studio.growth.GrowthStoreRows$PreferenceRow">
+    SELECT <include refid="preferenceColumns"/> FROM growth_next_step_preference
+    WHERE owner_id=#{owner} AND created_at &lt; #{asOf}
+    <if test="visibility != null">AND visibility=#{visibility}</if>
+    <if test="subjectKind != null">AND subject_kind=#{subjectKind}</if>
+    <if test="afterCreatedAt != null">
+      AND (created_at &lt; #{afterCreatedAt} OR (created_at=#{afterCreatedAt} AND id &gt; #{afterId}))
+    </if>
+    ORDER BY created_at DESC,id ASC LIMIT #{limit}
+  </select>
+  <select id="preferenceHistory" resultType="com.wenjie.studio.growth.GrowthStoreRows$PreferenceHistoryRow">
+    SELECT owner_id,preference_id,revision,change_kind,snapshot_json,created_at
+    FROM growth_next_step_preference_history WHERE owner_id=#{owner} AND preference_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <insert id="insertPreference">
+    INSERT INTO growth_next_step_preference (<include refid="preferenceColumns"/>)
+    VALUES (#{row.id},#{row.ownerId},#{row.subjectKind},#{row.subjectKey},#{row.sourceKind},#{row.sourceId},
+      #{row.targetId},#{row.targetVersionId},#{row.requirementId},#{row.revision},#{row.visibility},
+      #{row.createdAt},#{row.updatedAt})
+  </insert>
+  <update id="updatePreference">
+    UPDATE growth_next_step_preference SET revision=#{row.revision},visibility=#{row.visibility},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND id=#{row.id} AND revision=#{expected}
+  </update>
+  <insert id="insertPreferenceHistory">
+    INSERT INTO growth_next_step_preference_history
+      (owner_id,preference_id,revision,change_kind,snapshot_json,created_at)
+    VALUES (#{row.ownerId},#{row.preferenceId},#{row.revision},#{row.changeKind},#{row.snapshotJson},#{row.createdAt})
+  </insert>
+</mapper>

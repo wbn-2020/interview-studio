@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.SourceQaMapper">
+  <resultMap id="binding" type="com.wenjie.studio.ai.SourceQaRows$Binding">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="task_id" javaType="java.lang.String"/>
+      <arg column="ordinal" javaType="_int"/><arg column="domain" javaType="java.lang.String"/>
+      <arg column="source_id" javaType="java.lang.String"/><arg column="version_id" javaType="java.lang.String"/>
+      <arg column="feedback_revision" javaType="java.lang.Integer"/><arg column="feedback_id" javaType="java.lang.String"/>
+      <arg column="report_hash" javaType="java.lang.String"/><arg column="session_id" javaType="java.lang.String"/>
+      <arg column="question_id" javaType="java.lang.String"/><arg column="answer_id" javaType="java.lang.String"/>
+      <arg column="decision_revision" javaType="java.lang.Integer"/><arg column="decision_choice" javaType="java.lang.String"/>
+      <arg column="fragment_count" javaType="_int"/><arg column="snapshot_hash" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="stamp" resultType="com.wenjie.studio.ai.SourceQaRows$Stamp" timeout="5">
+    <choose>
+      <when test="domain == 'KNOWLEDGE'">
+        SELECT owner_id,id,status,current_version_id,metadata_revision AS revision FROM knowledge_item
+      </when>
+      <when test="domain == 'QUESTION'">
+        SELECT owner_id,id,status,current_version_id,revision FROM question
+      </when>
+      <otherwise>
+        SELECT owner_id,id,status,current_version_id,revision FROM review_recollection
+      </otherwise>
+    </choose>
+    WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="fact" resultType="com.wenjie.studio.ai.SourceQaRows$Fact" timeout="5">
+    SELECT JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.responsibility')) AS responsibility
+    FROM preparation_version v JOIN preparation_item i ON i.owner_id=v.owner_id AND i.id=v.item_id AND i.kind='FACT'
+    WHERE v.owner_id=#{owner} AND v.item_id=#{id} AND v.id=#{versionId}
+  </select>
+  <select id="material" resultType="com.wenjie.studio.ai.SourceQaRows$Material" timeout="5">
+    SELECT e.attachment_id,e.origin,e.attachment_sha256 AS sha256,e.run_id,e.segment_id,e.locator,e.start_offset,e.end_offset
+    FROM material_excerpt e WHERE e.owner_id=#{owner} AND e.id=#{id}
+  </select>
+
+  <!-- 只读确切归属与原答身份；历史读取不附带“必须当前版本”的新外发条件。 -->
+  <select id="answer" resultType="com.wenjie.studio.ai.SourceQaRows$AnswerIdentity" timeout="5">
+    <choose>
+      <when test="ref.domain.name() == 'TRAINING_ANSWER'">
+        SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id
+        FROM training_answer a WHERE a.owner_id=#{owner} AND a.id=#{ref.id}
+      </when>
+      <when test="ref.domain.name() == 'REVIEW_FEEDBACK'">
+        SELECT f.owner_id,f.session_id,f.question_id,f.answer_id
+        FROM review_feedback f JOIN review_feedback_revision r
+          ON r.owner_id=f.owner_id AND r.feedback_id=f.id AND r.revision=#{ref.revision}
+        WHERE f.owner_id=#{owner} AND f.id=#{ref.id}
+      </when>
+      <otherwise>
+        SELECT e.owner_id,e.session_id,e.question_id,e.answer_id
+        FROM ai_evaluation e WHERE e.owner_id=#{owner} AND e.task_id=#{ref.id}
+      </otherwise>
+    </choose>
+  </select>
+  <select id="exists" resultType="int" timeout="5">
+    <choose>
+      <when test="ref.domain.name() == 'KNOWLEDGE'">
+        SELECT COUNT(*) FROM knowledge_version v WHERE v.owner_id=#{owner} AND v.item_id=#{ref.id} AND v.id=#{ref.versionId}
+      </when>
+      <when test="ref.domain.name() == 'PREPARATION'">
+        SELECT COUNT(*) FROM preparation_version v WHERE v.owner_id=#{owner} AND v.item_id=#{ref.id} AND v.id=#{ref.versionId}
+      </when>
+      <when test="ref.domain.name() == 'QUESTION'">
+        SELECT COUNT(*) FROM question_version v WHERE v.owner_id=#{owner} AND v.question_id=#{ref.id} AND v.id=#{ref.versionId}
+      </when>
+      <when test="ref.domain.name() == 'RECOLLECTION'">
+        SELECT COUNT(*) FROM review_recollection_version v WHERE v.owner_id=#{owner} AND v.recollection_id=#{ref.id} AND v.id=#{ref.versionId}
+      </when>
+      <when test="ref.domain.name() == 'MATERIAL_EXCERPT'">
+        SELECT COUNT(*) FROM material_excerpt e WHERE e.owner_id=#{owner} AND e.id=#{ref.id}
+      </when>
+      <otherwise>SELECT 0</otherwise>
+    </choose>
+  </select>
+  <select id="purpose" resultType="string" timeout="5">
+    SELECT purpose FROM ai_task WHERE owner_id=#{owner} AND id=#{taskId}
+  </select>
+  <select id="bindings" resultMap="binding" timeout="5">
+    SELECT owner_id,task_id,ordinal,domain,
+      COALESCE(knowledge_item_id,preparation_item_id,excerpt_id,bank_question_id,manual_feedback_id,recollection_id,evaluation_task_id,answer_id) AS source_id,
+      COALESCE(knowledge_version_id,preparation_version_id,excerpt_id,bank_version_id,manual_feedback_id,recollection_version_id,attempt_id,answer_id) AS version_id,
+      manual_feedback_revision AS feedback_revision,observation_id AS feedback_id,report_hash,
+      session_id,training_question_id AS question_id,answer_id,decision_revision,decision_choice,fragment_count,snapshot_hash
+    FROM ai_source_qa_source WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal LIMIT 6
+  </select>
+  <insert id="insert" timeout="5">
+    INSERT INTO ai_source_qa_source (owner_id,task_id,ordinal,domain,
+      knowledge_item_id,knowledge_version_id,preparation_item_id,preparation_version_id,excerpt_id,
+      bank_question_id,bank_version_id,session_id,training_question_id,answer_id,
+      manual_feedback_id,manual_feedback_revision,recollection_id,recollection_version_id,
+      evaluation_task_id,attempt_id,observation_id,report_hash,decision_revision,decision_choice,fragment_count,snapshot_hash)
+    VALUES (#{row.ownerId},#{row.taskId},#{row.ordinal},#{row.domain},
+      <choose><when test="row.domain == 'KNOWLEDGE'">#{row.sourceId},#{row.versionId},</when><otherwise>NULL,NULL,</otherwise></choose>
+      <choose><when test="row.domain == 'PREPARATION'">#{row.sourceId},#{row.versionId},</when><otherwise>NULL,NULL,</otherwise></choose>
+      <choose><when test="row.domain == 'MATERIAL_EXCERPT'">#{row.sourceId},</when><otherwise>NULL,</otherwise></choose>
+      <choose><when test="row.domain == 'QUESTION'">#{row.sourceId},#{row.versionId},</when><otherwise>NULL,NULL,</otherwise></choose>
+      #{row.sessionId},#{row.questionId},#{row.answerId},
+      <choose><when test="row.domain == 'REVIEW_FEEDBACK'">#{row.sourceId},#{row.feedbackRevision},</when><otherwise>NULL,NULL,</otherwise></choose>
+      <choose><when test="row.domain == 'RECOLLECTION'">#{row.sourceId},#{row.versionId},</when><otherwise>NULL,NULL,</otherwise></choose>
+      <choose><when test="row.domain == 'AI_FEEDBACK'">#{row.sourceId},#{row.versionId},#{row.feedbackId},#{row.reportHash},</when><otherwise>NULL,NULL,NULL,NULL,</otherwise></choose>
+      #{row.decisionRevision},#{row.decisionChoice},#{row.fragmentCount},#{row.snapshotHash})
+  </insert>
+</mapper>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.StandardReviewStoreMapper">
+  <sql id="reviewColumns">id,owner_id,question_id,question_version_id AS version_id,
+    revision,status,created_at,updated_at</sql>
+  <sql id="revisionColumns">owner_id,review_id,revision,question_id,question_version_id AS version_id,
+    change_kind,snapshot_json,change_reason,created_at</sql>
+
+  <select id="review" resultType="com.wenjie.studio.review.StandardReviewStoreRows$ReviewRow">
+    SELECT <include refid="reviewColumns"/> FROM standard_review WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="reviews" resultType="com.wenjie.studio.review.StandardReviewStoreRows$ReviewRow">
+    <bind name="pageSize" value="limit &lt; 1 ? 1 : (limit &gt; 50 ? 50 : limit)"/>
+    SELECT <include refid="reviewColumns"/> FROM standard_review
+    WHERE owner_id=#{owner} AND question_id=#{questionId} AND question_version_id=#{versionId}
+    <if test="status != null">AND status=#{status}</if>
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id ASC LIMIT #{pageSize}
+  </select>
+  <select id="revision" resultType="com.wenjie.studio.review.StandardReviewStoreRows$RevisionRow">
+    SELECT <include refid="revisionColumns"/> FROM standard_review_revision
+    WHERE owner_id=#{owner} AND review_id=#{id} AND revision=#{revision}
+  </select>
+  <select id="history" resultType="com.wenjie.studio.review.StandardReviewStoreRows$RevisionRow">
+    <bind name="pageSize" value="limit &lt; 1 ? 1 : (limit &gt; 50 ? 50 : limit)"/>
+    SELECT <include refid="revisionColumns"/> FROM standard_review_revision
+    WHERE owner_id=#{owner} AND review_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{pageSize}
+  </select>
+  <select id="checkpoints" resultType="com.wenjie.studio.review.StandardReviewStoreRows$CheckpointRow">
+    SELECT owner_id,review_id,revision,checkpoint_id,position_index,decision FROM standard_review_checkpoint
+    WHERE owner_id=#{owner} AND review_id=#{id} AND revision=#{revision}
+    ORDER BY position_index ASC LIMIT 30
+  </select>
+  <select id="lastCheckpointRevision" resultType="java.lang.Long">
+    SELECT MAX(revision) FROM standard_review_checkpoint
+    WHERE owner_id=#{owner} AND review_id=#{reviewId} AND checkpoint_id=#{checkpointId}
+      AND revision &lt; #{beforeExclusive}
+  </select>
+  <select id="evidence" resultType="com.wenjie.studio.review.StandardReviewStoreRows$EvidenceRow">
+    SELECT owner_id,review_id,revision,evidence_id,position_index,role_mask,basis_kind,
+      knowledge_item_id,knowledge_version_id,excerpt_id FROM standard_review_evidence
+    WHERE owner_id=#{owner} AND review_id=#{id} AND revision=#{revision}
+    ORDER BY position_index ASC LIMIT 12
+  </select>
+
+  <insert id="insertReview">
+    INSERT INTO standard_review
+      (id,owner_id,question_id,question_version_id,revision,status,created_at,updated_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.questionId},#{row.versionId},#{row.revision},
+      #{row.status},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <!-- 固定身份和撤回终态也参与 CAS，防止误用当前行更新改变历史身份或恢复记录。 -->
+  <update id="updateReview">
+    UPDATE standard_review SET revision=#{row.revision},status=#{row.status},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND id=#{row.id} AND question_id=#{row.questionId}
+      AND question_version_id=#{row.versionId} AND revision=#{expected} AND status='ACTIVE'
+      AND #{expected} &lt; 9007199254740991 AND #{row.revision}=revision+1
+      AND #{row.updatedAt} &gt;= updated_at
+  </update>
+  <insert id="insertRevision">
+    INSERT INTO standard_review_revision
+      (owner_id,review_id,revision,question_id,question_version_id,change_kind,snapshot_json,change_reason,created_at)
+    VALUES (#{row.ownerId},#{row.reviewId},#{row.revision},#{row.questionId},#{row.versionId},
+      #{row.changeKind},#{row.snapshotJson},#{row.changeReason},#{row.createdAt})
+  </insert>
+  <insert id="insertCheckpoint">
+    INSERT INTO standard_review_checkpoint (owner_id,review_id,revision,checkpoint_id,position_index,decision)
+    VALUES (#{row.ownerId},#{row.reviewId},#{row.revision},#{row.checkpointId},#{row.positionIndex},#{row.decision})
+  </insert>
+  <insert id="insertEvidence">
+    INSERT INTO standard_review_evidence
+      (owner_id,review_id,revision,evidence_id,position_index,role_mask,basis_kind,
+       knowledge_item_id,knowledge_version_id,excerpt_id)
+    VALUES (#{row.ownerId},#{row.reviewId},#{row.revision},#{row.evidenceId},#{row.positionIndex},
+      #{row.roleMask},#{row.basisKind},#{row.knowledgeItemId},#{row.knowledgeVersionId},#{row.excerptId})
+  </insert>
+</mapper>

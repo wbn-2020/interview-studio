@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewMapper">
+  <sql id="feedbackColumns">id,owner_id,session_id,question_id,answer_id,revision,created_at,updated_at</sql>
+  <sql id="actionColumns">id,owner_id,revision,title,detail,status,merged_into,created_at,updated_at</sql>
+  <sql id="sourceColumns">id,owner_id,action_id,origin_action_id,kind,session_id,question_id,answer_id,
+    feedback_id,feedback_revision,task_id,observation_id,manual_kind,author_label,observation_json,
+    decision_json,verification,tracking,tracking_reason,created_at,updated_at,
+    recollection_id,recollection_version_id,recollection_json</sql>
+
+  <select id="feedback" resultType="com.wenjie.studio.review.ReviewRows$FeedbackRow">
+    SELECT <include refid="feedbackColumns"/> FROM review_feedback WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="feedbacks" resultType="com.wenjie.studio.review.ReviewRows$FeedbackRow">
+    SELECT <include refid="feedbackColumns"/> FROM review_feedback
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND question_id=#{questionId} AND answer_id=#{answerId}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="feedbackRevision" resultType="com.wenjie.studio.review.ReviewRows$FeedbackRevisionRow">
+    SELECT owner_id,feedback_id,revision,content_json,created_at FROM review_feedback_revision
+    WHERE owner_id=#{owner} AND feedback_id=#{id} AND revision=#{revision}
+  </select>
+  <select id="feedbackHistory" resultType="com.wenjie.studio.review.ReviewRows$FeedbackRevisionRow">
+    SELECT owner_id,feedback_id,revision,content_json,created_at FROM review_feedback_revision
+    WHERE owner_id=#{owner} AND feedback_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <select id="decisions" resultType="com.wenjie.studio.review.ReviewRows$DecisionRow">
+    SELECT id,owner_id,feedback_id,feedback_revision,revision,choice,reason,created_at FROM review_feedback_decision
+    WHERE owner_id=#{owner} AND feedback_id=#{id} AND feedback_revision=#{feedbackRevision}
+    ORDER BY revision
+  </select>
+  <insert id="insertFeedback">
+    INSERT INTO review_feedback (<include refid="feedbackColumns"/>)
+    VALUES (#{feedback.id},#{feedback.ownerId},#{feedback.sessionId},#{feedback.questionId},#{feedback.answerId},
+      #{feedback.revision},#{feedback.createdAt},#{feedback.updatedAt})
+  </insert>
+  <update id="updateFeedback">
+    UPDATE review_feedback SET revision=#{feedback.revision},updated_at=#{feedback.updatedAt}
+    WHERE owner_id=#{feedback.ownerId} AND id=#{feedback.id} AND revision=#{expected}
+  </update>
+  <insert id="insertFeedbackRevision">
+    INSERT INTO review_feedback_revision (owner_id,feedback_id,revision,content_json,created_at)
+    VALUES (#{revision.ownerId},#{revision.feedbackId},#{revision.revision},#{revision.contentJson},#{revision.createdAt})
+  </insert>
+  <insert id="insertDecision">
+    INSERT INTO review_feedback_decision (id,owner_id,feedback_id,feedback_revision,revision,choice,reason,created_at)
+    VALUES (#{decision.id},#{decision.ownerId},#{decision.feedbackId},#{decision.feedbackRevision},#{decision.revision},
+      #{decision.choice},#{decision.reason},#{decision.createdAt})
+  </insert>
+
+  <select id="action" resultType="com.wenjie.studio.review.ReviewRows$ActionRow">
+    SELECT <include refid="actionColumns"/> FROM review_action WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="actions" resultType="com.wenjie.studio.review.ReviewRows$ActionSummaryRow">
+    SELECT a.id,a.revision,a.title,a.status,a.merged_into,
+      (SELECT COUNT(*) FROM review_action_source s WHERE s.owner_id=a.owner_id AND s.action_id=a.id) AS source_count,
+      (SELECT COUNT(*) FROM review_action_source s WHERE s.owner_id=a.owner_id AND s.action_id=a.id AND s.tracking='TRACKING') AS tracking_count,
+      a.updated_at
+    FROM review_action a WHERE a.owner_id=#{owner}
+    <if test="status != null">AND a.status=#{status}</if>
+    <if test="cursor != null">AND a.id &gt; #{cursor}</if>
+    ORDER BY a.id LIMIT #{limit}
+  </select>
+  <select id="sources" resultType="com.wenjie.studio.review.ReviewRows$SourceRow">
+    SELECT <include refid="sourceColumns"/> FROM review_action_source
+    WHERE owner_id=#{owner} AND action_id=#{actionId} ORDER BY created_at,id
+  </select>
+  <select id="source" resultType="com.wenjie.studio.review.ReviewRows$SourceRow">
+    SELECT <include refid="sourceColumns"/> FROM review_action_source
+    WHERE owner_id=#{owner} AND action_id=#{actionId} AND id=#{id}
+  </select>
+  <select id="actionHistory" resultType="com.wenjie.studio.review.ReviewRows$HistoryRow">
+    SELECT owner_id,action_id,revision,change_kind AS `change`,snapshot_json,created_at FROM review_action_history
+    WHERE owner_id=#{owner} AND action_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <insert id="insertAction">
+    INSERT INTO review_action (<include refid="actionColumns"/>)
+    VALUES (#{action.id},#{action.ownerId},#{action.revision},#{action.title},#{action.detail},#{action.status},
+      #{action.mergedInto},#{action.createdAt},#{action.updatedAt})
+  </insert>
+  <update id="updateAction">
+    UPDATE review_action SET revision=#{action.revision},title=#{action.title},detail=#{action.detail},
+      status=#{action.status},merged_into=#{action.mergedInto},updated_at=#{action.updatedAt}
+    WHERE owner_id=#{action.ownerId} AND id=#{action.id} AND revision=#{expected} AND status='OPEN'
+  </update>
+  <insert id="insertSource">
+    INSERT INTO review_action_source (<include refid="sourceColumns"/>)
+    VALUES (#{source.id},#{source.ownerId},#{source.actionId},#{source.originActionId},#{source.kind},
+      #{source.sessionId},#{source.questionId},#{source.answerId},#{source.feedbackId},#{source.feedbackRevision},
+      #{source.taskId},#{source.observationId},#{source.manualKind},#{source.authorLabel},#{source.observationJson},
+      #{source.decisionJson},#{source.verification},#{source.tracking},#{source.trackingReason},
+      #{source.createdAt},#{source.updatedAt},#{source.recollectionId},#{source.recollectionVersionId},#{source.recollectionJson})
+  </insert>
+  <update id="updateSource">
+    <!-- 外层动作 CAS 与来源更新同事务；来源身份和采用时观察不接受覆盖。 -->
+    UPDATE review_action_source SET verification=#{source.verification},tracking=#{source.tracking},
+      tracking_reason=#{source.trackingReason},updated_at=#{source.updatedAt}
+    WHERE owner_id=#{source.ownerId} AND action_id=#{source.actionId} AND id=#{source.id}
+  </update>
+  <update id="moveSources">
+    <!-- 合并保留每个来源实例，不能按反馈身份去重或改写 origin_action_id。 -->
+    UPDATE review_action_source SET action_id=#{targetActionId}
+    WHERE owner_id=#{owner} AND action_id=#{sourceActionId}
+  </update>
+  <insert id="insertHistory">
+    INSERT INTO review_action_history (owner_id,action_id,revision,change_kind,snapshot_json,created_at)
+    VALUES (#{history.ownerId},#{history.actionId},#{history.revision},#{history.change},
+      #{history.snapshotJson},#{history.createdAt})
+  </insert>
+</mapper>

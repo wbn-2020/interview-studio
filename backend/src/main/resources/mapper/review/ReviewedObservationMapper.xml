@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewedObservationMapper">
+  <sql id="observationColumns">id,owner_id,session_id,training_question_id AS question_id,
+    answer_id,checkpoint_id,revision,status,created_at,updated_at</sql>
+  <sql id="revisionColumns">owner_id,observation_id,revision,checkpoint_id,standard_review_id,
+    standard_review_revision,change_kind,snapshot_json,change_reason,created_at</sql>
+
+  <select id="observation" resultType="com.wenjie.studio.review.ReviewedObservationRows$ObservationRow">
+    SELECT <include refid="observationColumns"/> FROM reviewed_observation
+    WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="observations" resultType="com.wenjie.studio.review.ReviewedObservationRows$ObservationRow">
+    <bind name="pageSize" value="limit &lt; 1 ? 1 : (limit &gt; 50 ? 50 : limit)"/>
+    SELECT <include refid="observationColumns"/> FROM reviewed_observation
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND training_question_id=#{questionId} AND answer_id=#{answerId}
+    <if test="status != null">AND status=#{status}</if>
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id ASC LIMIT #{pageSize}
+  </select>
+  <select id="revision" resultType="com.wenjie.studio.review.ReviewedObservationRows$RevisionRow">
+    SELECT <include refid="revisionColumns"/> FROM reviewed_observation_revision
+    WHERE owner_id=#{owner} AND observation_id=#{id} AND revision=#{revision}
+  </select>
+  <select id="history" resultType="com.wenjie.studio.review.ReviewedObservationRows$RevisionRow">
+    <bind name="pageSize" value="limit &lt; 1 ? 1 : (limit &gt; 50 ? 50 : limit)"/>
+    SELECT <include refid="revisionColumns"/> FROM reviewed_observation_revision
+    WHERE owner_id=#{owner} AND observation_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{pageSize}
+  </select>
+
+  <insert id="insertObservation">
+    INSERT INTO reviewed_observation
+      (id,owner_id,session_id,training_question_id,answer_id,checkpoint_id,revision,status,created_at,updated_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.sessionId},#{row.questionId},#{row.answerId},#{row.checkpointId},
+      #{row.revision},#{row.status},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <!-- 固定回答与检查项也参与 CAS，撤回后不能编辑或恢复；正文保留在不可变修订中。 -->
+  <update id="updateObservation">
+    UPDATE reviewed_observation SET revision=#{row.revision},status=#{row.status},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND id=#{row.id} AND session_id=#{row.sessionId}
+      AND training_question_id=#{row.questionId} AND answer_id=#{row.answerId} AND checkpoint_id=#{row.checkpointId}
+      AND revision=#{expected} AND status='ACTIVE' AND #{expected} &lt; 9007199254740991
+      AND #{row.revision}=revision+1 AND #{row.updatedAt} &gt;= updated_at
+  </update>
+  <insert id="insertRevision">
+    INSERT INTO reviewed_observation_revision
+      (owner_id,observation_id,revision,checkpoint_id,standard_review_id,standard_review_revision,
+       change_kind,snapshot_json,change_reason,created_at)
+    VALUES (#{row.ownerId},#{row.observationId},#{row.revision},#{row.checkpointId},#{row.standardReviewId},
+      #{row.standardReviewRevision},#{row.changeKind},#{row.snapshotJson},#{row.changeReason},#{row.createdAt})
+  </insert>
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.recent.RecentMapper">
+  <resultMap id="visit" type="com.wenjie.studio.recent.RecentRows$VisitRow">
+    <constructor>
+      <arg column="target_kind" javaType="java.lang.String"/>
+      <arg column="target_id" javaType="java.lang.String"/>
+      <arg column="visited_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="metadata" type="com.wenjie.studio.recent.RecentRows$Metadata">
+    <constructor>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="subtype" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="visits" resultMap="visit" timeout="5">
+    SELECT target_kind,target_id,visited_at FROM recent_visit WHERE owner_id=#{owner}
+    <if test="kind != null">AND target_kind=#{kind}</if>
+    <if test="cursorTime != null">
+      AND (visited_at &lt; #{cursorTime}
+        OR (visited_at=#{cursorTime} AND target_kind &gt; #{cursorKind})
+        OR (visited_at=#{cursorTime} AND target_kind=#{cursorKind} AND target_id &gt; #{cursorId}))
+    </if>
+    ORDER BY visited_at DESC,target_kind ASC,target_id ASC LIMIT #{limit}
+  </select>
+
+  <!-- 每次仅按已确认类型查询本人对象；选择列不携带来源正文，当前版本须同时匹配对象与序号。 -->
+  <select id="metadata" resultMap="metadata" timeout="5">
+    <choose>
+      <when test="kind == 'KNOWLEDGE'">
+        SELECT CASE WHEN i.current_version_id IS NULL
+          THEN CASE WHEN i.kind='NOTE' THEN '未发布笔记' ELSE '未发布概念' END
+          ELSE v.title END AS title,i.kind AS subtype,i.status
+        FROM knowledge_item i LEFT JOIN knowledge_version v
+          ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+          AND v.version_number=i.version_number
+        WHERE i.owner_id=#{owner} AND i.id=#{id} AND (i.current_version_id IS NULL OR v.id IS NOT NULL)
+      </when>
+      <when test="kind == 'PREPARATION'">
+        SELECT title,kind AS subtype,status FROM preparation_item WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'MATERIAL'">
+        SELECT file_name AS title,kind AS subtype,status FROM material_attachment WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'QUESTION'">
+        SELECT v.title,v.question_type AS subtype,q.status FROM question q JOIN question_version v
+          ON v.owner_id=q.owner_id AND v.question_id=q.id AND v.id=q.current_version_id
+          AND v.version_number=q.version_number
+        WHERE q.owner_id=#{owner} AND q.id=#{id}
+      </when>
+      <when test="kind == 'COLLECTION'">
+        SELECT title,kind AS subtype,status FROM question_collection WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'TRAINING'">
+        SELECT title,mode AS subtype,status FROM training_session WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'RECOLLECTION'">
+        SELECT v.title,v.baseline_kind AS subtype,r.status FROM review_recollection r JOIN review_recollection_version v
+          ON v.owner_id=r.owner_id AND v.recollection_id=r.id AND v.id=r.current_version_id
+          AND v.version_number=r.version_number
+        WHERE r.owner_id=#{owner} AND r.id=#{id}
+      </when>
+      <when test="kind == 'MEMORY_CARD'">
+        SELECT v.title,v.card_kind AS subtype,c.status FROM memory_card c JOIN memory_card_version v
+          ON v.owner_id=c.owner_id AND v.card_id=c.id AND v.id=c.current_version_id
+          AND v.version_number=c.version_number
+        WHERE c.owner_id=#{owner} AND c.id=#{id}
+      </when>
+      <when test="kind == 'AI_TASK'">
+        SELECT title,purpose AS subtype,status FROM ai_task WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'BOARD'">
+        SELECT title,kind AS subtype,'AVAILABLE' AS status FROM knowledge_board WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'INTERVIEW'">
+        SELECT title,'INTERVIEW' AS subtype,status FROM interview_event WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'PREPARATION_TASK'">
+        SELECT title,'PREPARATION_TASK' AS subtype,status FROM preparation_task WHERE owner_id=#{owner} AND id=#{id}
+      </when>
+      <when test="kind == 'REPRACTICE'">
+        SELECT s.title,r.question_mode AS subtype,s.status FROM review_repractice r JOIN training_session s
+          ON s.owner_id=r.owner_id AND s.id=r.session_id
+        WHERE r.owner_id=#{owner} AND r.id=#{id}
+      </when>
+      <otherwise>SELECT NULL AS title,NULL AS subtype,NULL AS status WHERE FALSE</otherwise>
+    </choose>
+  </select>
+
+  <select id="visitTime" resultType="java.time.Instant" timeout="5">
+    SELECT visited_at FROM recent_visit WHERE owner_id=#{owner} AND target_kind=#{kind} AND target_id=#{id}
+  </select>
+  <select id="knowledgeVisitTime" resultType="java.time.Instant" timeout="5">
+    SELECT visited_at FROM knowledge_organization WHERE owner_id=#{owner} AND item_id=#{id}
+  </select>
+  <insert id="upsertVisit">
+    INSERT INTO recent_visit (owner_id,target_kind,target_id,visited_at) VALUES (#{owner},#{kind},#{id},#{now})
+    ON DUPLICATE KEY UPDATE visited_at=GREATEST(visited_at,#{now})
+  </insert>
+</mapper>

@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.lifecycle.KnowledgeReferencesMapper">
+  <resultMap id="source" type="com.wenjie.studio.lifecycle.KnowledgeReferencesDtos$Source">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="revision" javaType="_long"/>
+      <arg column="current_version_id" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="_int"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="selected_version_current" javaType="_boolean"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="entry" type="com.wenjie.studio.lifecycle.KnowledgeReferencesDtos$Entry">
+    <constructor>
+      <idArg column="reference_id" javaType="java.lang.String"/>
+      <arg column="reference_revision" javaType="_long"/>
+      <arg column="target_kind" javaType="com.wenjie.studio.lifecycle.KnowledgeReferencesDtos$TargetKind"/>
+      <arg column="target_id" javaType="java.lang.String"/>
+      <arg column="target_version_id" javaType="java.lang.String"/>
+      <arg column="target_version_number" javaType="java.lang.Integer"/>
+      <arg column="target_revision" javaType="java.lang.Long"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="target_current" javaType="_boolean"/>
+      <arg column="anchor_item_id" javaType="java.lang.String"/>
+      <arg column="other_item_id" javaType="java.lang.String"/>
+      <arg column="anchor_version_id" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="source" resultMap="source" timeout="5">
+    SELECT i.id,i.kind,i.status,i.metadata_revision AS revision,i.current_version_id,
+      v.id AS version_id,v.version_number,v.title,
+      i.current_version_id=v.id AS selected_version_current
+    FROM knowledge_item i JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId}
+  </select>
+
+  <sql id="aiTaskEntryColumns">
+    s.task_id AS reference_id,0 AS reference_revision,'AI_TASK' AS target_kind,
+    s.task_id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+    NULL AS target_revision,t.title,t.status,TRUE AS target_current,
+    NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+  </sql>
+
+  <sql id="memorySourceHistoryEntryColumns">
+    h.id AS reference_id,0 AS reference_revision,'MEMORY_SOURCE_HISTORY' AS target_kind,
+    h.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+    NULL AS target_revision,v.title,h.history_kind AS status,TRUE AS target_current,
+    h.card_id AS anchor_item_id,NULL AS other_item_id,h.card_version_id AS anchor_version_id
+  </sql>
+
+  <!-- 目录只投影绑定与目标元数据；稳定对象关联不把所选知识版本当成端点版本。 -->
+  <select id="references" resultMap="entry" timeout="5">
+    <choose>
+      <when test="kind == 'RELATIONS'">
+        SELECT r.id AS reference_id,0 AS reference_revision,'RELATION' AS target_kind,
+          r.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,r.relation_type AS title,'ACTIVE' AS status,
+          TRUE AS target_current,r.source_id AS anchor_item_id,r.target_id AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_relation r
+        WHERE r.owner_id=#{owner} AND (r.source_id=#{itemId} OR r.target_id=#{itemId})
+        <if test="afterId != null">AND r.id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'CONCEPT_NOTES'">
+        SELECT a.id AS reference_id,0 AS reference_revision,'KNOWLEDGE' AS target_kind,
+          i.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,v.title,i.status,TRUE AS target_current,
+          NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_concept_note a JOIN knowledge_item i
+          ON i.owner_id=a.owner_id
+          AND i.id=CASE WHEN a.concept_id=#{itemId} THEN a.note_id ELSE a.concept_id END
+        JOIN knowledge_version v
+          ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+        WHERE a.owner_id=#{owner} AND (a.concept_id=#{itemId} OR a.note_id=#{itemId})
+        <if test="afterId != null">AND a.id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MAIN_NOTES'">
+        SELECT i.id AS reference_id,0 AS reference_revision,'KNOWLEDGE' AS target_kind,
+          i.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,v.title,i.status,TRUE AS target_current,
+          NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_organization o JOIN knowledge_item i
+          ON i.owner_id=o.owner_id AND i.id=o.item_id AND i.kind='CONCEPT'
+        JOIN knowledge_version v
+          ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+        WHERE o.owner_id=#{owner} AND o.main_note_id=#{itemId}
+        <if test="afterId != null">AND i.id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'BODY_LINKS'">
+        SELECT r.id AS reference_id,0 AS reference_revision,'KNOWLEDGE' AS target_kind,
+          i.id AS target_id,v.id AS target_version_id,v.version_number AS target_version_number,
+          NULL AS target_revision,v.title,i.status,
+          i.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_reference r JOIN knowledge_item i
+          ON i.owner_id=r.owner_id AND i.id=r.source_item_id
+        JOIN knowledge_version v
+          ON v.owner_id=r.owner_id AND v.item_id=r.source_item_id AND v.id=r.source_version_id
+        WHERE r.owner_id=#{owner} AND r.target_item_id=#{itemId}
+        <if test="afterId != null">AND r.id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'BOARD_SNAPSHOTS'">
+        SELECT r.board_id AS reference_id,r.board_revision AS reference_revision,'BOARD' AS target_kind,
+          b.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          h.revision AS target_revision,h.title,'AVAILABLE' AS status,
+          b.revision=h.revision AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_board_reference r JOIN knowledge_board_revision h
+          ON h.owner_id=r.owner_id AND h.board_id=r.board_id AND h.revision=r.board_revision
+        JOIN knowledge_board b ON b.owner_id=r.owner_id AND b.id=r.board_id
+        WHERE r.owner_id=#{owner} AND r.item_id=#{itemId} AND r.version_id=#{versionId}
+        <if test="afterId != null">
+          AND (r.board_id &gt; #{afterId}
+            OR (r.board_id=#{afterId} AND r.board_revision &gt; #{afterRevision}))
+        </if>
+      </when>
+      <when test="kind == 'PREPARATION_VERSIONS'">
+        SELECT v.id AS reference_id,0 AS reference_revision,'PREPARATION' AS target_kind,
+          i.id AS target_id,v.id AS target_version_id,v.version_number AS target_version_number,
+          NULL AS target_revision,v.title,i.status,
+          i.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM preparation_reference r JOIN preparation_version v
+          ON v.owner_id=r.owner_id AND v.item_id=r.target_item_id AND v.id=r.target_version_id
+        JOIN preparation_item i ON i.owner_id=r.owner_id AND i.id=r.target_item_id
+        WHERE r.owner_id=#{owner} AND r.source_kind='KNOWLEDGE'
+          AND r.knowledge_source_item_id=#{itemId} AND r.knowledge_source_version_id=#{versionId}
+        <if test="afterId != null">AND r.target_version_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'QUESTION_VERSIONS'">
+        SELECT v.id AS reference_id,0 AS reference_revision,'QUESTION' AS target_kind,
+          q.id AS target_id,v.id AS target_version_id,v.version_number AS target_version_number,
+          NULL AS target_revision,v.title,q.status,
+          q.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM question_knowledge_reference r JOIN question_version v
+          ON v.owner_id=r.owner_id AND v.question_id=r.question_id AND v.id=r.version_id
+        JOIN question q ON q.owner_id=r.owner_id AND q.id=r.question_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.version_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_VERSIONS'">
+        SELECT v.id AS reference_id,0 AS reference_revision,'MEMORY_CARD' AS target_kind,
+          c.id AS target_id,v.id AS target_version_id,v.version_number AS target_version_number,
+          NULL AS target_revision,v.title,c.status,
+          c.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM memory_card_source r JOIN memory_card_version v
+          ON v.owner_id=r.owner_id AND v.card_id=r.card_id AND v.id=r.version_id
+        JOIN memory_card c ON c.owner_id=r.owner_id AND c.id=r.card_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.version_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_CONCEPTS'">
+        SELECT v.id AS reference_id,0 AS reference_revision,'MEMORY_CARD' AS target_kind,
+          c.id AS target_id,v.id AS target_version_id,v.version_number AS target_version_number,
+          NULL AS target_revision,v.title,c.status,
+          c.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM memory_card_concept r JOIN memory_card_version v
+          ON v.owner_id=r.owner_id AND v.card_id=r.card_id AND v.id=r.version_id
+        JOIN memory_card c ON c.owner_id=r.owner_id AND c.id=r.card_id
+        WHERE r.owner_id=#{owner} AND r.concept_id=#{itemId}
+        <if test="afterId != null">AND r.version_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'RELATION_SUPPLEMENTS'">
+        SELECT s.id AS reference_id,0 AS reference_revision,'RELATION' AS target_kind,
+          s.relation_id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,s.relation_type AS title,
+          CASE WHEN r.id IS NULL THEN 'REMOVED' ELSE 'ACTIVE' END AS status,
+          r.id IS NOT NULL AS target_current,s.source_id AS anchor_item_id,s.target_id AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_relation_supplement_source k JOIN knowledge_relation_supplement s
+          ON s.owner_id=k.owner_id AND s.id=k.supplement_id
+        LEFT JOIN knowledge_relation r
+          ON r.owner_id=s.owner_id AND r.id=s.relation_id
+          AND r.source_id=s.source_id AND r.target_id=s.target_id AND r.relation_type=s.relation_type
+        WHERE k.owner_id=#{owner} AND k.source_item_id=#{itemId} AND k.source_version_id=#{versionId}
+        <if test="afterId != null">AND k.supplement_id &gt; #{afterId}</if>
+      </when>
+      <!-- 整理与出题来源仅代表已采用记录；其余输入登记不证明已发送或已采用。 -->
+      <when test="kind == 'AI_KNOWLEDGE_ADOPTIONS'">
+        SELECT <include refid="aiTaskEntryColumns"/>
+        FROM ai_knowledge_source s JOIN ai_candidate_decision d
+          ON d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'
+        JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{itemId} AND s.source_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_QUESTION_ADOPTIONS'">
+        SELECT <include refid="aiTaskEntryColumns"/>
+        FROM ai_question_source s JOIN ai_question_decision d
+          ON d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'
+        JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='QUESTION_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{itemId} AND s.source_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_RELATION_INPUTS'">
+        SELECT <include refid="aiTaskEntryColumns"/>
+        FROM ai_relation_source s JOIN ai_task t
+          ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='RELATION_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{itemId} AND s.source_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_CARD_INPUTS'">
+        SELECT <include refid="aiTaskEntryColumns"/>
+        FROM ai_card_draft_source s JOIN ai_task t
+          ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='MEMORY_CARD_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{itemId} AND s.source_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_SOURCE_QA_INPUTS'">
+        <!-- 同一任务可有多个知识选区，先去重任务元数据，再按唯一任务身份分页。 -->
+        SELECT DISTINCT <include refid="aiTaskEntryColumns"/>
+        FROM ai_source_qa_source s JOIN ai_task t
+          ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='SOURCE_QA'
+        WHERE s.owner_id=#{owner} AND s.domain='KNOWLEDGE'
+          AND s.knowledge_item_id=#{itemId} AND s.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'STANDARD_REVIEW_EVIDENCE'">
+        <!-- 多份证据可绑定同一知识版本；按审阅修订去重，题目版本仅作为导航锚点。 -->
+        SELECT DISTINCT e.review_id AS reference_id,e.revision AS reference_revision,
+          'STANDARD_REVIEW' AS target_kind,e.review_id AS target_id,
+          NULL AS target_version_id,NULL AS target_version_number,e.revision AS target_revision,
+          qv.title,r.status,r.revision=e.revision AS target_current,
+          h.question_id AS anchor_item_id,NULL AS other_item_id,h.question_version_id AS anchor_version_id
+        FROM standard_review_evidence e JOIN standard_review r
+          ON r.owner_id=e.owner_id AND r.id=e.review_id
+        JOIN standard_review_revision h
+          ON h.owner_id=e.owner_id AND h.review_id=e.review_id AND h.revision=e.revision
+          AND h.question_id=r.question_id AND h.question_version_id=r.question_version_id
+        JOIN question_version qv
+          ON qv.owner_id=h.owner_id AND qv.question_id=h.question_id AND qv.id=h.question_version_id
+        WHERE e.owner_id=#{owner} AND e.basis_kind='KNOWLEDGE'
+          AND e.knowledge_item_id=#{itemId} AND e.knowledge_version_id=#{versionId}
+        <if test="afterId != null">
+          AND (e.review_id &gt; #{afterId}
+            OR (e.review_id=#{afterId} AND e.revision &gt; #{afterRevision}))
+        </if>
+      </when>
+      <when test="kind == 'INTERVIEW_MATERIALS'">
+        <!-- 标题和状态保留材料绑定当时的安排修订；当前指针只用于区分当前与历史。 -->
+        SELECT m.event_id AS reference_id,m.event_revision AS reference_revision,
+          'INTERVIEW_EVENT' AS target_kind,m.event_id AS target_id,
+          NULL AS target_version_id,NULL AS target_version_number,m.event_revision AS target_revision,
+          h.title,h.status,e.revision=m.event_revision AS target_current,
+          NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM interview_event_material m JOIN interview_event_history h
+          ON h.owner_id=m.owner_id AND h.event_id=m.event_id AND h.revision=m.event_revision
+        JOIN interview_event e ON e.owner_id=m.owner_id AND e.id=m.event_id
+        WHERE m.owner_id=#{owner} AND m.source_kind='KNOWLEDGE'
+          AND m.knowledge_source_item_id=#{itemId} AND m.knowledge_source_version_id=#{versionId}
+        <if test="afterId != null">
+          AND (m.event_id &gt; #{afterId}
+            OR (m.event_id=#{afterId} AND m.event_revision &gt; #{afterRevision}))
+        </if>
+      </when>
+      <when test="kind == 'TODAY_PLACEMENTS'">
+        <!-- 仅登记当前安排偏好；稳定知识对象关联不按所选版本筛选。 -->
+        SELECT pl.id AS reference_id,0 AS reference_revision,'TODAY_PLACEMENT' AS target_kind,
+          pl.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,'知识安排偏好' AS title,pl.visibility AS status,TRUE AS target_current,
+          pl.source_id AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM today_placement pl
+        WHERE pl.owner_id=#{owner} AND pl.source_kind='KNOWLEDGE_DRAFT' AND pl.source_id=#{itemId}
+        <if test="afterId != null">AND pl.id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'TODAY_PLACEMENT_HISTORY'">
+        <!-- 偏好历史属于稳定知识对象；修订用于区分同一安排的历史入口，不筛知识版本。 -->
+        SELECT h.placement_id AS reference_id,h.revision AS reference_revision,'TODAY_PLACEMENT' AS target_kind,
+          h.placement_id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          h.revision AS target_revision,'知识安排偏好历史' AS title,h.visibility AS status,
+          p.revision=h.revision AS target_current,p.source_id AS anchor_item_id,
+          NULL AS other_item_id,NULL AS anchor_version_id
+        FROM today_placement_history h JOIN today_placement p
+          ON p.owner_id=h.owner_id AND p.id=h.placement_id
+        WHERE h.owner_id=#{owner} AND p.source_kind='KNOWLEDGE_DRAFT' AND p.source_id=#{itemId}
+        <if test="afterId != null">
+          AND (h.placement_id &gt; #{afterId}
+            OR (h.placement_id=#{afterId} AND h.revision &gt; #{afterRevision}))
+        </if>
+      </when>
+      <!-- 输入登记仅证明来源绑定，同一任务的多个输入按任务身份去重。 -->
+      <when test="kind == 'AI_KNOWLEDGE_INPUTS'">
+        SELECT DISTINCT <include refid="aiTaskEntryColumns"/>
+        FROM ai_draft_knowledge_input s JOIN ai_task t
+          ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT'
+        WHERE s.owner_id=#{owner}
+          AND s.knowledge_item_id=#{itemId} AND s.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_QUESTION_INPUTS'">
+        SELECT DISTINCT <include refid="aiTaskEntryColumns"/>
+        FROM ai_draft_knowledge_input s JOIN ai_task t
+          ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='QUESTION_DRAFT'
+        WHERE s.owner_id=#{owner}
+          AND s.knowledge_item_id=#{itemId} AND s.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND s.task_id &gt; #{afterId}</if>
+      </when>
+      <!-- 固定题面、当前草稿、固定提交和尝试按各自身份分页；当前入口不表示最新内容或来源有效。 -->
+      <when test="kind == 'TRAINING_QUESTION_SNAPSHOTS'">
+        SELECT q.id AS reference_id,0 AS reference_revision,'TRAINING_QUESTION' AS target_kind,
+          q.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,q.title,q.status,TRUE AS target_current,
+          q.session_id AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM training_question_knowledge_snapshot r JOIN training_question q
+          ON q.owner_id=r.owner_id AND q.session_id=r.session_id AND q.id=r.question_id
+        JOIN training_session s ON s.owner_id=q.owner_id AND s.id=q.session_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.question_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'TRAINING_DRAFT_DIAGRAMS'">
+        SELECT q.id AS reference_id,0 AS reference_revision,'TRAINING_QUESTION' AS target_kind,
+          q.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,q.title,q.status,TRUE AS target_current,
+          q.session_id AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM training_draft_knowledge_reference r JOIN training_question q
+          ON q.owner_id=r.owner_id AND q.session_id=r.session_id AND q.id=r.question_id
+        JOIN training_session s ON s.owner_id=q.owner_id AND s.id=q.session_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.question_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'TRAINING_ANSWER_DIAGRAMS'">
+        SELECT a.id AS reference_id,0 AS reference_revision,'TRAINING_ANSWER' AS target_kind,
+          a.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,q.title,'SUBMITTED' AS status,TRUE AS target_current,
+          a.session_id AS anchor_item_id,a.question_id AS other_item_id,NULL AS anchor_version_id
+        FROM training_answer_knowledge_reference r JOIN training_answer a
+          ON a.owner_id=r.owner_id AND a.session_id=r.session_id AND a.question_id=r.question_id AND a.id=r.answer_id
+        JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+        JOIN training_session s ON s.owner_id=q.owner_id AND s.id=q.session_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.answer_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_ATTEMPT_SOURCES'">
+        <!-- 标题固定在开始时的卡片版本；该版本仅作来源锚点，不是尝试自身版本。 -->
+        SELECT a.id AS reference_id,0 AS reference_revision,'MEMORY_ATTEMPT' AS target_kind,
+          a.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,v.title,a.state AS status,TRUE AS target_current,
+          a.card_id AS anchor_item_id,NULL AS other_item_id,a.card_version_id AS anchor_version_id
+        FROM memory_attempt_knowledge_source r JOIN memory_recall_attempt a
+          ON a.owner_id=r.owner_id AND a.card_id=r.card_id AND a.id=r.attempt_id
+        JOIN memory_card_version v ON v.owner_id=a.owner_id AND v.card_id=a.card_id AND v.id=a.card_version_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.attempt_id &gt; #{afterId}</if>
+      </when>
+      <!-- 同一历史事件可多次观察同一确切知识；先按事件去重，卡片版本仅作导航锚点。 -->
+      <!-- target_current 只表示固定事件入口，不代表当前卡片版本或来源仍有效。 -->
+      <when test="kind == 'MEMORY_REVIEW_DEPENDENCIES'">
+        SELECT DISTINCT <include refid="memorySourceHistoryEntryColumns"/>
+        FROM memory_source_history_knowledge_reference r JOIN memory_source_history h
+          ON h.owner_id=r.owner_id AND h.card_id=r.card_id AND h.id=r.history_id
+          AND h.history_kind='SOURCE_REVIEW'
+        JOIN memory_card_version v ON v.owner_id=h.owner_id AND v.card_id=h.card_id AND v.id=h.card_version_id
+        WHERE r.owner_id=#{owner} AND r.role='REVIEW_DEPENDENCY'
+          AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.history_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_REVIEW_OBSERVATIONS'">
+        SELECT DISTINCT <include refid="memorySourceHistoryEntryColumns"/>
+        FROM memory_source_history_knowledge_reference r JOIN memory_source_history h
+          ON h.owner_id=r.owner_id AND h.card_id=r.card_id AND h.id=r.history_id
+          AND h.history_kind='SOURCE_REVIEW'
+        JOIN memory_card_version v ON v.owner_id=h.owner_id AND v.card_id=h.card_id AND v.id=h.card_version_id
+        WHERE r.owner_id=#{owner} AND r.role='REVIEW_OBSERVED_CURRENT'
+          AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.history_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_IMPACT_DEPENDENCIES'">
+        SELECT DISTINCT <include refid="memorySourceHistoryEntryColumns"/>
+        FROM memory_source_history_knowledge_reference r JOIN memory_source_history h
+          ON h.owner_id=r.owner_id AND h.card_id=r.card_id AND h.id=r.history_id
+          AND h.history_kind='IMPACT'
+        JOIN memory_card_version v ON v.owner_id=h.owner_id AND v.card_id=h.card_id AND v.id=h.card_version_id
+        WHERE r.owner_id=#{owner} AND r.role='IMPACT_DEPENDENCY'
+          AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.history_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_IMPACT_PREVIOUS'">
+        SELECT DISTINCT <include refid="memorySourceHistoryEntryColumns"/>
+        FROM memory_source_history_knowledge_reference r JOIN memory_source_history h
+          ON h.owner_id=r.owner_id AND h.card_id=r.card_id AND h.id=r.history_id
+          AND h.history_kind='IMPACT'
+        JOIN memory_card_version v ON v.owner_id=h.owner_id AND v.card_id=h.card_id AND v.id=h.card_version_id
+        WHERE r.owner_id=#{owner} AND r.role='IMPACT_PREVIOUS'
+          AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.history_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'MEMORY_IMPACT_CURRENT'">
+        SELECT DISTINCT <include refid="memorySourceHistoryEntryColumns"/>
+        FROM memory_source_history_knowledge_reference r JOIN memory_source_history h
+          ON h.owner_id=r.owner_id AND h.card_id=r.card_id AND h.id=r.history_id
+          AND h.history_kind='IMPACT'
+        JOIN memory_card_version v ON v.owner_id=h.owner_id AND v.card_id=h.card_id AND v.id=h.card_version_id
+        WHERE r.owner_id=#{owner} AND r.role='IMPACT_CURRENT'
+          AND r.knowledge_item_id=#{itemId} AND r.knowledge_version_id=#{versionId}
+        <if test="afterId != null">AND r.history_id &gt; #{afterId}</if>
+      </when>
+      <otherwise>
+        SELECT i.id AS reference_id,0 AS reference_revision,'KNOWLEDGE' AS target_kind,
+          i.id AS target_id,NULL AS target_version_id,NULL AS target_version_number,
+          NULL AS target_revision,'' AS title,i.status,FALSE AS target_current,
+          NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_item i WHERE i.owner_id=#{owner} AND i.id=#{itemId} AND 1=0
+      </otherwise>
+    </choose>
+    ORDER BY reference_id,reference_revision LIMIT #{limit}
+  </select>
+</mapper>

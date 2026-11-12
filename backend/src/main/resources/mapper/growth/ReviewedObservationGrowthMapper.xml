@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.growth.ReviewedObservationGrowthMapper">
+  <select id="candidates" resultType="com.wenjie.studio.growth.ReviewedObservationGrowthRows$Candidate">
+    <bind name="pageSize" value="limit &lt; 1 ? 1 : (limit &gt; 50 ? 50 : limit)"/>
+    SELECT * FROM (
+      SELECT owner_id,observation_id AS id,revision,created_at AS occurred_at,
+        CONCAT('REVIEWED_OBSERVATION:',observation_id,':-:',revision,':-') AS evidence_key
+      FROM reviewed_observation_revision WHERE owner_id=#{owner}
+        AND created_at &gt;= #{start} AND created_at &lt; #{end}
+    ) candidate
+    <if test="afterAt != null">
+      WHERE occurred_at &lt; #{afterAt}
+        OR (occurred_at=#{afterAt} AND CAST(evidence_key AS BINARY) &gt; CAST(#{afterKey} AS BINARY))
+    </if>
+    ORDER BY occurred_at DESC,CAST(evidence_key AS BINARY) ASC LIMIT #{pageSize}
+  </select>
+</mapper>

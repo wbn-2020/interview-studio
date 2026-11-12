@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.search.UnifiedSearchMapper">
+  <resultMap id="version" type="com.wenjie.studio.search.UnifiedSearchRows$VersionRow">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/><arg column="version_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="java.lang.Integer"/><arg column="kind" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/><arg column="status" javaType="java.lang.String"/>
+      <arg column="current_version_id" javaType="java.lang.String"/><arg column="verification" javaType="java.lang.String"/>
+      <arg column="project_status" javaType="java.lang.String"/><arg column="content_json" javaType="java.lang.String"/>
+      <arg column="body" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="excerpt" type="com.wenjie.studio.search.UnifiedSearchRows$ExcerptRow">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/><arg column="attachment_id" javaType="java.lang.String"/>
+      <arg column="file_name" javaType="java.lang.String"/><arg column="origin" javaType="java.lang.String"/>
+      <arg column="locator" javaType="java.lang.String"/><arg column="text" javaType="java.lang.String"/>
+      <arg column="run_id" javaType="java.lang.String"/><arg column="segment_id" javaType="java.lang.String"/>
+      <arg column="start_offset" javaType="java.lang.Integer"/><arg column="end_offset" javaType="java.lang.Integer"/>
+      <arg column="segment_locator" javaType="java.lang.String"/><arg column="segment_text" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="knowledgeVersion" resultMap="version" timeout="5">
+    SELECT i.id,v.id AS version_id,v.version_number,i.kind,v.title,i.status,i.current_version_id,
+      NULL AS verification,NULL AS project_status,NULL AS content_json,v.body
+    FROM knowledge_item i JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{id}
+  </select>
+
+  <sql id="preparationColumns">
+    i.id,v.id AS version_id,v.version_number,i.kind,v.title,i.status,i.current_version_id,
+    CASE WHEN i.kind='FACT' THEN i.verification ELSE NULL END AS verification,
+    CASE WHEN i.kind='FACT' THEN COALESCE(p.status,'UNAVAILABLE') ELSE NULL END AS project_status,
+    v.content_json,NULL AS body
+  </sql>
+  <sql id="preparationParent">
+    LEFT JOIN preparation_item p ON i.kind='FACT' AND p.owner_id=i.owner_id AND p.id=i.project_id AND p.kind='PROJECT'
+  </sql>
+  <select id="preparationVersion" resultMap="version" timeout="5">
+    SELECT <include refid="preparationColumns"/>
+    FROM preparation_item i JOIN preparation_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    <include refid="preparationParent"/>
+    WHERE i.owner_id=#{owner} AND i.id=#{id}
+  </select>
+  <select id="preparations" resultMap="version" timeout="5">
+    SELECT <include refid="preparationColumns"/>
+    FROM preparation_item i JOIN preparation_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+    <include refid="preparationParent"/>
+    WHERE i.owner_id=#{owner} AND i.status=#{status}
+    <if test="afterId != null">AND i.id &lt; #{afterId}</if>
+    AND (
+      v.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR (i.kind='TARGET' AND (
+        JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.company')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.jd')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR EXISTS (SELECT 1 FROM JSON_TABLE(v.content_json,'$.requirements[*]'
+          COLUMNS (search_value VARCHAR(2000) PATH '$.text' NULL ON EMPTY ERROR ON ERROR)) required_text
+          WHERE CONVERT(required_text.search_value USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+      ))
+      OR (i.kind='PROJECT' AND (
+        JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.overview')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.technology')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      ))
+      OR (i.kind='FACT' AND (
+        JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.scenario')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.problem')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.action')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.result')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.technology')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      ))
+      OR (i.kind='EXPRESSION' AND JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.body'))
+        COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+      OR (i.kind IN ('FACT','EXPRESSION') AND EXISTS (
+        SELECT 1 FROM JSON_TABLE(v.content_json,'$.tags[*]'
+          COLUMNS (search_value VARCHAR(40) PATH '$' NULL ON EMPTY ERROR ON ERROR)) tag_text
+        WHERE CONVERT(tag_text.search_value USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      ))
+    )
+    ORDER BY i.id DESC LIMIT #{limit}
+  </select>
+
+  <sql id="questionColumns">
+    q.id,v.id AS version_id,v.version_number,v.question_type AS kind,v.title,q.status,q.current_version_id,
+    NULL AS verification,NULL AS project_status,v.prompt_json AS content_json,NULL AS body
+  </sql>
+  <select id="questionVersion" resultMap="version" timeout="5">
+    SELECT <include refid="questionColumns"/>
+    FROM question q JOIN question_version v
+      ON v.owner_id=q.owner_id AND v.question_id=q.id AND v.id=#{versionId}
+    WHERE q.owner_id=#{owner} AND q.id=#{id}
+  </select>
+  <select id="questions" resultMap="version" timeout="5">
+    SELECT <include refid="questionColumns"/>
+    FROM question q JOIN question_version v
+      ON v.owner_id=q.owner_id AND v.question_id=q.id AND v.id=q.current_version_id
+    WHERE q.owner_id=#{owner} AND q.status=#{status}
+    <if test="afterId != null">AND q.id &lt; #{afterId}</if>
+    AND (
+      v.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json,'$.prompt')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json,'$.conditions')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json,'$.technology')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json,'$.scenario')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR EXISTS (SELECT 1 FROM JSON_TABLE(v.prompt_json,'$.tags[*]'
+        COLUMNS (search_value VARCHAR(40) PATH '$' NULL ON EMPTY ERROR ON ERROR)) tag_text
+        WHERE CONVERT(tag_text.search_value USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+    )
+    ORDER BY q.id DESC LIMIT #{limit}
+  </select>
+
+  <sql id="excerptColumns">
+    e.id,e.attachment_id,a.file_name,e.origin,e.locator,e.text,e.run_id,e.segment_id,e.start_offset,e.end_offset,
+    s.locator AS segment_locator,s.text AS segment_text
+  </sql>
+  <sql id="excerptSource">
+    FROM material_excerpt e JOIN material_attachment a
+      ON a.owner_id=e.owner_id AND a.id=e.attachment_id AND a.status='READY' AND a.sha256=e.attachment_sha256
+    LEFT JOIN material_parse_run r ON e.origin='PARSED' AND r.owner_id=e.owner_id AND r.id=e.run_id
+      AND r.attachment_id=e.attachment_id AND r.attachment_sha256=e.attachment_sha256 AND r.status='SUCCEEDED'
+    LEFT JOIN material_segment s ON e.origin='PARSED' AND s.owner_id=e.owner_id AND s.id=e.segment_id
+      AND s.attachment_id=e.attachment_id AND s.run_id=r.id
+    WHERE e.owner_id=#{owner} AND (
+      (e.origin='MANUAL' AND e.run_id IS NULL AND e.segment_id IS NULL AND e.start_offset IS NULL AND e.end_offset IS NULL)
+      OR (e.origin='PARSED' AND r.id IS NOT NULL AND s.id IS NOT NULL
+        AND e.start_offset IS NOT NULL AND e.end_offset IS NOT NULL)
+    )
+  </sql>
+  <select id="excerpt" resultMap="excerpt" timeout="5">
+    SELECT <include refid="excerptColumns"/> <include refid="excerptSource"/> AND e.id=#{id}
+  </select>
+  <select id="incompleteExcerptBaseline" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 <include refid="excerptSource"/>
+      <if test="afterId != null">AND e.id &lt; #{afterId}</if>
+      AND (e.locator COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        OR e.text COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+      AND NOT EXISTS (SELECT 1 FROM material_excerpt_lifecycle lifecycle
+        WHERE lifecycle.owner_id=e.owner_id AND lifecycle.excerpt_id=e.id
+          AND lifecycle.attachment_id=e.attachment_id AND lifecycle.created_at=e.created_at))
+  </select>
+  <select id="excerpts" resultMap="excerpt" timeout="5">
+    SELECT <include refid="excerptColumns"/> <include refid="excerptSource"/>
+    <!-- 搜索只返回可新选用的摘录；确切历史读取仍使用上方不筛状态的 excerpt。 -->
+    AND EXISTS (SELECT 1 FROM material_excerpt_lifecycle lifecycle
+      WHERE lifecycle.owner_id=e.owner_id AND lifecycle.excerpt_id=e.id
+        AND lifecycle.attachment_id=e.attachment_id AND lifecycle.status='ACTIVE')
+    <if test="afterId != null">AND e.id &lt; #{afterId}</if>
+    AND (e.locator COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR e.text COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+    ORDER BY e.id DESC LIMIT #{limit}
+  </select>
+</mapper>

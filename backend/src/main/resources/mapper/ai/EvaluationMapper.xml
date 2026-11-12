@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.EvaluationMapper">
+  <select id="access" resultType="com.wenjie.studio.ai.EvaluationRows$AccessRow">
+    SELECT owner_id,session_id,question_id,answer_id,early_feedback,granted_at FROM ai_evaluation_access
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND question_id=#{questionId} AND answer_id=#{answerId}
+  </select>
+  <insert id="insertAccess">
+    INSERT INTO ai_evaluation_access (owner_id,session_id,question_id,answer_id,early_feedback,granted_at)
+    VALUES (#{row.ownerId},#{row.sessionId},#{row.questionId},#{row.answerId},#{row.earlyFeedback},#{row.grantedAt})
+  </insert>
+  <select id="binding" resultType="com.wenjie.studio.ai.EvaluationRows$BindingRow">
+    SELECT owner_id,task_id,session_id,question_id,answer_id,created_at FROM ai_evaluation WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertBinding">
+    INSERT INTO ai_evaluation (owner_id,task_id,session_id,question_id,answer_id,created_at)
+    VALUES (#{row.ownerId},#{row.taskId},#{row.sessionId},#{row.questionId},#{row.answerId},#{row.createdAt})
+  </insert>
+  <select id="taskCount" resultType="int">
+    SELECT COUNT(*) FROM ai_evaluation WHERE owner_id=#{owner} AND answer_id=#{answerId}
+  </select>
+  <select id="pendingCount" resultType="int">
+    SELECT COUNT(*) FROM ai_evaluation e JOIN ai_task t ON t.owner_id=e.owner_id AND t.id=e.task_id
+    WHERE e.owner_id=#{owner} AND e.answer_id=#{answerId} AND t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+    <if test="excludedTaskId != null">AND e.task_id &lt;&gt; #{excludedTaskId}</if>
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.ai.EvaluationRows$SummaryRow">
+    SELECT t.id,t.purpose,t.status,t.revision,t.title,t.provider,t.model,t.currency,t.attempt_count,t.created_at,t.updated_at,t.error_code,
+      e.question_id,e.answer_id,a.version_number AS answer_number
+    FROM ai_evaluation e JOIN ai_task t ON t.owner_id=e.owner_id AND t.id=e.task_id
+    JOIN training_answer a ON a.owner_id=e.owner_id AND a.session_id=e.session_id AND a.question_id=e.question_id AND a.id=e.answer_id
+    WHERE e.owner_id=#{owner} AND e.session_id=#{sessionId}
+    <if test="questionId != null">AND e.question_id=#{questionId}</if>
+    <if test="cursor != null">AND t.id &gt; #{cursor}</if>
+    ORDER BY t.id LIMIT #{limit}
+  </select>
+  <select id="decisions" resultType="com.wenjie.studio.ai.AiDtos$FeedbackDecision">
+    SELECT id,feedback_id,revision,choice,reason,created_at FROM ai_feedback_decision
+    WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY feedback_id,revision
+  </select>
+  <insert id="insertDecision">
+    INSERT INTO ai_feedback_decision (id,owner_id,task_id,feedback_id,revision,choice,reason,created_at)
+    VALUES (#{decision.id},#{owner},#{taskId},#{decision.feedbackId},#{decision.revision},#{decision.choice},#{decision.reason},#{decision.createdAt})
+  </insert>
+  <select id="coverage" resultType="com.wenjie.studio.ai.AiDtos$EvaluationCoverageItem">
+    SELECT q.id AS question_id,q.title,q.status,q.answer_count,q.latest_answer_id,
+      COUNT(t.id) AS task_count,COALESCE(SUM(t.status='SUCCEEDED'),0) AS completed_count,
+      COALESCE(SUM(t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')),0) AS pending_count,
+      COALESCE(SUM(t.status IN ('FAILED','UNKNOWN','CANCELED')),0) AS failed_count
+    FROM training_question q
+    LEFT JOIN ai_evaluation e ON e.owner_id=q.owner_id AND e.session_id=q.session_id AND e.question_id=q.id AND e.answer_id=q.latest_answer_id
+    LEFT JOIN ai_task t ON t.owner_id=e.owner_id AND t.id=e.task_id
+    WHERE q.owner_id=#{owner} AND q.session_id=#{sessionId}
+    GROUP BY q.id,q.title,q.status,q.answer_count,q.latest_answer_id,q.position_index ORDER BY q.position_index
+  </select>
+</mapper>

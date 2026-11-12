@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.OrganizationMapper">
+  <resultMap id="organization" type="com.wenjie.studio.knowledge.OrganizationRows$OrganizationRow">
+    <constructor>
+      <arg column="revision" javaType="_long"/>
+      <arg column="aliases_json" javaType="java.lang.String"/>
+      <arg column="tags_json" javaType="java.lang.String"/>
+      <arg column="favorite" javaType="_boolean"/>
+      <arg column="main_note_id" javaType="java.lang.String"/>
+      <arg column="visited_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="association" type="com.wenjie.studio.knowledge.OrganizationRows$Association">
+    <constructor><idArg column="id" javaType="java.lang.String"/><arg column="note_id" javaType="java.lang.String"/></constructor>
+  </resultMap>
+  <resultMap id="connection" type="com.wenjie.studio.knowledge.OrganizationDtos$Connection">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="com.wenjie.studio.knowledge.OrganizationDtos$ConnectionKind"/>
+      <arg column="item_id" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="relation_type" javaType="java.lang.String"/>
+      <arg column="direction" javaType="java.lang.String"/>
+      <arg column="source_version_id" javaType="java.lang.String"/>
+      <arg column="source_version_number" javaType="java.lang.Integer"/>
+      <arg column="line_start" javaType="java.lang.Integer"/>
+      <arg column="line_end" javaType="java.lang.Integer"/>
+      <arg column="excerpt" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="library" type="com.wenjie.studio.knowledge.OrganizationRows$LibraryItem">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="metadata_revision" javaType="_long"/>
+      <arg column="version_number" javaType="_int"/>
+      <arg column="updated_at" javaType="java.time.Instant"/>
+      <arg column="visited_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="unscanned" type="com.wenjie.studio.knowledge.OrganizationRows$UnscannedVersion">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="item_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="_int"/>
+      <arg column="body" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="organization" resultMap="organization">
+    SELECT revision, aliases_json, tags_json, favorite, main_note_id, visited_at
+    FROM knowledge_organization WHERE owner_id = #{owner} AND item_id = #{id}
+  </select>
+  <select id="associations" resultMap="association">
+    SELECT id, note_id FROM knowledge_concept_note WHERE owner_id = #{owner} AND concept_id = #{id}
+    ORDER BY id LIMIT 101
+  </select>
+  <insert id="ensureOrganization">
+    INSERT INTO knowledge_organization (item_id,owner_id,revision,aliases_json,tags_json,favorite,updated_at)
+    VALUES (#{id},#{owner},0,JSON_ARRAY(),JSON_ARRAY(),FALSE,#{now})
+    ON DUPLICATE KEY UPDATE item_id = #{id}
+  </insert>
+  <update id="saveOrganization">
+    UPDATE knowledge_organization SET revision = revision + 1, aliases_json = #{aliases}, tags_json = #{tags},
+      favorite = #{favorite}, main_note_id = #{mainNoteId}, updated_at = #{now}
+    WHERE owner_id = #{owner} AND item_id = #{id} AND revision = #{revision}
+  </update>
+  <update id="visit">
+    UPDATE knowledge_organization SET visited_at = #{now} WHERE owner_id = #{owner} AND item_id = #{id}
+  </update>
+  <insert id="insertAssociation">
+    INSERT INTO knowledge_concept_note (id, owner_id, concept_id, note_id, created_at)
+    VALUES (#{id}, #{owner}, #{conceptId}, #{noteId}, #{now})
+  </insert>
+  <delete id="removeAssociation">
+    DELETE FROM knowledge_concept_note WHERE owner_id = #{owner} AND id = #{id}
+  </delete>
+  <select id="connections" resultMap="connection">
+    SELECT c.id, c.kind, c.item_id, v.title, i.status, c.relation_type, c.direction,
+      c.source_version_id, c.source_version_number, c.line_start, c.line_end, c.excerpt
+    FROM (
+      <choose>
+        <when test="type == 'ASSOCIATION'">
+          SELECT a.id, 'ASSOCIATION' kind, IF(a.concept_id = #{id}, a.note_id, a.concept_id) item_id,
+            NULL relation_type, NULL direction, NULL source_version_id, NULL source_version_number,
+            NULL line_start, NULL line_end, NULL excerpt
+          FROM knowledge_concept_note a WHERE a.owner_id = #{owner} AND (a.concept_id = #{id} OR a.note_id = #{id})
+        </when>
+        <when test="type == 'SEMANTIC'">
+          SELECT r.id, 'SEMANTIC' kind, IF(r.source_id = #{id}, r.target_id, r.source_id) item_id,
+            r.relation_type, IF(r.relation_type IN ('RELATED','CONTRASTS'), 'BOTH', IF(r.source_id = #{id}, 'OUT', 'IN')) direction,
+            NULL source_version_id, NULL source_version_number, NULL line_start, NULL line_end, NULL excerpt
+          FROM knowledge_relation r WHERE r.owner_id = #{owner} AND (r.source_id = #{id} OR r.target_id = #{id})
+        </when>
+        <otherwise>
+          SELECT r.id, #{type} kind,
+            <choose><when test="type == 'OUTGOING'">r.target_item_id</when><otherwise>r.source_item_id</otherwise></choose> item_id,
+            NULL relation_type, <choose><when test="type == 'OUTGOING'">'OUT'</when><otherwise>'IN'</otherwise></choose> direction,
+            r.source_version_id, r.source_version_number, r.line_start, r.line_end, r.excerpt
+          FROM knowledge_reference r JOIN knowledge_item source
+            ON source.owner_id = r.owner_id AND source.id = r.source_item_id AND source.current_version_id = r.source_version_id
+          WHERE r.owner_id = #{owner}
+          <choose><when test="type == 'OUTGOING'">AND r.source_item_id = #{id}</when><otherwise>AND r.target_item_id = #{id}</otherwise></choose>
+          <if test="type == 'BACKLINK'">AND r.source_item_id &lt;&gt; #{id}</if>
+        </otherwise>
+      </choose>
+    ) c JOIN knowledge_item i ON i.id = c.item_id AND i.owner_id = #{owner}
+    JOIN knowledge_version v ON v.id = i.current_version_id AND v.item_id = i.id AND v.owner_id = i.owner_id
+    <if test="cursor != null">WHERE c.id &gt; #{cursor}</if>
+    ORDER BY c.id LIMIT #{limit}
+  </select>
+  <select id="library" resultMap="library">
+    SELECT i.id, i.kind, v.title, i.status, i.metadata_revision, i.version_number, i.updated_at, o.visited_at
+    FROM knowledge_item i
+    JOIN knowledge_version v ON v.id = i.current_version_id AND v.item_id = i.id AND v.owner_id = i.owner_id
+    LEFT JOIN knowledge_organization o ON o.item_id = i.id AND o.owner_id = i.owner_id
+    WHERE i.owner_id = #{owner} AND i.status = #{status}
+    <if test="kind != null">AND i.kind = #{kind}</if>
+    <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="collection == 'FAVORITES'">AND o.favorite = TRUE</if>
+    <if test="collection == 'UNCATEGORIZED'">AND NOT EXISTS (SELECT 1 FROM knowledge_item_topic t WHERE t.item_id = i.id)</if>
+    <choose>
+      <when test="collection == 'RECENT'">
+        AND o.visited_at IS NOT NULL
+        <if test="cursorId != null">AND (o.visited_at &lt; #{cursorTime} OR (o.visited_at = #{cursorTime} AND i.id &gt; #{cursorId}))</if>
+        ORDER BY o.visited_at DESC, i.id
+      </when>
+      <otherwise><if test="cursorId != null">AND i.id &gt; #{cursorId}</if>ORDER BY i.id</otherwise>
+    </choose>
+    LIMIT #{limit}
+  </select>
+  <select id="availableTargetIds" resultType="java.lang.String">
+    SELECT id FROM knowledge_item WHERE owner_id = #{owner} AND id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
+  <select id="unscannedVersions" resultMap="unscanned">
+    SELECT v.id,v.item_id,v.version_number,v.body FROM knowledge_version v
+    WHERE v.owner_id = #{owner} AND NOT EXISTS (SELECT 1 FROM knowledge_reference_scan s WHERE s.version_id = v.id)
+    ORDER BY v.id LIMIT #{limit}
+  </select>
+  <select id="referenceScanExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_reference_scan WHERE owner_id = #{owner} AND version_id = #{versionId})
+  </select>
+  <insert id="insertReference">
+    INSERT INTO knowledge_reference (id,owner_id,source_item_id,source_version_id,source_version_number,
+      target_item_id,ordinal_number,line_start,line_end,excerpt,created_at)
+    VALUES (#{id},#{owner},#{itemId},#{versionId},#{versionNumber},#{targetId},#{ordinal},#{lineStart},#{lineEnd},#{excerpt},#{now})
+  </insert>
+  <insert id="markReferencesScanned">
+    INSERT INTO knowledge_reference_scan (version_id,owner_id,item_id,parser_version,unresolved_count,processed_at)
+    VALUES (#{versionId},#{owner},#{itemId},#{parserVersion},#{unresolved},#{now})
+  </insert>
+</mapper>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.today.TodayPlanMapper">
+  <sql id="placementColumns">owner_id,id,source_kind,source_id,revision,planned_date,plan_zone_id,estimated_minutes,
+    priority,order_value,date_locked,visibility,suppressed_date,suppressed_zone_id,created_at,updated_at</sql>
+  <select id="placement" resultType="com.wenjie.studio.today.TodayPlanRows$PlacementRow">
+    SELECT <include refid="placementColumns"/> FROM today_placement WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="placementBySource" resultType="com.wenjie.studio.today.TodayPlanRows$PlacementRow">
+    SELECT <include refid="placementColumns"/> FROM today_placement WHERE owner_id=#{owner} AND source_kind=#{kind} AND source_id=#{sourceId}
+  </select>
+  <select id="placementsBySources" resultType="com.wenjie.studio.today.TodayPlanRows$PlacementRow">
+    SELECT <include refid="placementColumns"/> FROM today_placement WHERE owner_id=#{owner}
+    <choose>
+      <when test="sources != null and !sources.isEmpty()">
+        AND <foreach collection="sources" item="source" open="(" close=")" separator=" OR ">(source_kind=#{source.kind} AND source_id=#{source.id})</foreach>
+      </when>
+      <otherwise>AND 1=0</otherwise>
+    </choose>
+  </select>
+  <select id="placementGeneration" resultType="long">
+    SELECT COALESCE((SELECT generation FROM today_plan_generation WHERE owner_id=#{owner}),0)
+  </select>
+  <select id="directory" resultType="com.wenjie.studio.today.TodayPlanRows$PlacementRow">
+    SELECT <include refid="placementColumns"/> FROM today_placement WHERE owner_id=#{owner}
+    <if test="kind != null">AND source_kind=#{kind}</if>
+    <if test="visibility != null">AND visibility=#{visibility}</if>
+    <if test="afterUpdatedAt != null">AND (updated_at &lt; #{afterUpdatedAt} OR (updated_at=#{afterUpdatedAt} AND id &gt; #{afterId}))</if>
+    ORDER BY updated_at DESC,id ASC LIMIT #{limit}
+  </select>
+  <select id="startedFacts" resultType="com.wenjie.studio.today.TodayPlanRows$StartedFacts">
+    SELECT CASE WHEN #{kind}='TRAINING_SESSION' THEN
+      (SELECT started_at FROM training_session WHERE owner_id=#{owner} AND id=#{sourceId}) ELSE NULL END AS training_started_at,
+      CASE WHEN #{kind}='REVIEW_ACTION' THEN EXISTS (
+        SELECT 1 FROM review_action_source s
+        JOIN review_repractice_source b ON b.owner_id=s.owner_id AND b.source_id=s.id
+        JOIN review_repractice r ON r.owner_id=b.owner_id AND r.id=b.repractice_id
+        JOIN training_session t ON t.owner_id=r.owner_id AND t.id=r.session_id
+        WHERE s.owner_id=#{owner} AND s.action_id=#{sourceId} AND s.tracking='TRACKING' AND t.started_at IS NOT NULL
+      ) ELSE FALSE END AS action_started,
+      CASE WHEN #{kind}='PREPARATION_TASK' THEN (SELECT updated_at FROM preparation_task WHERE owner_id=#{owner} AND id=#{sourceId})
+           WHEN #{kind}='REVIEW_ACTION' THEN (SELECT updated_at FROM review_action WHERE owner_id=#{owner} AND id=#{sourceId})
+           ELSE NULL END AS source_updated_at
+  </select>
+  <insert id="insertPlacement">
+    INSERT INTO today_placement (<include refid="placementColumns"/>) VALUES
+      (#{row.ownerId},#{row.id},#{row.sourceKind},#{row.sourceId},#{row.revision},#{row.plannedDate},#{row.planZoneId},#{row.estimatedMinutes},
+       #{row.priority},#{row.orderValue},#{row.dateLocked},#{row.visibility},#{row.suppressedDate},#{row.suppressedZoneId},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <update id="updatePlacement">
+    UPDATE today_placement SET revision=#{row.revision},planned_date=#{row.plannedDate},plan_zone_id=#{row.planZoneId},
+      estimated_minutes=#{row.estimatedMinutes},priority=#{row.priority},order_value=#{row.orderValue},date_locked=#{row.dateLocked},
+      visibility=#{row.visibility},suppressed_date=#{row.suppressedDate},suppressed_zone_id=#{row.suppressedZoneId},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND id=#{row.id} AND revision=#{expected}
+  </update>
+  <insert id="insertPlacementHistory">
+    INSERT INTO today_placement_history (owner_id,placement_id,revision,snapshot_json,visibility,created_at)
+    VALUES (#{owner},#{id},#{revision},#{snapshot},#{visibility},#{now})
+  </insert>
+  <select id="placementHistory" resultType="com.wenjie.studio.today.TodayPlanRows$HistoryRow">
+    SELECT revision,snapshot_json FROM today_placement_history WHERE owner_id=#{owner} AND placement_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if> ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <insert id="ensureGeneration">
+    INSERT INTO today_plan_generation (owner_id,generation,updated_at) VALUES (#{owner},0,#{now})
+    ON DUPLICATE KEY UPDATE owner_id=today_plan_generation.owner_id
+  </insert>
+  <update id="advanceGeneration">
+    UPDATE today_plan_generation SET generation=generation+1,updated_at=GREATEST(updated_at,#{now})
+    WHERE owner_id=#{owner} AND generation=#{expected} AND generation &lt; 9007199254740991
+  </update>
+  <select id="budget" resultType="com.wenjie.studio.today.TodayPlanRows$BudgetRow">
+    SELECT owner_id,local_date,zone_id,revision,available_minutes,created_at,updated_at FROM today_day_budget
+    WHERE owner_id=#{owner} AND local_date=#{localDate} AND zone_id=#{zoneId}
+  </select>
+  <insert id="insertBudget">
+    INSERT INTO today_day_budget (owner_id,local_date,zone_id,revision,available_minutes,created_at,updated_at)
+    VALUES (#{owner},#{value.localDate},#{value.zoneId},#{value.revision},#{value.availableMinutes},#{value.createdAt},#{value.updatedAt})
+  </insert>
+  <update id="updateBudget">
+    UPDATE today_day_budget SET revision=#{value.revision},available_minutes=#{value.availableMinutes},updated_at=#{value.updatedAt}
+    WHERE owner_id=#{owner} AND local_date=#{value.localDate} AND zone_id=#{value.zoneId} AND revision=#{expected}
+  </update>
+  <insert id="insertBudgetHistory">
+    INSERT INTO today_day_budget_history (owner_id,local_date,zone_id,revision,snapshot_json,created_at)
+    VALUES (#{owner},#{value.localDate},#{value.zoneId},#{value.revision},#{snapshot},#{value.updatedAt})
+  </insert>
+  <select id="budgetHistory" resultType="com.wenjie.studio.today.TodayPlanRows$HistoryRow">
+    SELECT revision,snapshot_json FROM today_day_budget_history WHERE owner_id=#{owner} AND local_date=#{localDate} AND zone_id=#{zoneId}
+    <if test="before != null">AND revision &lt; #{before}</if> ORDER BY revision DESC LIMIT #{limit}
+  </select>
+</mapper>

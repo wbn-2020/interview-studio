@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.RepracticeMapper">
+  <sql id="repracticeColumns">id,owner_id,baseline_session_id,baseline_question_id,baseline_answer_id,
+    session_id,question_id,question_mode,created_at,baseline_kind,recollection_id,recollection_version_id,recollection_revision</sql>
+  <sql id="comparisonColumns">id,owner_id,repractice_id,session_id,question_id,answer_id,answer_number,created_at</sql>
+  <sql id="judgmentColumns">id,owner_id,source_id,revision,comparison_id,answer_id,verification,outcome,reason,citations_json,created_at</sql>
+
+  <select id="repractice" resultType="com.wenjie.studio.review.RepracticeRows$RepracticeRow">
+    SELECT <include refid="repracticeColumns"/> FROM review_repractice WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="bySession" resultType="com.wenjie.studio.review.RepracticeRows$RepracticeRow">
+    SELECT <include refid="repracticeColumns"/> FROM review_repractice WHERE owner_id=#{owner} AND session_id=#{sessionId}
+  </select>
+  <select id="list" resultType="com.wenjie.studio.review.RepracticeRows$RepracticeRow">
+    SELECT <include refid="repracticeColumns"/> FROM review_repractice WHERE owner_id=#{owner}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="sources" resultType="com.wenjie.studio.review.RepracticeRows$SourceRow">
+    SELECT owner_id,repractice_id,source_id,action_id,action_revision,position_index AS position,snapshot_json
+    FROM review_repractice_source WHERE owner_id=#{owner} AND repractice_id=#{repracticeId}
+    ORDER BY position_index
+  </select>
+  <select id="comparison" resultType="com.wenjie.studio.review.RepracticeRows$ComparisonRow">
+    SELECT <include refid="comparisonColumns"/> FROM review_comparison WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="comparisons" resultType="com.wenjie.studio.review.RepracticeRows$ComparisonRow">
+    SELECT <include refid="comparisonColumns"/> FROM review_comparison
+    WHERE owner_id=#{owner} AND repractice_id=#{repracticeId} ORDER BY answer_number DESC,id
+  </select>
+  <select id="comparisonByAnswer" resultType="com.wenjie.studio.review.RepracticeRows$ComparisonRow">
+    SELECT <include refid="comparisonColumns"/> FROM review_comparison
+    WHERE owner_id=#{owner} AND repractice_id=#{repracticeId} AND answer_id=#{answerId}
+  </select>
+  <select id="latestJudgment" resultType="com.wenjie.studio.review.RepracticeRows$JudgmentRow">
+    SELECT <include refid="judgmentColumns"/> FROM review_source_judgment
+    WHERE owner_id=#{owner} AND source_id=#{sourceId} ORDER BY revision DESC LIMIT 1
+  </select>
+  <select id="judgments" resultType="com.wenjie.studio.review.RepracticeRows$JudgmentRow">
+    SELECT <include refid="judgmentColumns"/> FROM review_source_judgment WHERE owner_id=#{owner} AND source_id=#{sourceId}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <select id="currentSource" resultType="com.wenjie.studio.review.ReviewRows$SourceRow">
+    <!-- 合并后的来源仍按稳定 ID 查询；当前归属由服务与动作修订共同核对。 -->
+    SELECT id,owner_id,action_id,origin_action_id,kind,session_id,question_id,answer_id,
+      feedback_id,feedback_revision,task_id,observation_id,manual_kind,author_label,observation_json,
+      decision_json,verification,tracking,tracking_reason,created_at,updated_at,recollection_id,recollection_version_id,recollection_json
+    FROM review_action_source WHERE owner_id=#{owner} AND id=#{sourceId}
+  </select>
+
+  <insert id="insertRepractice">
+    INSERT INTO review_repractice (<include refid="repracticeColumns"/>)
+    VALUES (#{repractice.id},#{repractice.ownerId},#{repractice.baselineSessionId},#{repractice.baselineQuestionId},
+      #{repractice.baselineAnswerId},#{repractice.sessionId},#{repractice.questionId},#{repractice.questionMode},#{repractice.createdAt},
+      #{repractice.baselineKind},#{repractice.recollectionId},#{repractice.recollectionVersionId},#{repractice.recollectionRevision})
+  </insert>
+  <insert id="insertSource">
+    INSERT INTO review_repractice_source (owner_id,repractice_id,source_id,action_id,action_revision,position_index,snapshot_json)
+    VALUES (#{source.ownerId},#{source.repracticeId},#{source.sourceId},#{source.actionId},
+      #{source.actionRevision},#{source.position},#{source.snapshotJson})
+  </insert>
+  <insert id="insertComparison">
+    INSERT INTO review_comparison (<include refid="comparisonColumns"/>)
+    VALUES (#{comparison.id},#{comparison.ownerId},#{comparison.repracticeId},#{comparison.sessionId},
+      #{comparison.questionId},#{comparison.answerId},#{comparison.answerNumber},#{comparison.createdAt})
+  </insert>
+  <insert id="insertJudgment">
+    <!-- 非空标量查询与复合外键共同约束比较身份；缺失比较不能静默插入零行。 -->
+    INSERT INTO review_source_judgment
+      (id,owner_id,source_id,revision,comparison_id,repractice_id,answer_id,verification,outcome,reason,citations_json,created_at)
+    VALUES (#{judgment.id},#{judgment.ownerId},#{judgment.sourceId},#{judgment.revision},#{judgment.comparisonId},
+      (SELECT c.repractice_id FROM review_comparison c
+        WHERE c.owner_id=#{judgment.ownerId} AND c.id=#{judgment.comparisonId} AND c.answer_id=#{judgment.answerId}),
+      #{judgment.answerId},#{judgment.verification},#{judgment.outcome},#{judgment.reason},#{judgment.citationsJson},#{judgment.createdAt})
+  </insert>
+</mapper>

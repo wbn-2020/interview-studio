@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.memory.MemoryAttemptMapper">
+  <sql id="attemptSummary">
+    a.id,a.card_id,a.sequence_number AS sequence,a.card_version_id,v.version_number AS card_version_number,
+    v.card_kind AS kind,v.title,a.mode,a.count_regular,a.cram_batch_id,a.state,a.revision,
+    a.started_at,a.updated_at,a.revealed_at,a.rated_at,a.closed_at,a.rating,a.invalidation_reason
+  </sql>
+  <sql id="attemptVersionJoin">
+    JOIN memory_card_version v ON v.owner_id=a.owner_id AND v.card_id=a.card_id AND v.id=a.card_version_id
+  </sql>
+  <select id="attempt" resultType="com.wenjie.studio.memory.MemoryAttemptRows$SnapshotRow">
+    SELECT snapshot_json FROM memory_recall_attempt WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="lastAttempt" resultType="com.wenjie.studio.memory.MemoryAttemptRows$LastAttempt">
+    SELECT sequence_number AS sequence,updated_at FROM memory_recall_attempt
+    WHERE owner_id=#{owner} AND card_id=#{cardId} ORDER BY sequence_number DESC LIMIT 1
+  </select>
+  <select id="slot" resultType="java.lang.String">
+    SELECT attempt_id FROM memory_active_attempt WHERE owner_id=#{owner} AND card_id=#{cardId}
+  </select>
+  <select id="slotProblems" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1 FROM memory_recall_attempt a LEFT JOIN memory_active_attempt s
+        ON s.owner_id=a.owner_id AND s.card_id=a.card_id AND s.attempt_id=a.id
+      WHERE a.owner_id=#{owner}
+      <if test="cardId != null">AND a.card_id=#{cardId}</if>
+      AND a.state IN ('THINKING','REVEALED') AND s.attempt_id IS NULL
+    ) OR EXISTS (
+      SELECT 1 FROM memory_active_attempt s JOIN memory_recall_attempt a
+        ON a.owner_id=s.owner_id AND a.card_id=s.card_id AND a.id=s.attempt_id
+      WHERE s.owner_id=#{owner}
+      <if test="cardId != null">AND s.card_id=#{cardId}</if>
+      AND (a.state NOT IN ('THINKING','REVEALED') OR a.state&lt;&gt;s.attempt_state)
+    )
+  </select>
+  <select id="openCount" resultType="long">
+    SELECT COUNT(*) FROM memory_active_attempt WHERE owner_id=#{owner}
+  </select>
+  <select id="activeSummary" resultType="com.wenjie.studio.memory.MemoryAttemptDtos$AttemptSummary">
+    SELECT <include refid="attemptSummary"/> FROM memory_active_attempt s
+    JOIN memory_recall_attempt a ON a.owner_id=s.owner_id AND a.card_id=s.card_id AND a.id=s.attempt_id
+    <include refid="attemptVersionJoin"/> WHERE s.owner_id=#{owner} AND s.card_id=#{cardId}
+  </select>
+  <select id="openAttempts" resultType="com.wenjie.studio.memory.MemoryAttemptDtos$AttemptSummary">
+    SELECT <include refid="attemptSummary"/> FROM memory_active_attempt s
+    JOIN memory_recall_attempt a ON a.owner_id=s.owner_id AND a.card_id=s.card_id AND a.id=s.attempt_id
+    <include refid="attemptVersionJoin"/> WHERE s.owner_id=#{owner}
+    <if test="asOf != null">AND a.started_at &lt;= #{asOf}</if>
+    <if test="cursor != null">AND (a.started_at &lt; #{cursor.time} OR (a.started_at=#{cursor.time} AND a.id &lt; #{cursor.id}))</if>
+    ORDER BY a.started_at DESC,a.id DESC LIMIT #{limit}
+  </select>
+  <select id="attempts" resultType="com.wenjie.studio.memory.MemoryAttemptDtos$AttemptSummary">
+    SELECT <include refid="attemptSummary"/> FROM memory_recall_attempt a <include refid="attemptVersionJoin"/>
+    WHERE a.owner_id=#{owner} AND a.card_id=#{cardId}
+    <if test="before != null">AND a.sequence_number &lt; #{before}</if>
+    ORDER BY a.sequence_number DESC LIMIT #{limit}
+  </select>
+  <select id="events" resultType="com.wenjie.studio.memory.MemoryReviewRows$HistoryRow">
+    SELECT sequence_number AS sequence,snapshot_json FROM memory_attempt_event WHERE owner_id=#{owner} AND attempt_id=#{id}
+    <if test="before != null">AND sequence_number &lt; #{before}</if>
+    ORDER BY sequence_number DESC LIMIT #{limit}
+  </select>
+  <insert id="insertAttempt">
+    INSERT INTO memory_recall_attempt
+      (id,owner_id,card_id,card_version_id,sequence_number,revision,state,mode,count_regular,cram_batch_id,
+       start_snapshot_json,snapshot_json,started_at,updated_at,revealed_at,rated_at,closed_at,rating,invalidation_reason,last_event_sequence)
+    VALUES (#{a.id},#{owner},#{a.cardId},#{a.start.cardVersionId},#{a.sequence},#{a.revision},#{a.state},#{a.start.mode},
+       #{a.start.countRegular},#{a.start.cramBatchId},#{start},#{snapshot},#{a.startedAt},#{a.updatedAt},#{a.revealedAt},
+       #{a.ratedAt},#{a.closedAt},#{a.rating},NULL,#{a.lastEventSequence})
+  </insert>
+  <update id="updateAttempt">
+    UPDATE memory_recall_attempt SET revision=#{a.revision},state=#{a.state},snapshot_json=#{snapshot},updated_at=#{a.updatedAt},
+      revealed_at=#{a.revealedAt},rated_at=#{a.ratedAt},closed_at=#{a.closedAt},rating=#{a.rating},
+      invalidation_reason=<choose><when test="a.invalidation != null">#{a.invalidation.reason}</when><otherwise>NULL</otherwise></choose>,
+      last_event_sequence=#{a.lastEventSequence}
+    WHERE owner_id=#{owner} AND id=#{a.id} AND card_id=#{a.cardId} AND revision=#{expected} AND state IN ('THINKING','REVEALED')
+  </update>
+  <insert id="insertSlot">
+    INSERT INTO memory_active_attempt (owner_id,card_id,attempt_id,attempt_state) VALUES (#{owner},#{cardId},#{attemptId},#{state})
+  </insert>
+  <delete id="releaseSlot">
+    DELETE FROM memory_active_attempt WHERE owner_id=#{owner} AND card_id=#{cardId} AND attempt_id=#{attemptId}
+  </delete>
+  <insert id="insertEvent">
+    INSERT INTO memory_attempt_event
+      (id,owner_id,card_id,attempt_id,attempt_sequence,sequence_number,attempt_revision,event_kind,count_regular,rate_basis_kind,occurred_at,snapshot_json)
+    VALUES (#{e.id},#{owner},#{a.cardId},#{a.id},#{a.sequence},#{e.sequence},#{e.attemptRevision},#{e.kind},
+      #{a.start.countRegular},#{basisKind},#{e.occurredAt},#{snapshot})
+  </insert>
+  <insert id="insertKnowledgeSource">
+    INSERT INTO memory_attempt_knowledge_source
+      (owner_id,card_id,attempt_id,ordinal,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{cardId},#{attemptId},#{ordinal},#{itemId},#{versionId})
+  </insert>
+
+  <!-- 每次以当前时区的真实 UTC 窗口重分组；不能累加旧事件标签里的 firstForCardToday。 -->
+  <sql id="dayRatings">
+    day_ratings AS (
+      SELECT e.id,e.card_id,e.rate_basis_kind,e.attempt_sequence,
+        ROW_NUMBER() OVER (PARTITION BY e.card_id ORDER BY e.attempt_sequence) AS day_position
+      FROM memory_attempt_event e WHERE e.owner_id=#{owner} AND e.event_kind='RATE' AND e.count_regular=1
+        AND e.occurred_at &gt;= #{from} AND e.occurred_at &lt; #{until}
+    )
+  </sql>
+  <select id="firstRating" resultType="com.wenjie.studio.memory.MemoryAttemptRows$FirstRating">
+    SELECT id AS event_id,rate_basis_kind AS kind FROM memory_attempt_event
+    WHERE owner_id=#{owner} AND card_id=#{cardId} AND event_kind='RATE' AND count_regular=1
+      AND occurred_at &gt;= #{from} AND occurred_at &lt; #{until}
+    ORDER BY attempt_sequence LIMIT 1
+  </select>
+  <select id="budget" resultType="com.wenjie.studio.memory.MemoryAttemptRows$BudgetTotals">
+    WITH <include refid="dayRatings"/>
+    SELECT COALESCE(SUM(day_position=1 AND rate_basis_kind='NEW'),0) AS new_cards,
+      COALESCE(SUM(day_position=1 AND rate_basis_kind='REVIEW'),0) AS review_cards,COUNT(*) AS rated_events FROM day_ratings
+  </select>
+
+  <!-- 一次集合扫描形成与 A eligibility 相同的来源门禁，不逐卡加载正文或调用服务。 -->
+  <sql id="eligibleCards">
+    source_flags AS (
+      SELECT c.id AS card_id,COUNT(*) AS source_count,
+        SUM(k.id IS NULL OR v.id IS NULL OR p.id IS NULL) AS unavailable,
+        SUM(CASE WHEN v.id IS NOT NULL AND p.id IS NOT NULL AND CAST(v.body AS BINARY) &lt;&gt; CAST(p.body AS BINARY) THEN 1 ELSE 0 END) AS body_changed,
+        SUM(<include refid="com.wenjie.studio.memory.MemoryReviewMapper.upstreamReviewRequired"/>) AS upstream_review_required,
+        SUM(CASE WHEN k.kind='NOTE' AND k.status='ARCHIVED' THEN 1 ELSE 0 END) AS archived_note,
+        SUM(CASE WHEN k.status='ACTIVE' AND v.id IS NOT NULL AND p.id IS NOT NULL AND CAST(v.body AS BINARY)=CAST(p.body AS BINARY) THEN 1 ELSE 0 END) AS usable,
+        SUM(CASE WHEN k.kind='CONCEPT' AND k.status='ARCHIVED' THEN 1 ELSE 0 END) AS archived_concept
+      FROM memory_card c JOIN memory_card_source s ON s.owner_id=c.owner_id AND s.card_id=c.id AND s.version_id=c.current_version_id
+      LEFT JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+      LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+      LEFT JOIN knowledge_version p ON p.owner_id=k.owner_id AND p.item_id=k.id AND p.id=k.current_version_id
+      WHERE c.owner_id=#{owner} AND c.status='ACTIVE' GROUP BY c.id
+    ),
+    eligible AS (
+      SELECT c.id AS card_id,v.card_kind AS kind,v.title,c.current_version_id AS card_version_id,v.version_number AS card_version_number,
+        c.revision AS card_revision,g.revision AS gate_revision,s.revision AS schedule_revision,s.cycle_id,s.phase,s.last_review_at,
+        GREATEST(s.suggested_due_at,COALESCE(s.defer_until,s.suggested_due_at)) AS effective_due_at,
+        CASE WHEN s.phase IN ('LEARNING','RELEARNING') THEN 0 ELSE 1 END AS phase_rank,f.archived_concept
+      FROM memory_card c JOIN memory_card_version v ON v.owner_id=c.owner_id AND v.card_id=c.id AND v.id=c.current_version_id
+      JOIN memory_review_gate g ON g.owner_id=c.owner_id AND g.card_id=c.id
+      JOIN memory_schedule s ON s.owner_id=c.owner_id AND s.card_id=c.id
+      JOIN source_flags f ON f.card_id=c.id
+      LEFT JOIN memory_active_attempt o ON o.owner_id=c.owner_id AND o.card_id=c.id
+      WHERE c.owner_id=#{owner} AND c.status='ACTIVE' AND g.review_required=0 AND s.status='ACTIVE' AND o.attempt_id IS NULL
+        AND f.source_count &gt; 0 AND f.unavailable=0 AND f.body_changed=0 AND f.upstream_review_required=0 AND f.archived_note=0 AND f.usable &gt; 0
+    )
+  </sql>
+  <sql id="queueSet">
+    WITH <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.dayRatings"/>,
+      <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.eligibleCards"/>,
+    due_cards AS (
+      SELECT e.*,d.id IS NOT NULL AS counted_today,
+        COALESCE(d.rate_basis_kind,CASE WHEN e.last_review_at IS NULL THEN 'NEW' ELSE 'REVIEW' END) AS budget_kind
+      FROM eligible e LEFT JOIN day_ratings d ON d.card_id=e.card_id AND d.day_position=1 WHERE e.effective_due_at &lt;= #{asOf}
+    ),
+    ranked AS (
+      SELECT d.*,ROW_NUMBER() OVER (PARTITION BY budget_kind,counted_today ORDER BY phase_rank,effective_due_at,card_id) AS budget_position
+      FROM due_cards d
+    ),
+    recommendations AS (
+      SELECT r.*, (counted_today=1 OR budget_position &lt;= CASE WHEN budget_kind='NEW' THEN #{newRemaining} ELSE #{reviewRemaining} END) AS recommended
+      FROM ranked r
+    )
+  </sql>
+  <select id="queueTotals" resultType="com.wenjie.studio.memory.MemoryAttemptRows$QueueTotals">
+    <include refid="queueSet"/>
+    SELECT COUNT(*) AS eligible_due_cards,COALESCE(SUM(recommended),0) AS recommended_cards FROM recommendations
+  </select>
+  <sql id="queueProjection">
+    SELECT card_id,kind,title,card_version_id,card_version_number,card_revision,gate_revision,schedule_revision,cycle_id,
+      phase,effective_due_at,budget_kind,counted_today,recommended,
+      (counted_today=0 AND CASE WHEN budget_kind='NEW' THEN #{newOver} ELSE #{reviewOver} END) AS requires_budget_confirmation,
+      (archived_concept &gt; 0) AS archived_concept FROM recommendations
+  </sql>
+  <select id="queue" resultType="com.wenjie.studio.memory.MemoryAttemptRows$QueueRow">
+    <include refid="queueSet"/>
+    <include refid="queueProjection"/> WHERE 1=1
+    <if test="!includeOverBudget">AND recommended=1</if>
+    <if test="cursor != null">
+      AND (phase_rank &gt; #{cursor.phaseRank} OR (phase_rank=#{cursor.phaseRank} AND effective_due_at &gt; #{cursor.dueAt})
+        OR (phase_rank=#{cursor.phaseRank} AND effective_due_at=#{cursor.dueAt} AND card_id &gt; #{cursor.cardId}))
+    </if>
+    ORDER BY phase_rank,effective_due_at,card_id LIMIT #{limit}
+  </select>
+  <select id="nextDue" resultType="java.time.Instant">
+    WITH <include refid="eligibleCards"/> SELECT MIN(effective_due_at) FROM eligible WHERE effective_due_at &gt; #{asOf}
+  </select>
+
+  <select id="batch" resultType="com.wenjie.studio.memory.MemoryAttemptRows$SnapshotRow">
+    SELECT snapshot_json FROM memory_cram_batch WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="member" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM memory_cram_member WHERE owner_id=#{owner} AND batch_id=#{batchId} AND card_id=#{cardId})
+  </select>
+  <select id="batches" resultType="com.wenjie.studio.memory.MemoryAttemptDtos$CramSummary">
+    SELECT id,title,start_date,end_date,zone_id,card_count,created_at FROM memory_cram_batch WHERE owner_id=#{owner}
+    <if test="cursor != null">AND (created_at &lt; #{cursor.time} OR (created_at=#{cursor.time} AND id &lt; #{cursor.id}))</if>
+    ORDER BY created_at DESC,id DESC LIMIT #{limit}
+  </select>
+  <select id="selections" resultType="com.wenjie.studio.memory.MemoryAttemptRows$SelectionRow">
+    SELECT position_index AS position,card_id,card_version_id,card_version_number,card_revision FROM memory_cram_member
+    WHERE owner_id=#{owner} AND batch_id=#{id} AND position_index &gt; #{after} ORDER BY position_index LIMIT #{limit}
+  </select>
+  <insert id="insertBatch">
+    INSERT INTO memory_cram_batch (id,owner_id,title,start_date,end_date,zone_id,card_count,snapshot_json,created_at)
+    VALUES (#{b.id},#{owner},#{b.title},#{b.startDate},#{b.endDate},#{b.zoneId},#{count},#{snapshot},#{b.createdAt})
+  </insert>
+  <insert id="insertMember">
+    INSERT INTO memory_cram_member (owner_id,batch_id,position_index,card_id,card_version_id,card_version_number,card_revision)
+    VALUES (#{owner},#{batchId},#{position},#{selection.cardId},#{selection.cardVersionId},#{selection.cardVersionNumber},#{selection.cardRevision})
+  </insert>
+  <sql id="cardIds"><foreach collection="ids" item="cardId" open="(" separator="," close=")">#{cardId}</foreach></sql>
+  <select id="cards" resultType="com.wenjie.studio.memory.MemoryRows$CardRow">
+    SELECT id,owner_id,status,revision,current_version_id,version_number,created_at,updated_at FROM memory_card
+    WHERE owner_id=#{owner} AND id IN <include refid="cardIds"/>
+  </select>
+  <select id="summaries" resultType="com.wenjie.studio.memory.MemoryRows$SummaryRow">
+    SELECT c.id,v.card_kind AS kind,v.title,c.status,c.revision,c.current_version_id AS version_id,v.version_number,v.source_count,v.related_concept_count,c.updated_at
+    FROM memory_card c JOIN memory_card_version v ON v.owner_id=c.owner_id AND v.card_id=c.id AND v.id=c.current_version_id
+    WHERE c.owner_id=#{owner} AND c.id IN <include refid="cardIds"/>
+  </select>
+  <select id="gates" resultType="com.wenjie.studio.memory.MemoryReviewDtos$Gate">
+    SELECT card_id,revision,review_required,last_review_decision_id,last_history_sequence,updated_at FROM memory_review_gate
+    WHERE owner_id=#{owner} AND card_id IN <include refid="cardIds"/>
+  </select>
+  <select id="schedules" resultType="com.wenjie.studio.memory.MemoryReviewRows$ScheduleRow">
+    SELECT card_id,revision,cycle_id,status,pause_reason,algorithm_version,parameter_version,phase,step,stability,difficulty,
+      suggested_due_at,last_review_at,defer_until,last_rated_event_id,last_history_sequence,created_at,updated_at FROM memory_schedule
+    WHERE owner_id=#{owner} AND card_id IN <include refid="cardIds"/>
+  </select>
+  <select id="sources" resultType="com.wenjie.studio.memory.MemoryAttemptRows$CardSourceRow">
+    SELECT c.id AS card_id,s.knowledge_item_id AS item_id,s.knowledge_version_id AS version_id,k.kind,v.version_number,k.status,k.current_version_id,
+      CASE WHEN v.id IS NULL OR p.id IS NULL THEN NULL ELSE CAST(v.body AS BINARY) &lt;&gt; CAST(p.body AS BINARY) END AS body_changed,
+      <include refid="com.wenjie.studio.memory.MemoryReviewMapper.upstreamReviewRequired"/> AS upstream_review_required
+    FROM memory_card c JOIN memory_card_source s ON s.owner_id=c.owner_id AND s.card_id=c.id AND s.version_id=c.current_version_id
+    LEFT JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+    LEFT JOIN knowledge_version p ON p.owner_id=k.owner_id AND p.item_id=k.id AND p.id=k.current_version_id
+    WHERE c.owner_id=#{owner} AND c.id IN <include refid="cardIds"/> ORDER BY c.id,s.position_index
+  </select>
+  <select id="activeSummaries" resultType="com.wenjie.studio.memory.MemoryAttemptDtos$AttemptSummary">
+    SELECT <include refid="attemptSummary"/> FROM memory_active_attempt s
+    JOIN memory_recall_attempt a ON a.owner_id=s.owner_id AND a.card_id=s.card_id AND a.id=s.attempt_id
+    <include refid="attemptVersionJoin"/> WHERE s.owner_id=#{owner} AND s.card_id IN <include refid="cardIds"/>
+  </select>
+</mapper>

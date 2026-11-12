@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.memory.MemoryMapper">
+  <select id="card" resultType="com.wenjie.studio.memory.MemoryRows$CardRow">
+    SELECT id,owner_id,status,revision,current_version_id,version_number,created_at,updated_at
+    FROM memory_card WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="cards" resultType="com.wenjie.studio.memory.MemoryRows$SummaryRow">
+    SELECT c.id,v.card_kind AS kind,v.title,c.status,c.revision,v.id AS version_id,
+      v.version_number,v.source_count,v.related_concept_count,c.updated_at
+    FROM memory_card c JOIN memory_card_version v
+      ON v.owner_id=c.owner_id AND v.card_id=c.id AND v.id=c.current_version_id
+    WHERE c.owner_id=#{owner} AND c.status=#{status}
+    <if test="kind != null">AND v.card_kind=#{kind}</if>
+    <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="sourceItemId != null">
+      AND EXISTS (SELECT 1 FROM memory_card_source s WHERE s.owner_id=c.owner_id
+        AND s.card_id=c.id AND s.version_id=v.id AND s.knowledge_item_id=#{sourceItemId})
+    </if>
+    <if test="relatedConceptId != null">
+      AND EXISTS (SELECT 1 FROM memory_card_concept r WHERE r.owner_id=c.owner_id
+        AND r.card_id=c.id AND r.version_id=v.id AND r.concept_id=#{relatedConceptId})
+    </if>
+    <if test="cursor != null">AND c.id &gt; #{cursor}</if>
+    ORDER BY c.id LIMIT #{limit}
+  </select>
+  <!-- 普通读取只取题面投影，参考正文只有确切版本的显式命令可以查询。 -->
+  <select id="version" resultType="com.wenjie.studio.memory.MemoryRows$VersionRow">
+    SELECT id,card_id,owner_id,version_number,card_kind AS kind,title,prompt_json,created_at
+    FROM memory_card_version WHERE owner_id=#{owner} AND card_id=#{id} AND id=#{versionId}
+  </select>
+  <select id="versions" resultType="com.wenjie.studio.memory.MemoryDtos$VersionSummary">
+    SELECT id,version_number AS number,card_kind AS kind,title,created_at
+    FROM memory_card_version WHERE owner_id=#{owner} AND card_id=#{id}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="reference" resultType="com.wenjie.studio.memory.MemoryRows$ReferenceRow">
+    SELECT version_number,reference_text FROM memory_card_version
+    WHERE owner_id=#{owner} AND card_id=#{id} AND id=#{versionId}
+  </select>
+  <insert id="insertCard">
+    INSERT INTO memory_card (id,owner_id,status,revision,current_version_id,version_number,created_at,updated_at)
+    VALUES (#{card.id},#{card.ownerId},#{card.status},#{card.revision},#{card.currentVersionId},
+      #{card.versionNumber},#{card.createdAt},#{card.updatedAt})
+  </insert>
+  <insert id="insertVersion">
+    INSERT INTO memory_card_version (id,card_id,owner_id,version_number,card_kind,title,prompt_json,
+      reference_text,content_bytes,source_count,related_concept_count,created_at)
+    VALUES (#{version.id},#{version.cardId},#{version.ownerId},#{version.versionNumber},#{version.kind},#{version.title},
+      #{version.promptJson},#{reference},#{contentBytes},#{sourceCount},#{relatedConceptCount},#{version.createdAt})
+  </insert>
+  <insert id="insertSource">
+    INSERT INTO memory_card_source (owner_id,card_id,version_id,knowledge_item_id,knowledge_version_id,position_index)
+    VALUES (#{owner},#{id},#{versionId},#{itemId},#{knowledgeVersionId},#{position})
+  </insert>
+  <insert id="insertConcept">
+    INSERT INTO memory_card_concept (owner_id,card_id,version_id,concept_id,position_index)
+    VALUES (#{owner},#{id},#{versionId},#{conceptId},#{position})
+  </insert>
+  <update id="saveContent">
+    UPDATE memory_card SET current_version_id=#{versionId},version_number=#{number},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND status='ACTIVE'
+      AND revision &lt; 1000 AND version_number &lt; 1000
+  </update>
+  <update id="changeStatus">
+    UPDATE memory_card SET status=#{status},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND revision &lt; 1000
+      AND status &lt;&gt; #{status}
+  </update>
+</mapper>

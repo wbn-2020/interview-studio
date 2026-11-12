@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.prepare.PreparationMaterialEligibilityMapper">
+  <resultMap id="source" type="com.wenjie.studio.prepare.PreparationMaterialEligibilityMapper$Source">
+    <constructor>
+      <idArg column="item_id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+      <arg column="project_id" javaType="java.lang.String"/>
+      <arg column="project_version_id" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <select id="source" resultMap="source" timeout="5">
+    SELECT i.id AS item_id,i.kind,v.id AS version_id,i.project_id,p.current_version_id AS project_version_id
+    FROM preparation_item i
+    JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    LEFT JOIN preparation_item p ON i.kind='FACT' AND p.owner_id=i.owner_id AND p.id=i.project_id AND p.kind='PROJECT'
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId} AND i.kind=#{kind}
+  </select>
+  <select id="excerpts" resultType="java.lang.String" timeout="5">
+    SELECT excerpt_id FROM preparation_material_reference
+    WHERE owner_id=#{owner} AND item_id=#{itemId} AND version_id=#{versionId}
+    ORDER BY excerpt_id LIMIT 21
+  </select>
+</mapper>

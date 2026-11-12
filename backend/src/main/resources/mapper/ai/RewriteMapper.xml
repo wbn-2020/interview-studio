@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.RewriteMapper">
+  <select id="binding" resultType="com.wenjie.studio.ai.RewriteRows$BindingRow">
+    SELECT owner_id,task_id,session_id,question_id,answer_id,created_at
+    FROM ai_answer_rewrite
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertBinding">
+    INSERT INTO ai_answer_rewrite (owner_id,task_id,session_id,question_id,answer_id,created_at)
+    VALUES (#{row.ownerId},#{row.taskId},#{row.sessionId},#{row.questionId},#{row.answerId},#{row.createdAt})
+  </insert>
+  <select id="taskCount" resultType="int">
+    SELECT COUNT(*) FROM ai_answer_rewrite WHERE owner_id=#{owner} AND answer_id=#{answerId}
+  </select>
+  <select id="pendingCount" resultType="int">
+    SELECT COUNT(*) FROM ai_answer_rewrite r JOIN ai_task t ON t.owner_id=r.owner_id AND t.id=r.task_id
+    WHERE r.owner_id=#{owner} AND r.answer_id=#{answerId}
+      AND t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+    <if test="excludedTaskId != null">AND r.task_id &lt;&gt; #{excludedTaskId}</if>
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.ai.EvaluationRows$SummaryRow">
+    SELECT t.id,t.purpose,t.status,t.revision,t.title,t.provider,t.model,t.currency,t.attempt_count,
+      t.created_at,t.updated_at,t.error_code,r.question_id,r.answer_id,a.version_number AS answer_number
+    FROM ai_answer_rewrite r JOIN ai_task t ON t.owner_id=r.owner_id AND t.id=r.task_id
+    JOIN training_answer a ON a.owner_id=r.owner_id AND a.session_id=r.session_id
+      AND a.question_id=r.question_id AND a.id=r.answer_id
+    WHERE r.owner_id=#{owner}
+    <if test="sessionId != null">AND r.session_id=#{sessionId}</if>
+    <if test="questionId != null">AND r.question_id=#{questionId}</if>
+    <if test="answerId != null">AND r.answer_id=#{answerId}</if>
+    <if test="cursor != null">AND t.id &gt; #{cursor}</if>
+    ORDER BY t.id LIMIT #{limit}
+  </select>
+</mapper>

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.memory.MemoryTodayMapper">
+  <select id="attentionCandidates" resultType="com.wenjie.studio.memory.MemoryTodayRows$Candidate">
+    WITH candidates AS (
+      SELECT c.id AS card_id,
+        GREATEST(c.updated_at,COALESCE(g.updated_at,c.updated_at),COALESCE(s.updated_at,c.updated_at)) AS sort_time
+      FROM memory_card c
+      LEFT JOIN memory_review_gate g ON g.owner_id=c.owner_id AND g.card_id=c.id
+      LEFT JOIN memory_schedule s ON s.owner_id=c.owner_id AND s.card_id=c.id
+      LEFT JOIN memory_active_attempt a ON a.owner_id=c.owner_id AND a.card_id=c.id
+      WHERE c.owner_id=#{owner} AND c.status='ACTIVE' AND a.attempt_id IS NULL
+    )
+    SELECT card_id,sort_time FROM candidates
+    <if test="cursor != null">
+      WHERE (sort_time &lt; #{cursor.time} OR (sort_time=#{cursor.time} AND card_id &gt; #{cursor.cardId}))
+    </if>
+    ORDER BY sort_time DESC,card_id ASC LIMIT #{limit}
+  </select>
+
+  <!-- 日历只取已保存的有效到期时刻；暂停与未决仍有真实排程，不依赖预算或预测下一次评分。 -->
+  <sql id="calendarSet">
+    WITH schedules AS (
+      SELECT c.id AS card_id,GREATEST(s.suggested_due_at,COALESCE(s.defer_until,s.suggested_due_at)) AS sort_time
+      FROM memory_schedule s
+      JOIN memory_card c ON c.owner_id=s.owner_id AND c.id=s.card_id
+      JOIN memory_card_version v ON v.owner_id=c.owner_id AND v.card_id=c.id AND v.id=c.current_version_id
+      WHERE s.owner_id=#{owner} AND c.status='ACTIVE' AND s.status IN ('ACTIVE','PAUSED')
+    ), candidates AS (
+      SELECT card_id,sort_time FROM schedules WHERE sort_time &gt;= #{from} AND sort_time &lt; #{until}
+    )
+  </sql>
+  <select id="calendarCandidates" resultType="com.wenjie.studio.memory.MemoryTodayRows$Candidate">
+    <include refid="calendarSet"/>
+    SELECT card_id,sort_time FROM candidates
+    <if test="cursor != null">
+      WHERE (sort_time &gt; #{cursor.time} OR (sort_time=#{cursor.time} AND card_id &gt; #{cursor.cardId}))
+    </if>
+    ORDER BY sort_time ASC,card_id ASC LIMIT #{limit}
+  </select>
+  <select id="calendarCount" resultType="long">
+    <include refid="calendarSet"/>
+    SELECT COUNT(*) FROM candidates
+  </select>
+
+  <!-- 先复用完整队列的排名，再选择所需卡；不能把局部选卡重新分配为推荐名额。 -->
+  <select id="queueSources" resultType="com.wenjie.studio.memory.MemoryAttemptRows$QueueRow">
+    <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.queueSet"/>
+    <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.queueProjection"/>
+    WHERE card_id IN <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.cardIds"/>
+    ORDER BY phase_rank,effective_due_at,card_id
+  </select>
+
+  <select id="orderedOpen" resultType="com.wenjie.studio.memory.MemoryTodayRows$OrderedCandidate">
+    WITH candidates AS (
+      SELECT a.card_id,COALESCE(p.order_value,500000) AS order_value,a.started_at AS sort_time,a.id AS final_id
+      FROM memory_active_attempt s
+      JOIN memory_recall_attempt a ON a.owner_id=s.owner_id AND a.card_id=s.card_id AND a.id=s.attempt_id
+      <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.attemptVersionJoin"/>
+      LEFT JOIN today_placement p ON p.owner_id=a.owner_id AND p.source_kind='MEMORY_CARD' AND p.source_id=a.card_id
+      WHERE s.owner_id=#{owner} AND a.started_at &lt;= #{asOf}
+    )
+    SELECT card_id,order_value,NULL AS phase_rank,sort_time,final_id FROM candidates
+    <if test="after != null">
+      WHERE (order_value &gt; #{after.orderValue}
+        OR (order_value=#{after.orderValue} AND sort_time &lt; #{after.time})
+        OR (order_value=#{after.orderValue} AND sort_time=#{after.time} AND final_id &lt; #{after.id}))
+    </if>
+    ORDER BY order_value ASC,sort_time DESC,final_id DESC LIMIT #{limit}
+  </select>
+
+  <!-- 来源阻断由同快照 Eligibility 投影判断；外层按实际消费候选推进游标和扫描额度。 -->
+  <select id="orderedAttention" resultType="com.wenjie.studio.memory.MemoryTodayRows$OrderedCandidate">
+    WITH candidates AS (
+      SELECT c.id AS card_id,COALESCE(p.order_value,500000) AS order_value,
+        GREATEST(c.updated_at,COALESCE(g.updated_at,c.updated_at),COALESCE(s.updated_at,c.updated_at)) AS sort_time
+      FROM memory_card c
+      LEFT JOIN memory_review_gate g ON g.owner_id=c.owner_id AND g.card_id=c.id
+      LEFT JOIN memory_schedule s ON s.owner_id=c.owner_id AND s.card_id=c.id
+      LEFT JOIN memory_active_attempt a ON a.owner_id=c.owner_id AND a.card_id=c.id
+      LEFT JOIN today_placement p ON p.owner_id=c.owner_id AND p.source_kind='MEMORY_CARD' AND p.source_id=c.id
+      WHERE c.owner_id=#{owner} AND c.status='ACTIVE' AND a.attempt_id IS NULL
+    )
+    SELECT card_id,order_value,NULL AS phase_rank,sort_time,card_id AS final_id FROM candidates
+    <if test="after != null">
+      WHERE (order_value &gt; #{after.orderValue}
+        OR (order_value=#{after.orderValue} AND sort_time &lt; #{after.time})
+        OR (order_value=#{after.orderValue} AND sort_time=#{after.time} AND card_id &gt; #{after.id}))
+    </if>
+    ORDER BY order_value ASC,sort_time DESC,card_id ASC LIMIT #{limit}
+  </select>
+
+  <select id="orderedCalendar" resultType="com.wenjie.studio.memory.MemoryTodayRows$OrderedCandidate">
+    <include refid="calendarSet"/>, placed AS (
+      SELECT c.card_id,c.sort_time,COALESCE(p.order_value,500000) AS order_value FROM candidates c
+      LEFT JOIN today_placement p ON p.owner_id=#{owner} AND p.source_kind='MEMORY_CARD' AND p.source_id=c.card_id
+    )
+    SELECT card_id,order_value,NULL AS phase_rank,sort_time,card_id AS final_id FROM placed
+    <if test="after != null">
+      WHERE (sort_time &gt; #{after.time}
+        OR (sort_time=#{after.time} AND order_value &gt; #{after.orderValue})
+        OR (sort_time=#{after.time} AND order_value=#{after.orderValue} AND card_id &gt; #{after.id}))
+    </if>
+    ORDER BY sort_time ASC,order_value ASC,card_id ASC LIMIT #{limit}
+  </select>
+
+  <!-- B 的完整推荐排名先固定；偏好只排列最终候选，不能重新分配张数额度。 -->
+  <select id="orderedQueue" resultType="com.wenjie.studio.memory.MemoryTodayRows$OrderedQueueRow">
+    <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.queueSet"/>, queue_values AS (
+      <include refid="com.wenjie.studio.memory.MemoryAttemptMapper.queueProjection"/>
+    ), placed AS (
+      SELECT q.*,r.phase_rank,COALESCE(p.order_value,500000) AS order_value FROM queue_values q
+      JOIN recommendations r ON r.card_id=q.card_id
+      LEFT JOIN today_placement p ON p.owner_id=#{owner} AND p.source_kind='MEMORY_CARD' AND p.source_id=q.card_id
+      <if test="!includeOverBudget">WHERE q.recommended=1</if>
+    )
+    SELECT card_id,kind,title,card_version_id,card_version_number,card_revision,gate_revision,schedule_revision,cycle_id,
+      phase,effective_due_at,budget_kind,counted_today,recommended,requires_budget_confirmation,archived_concept,
+      order_value,phase_rank FROM placed
+    <if test="after != null">
+      WHERE (order_value &gt; #{after.orderValue}
+        OR (order_value=#{after.orderValue} AND phase_rank &gt; #{after.phaseRank})
+        OR (order_value=#{after.orderValue} AND phase_rank=#{after.phaseRank} AND effective_due_at &gt; #{after.time})
+        OR (order_value=#{after.orderValue} AND phase_rank=#{after.phaseRank}
+          AND effective_due_at=#{after.time} AND card_id &gt; #{after.id}))
+    </if>
+    ORDER BY order_value ASC,phase_rank ASC,effective_due_at ASC,card_id ASC LIMIT #{limit}
+  </select>
+</mapper>

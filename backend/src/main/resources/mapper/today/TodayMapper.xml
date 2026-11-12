@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.today.TodayMapper">
+  <select id="targetExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM preparation_item WHERE owner_id=#{owner} AND id=#{id} AND kind='TARGET')
+  </select>
+  <select id="sourceExists" resultType="boolean">
+    SELECT EXISTS(
+      <choose>
+        <when test="kind == 'KNOWLEDGE_DRAFT'">SELECT 1 FROM knowledge_item WHERE owner_id=#{owner} AND id=#{id}</when>
+        <when test="kind == 'TRAINING_SESSION'">SELECT 1 FROM training_session WHERE owner_id=#{owner} AND id=#{id}</when>
+        <when test="kind == 'PREPARATION_TASK'">SELECT 1 FROM preparation_task WHERE owner_id=#{owner} AND id=#{id}</when>
+        <when test="kind == 'MEMORY_CARD'">SELECT 1 FROM memory_card WHERE owner_id=#{owner} AND id=#{id}</when>
+        <when test="kind == 'REVIEW_ACTION'">SELECT 1 FROM review_action WHERE owner_id=#{owner} AND id=#{id}</when>
+        <when test="kind == 'INTERVIEW_EVENT'">SELECT 1 FROM interview_event WHERE owner_id=#{owner} AND id=#{id}</when>
+        <otherwise>SELECT 1 WHERE FALSE</otherwise>
+      </choose>
+    )
+  </select>
+
+  <!-- 所有列表先关联偏好并按完整键取候选；Java 只做真实资格与原时区校验，不重排已截断的一页。 -->
+  <!-- 排序列占位符只由下方 include 的固定 property 展开，不接受 HTTP 或 Mapper 参数中的列名。 -->
+  <sql id="activityOrder">
+    <if test="q.afterId != null">
+      AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue}
+        AND (${activity} &lt; #{q.afterInstant} OR (${activity}=#{q.afterInstant} AND p.id &gt; #{q.afterId}))))
+    </if>
+    ORDER BY p.order_value ASC,${activity} DESC,p.id ASC
+  </sql>
+  <sql id="placementActivityOrder">
+    <if test="q.afterId != null">
+      AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue} AND (
+        <choose>
+          <when test="q.afterDate == null">
+            p.placement_date IS NULL AND (${activity} &lt; #{q.afterInstant}
+              OR (${activity}=#{q.afterInstant} AND p.id &gt; #{q.afterId}))
+          </when>
+          <otherwise>
+            p.placement_date IS NULL OR p.placement_date &gt; #{q.afterDate}
+              OR (p.placement_date=#{q.afterDate} AND (${activity} &lt; #{q.afterInstant}
+                OR (${activity}=#{q.afterInstant} AND p.id &gt; #{q.afterId})))
+          </otherwise>
+        </choose>
+      )))
+    </if>
+    ORDER BY p.order_value ASC,(p.placement_date IS NULL) ASC,p.placement_date ASC,${activity} DESC,p.id ASC
+  </sql>
+  <sql id="dateOrder">
+    <choose>
+      <when test="q.from != null">
+        <if test="q.afterId != null">
+          AND (${date} &gt; #{q.afterDate} OR (${date}=#{q.afterDate}
+            AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue} AND p.id &gt; #{q.afterId}))))
+        </if>
+        ORDER BY ${date} ASC,p.order_value ASC,p.id ASC
+      </when>
+      <otherwise>
+        <if test="q.afterId != null">
+          AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue}
+            AND (${date} &gt; #{q.afterDate} OR (${date}=#{q.afterDate} AND p.id &gt; #{q.afterId}))))
+        </if>
+        ORDER BY p.order_value ASC,${date} ASC,p.id ASC
+      </otherwise>
+    </choose>
+  </sql>
+  <sql id="timeAscendingOrder">
+    <choose>
+      <when test="q.from != null">
+        <if test="q.afterId != null">
+          AND (${time} &gt; #{q.afterInstant} OR (${time}=#{q.afterInstant}
+            AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue} AND p.id &gt; #{q.afterId}))))
+        </if>
+        ORDER BY ${time} ASC,p.order_value ASC,p.id ASC
+      </when>
+      <otherwise>
+        <if test="q.afterId != null">
+          AND (p.order_value &gt; #{q.afterOrderValue} OR (p.order_value=#{q.afterOrderValue}
+            AND (${time} &gt; #{q.afterInstant} OR (${time}=#{q.afterInstant} AND p.id &gt; #{q.afterId}))))
+        </if>
+        ORDER BY p.order_value ASC,${time} ASC,p.id ASC
+      </otherwise>
+    </choose>
+  </sql>
+
+  <sql id="knowledgeColumns">i.id,i.kind,d.title,i.status,i.metadata_revision AS item_revision,
+    i.current_version_id,d.revision AS draft_revision,d.saved_at AS draft_saved_at,
+    (NOT (CAST(d.title AS BINARY) &lt;=> CAST(v.title AS BINARY))
+      OR NOT (CAST(d.body AS BINARY) &lt;=> CAST(v.body AS BINARY))) AS unpublished_draft,
+    (d.item_id IS NOT NULL AND v.id IS NOT NULL) AS complete,
+    COALESCE(pl.order_value,500000) AS order_value,pl.planned_date AS placement_date</sql>
+  <sql id="knowledgeFrom">
+    FROM knowledge_item i LEFT JOIN knowledge_draft d ON d.item_id=i.id
+    LEFT JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+    LEFT JOIN today_placement pl ON pl.owner_id=i.owner_id AND pl.source_kind='KNOWLEDGE_DRAFT' AND pl.source_id=i.id
+  </sql>
+  <select id="knowledge" resultType="com.wenjie.studio.today.TodayRows$KnowledgeRow">
+    SELECT <include refid="knowledgeColumns"/> <include refid="knowledgeFrom"/>
+    WHERE i.owner_id=#{owner} AND i.id=#{id}
+  </select>
+  <select id="knowledgePage" resultType="com.wenjie.studio.today.TodayRows$KnowledgeRow">
+    <!-- 大正文只在数据库内精确比较；扫描额度约束候选，HTTP 与 Java 摘要都不携带正文。 -->
+    SELECT p.* FROM (SELECT <include refid="knowledgeColumns"/> <include refid="knowledgeFrom"/>
+      WHERE i.owner_id=#{q.owner}
+      <choose>
+        <when test="q.from != null">AND pl.planned_date &gt;= #{q.from} AND pl.planned_date &lt;= #{q.to}</when>
+        <otherwise>
+          AND i.status='ACTIVE'
+          <choose>
+            <when test="q.section == 'CONTINUE'">AND pl.planned_date IS NULL</when>
+            <when test="q.section == 'ATTENTION'">AND pl.planned_date &lt; #{q.latestDate}</when>
+            <when test="q.section == 'TODAY'">AND pl.planned_date &gt;= #{q.earliestDate} AND pl.planned_date &lt;= #{q.latestDate}</when>
+            <otherwise>AND FALSE</otherwise>
+          </choose>
+        </otherwise>
+      </choose>
+    ) p WHERE TRUE
+    <choose>
+      <when test="q.from != null"><include refid="dateOrder"><property name="date" value="p.placement_date"/></include></when>
+      <when test="q.section == 'CONTINUE'"><include refid="activityOrder"><property name="activity" value="p.draft_saved_at"/></include></when>
+      <otherwise><include refid="placementActivityOrder"><property name="activity" value="p.draft_saved_at"/></include></otherwise>
+    </choose>
+    LIMIT #{q.limit}
+  </select>
+
+  <sql id="trainingColumns">s.id,s.title,s.mode,s.status,s.revision,s.generation,s.updated_at,s.question_count,
+    (SELECT COUNT(*) FROM training_question d WHERE d.owner_id=s.owner_id AND d.session_id=s.id AND d.draft_json IS NOT NULL) AS saved_draft_count,
+    (SELECT MAX(d.draft_saved_at) FROM training_question d WHERE d.owner_id=s.owner_id AND d.session_id=s.id AND d.draft_json IS NOT NULL) AS last_draft_saved_at,
+    GREATEST(s.updated_at,COALESCE((SELECT MAX(d.draft_saved_at) FROM training_question d
+      WHERE d.owner_id=s.owner_id AND d.session_id=s.id AND d.draft_json IS NOT NULL),s.updated_at)) AS last_activity_at,
+    (SELECT r.id FROM review_repractice r WHERE r.owner_id=s.owner_id AND r.session_id=s.id) AS repractice_id,
+    COALESCE(pl.order_value,500000) AS order_value,pl.planned_date AS placement_date</sql>
+  <sql id="trainingFrom">
+    FROM training_session s
+    LEFT JOIN today_placement pl ON pl.owner_id=s.owner_id AND pl.source_kind='TRAINING_SESSION' AND pl.source_id=s.id
+  </sql>
+  <select id="training" resultType="com.wenjie.studio.today.TodayRows$TrainingRow">
+    SELECT <include refid="trainingColumns"/> <include refid="trainingFrom"/> WHERE s.owner_id=#{owner} AND s.id=#{id}
+  </select>
+  <select id="trainingPage" resultType="com.wenjie.studio.today.TodayRows$TrainingRow">
+    SELECT p.* FROM (SELECT <include refid="trainingColumns"/> <include refid="trainingFrom"/>
+      WHERE s.owner_id=#{q.owner}
+      <choose>
+        <when test="q.from != null">AND pl.planned_date &gt;= #{q.from} AND pl.planned_date &lt;= #{q.to}</when>
+        <when test="q.section == 'CONTINUE'">
+          AND (s.status IN ('RUNNING','PAUSED') OR (s.status='DRAFT' AND pl.planned_date IS NULL))
+        </when>
+        <when test="q.section == 'ATTENTION'">AND s.status='DRAFT' AND pl.planned_date &lt; #{q.latestDate}</when>
+        <when test="q.section == 'TODAY'">AND s.status='DRAFT' AND pl.planned_date &gt;= #{q.earliestDate} AND pl.planned_date &lt;= #{q.latestDate}</when>
+        <otherwise>AND FALSE</otherwise>
+      </choose>
+      <if test="q.targetId != null">
+        AND EXISTS(SELECT 1 FROM JSON_TABLE(s.context_json,'$[*]' COLUMNS(
+          source_kind VARCHAR(16) PATH '$.kind',item_id VARCHAR(36) PATH '$.itemId')) t
+          WHERE t.source_kind='TARGET' AND CAST(t.item_id AS BINARY)=CAST(#{q.targetId} AS BINARY))
+      </if>
+    ) p WHERE TRUE
+    <choose>
+      <when test="q.from != null"><include refid="dateOrder"><property name="date" value="p.placement_date"/></include></when>
+      <when test="q.section == 'CONTINUE'"><include refid="activityOrder"><property name="activity" value="p.last_activity_at"/></include></when>
+      <otherwise><include refid="placementActivityOrder"><property name="activity" value="p.last_activity_at"/></include></otherwise>
+    </choose>
+    LIMIT #{q.limit}
+  </select>
+  <select id="trainingQuestions" resultType="com.wenjie.studio.today.TodayRows$QuestionRow">
+    SELECT session_id,id,revision,status,(draft_json IS NOT NULL) AS has_draft,draft_saved_at,
+      latest_answer_id,answer_count,position_index FROM training_question
+    WHERE owner_id=#{owner} AND session_id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY session_id,position_index,id
+  </select>
+  <select id="trainingTargets" resultType="com.wenjie.studio.today.TodayRows$TargetRow">
+    SELECT s.id AS source_id,t.item_id,t.version_id FROM training_session s
+    JOIN JSON_TABLE(s.context_json,'$[*]' COLUMNS(source_kind VARCHAR(16) PATH '$.kind',
+      item_id VARCHAR(36) PATH '$.itemId',version_id VARCHAR(36) PATH '$.versionId')) t ON t.source_kind='TARGET'
+    WHERE s.owner_id=#{owner} AND s.id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY s.id,t.item_id,t.version_id
+  </select>
+
+  <sql id="taskColumns">t.id,t.revision,t.title,t.minutes,t.planned_date,t.zone_id,t.status,t.target_item_id,t.target_version_id,
+    t.started_at,t.completed_at,t.updated_at,COALESCE(pl.order_value,500000) AS order_value</sql>
+  <sql id="taskFrom">
+    FROM preparation_task t
+    LEFT JOIN today_placement pl ON pl.owner_id=t.owner_id AND pl.source_kind='PREPARATION_TASK' AND pl.source_id=t.id
+  </sql>
+  <select id="task" resultType="com.wenjie.studio.today.TodayRows$TaskRow">
+    SELECT <include refid="taskColumns"/> <include refid="taskFrom"/> WHERE t.owner_id=#{owner} AND t.id=#{id}
+  </select>
+  <select id="taskPage" resultType="com.wenjie.studio.today.TodayRows$TaskRow">
+    SELECT p.* FROM (SELECT <include refid="taskColumns"/> <include refid="taskFrom"/> WHERE t.owner_id=#{q.owner}
+    <if test="q.targetId != null">AND t.target_item_id=#{q.targetId}</if>
+    <choose>
+      <when test="q.from != null">AND t.planned_date &gt;= #{q.from} AND t.planned_date &lt;= #{q.to}</when>
+      <when test="q.section == 'CONTINUE'">AND t.status='IN_PROGRESS'</when>
+      <when test="q.section == 'BACKLOG'">AND t.status='TODO' AND t.planned_date IS NULL</when>
+      <when test="q.section == 'ATTENTION'">AND t.status='TODO' AND t.planned_date &lt; #{q.latestDate}</when>
+      <when test="q.section == 'TODAY'">AND t.status='TODO' AND t.planned_date &gt;= #{q.earliestDate} AND t.planned_date &lt;= #{q.latestDate}</when>
+      <otherwise>AND FALSE</otherwise>
+    </choose>
+    ) p WHERE TRUE
+    <choose>
+      <when test="q.from != null or q.section == 'ATTENTION' or q.section == 'TODAY'">
+        <include refid="dateOrder"><property name="date" value="p.planned_date"/></include>
+      </when>
+      <otherwise>
+        <include refid="activityOrder"><property name="activity" value="p.updated_at"/></include>
+      </otherwise>
+    </choose>
+    LIMIT #{q.limit}
+  </select>
+
+  <sql id="actionColumns">a.id,a.revision,a.title,a.status,a.merged_into,a.updated_at,
+    COALESCE(pl.order_value,500000) AS order_value,pl.planned_date AS placement_date</sql>
+  <sql id="actionFrom">
+    FROM review_action a
+    LEFT JOIN today_placement pl ON pl.owner_id=a.owner_id AND pl.source_kind='REVIEW_ACTION' AND pl.source_id=a.id
+  </sql>
+  <select id="action" resultType="com.wenjie.studio.today.TodayRows$ActionRow">
+    SELECT <include refid="actionColumns"/> <include refid="actionFrom"/> WHERE a.owner_id=#{owner} AND a.id=#{id}
+  </select>
+  <select id="actionPage" resultType="com.wenjie.studio.today.TodayRows$ActionRow">
+    SELECT p.* FROM (SELECT <include refid="actionColumns"/> <include refid="actionFrom"/> WHERE a.owner_id=#{q.owner}
+      <choose>
+        <when test="q.from != null">AND pl.planned_date &gt;= #{q.from} AND pl.planned_date &lt;= #{q.to}</when>
+        <otherwise>
+          AND a.status='OPEN'
+          <choose>
+            <when test="q.section == 'ATTENTION'">AND (pl.planned_date IS NULL OR pl.planned_date &lt; #{q.latestDate})</when>
+            <when test="q.section == 'TODAY'">AND pl.planned_date &gt;= #{q.earliestDate} AND pl.planned_date &lt;= #{q.latestDate}</when>
+            <otherwise>AND FALSE</otherwise>
+          </choose>
+        </otherwise>
+      </choose>
+    ) p WHERE TRUE
+    <choose>
+      <when test="q.from != null"><include refid="dateOrder"><property name="date" value="p.placement_date"/></include></when>
+      <otherwise><include refid="placementActivityOrder"><property name="activity" value="p.updated_at"/></include></otherwise>
+    </choose>
+    LIMIT #{q.limit}
+  </select>
+
+  <sql id="interviewColumns">e.id,e.revision,e.title,e.target_id,e.target_version_id,e.start_at,e.end_at,e.zone_id,
+    e.remind_at,e.reminder_acknowledged_at,e.status,COALESCE(pl.order_value,500000) AS order_value</sql>
+  <sql id="interviewFrom">
+    FROM interview_event e
+    LEFT JOIN today_placement pl ON pl.owner_id=e.owner_id AND pl.source_kind='INTERVIEW_EVENT' AND pl.source_id=e.id
+  </sql>
+  <select id="interview" resultType="com.wenjie.studio.today.TodayRows$InterviewRow">
+    SELECT <include refid="interviewColumns"/> <include refid="interviewFrom"/> WHERE e.owner_id=#{owner} AND e.id=#{id}
+  </select>
+  <select id="interviewPage" resultType="com.wenjie.studio.today.TodayRows$InterviewRow">
+    SELECT p.* FROM (SELECT <include refid="interviewColumns"/> <include refid="interviewFrom"/> WHERE e.owner_id=#{q.owner}
+    <if test="q.targetId != null">AND e.target_id=#{q.targetId}</if>
+    <choose>
+      <when test="q.from != null">AND e.start_at &lt; #{q.windowEnd} AND e.end_at &gt; #{q.windowStart}</when>
+      <otherwise>
+        AND e.status='PLANNED'
+        <choose>
+          <when test="q.section == 'ATTENTION'">
+            AND ((e.reminder_acknowledged_at IS NULL AND e.remind_at &lt;= #{q.asOf}) OR e.end_at &lt;= #{q.asOf})
+          </when>
+          <when test="q.section == 'TODAY'">
+            AND NOT ((e.reminder_acknowledged_at IS NULL AND e.remind_at &lt;= #{q.asOf}) OR e.end_at &lt;= #{q.asOf})
+            AND e.start_at &lt; #{q.dayEnd} AND e.end_at &gt; #{q.dayStart}
+          </when>
+          <when test="q.section == 'BACKLOG'">
+            AND NOT ((e.reminder_acknowledged_at IS NULL AND e.remind_at &lt;= #{q.asOf}) OR e.end_at &lt;= #{q.asOf})
+            AND e.start_at &gt;= #{q.dayEnd} AND e.start_at &lt; #{q.upcomingEnd}
+          </when>
+          <otherwise>AND FALSE</otherwise>
+        </choose>
+      </otherwise>
+    </choose>
+    ) p WHERE TRUE
+    <choose>
+      <when test="q.from == null and q.section == 'ATTENTION'">
+        <include refid="timeAscendingOrder"><property name="time" value="p.remind_at"/></include>
+      </when>
+      <otherwise>
+        <include refid="timeAscendingOrder"><property name="time" value="p.start_at"/></include>
+      </otherwise>
+    </choose>
+    LIMIT #{q.limit}
+  </select>
+</mapper>

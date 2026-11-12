@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.planning.PlanningMapper">
+  <sql id="taskColumns">id,owner_id,revision,title,detail,minutes,planned_date,zone_id,status,
+    target_item_id,target_version_id,target_version_number,target_title,source_ai_task_id,source_step,
+    started_at,completed_at,created_at,updated_at</sql>
+  <select id="task" resultType="com.wenjie.studio.planning.PlanningRows$TaskRow">
+    SELECT <include refid="taskColumns"/> FROM preparation_task WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.planning.PlanningRows$TaskRow">
+    SELECT <include refid="taskColumns"/> FROM preparation_task WHERE owner_id=#{owner}
+    <if test="status != null">AND status=#{status}</if>
+    <if test="targetId != null">AND target_item_id=#{targetId}</if>
+    <if test="from != null">AND planned_date &gt;= #{from} AND planned_date &lt;= #{to}</if>
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="history" resultType="com.wenjie.studio.planning.PlanningRows$HistoryRow">
+    SELECT owner_id,task_id,revision,action,snapshot_json,created_at FROM preparation_task_history
+    WHERE owner_id=#{owner} AND task_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <insert id="insertTask">
+    INSERT INTO preparation_task (<include refid="taskColumns"/>)
+    VALUES (#{task.id},#{task.ownerId},#{task.revision},#{task.title},#{task.detail},#{task.minutes},
+      #{task.plannedDate},#{task.zoneId},#{task.status},#{task.targetItemId},#{task.targetVersionId},
+      #{task.targetVersionNumber},#{task.targetTitle},#{task.sourceAiTaskId},#{task.sourceStep},
+      #{task.startedAt},#{task.completedAt},#{task.createdAt},#{task.updatedAt})
+  </insert>
+  <update id="updateTask">
+    UPDATE preparation_task SET revision=#{task.revision},title=#{task.title},detail=#{task.detail},
+      minutes=#{task.minutes},planned_date=#{task.plannedDate},zone_id=#{task.zoneId},status=#{task.status},
+      started_at=#{task.startedAt},completed_at=#{task.completedAt},updated_at=#{task.updatedAt}
+    WHERE owner_id=#{task.ownerId} AND id=#{task.id} AND revision=#{expected}
+  </update>
+  <insert id="insertHistory">
+    INSERT INTO preparation_task_history (owner_id,task_id,revision,action,snapshot_json,created_at)
+    VALUES (#{history.ownerId},#{history.taskId},#{history.revision},#{history.action},
+      #{history.snapshotJson},#{history.createdAt})
+  </insert>
+</mapper>

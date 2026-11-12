@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.StandardReviewProjectionMapper">
+  <select id="question" resultType="com.wenjie.studio.review.StandardReviewProjectionRows$Question">
+    SELECT q.id,q.owner_id,v.id AS version_id,current_version.id AS current_version_id,q.status,
+      SHA2(CONCAT(SHA2(CAST(CONVERT(v.prompt_json USING utf8mb4) AS BINARY),256),
+        SHA2(CAST(CONVERT(v.reference_answer USING utf8mb4) AS BINARY),256),
+        SHA2(CAST(CONVERT(v.checkpoints_json USING utf8mb4) AS BINARY),256)),256) AS source_content_hash,
+      (#{checkpointId} IS NULL OR EXISTS(SELECT 1 FROM JSON_TABLE(v.checkpoints_json,'$[*]'
+        COLUMNS (checkpoint_id CHAR(36) PATH '$.id' ERROR ON ERROR)) cp
+        WHERE CAST(cp.checkpoint_id AS BINARY)=CAST(#{checkpointId} AS BINARY))) AS checkpoint_present,
+      stamp.source_content_hash AS sealed_content_hash,stamp.fingerprint,stamp.created_at AS sealed_at
+    FROM question q JOIN question_version v ON v.owner_id=q.owner_id AND v.question_id=q.id AND v.id=#{versionId}
+    LEFT JOIN question_version current_version ON current_version.owner_id=q.owner_id
+      AND current_version.question_id=q.id AND current_version.id=q.current_version_id
+    LEFT JOIN review_question_projection_stamp stamp ON stamp.owner_id=q.owner_id
+      AND stamp.question_id=q.id AND stamp.version_id=v.id
+    WHERE q.owner_id=#{owner} AND q.id=#{id}
+  </select>
+
+  <select id="knowledge" resultType="com.wenjie.studio.review.StandardReviewProjectionRows$Knowledge">
+    <foreach collection="requests" item="request" separator=" UNION ALL ">
+      SELECT #{request.evidenceId} AS evidence_id,i.id,i.owner_id,i.kind,i.status,
+        current_version.id AS current_version_id,v.id AS version_id,
+        SHA2(CAST(CONVERT(current_version.body USING utf8mb4) AS BINARY),256) AS current_fingerprint,
+        IF(v.id IS NOT NULL AND #{request.start} &gt;= 0 AND #{request.end} &gt; #{request.start}
+          AND OCTET_LENGTH(CONVERT(v.body USING utf16)) &gt;= #{request.end} * 2
+          AND SUBSTRING(CAST(CONVERT(v.body USING utf16) AS BINARY),#{request.start} * 2 + 1,
+            (#{request.end} - #{request.start}) * 2)=CAST(CONVERT(#{request.quote} USING utf16) AS BINARY),TRUE,FALSE) AS quote_matches
+      FROM knowledge_item i
+      LEFT JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{request.versionId}
+      LEFT JOIN knowledge_version current_version ON current_version.owner_id=i.owner_id
+        AND current_version.item_id=i.id AND current_version.id=i.current_version_id
+      WHERE i.owner_id=#{owner} AND i.id=#{request.itemId}
+    </foreach>
+  </select>
+
+  <select id="materials" resultType="com.wenjie.studio.review.StandardReviewProjectionRows$Material">
+    <foreach collection="requests" item="request" separator=" UNION ALL ">
+      SELECT #{request.evidenceId} AS evidence_id,e.id AS excerpt_id,e.owner_id,e.attachment_id,
+        a.status AS attachment_status,a.sha256 AS attachment_fingerprint,
+        IF(a.id IS NOT NULL AND a.status='READY' AND a.sha256=e.attachment_sha256 AND (
+          (e.origin='MANUAL' AND e.run_id IS NULL AND e.segment_id IS NULL
+            AND e.start_offset IS NULL AND e.end_offset IS NULL)
+          OR (e.origin='PARSED' AND r.id IS NOT NULL AND r.status='SUCCEEDED'
+            AND r.attachment_sha256=a.sha256 AND s.id IS NOT NULL
+            AND CAST(e.locator AS BINARY)=CAST(s.locator AS BINARY)
+            AND e.start_offset &gt;= 0 AND e.end_offset &gt; e.start_offset
+            AND OCTET_LENGTH(CONVERT(s.text USING utf16)) &gt;= e.end_offset * 2
+            AND SUBSTRING(CAST(CONVERT(s.text USING utf16) AS BINARY),e.start_offset * 2 + 1,
+              (e.end_offset - e.start_offset) * 2)=CAST(CONVERT(e.text USING utf16) AS BINARY))),TRUE,FALSE) AS chain_valid,
+        IF(#{request.start} &gt;= 0 AND #{request.end} &gt; #{request.start}
+          AND OCTET_LENGTH(CONVERT(e.text USING utf16)) &gt;= #{request.end} * 2
+          AND SUBSTRING(CAST(CONVERT(e.text USING utf16) AS BINARY),#{request.start} * 2 + 1,
+            (#{request.end} - #{request.start}) * 2)=CAST(CONVERT(#{request.quote} USING utf16) AS BINARY),TRUE,FALSE) AS quote_matches
+      FROM material_excerpt e
+      LEFT JOIN material_attachment a ON a.owner_id=e.owner_id AND a.id=e.attachment_id
+      LEFT JOIN material_parse_run r ON r.owner_id=e.owner_id AND r.attachment_id=e.attachment_id AND r.id=e.run_id
+      LEFT JOIN material_segment s ON s.owner_id=e.owner_id AND s.attachment_id=e.attachment_id
+        AND s.run_id=e.run_id AND s.id=e.segment_id
+      WHERE e.owner_id=#{owner} AND e.id=#{request.excerptId}
+    </foreach>
+  </select>
+
+  <insert id="insertQuestionStamp">
+    INSERT INTO review_question_projection_stamp
+      (owner_id,question_id,version_id,source_content_hash,fingerprint,created_at)
+    VALUES (#{stamp.ownerId},#{stamp.questionId},#{stamp.versionId},#{stamp.sourceContentHash},
+      #{stamp.fingerprint},#{stamp.createdAt})
+  </insert>
+</mapper>

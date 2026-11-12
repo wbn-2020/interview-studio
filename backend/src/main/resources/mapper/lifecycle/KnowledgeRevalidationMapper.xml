@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.lifecycle.KnowledgeRevalidationMapper">
+  <select id="itemExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_item WHERE owner_id=#{owner} AND id=#{itemId})
+  </select>
+  <select id="versionNumber" resultType="java.lang.Integer">
+    SELECT version_number FROM knowledge_version WHERE owner_id=#{owner} AND item_id=#{itemId} AND id=#{versionId}
+  </select>
+  <select id="pending" resultType="boolean">
+    SELECT EXISTS(
+      SELECT 1 FROM knowledge_revalidation_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number} AND i.revision=0)
+      OR EXISTS(
+      SELECT 1 FROM preparation_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number} AND i.revision=0)
+  </select>
+  <select id="changedAfter" resultType="boolean">
+    <!-- 处理影响不会恢复历史外发基线；已处理记录仍参加此查询。 -->
+    SELECT EXISTS(
+      SELECT 1 FROM knowledge_revalidation_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId}
+        AND v.version_number &lt;= #{number} AND i.created_at &gt; #{baseline})
+      OR EXISTS(
+      SELECT 1 FROM preparation_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId}
+        AND v.version_number &lt;= #{number} AND i.created_at &gt; #{baseline})
+  </select>
+  <select id="latestFrozenAt" resultType="java.time.Instant">
+    <!-- owner 写锁覆盖这些冻结点；不读取本次来源变更刚写入的 INVALIDATE，避免与自身时间冲突。 -->
+    SELECT MAX(frozen_at) FROM (
+      SELECT MAX(created_at) AS frozen_at FROM ai_task WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(started_at) FROM memory_recall_attempt WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(occurred_at) FROM memory_attempt_event WHERE owner_id=#{owner} AND event_kind='RATE'
+      UNION ALL SELECT MAX(created_at) FROM knowledge_revalidation_event WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM preparation_knowledge_event WHERE owner_id=#{owner}
+    ) frozen
+  </select>
+  <insert id="insertEvent">
+    INSERT INTO knowledge_revalidation_event
+      (id,owner_id,root_item_id,root_previous_version_id,root_current_version_id,change_kind,created_at)
+    VALUES (#{id},#{owner},#{rootItemId},#{previousVersionId},#{currentVersionId},#{kind},#{now})
+  </insert>
+  <select id="adoptions" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$Adoption">
+    SELECT s.task_id,s.source_item_id,s.source_version_id,source.version_number AS source_version_number,
+      d.target_item_id,d.target_version_id,target.version_number AS target_version_number
+    FROM ai_knowledge_source s JOIN ai_candidate_decision d
+      ON d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'
+    JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT'
+    JOIN knowledge_version source ON source.owner_id=s.owner_id AND source.item_id=s.source_item_id AND source.id=s.source_version_id
+    JOIN knowledge_version target ON target.owner_id=d.owner_id AND target.item_id=d.target_item_id AND target.id=d.target_version_id
+    WHERE s.owner_id=#{owner} AND s.source_item_id=#{sourceItemId} AND source.version_number &gt;= #{minimumVersion}
+    <if test="after != null">AND s.task_id &gt; #{after}</if>
+    ORDER BY s.task_id LIMIT #{limit}
+  </select>
+  <select id="edgeExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_revalidation_impact
+      WHERE owner_id=#{owner} AND event_id=#{eventId} AND task_id=#{taskId}
+        AND source_item_id=#{sourceItemId} AND source_version_id=#{sourceVersionId})
+  </select>
+  <insert id="insertImpact">
+    INSERT INTO knowledge_revalidation_impact
+      (id,owner_id,event_id,root_item_id,source_item_id,source_version_id,task_id,target_item_id,target_version_id,
+       revision,created_at,parent_impact_id,depth,propagation_pending)
+    VALUES (#{id},#{owner},#{eventId},#{rootItemId},#{sourceItemId},#{sourceVersionId},#{taskId},#{targetItemId},
+      #{targetVersionId},0,#{now},#{parentImpactId},#{depth},1)
+  </insert>
+  <sql id="impactColumns">
+    i.id,i.revision,i.event_id,i.root_item_id,root.title AS root_title,
+    e.root_previous_version_id,e.root_current_version_id,e.change_kind,i.source_version_id,i.task_id,
+    i.target_item_id,target.title AS target_title,i.target_version_id,target.version_number AS target_version_number,i.created_at,
+    i.choice,i.reason,i.resolution_target_version_id,i.resolution_target_revision,i.decided_at,
+    i.source_item_id,source.title AS source_title,source.version_number AS source_version_number,
+    i.depth,i.parent_impact_id,e.created_at AS event_created_at
+  </sql>
+  <sql id="impactJoins">
+    FROM knowledge_revalidation_impact i JOIN knowledge_revalidation_event e
+      ON e.owner_id=i.owner_id AND e.id=i.event_id AND e.root_item_id=i.root_item_id
+    JOIN knowledge_version root ON root.owner_id=e.owner_id AND root.item_id=e.root_item_id AND root.id=e.root_previous_version_id
+    JOIN knowledge_version current_root
+      ON current_root.owner_id=e.owner_id AND current_root.item_id=e.root_item_id AND current_root.id=e.root_current_version_id
+    JOIN knowledge_version source ON source.owner_id=i.owner_id AND source.item_id=i.source_item_id AND source.id=i.source_version_id
+    JOIN knowledge_version target ON target.owner_id=i.owner_id AND target.item_id=i.target_item_id AND target.id=i.target_version_id
+  </sql>
+  <select id="pendingImpacts" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$ImpactRow">
+    SELECT <include refid="impactColumns"/>
+    <include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner} AND i.event_id=#{eventId} AND i.propagation_pending=1
+      AND i.depth=(SELECT MIN(frontier.depth) FROM knowledge_revalidation_impact frontier
+        WHERE frontier.owner_id=#{owner} AND frontier.event_id=#{eventId} AND frontier.propagation_pending=1)
+    ORDER BY i.depth,i.task_id,i.source_item_id,i.source_version_id,i.id LIMIT #{limit}
+  </select>
+  <select id="propagationPending" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_revalidation_impact
+      WHERE owner_id=#{owner} AND event_id=#{eventId} AND propagation_pending=1)
+  </select>
+  <update id="completePropagation">
+    UPDATE knowledge_revalidation_impact SET propagation_pending=0
+    WHERE owner_id=#{owner} AND event_id=#{eventId} AND id=#{impactId} AND propagation_pending=1
+  </update>
+  <select id="impacts" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$ImpactRow">
+    SELECT <include refid="impactColumns"/>
+    <include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner}
+    <choose>
+      <when test="direction == 'SOURCE'">AND i.root_item_id=#{itemId}</when>
+      <when test="direction == 'TARGET'">AND i.target_item_id=#{itemId}</when>
+      <otherwise>AND 1=0</otherwise>
+    </choose>
+    <if test="state == 'PENDING'">AND i.revision=0</if>
+    <if test="beforeTime != null">
+      AND (i.created_at &lt; #{beforeTime} OR (i.created_at=#{beforeTime} AND i.id &lt; #{beforeId}))
+    </if>
+    ORDER BY i.created_at DESC,i.id DESC LIMIT #{limit}
+  </select>
+  <select id="impact" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$ImpactRow">
+    SELECT <include refid="impactColumns"/>
+    <include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND i.id=#{impactId}
+  </select>
+  <select id="lineage" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$ImpactRow">
+    SELECT <include refid="impactColumns"/>
+    <include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND (i.root_item_id=#{itemId} OR i.target_item_id=#{itemId})
+  </select>
+  <select id="target" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$Target">
+    <!-- 仅处理命令读取目标当前／原采用正文与草稿；缺少任一固定版本时由服务拒绝。 -->
+    SELECT i.id,i.status,i.metadata_revision AS revision,i.current_version_id,v.version_number AS current_version_number,
+      v.title AS published_title,v.body AS published_body,d.title AS draft_title,d.body AS draft_body,
+      adopted.version_number AS adopted_version_number,adopted.body AS adopted_body
+    FROM knowledge_item i LEFT JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id AND v.version_number=i.version_number
+    LEFT JOIN knowledge_draft d ON d.item_id=i.id
+    LEFT JOIN knowledge_version adopted ON adopted.owner_id=i.owner_id AND adopted.item_id=i.id AND adopted.id=#{adoptedVersionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId}
+  </select>
+  <update id="resolve">
+    UPDATE knowledge_revalidation_impact i
+    SET i.revision=1,i.choice=#{choice},i.reason=#{reason},i.resolution_target_version_id=#{targetVersionId},
+      i.resolution_target_revision=#{targetRevision},i.decided_at=#{now}
+    WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND i.id=#{impactId} AND i.revision=#{expected} AND i.revision=0
+      AND EXISTS(SELECT 1 FROM knowledge_item k
+        WHERE k.owner_id=i.owner_id AND k.id=i.target_item_id
+          AND k.metadata_revision=#{targetRevision} AND k.current_version_id=#{targetVersionId})
+  </update>
+</mapper>

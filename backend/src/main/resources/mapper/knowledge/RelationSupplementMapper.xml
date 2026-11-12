@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.RelationSupplementMapper">
+  <sql id="relationColumns">
+    r.owner_id,r.id,r.source_id,r.target_id,r.relation_type AS type,
+    s.kind AS source_kind,s.status AS source_status,t.kind AS target_kind,t.status AS target_status
+  </sql>
+  <sql id="relationJoins">
+    FROM knowledge_relation r
+    JOIN knowledge_item s ON s.owner_id=r.owner_id AND s.id=r.source_id
+    JOIN knowledge_item t ON t.owner_id=r.owner_id AND t.id=r.target_id
+  </sql>
+  <select id="relation" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$RelationRow">
+    SELECT <include refid="relationColumns"/> <include refid="relationJoins"/>
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <select id="match" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$RelationRow">
+    SELECT <include refid="relationColumns"/> <include refid="relationJoins"/>
+    WHERE r.owner_id=#{owner} AND r.source_id=#{sourceId} AND r.target_id=#{targetId} AND r.relation_type=#{type}
+  </select>
+  <select id="sourceVersion" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$SourceVersion">
+    SELECT v.owner_id,v.item_id,v.id AS version_id,v.version_number AS number,v.title,
+      i.kind,i.status,i.current_version_id
+    FROM knowledge_version v JOIN knowledge_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+  </select>
+  <select id="entry" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$EntryRow">
+    SELECT owner_id,id,relation_id,source_id,target_id,relation_type AS type,origin,reason,source_count,task_id,candidate_id,created_at
+    FROM knowledge_relation_supplement WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="hasHistory" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM knowledge_relation_supplement WHERE owner_id=#{owner} AND relation_id=#{relationId})
+  </select>
+  <select id="entries" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$EntryRow">
+    SELECT owner_id,id,relation_id,source_id,target_id,relation_type AS type,origin,reason,source_count,task_id,candidate_id,created_at
+    FROM knowledge_relation_supplement WHERE owner_id=#{owner} AND relation_id=#{relationId}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="sources" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$SourceRow">
+    SELECT s.owner_id,s.supplement_id,s.ordinal,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,s.source_kind AS kind,
+      v.version_number AS actual_number,v.title AS actual_title,i.kind AS actual_kind,
+      i.status AS actual_status,i.current_version_id
+    FROM knowledge_relation_supplement_source s
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+    LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
+    WHERE s.owner_id=#{owner} AND s.supplement_id=#{supplementId} ORDER BY s.ordinal
+  </select>
+  <insert id="insertEntry">
+    INSERT INTO knowledge_relation_supplement
+      (owner_id,id,relation_id,source_id,target_id,relation_type,origin,reason,source_count,task_id,candidate_id,created_at)
+    VALUES (#{row.ownerId},#{row.id},#{row.relationId},#{row.sourceId},#{row.targetId},#{row.type},
+      #{row.origin},#{row.reason},#{row.sourceCount},#{row.taskId},#{row.candidateId},#{row.createdAt})
+  </insert>
+  <insert id="insertSource">
+    INSERT INTO knowledge_relation_supplement_source
+      (owner_id,supplement_id,ordinal,source_item_id,source_version_id,source_kind,source_version_number,source_title)
+    VALUES (#{owner},#{supplementId},#{ordinal},#{source.itemId},#{source.versionId},#{source.kind},#{source.number},#{source.title})
+  </insert>
+</mapper>

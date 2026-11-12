@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.bank.CollectionMapper">
+  <sql id="collectionColumns">c.id,c.owner_id,c.kind,c.title,c.status,c.revision,c.current_version_id,
+    c.version_number,c.step_count,c.created_at,c.updated_at</sql>
+  <select id="collection" resultType="com.wenjie.studio.bank.CollectionRows$CollectionRow">
+    SELECT <include refid="collectionColumns"/> FROM question_collection c
+    WHERE c.owner_id=#{owner} AND c.id=#{id}
+  </select>
+  <select id="collections" resultType="com.wenjie.studio.bank.CollectionRows$CollectionRow">
+    SELECT <include refid="collectionColumns"/> FROM question_collection c
+    WHERE c.owner_id=#{owner} AND c.status=#{status}
+    <if test="kind != null">AND c.kind=#{kind}</if>
+    <if test="pattern != null">AND c.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="cursor != null">AND c.id &gt; #{cursor}</if>
+    ORDER BY c.id LIMIT #{limit}
+  </select>
+  <select id="version" resultType="com.wenjie.studio.bank.CollectionRows$VersionRow">
+    SELECT id,collection_id,owner_id,version_number,title,content_json,created_at
+    FROM question_collection_version
+    WHERE owner_id=#{owner} AND collection_id=#{collectionId} AND id=#{versionId}
+  </select>
+  <select id="versions" resultType="com.wenjie.studio.bank.CollectionDtos$VersionSummary">
+    SELECT id,version_number AS number,title,created_at FROM question_collection_version
+    WHERE owner_id=#{owner} AND collection_id=#{id}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="references" resultType="com.wenjie.studio.bank.CollectionRows$ReferenceRow">
+    SELECT s.step_id,s.question_id,s.question_version_id AS version_id,v.title,v.version_number,
+      q.status,q.current_version_id
+    FROM question_collection_step s
+    JOIN question_version v ON v.owner_id=s.owner_id AND v.question_id=s.question_id AND v.id=s.question_version_id
+    JOIN question q ON q.owner_id=s.owner_id AND q.id=s.question_id
+    WHERE s.owner_id=#{owner} AND s.collection_id=#{collectionId} AND s.version_id=#{versionId}
+    ORDER BY s.position_index
+  </select>
+  <insert id="insertCollection">
+    INSERT INTO question_collection (id,owner_id,kind,title,status,revision,current_version_id,
+      version_number,step_count,created_at,updated_at)
+    VALUES (#{collection.id},#{collection.ownerId},#{collection.kind},#{collection.title},#{collection.status},
+      #{collection.revision},#{collection.currentVersionId},#{collection.versionNumber},#{collection.stepCount},
+      #{collection.createdAt},#{collection.updatedAt})
+  </insert>
+  <insert id="insertVersion">
+    INSERT INTO question_collection_version (id,collection_id,owner_id,version_number,title,content_json,created_at)
+    VALUES (#{version.id},#{version.collectionId},#{version.ownerId},#{version.versionNumber},
+      #{version.title},#{version.contentJson},#{version.createdAt})
+  </insert>
+  <insert id="insertStep">
+    INSERT INTO question_collection_step (owner_id,collection_id,version_id,step_id,question_id,
+      question_version_id,position_index,purpose,checkpoint)
+    VALUES (#{owner},#{collectionId},#{versionId},#{step.id},#{step.questionId},#{step.questionVersionId},
+      #{position},#{step.purpose},#{step.checkpoint})
+  </insert>
+  <insert id="insertDependency">
+    INSERT INTO question_collection_dependency (owner_id,collection_id,version_id,step_id,depends_on_step_id)
+    VALUES (#{owner},#{collectionId},#{versionId},#{stepId},#{dependsOn})
+  </insert>
+  <update id="saveContent">
+    UPDATE question_collection SET title=#{title},current_version_id=#{versionId},version_number=#{number},
+      step_count=#{stepCount},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="changeStatus">
+    UPDATE question_collection SET status=#{status},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+</mapper>

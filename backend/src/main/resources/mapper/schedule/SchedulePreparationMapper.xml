@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.schedule.SchedulePreparationMapper">
+  <sql id="linkColumns">l.id,l.owner_id,l.event_id,l.revision,l.source_kind,l.source_id,l.source_version_id,l.status,l.created_at,l.updated_at</sql>
+  <select id="event" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$EventRow">
+    SELECT id,owner_id,target_id,target_version_id,status,revision,updated_at FROM interview_event
+    WHERE owner_id=#{owner} AND id=#{eventId}
+  </select>
+  <select id="link" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$LinkRow">
+    SELECT <include refid="linkColumns"/> FROM interview_preparation_link l
+    WHERE l.owner_id=#{owner} AND l.event_id=#{eventId} AND l.id=#{id}
+  </select>
+  <select id="bySource" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$LinkRow">
+    SELECT <include refid="linkColumns"/> FROM interview_preparation_link l
+    WHERE l.owner_id=#{owner} AND l.event_id=#{eventId} AND l.source_kind=#{kind} AND l.source_id=#{sourceId}
+  </select>
+  <select id="links" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$LinkRow">
+    SELECT <include refid="linkColumns"/> FROM interview_preparation_link l
+    WHERE l.owner_id=#{owner} AND l.event_id=#{eventId}
+    <if test="status != null">AND l.status=#{status}</if>
+    <if test="afterId != null">AND l.id &gt; #{afterId}</if>
+    ORDER BY l.id ASC LIMIT #{limit}
+  </select>
+  <select id="collection" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$CollectionRow">
+    SELECT c.id,c.owner_id,c.kind,c.status,c.revision,c.current_version_id,v.id AS version_id,v.version_number,v.title
+    FROM question_collection c JOIN question_collection_version v ON v.owner_id=c.owner_id AND v.collection_id=c.id
+    WHERE c.owner_id=#{owner} AND c.id=#{id} AND v.id=#{versionId}
+  </select>
+  <select id="metadata" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$MetadataRow">
+    <!-- 取完整去重集合的第501条作为拒绝信号，不将截断关系用于摘要或多面试判断。 -->
+    SELECT <include refid="linkColumns"/>,e.revision AS event_revision,e.status AS event_status,
+      e.title AS event_title,e.start_at AS event_start_at,e.zone_id AS event_zone_id
+    FROM interview_preparation_link l JOIN interview_event e ON e.owner_id=l.owner_id AND e.id=l.event_id
+    WHERE l.owner_id=#{owner} AND l.status='ACTIVE' AND (l.event_id=#{eventId}
+      <if test="sources != null and !sources.isEmpty()">
+        OR (l.event_id &lt;&gt; #{eventId} AND
+          <foreach collection="sources" item="source" open="(" close=")" separator=" OR ">
+            (l.source_kind=#{source.kind} AND l.source_id=#{source.sourceId})
+          </foreach>)
+      </if>)
+    ORDER BY l.id ASC LIMIT 501
+  </select>
+  <insert id="insert">
+    INSERT INTO interview_preparation_link
+      (id,owner_id,event_id,revision,source_kind,source_id,source_version_id,status,created_at,updated_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.eventId},#{row.revision},#{row.sourceKind},#{row.sourceId},
+      #{row.sourceVersionId},#{row.status},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <update id="update">
+    UPDATE interview_preparation_link SET revision=#{row.revision},source_version_id=#{row.sourceVersionId},
+      status=#{row.status},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND event_id=#{row.eventId} AND id=#{row.id} AND revision=#{expected}
+      AND source_kind=#{row.sourceKind} AND source_id=#{row.sourceId}
+  </update>
+  <insert id="insertHistory">
+    INSERT INTO interview_preparation_link_history
+      (owner_id,event_id,link_id,revision,event_revision,change_kind,snapshot_json,source_stamp_json,created_at)
+    VALUES (#{owner},#{eventId},#{id},#{revision},#{eventRevision},#{change},#{snapshot},#{sourceStamp},#{now})
+  </insert>
+  <select id="history" resultType="com.wenjie.studio.schedule.SchedulePreparationRows$HistoryRow">
+    SELECT revision,change_kind,event_revision,snapshot_json,source_stamp_json,created_at
+    FROM interview_preparation_link_history WHERE owner_id=#{owner} AND event_id=#{eventId} AND link_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+</mapper>

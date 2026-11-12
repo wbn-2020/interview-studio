@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.prepare.PreparationMapper">
+  <sql id="itemColumns">i.id, i.owner_id, i.kind, i.project_id, i.title, i.status, i.revision,
+    i.verification, i.favorite, i.current_version_id, i.version_number, i.created_at, i.updated_at</sql>
+  <select id="item" resultType="com.wenjie.studio.prepare.PreparationRows$ItemRow">
+    SELECT <include refid="itemColumns"/> FROM preparation_item i WHERE i.owner_id=#{owner} AND i.id=#{id}
+  </select>
+  <select id="sourceCheck" resultType="com.wenjie.studio.prepare.PreparationDtos$SourceCheck" timeout="5">
+    SELECT i.kind, i.id AS item_id, v.id AS version_id,
+      CASE
+        WHEN i.kind='FACT' AND i.verification='WITHDRAWN' THEN 'WITHDRAWN'
+        WHEN i.status&lt;&gt;'ACTIVE' THEN 'ARCHIVED'
+        WHEN i.kind='FACT' AND p.id IS NULL THEN 'UNAVAILABLE'
+        WHEN i.kind='FACT' AND p.status&lt;&gt;'ACTIVE' THEN 'PROJECT_ARCHIVED'
+        WHEN i.kind='FACT' AND i.verification&lt;&gt;'CONFIRMED' THEN 'UNVERIFIED'
+        WHEN i.current_version_id&lt;&gt;v.id THEN 'SUPERSEDED'
+        ELSE 'CURRENT'
+      END AS state, i.source_generation,
+      p.source_generation AS project_generation
+    FROM preparation_item i
+      JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+      LEFT JOIN preparation_item p ON i.kind='FACT' AND p.owner_id=i.owner_id
+        AND p.id=i.project_id AND p.kind='PROJECT'
+    WHERE i.owner_id=#{owner} AND i.id=#{id} AND i.kind=#{kind}
+      AND i.kind IN ('TARGET','PROJECT','FACT')
+  </select>
+  <sql id="expressionBasisFresh">
+    <!-- i/v 是确切表达及版本；按最新记录逐项比对当前代次，改后改回也不能恢复旧基线。 -->
+    EXISTS (SELECT 1 FROM expression_basis_review b
+      WHERE b.owner_id=i.owner_id AND b.item_id=i.id AND b.version_id=v.id AND b.version_number=v.version_number
+        AND b.revision=(SELECT MAX(last_basis.revision) FROM expression_basis_review last_basis
+          WHERE last_basis.owner_id=i.owner_id AND last_basis.item_id=i.id AND last_basis.version_id=v.id)
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.factVersionIds'))='ARRAY'
+        AND JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.factVersionIds')) BETWEEN 1 AND 50
+        AND (SELECT COUNT(*) FROM expression_basis_review_fact counted
+          WHERE counted.owner_id=b.owner_id AND counted.review_id=b.id)
+          =JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.factVersionIds'))
+        AND (SELECT COUNT(*) FROM preparation_reference counted
+          WHERE counted.owner_id=i.owner_id AND counted.target_item_id=i.id AND counted.target_version_id=v.id)
+          =JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.factVersionIds'))
+        AND NOT EXISTS (SELECT 1 FROM expression_basis_review_fact saved
+          LEFT JOIN preparation_item fact ON fact.owner_id=saved.owner_id AND fact.id=saved.fact_item_id
+          LEFT JOIN preparation_version fixed_fact ON fixed_fact.owner_id=saved.owner_id
+            AND fixed_fact.item_id=saved.fact_item_id AND fixed_fact.id=saved.fact_version_id
+          LEFT JOIN preparation_item project ON project.owner_id=saved.owner_id AND project.id=saved.project_id
+          WHERE saved.owner_id=b.owner_id AND saved.review_id=b.id AND (
+            saved.item_id&lt;&gt;i.id OR saved.version_id&lt;&gt;v.id
+            OR saved.ordinal&gt;JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.factVersionIds'))
+            OR JSON_TYPE(JSON_EXTRACT(v.content_json,CONCAT('$.factVersionIds[',saved.ordinal-1,']')))&lt;&gt;'STRING'
+            OR BINARY JSON_UNQUOTE(JSON_EXTRACT(v.content_json,CONCAT('$.factVersionIds[',saved.ordinal-1,']')))
+              &lt;&gt;BINARY saved.fact_version_id
+            OR fact.id IS NULL OR fact.kind&lt;&gt;'FACT' OR fact.status&lt;&gt;'ACTIVE' OR fact.verification&lt;&gt;'CONFIRMED'
+            OR fact.current_version_id&lt;&gt;saved.fact_version_id OR fact.project_id&lt;&gt;saved.project_id
+            OR fixed_fact.id IS NULL OR fixed_fact.version_number&lt;&gt;saved.version_number
+            OR BINARY fixed_fact.title&lt;&gt;BINARY saved.title
+            OR fact.source_generation&lt;&gt;saved.source_generation
+            OR project.id IS NULL OR project.kind&lt;&gt;'PROJECT' OR project.status&lt;&gt;'ACTIVE'
+            OR project.source_generation&lt;&gt;saved.project_generation
+            OR NOT EXISTS (SELECT 1 FROM preparation_reference exact_ref
+              WHERE exact_ref.owner_id=i.owner_id AND exact_ref.target_item_id=i.id AND exact_ref.target_version_id=v.id
+                AND exact_ref.source_kind='FACT' AND exact_ref.use_type='FACT_BASIS'
+                AND exact_ref.preparation_source_item_id=saved.fact_item_id
+                AND exact_ref.preparation_source_version_id=saved.fact_version_id)))
+        AND NOT EXISTS (SELECT 1 FROM preparation_reference actual_ref
+          WHERE actual_ref.owner_id=i.owner_id AND actual_ref.target_item_id=i.id AND actual_ref.target_version_id=v.id
+            AND (actual_ref.source_kind&lt;&gt;'FACT' OR actual_ref.use_type&lt;&gt;'FACT_BASIS'
+              OR NOT EXISTS (SELECT 1 FROM expression_basis_review_fact exact_saved
+                WHERE exact_saved.owner_id=b.owner_id AND exact_saved.review_id=b.id
+                  AND exact_saved.fact_item_id=actual_ref.preparation_source_item_id
+                  AND exact_saved.fact_version_id=actual_ref.preparation_source_version_id))))
+  </sql>
+  <select id="expressionSourceCheck" resultType="com.wenjie.studio.prepare.PreparationDtos$SourceCheck" timeout="5">
+    SELECT i.kind, i.id AS item_id, v.id AS version_id,
+      CASE WHEN i.status&lt;&gt;'ACTIVE' THEN 'ARCHIVED'
+        WHEN i.current_version_id&lt;&gt;v.id THEN 'SUPERSEDED'
+        WHEN NOT (<include refid="expressionBasisFresh"/>) THEN 'UNVERIFIED' ELSE 'CURRENT' END AS state,
+      i.source_generation, NULL AS project_generation
+    FROM preparation_item i
+      JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{id} AND i.kind='EXPRESSION'
+  </select>
+  <select id="expressionBasis" resultType="com.wenjie.studio.prepare.PreparationRows$ExpressionBasisRow" timeout="5">
+    <!-- 比合法上限多取一条，确保超量关系触发完整性错误。 -->
+    SELECT r.source_kind, r.preparation_source_item_id AS source_item_id,
+      r.preparation_source_version_id AS source_version_id, r.use_type, v.item_id AS version_item_id,
+      f.kind AS item_kind,v.title,v.version_number,f.project_id
+    FROM preparation_reference r
+      LEFT JOIN preparation_version v ON v.owner_id=r.owner_id AND v.id=r.preparation_source_version_id
+      LEFT JOIN preparation_item f ON f.owner_id=r.owner_id AND f.id=v.item_id
+    WHERE r.owner_id=#{owner} AND r.target_item_id=#{itemId} AND r.target_version_id=#{versionId}
+    ORDER BY r.id LIMIT 51
+  </select>
+  <select id="items" resultType="com.wenjie.studio.prepare.PreparationRows$ItemRow">
+    SELECT <include refid="itemColumns"/> FROM preparation_item i
+    WHERE i.owner_id=#{owner} AND i.status=#{status}
+    <if test="kind != null">AND i.kind=#{kind}</if>
+    <if test="pattern != null">AND i.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="verification != null">
+      AND i.verification=#{verification}
+      <if test="verification == 'CONFIRMED'">
+        AND EXISTS (SELECT 1 FROM preparation_item p WHERE p.owner_id=i.owner_id AND p.id=i.project_id
+                    AND p.kind='PROJECT' AND p.status='ACTIVE')
+      </if>
+    </if>
+    <if test="favorite != null">AND i.favorite=#{favorite}</if>
+    <if test="projectId != null">AND i.project_id=#{projectId}</if>
+    <if test="cursor != null">AND i.id &gt; #{cursor}</if>
+    ORDER BY i.id LIMIT #{limit}
+  </select>
+  <select id="version" resultType="com.wenjie.studio.prepare.PreparationRows$VersionRow" timeout="5">
+    SELECT id,item_id,owner_id,version_number,title,content_json,created_at FROM preparation_version
+    WHERE owner_id=#{owner} AND item_id=#{itemId} AND id=#{versionId}
+  </select>
+  <select id="versionById" resultType="com.wenjie.studio.prepare.PreparationRows$VersionRow">
+    SELECT id,item_id,owner_id,version_number,title,content_json,created_at FROM preparation_version
+    WHERE owner_id=#{owner} AND id=#{versionId}
+  </select>
+  <select id="versions" resultType="com.wenjie.studio.prepare.PreparationDtos$VersionSummary">
+    SELECT id,version_number AS number,title,created_at FROM preparation_version
+    WHERE owner_id=#{owner} AND item_id=#{id}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="references" resultType="com.wenjie.studio.prepare.PreparationRows$ReferenceRow">
+    SELECT source_kind, COALESCE(preparation_source_item_id,knowledge_source_item_id) AS source_item_id,
+      COALESCE(preparation_source_version_id,knowledge_source_version_id) AS source_version_id
+    FROM preparation_reference WHERE owner_id=#{owner} AND target_version_id=#{versionId}
+    ORDER BY source_kind,source_item_id,source_version_id
+  </select>
+  <select id="impacts" resultType="com.wenjie.studio.prepare.PreparationRows$ItemRow">
+    SELECT <include refid="itemColumns"/> FROM preparation_item i
+    WHERE i.owner_id=#{owner} AND i.status='ACTIVE' AND i.kind IN ('TARGET','EXPRESSION')
+      AND EXISTS (SELECT 1 FROM preparation_reference r WHERE r.owner_id=i.owner_id
+        AND r.target_item_id=i.id AND r.target_version_id=i.current_version_id
+        AND r.preparation_source_item_id=#{id})
+    <if test="cursor != null">AND i.id &gt; #{cursor}</if>
+    ORDER BY i.id LIMIT #{limit}
+  </select>
+  <select id="decisions" resultType="com.wenjie.studio.prepare.PreparationRows$DecisionRow">
+    SELECT id,version_id,decision,reason,created_at FROM preparation_fact_decision
+    WHERE owner_id=#{owner} AND item_id=#{id}
+    <if test="beforeTime != null">
+      AND (created_at &lt; #{beforeTime} OR (created_at=#{beforeTime} AND id &lt; #{beforeId}))
+    </if>
+    ORDER BY created_at DESC,id DESC LIMIT #{limit}
+  </select>
+  <select id="hasInvalidFactBasis" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM preparation_item i JOIN preparation_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+      WHERE i.owner_id=#{owner} AND i.kind='EXPRESSION' AND NOT (<include refid="expressionBasisFresh"/>))
+  </select>
+  <insert id="insertItem">
+    INSERT INTO preparation_item (id,owner_id,kind,project_id,title,status,revision,verification,favorite,
+                                  current_version_id,version_number,created_at,updated_at)
+    VALUES (#{item.id},#{item.ownerId},#{item.kind},#{item.projectId},#{item.title},#{item.status},
+            #{item.revision},#{item.verification},#{item.favorite},#{item.currentVersionId},
+            #{item.versionNumber},#{item.createdAt},#{item.updatedAt})
+  </insert>
+  <insert id="insertVersion">
+    INSERT INTO preparation_version (id,item_id,owner_id,version_number,title,content_json,created_at)
+    VALUES (#{version.id},#{version.itemId},#{version.ownerId},#{version.versionNumber},
+            #{version.title},#{version.contentJson},#{version.createdAt})
+  </insert>
+  <insert id="insertReference">
+    INSERT INTO preparation_reference (owner_id,target_item_id,target_version_id,source_kind,
+      preparation_source_item_id,preparation_source_version_id,knowledge_source_item_id,
+      knowledge_source_version_id,use_type)
+    VALUES (#{owner},#{itemId},#{versionId},#{sourceKind},
+      <choose><when test="sourceKind != 'KNOWLEDGE'">#{sourceItemId},#{sourceVersionId},NULL,NULL,</when>
+        <otherwise>NULL,NULL,#{sourceItemId},#{sourceVersionId},</otherwise></choose>
+      #{useType})
+  </insert>
+  <update id="saveContent">
+    UPDATE preparation_item SET title=#{title},current_version_id=#{versionId},version_number=#{number},
+      verification=CASE WHEN kind='FACT' THEN 'UNVERIFIED' ELSE NULL END,
+      source_generation=source_generation+1,revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="changeStatus">
+    UPDATE preparation_item SET status=#{status},source_generation=source_generation+1,
+      revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="setVerification">
+    UPDATE preparation_item SET verification=#{verification},source_generation=source_generation+1,
+      revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND kind='FACT'
+  </update>
+  <update id="setFavorite">
+    UPDATE preparation_item SET favorite=#{favorite},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <insert id="insertDecision">
+    INSERT INTO preparation_fact_decision (id,owner_id,item_id,version_id,decision,reason,created_at)
+    VALUES (#{id},#{owner},#{itemId},#{versionId},#{decision},#{reason},#{now})
+  </insert>
+  <select id="focus" resultType="com.wenjie.studio.prepare.PreparationDtos$Focus">
+    SELECT target_id,revision FROM preparation_focus WHERE owner_id=#{owner}
+  </select>
+  <insert id="ensureFocus">
+    INSERT INTO preparation_focus (owner_id,target_id,revision) VALUES (#{owner},NULL,0)
+    ON DUPLICATE KEY UPDATE owner_id=owner_id
+  </insert>
+  <update id="setFocus">
+    UPDATE preparation_focus SET target_id=#{targetId},revision=revision+1
+    WHERE owner_id=#{owner} AND revision=#{expected}
+  </update>
+</mapper>

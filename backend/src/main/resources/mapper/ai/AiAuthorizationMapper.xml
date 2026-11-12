@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.AiAuthorizationMapper">
+  <sql id="columns">owner_id,id,purpose,provider,model,protocol,config_version,price_version,source_task_id,
+    source_manifest_hash,scope_hash,configuration_fingerprint,runtime_epoch,revision,state,expires_at,created_at,revoked_at</sql>
+  <select id="entry" resultType="com.wenjie.studio.ai.AiAuthorizationRows$EntryRow">
+    SELECT <include refid="columns"/> FROM ai_scope_authorization WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="entries" resultType="com.wenjie.studio.ai.AiAuthorizationRows$EntryRow">
+    SELECT <include refid="columns"/> FROM ai_scope_authorization WHERE owner_id=#{owner}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="activeCount" resultType="int">
+    SELECT COUNT(*) FROM ai_scope_authorization
+    WHERE owner_id=#{owner} AND runtime_epoch=#{epoch} AND state='ACTIVE' AND expires_at&gt;#{now}
+  </select>
+  <select id="matching" resultType="com.wenjie.studio.ai.AiAuthorizationRows$EntryRow">
+    SELECT <include refid="columns"/> FROM ai_scope_authorization
+    WHERE owner_id=#{owner} AND purpose=#{purpose} AND scope_hash=#{scopeHash}
+      AND configuration_fingerprint=#{fingerprint} AND runtime_epoch=#{epoch} AND state='ACTIVE' AND expires_at&gt;#{now}
+    ORDER BY id LIMIT 50
+  </select>
+  <insert id="insertEntry">
+    INSERT INTO ai_scope_authorization (owner_id,id,purpose,provider,model,protocol,config_version,price_version,
+      source_task_id,source_manifest_hash,scope_hash,configuration_fingerprint,runtime_epoch,revision,state,expires_at,created_at,revoked_at)
+    VALUES (#{entry.ownerId},#{entry.id},#{entry.purpose},#{entry.provider},#{entry.model},#{entry.protocol},
+      #{entry.configVersion},#{entry.priceVersion},#{entry.sourceTaskId},#{entry.sourceManifestHash},#{entry.scopeHash},
+      #{entry.configurationFingerprint},#{entry.runtimeEpoch},#{entry.revision},#{entry.state},#{entry.expiresAt},#{entry.createdAt},#{entry.revokedAt})
+  </insert>
+  <update id="revoke">
+    UPDATE ai_scope_authorization SET state='REVOKED',revision=revision+1,revoked_at=#{revokedAt}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND state='ACTIVE'
+  </update>
+</mapper>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.search.UnifiedSearchAiMapper">
+  <resultMap id="report" type="com.wenjie.studio.search.UnifiedSearchAiRows$Report">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="task_id" javaType="java.lang.String"/>
+      <arg column="attempt_id" javaType="java.lang.String"/><arg column="session_id" javaType="java.lang.String"/>
+      <arg column="question_id" javaType="java.lang.String"/><arg column="answer_id" javaType="java.lang.String"/>
+      <arg column="report_bytes" javaType="java.lang.Long"/>
+    </constructor>
+  </resultMap>
+  <!-- 目录只扫描已有原答许可的成功评价；报告长度和成功尝试由读取器显式校验，不作为过滤条件。 -->
+  <select id="reports" resultMap="report" timeout="5">
+    SELECT t.owner_id,t.id AS task_id,t.current_attempt_id AS attempt_id,
+      e.session_id,e.question_id,e.answer_id,OCTET_LENGTH(t.candidate_json) AS report_bytes
+    FROM ai_task t
+    JOIN ai_evaluation e ON e.owner_id=t.owner_id AND e.task_id=t.id
+    JOIN training_answer a ON a.owner_id=e.owner_id AND a.session_id=e.session_id AND a.question_id=e.question_id AND a.id=e.answer_id
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    JOIN ai_evaluation_access g ON g.owner_id=a.owner_id AND g.session_id=a.session_id AND g.question_id=a.question_id AND g.answer_id=a.id
+      AND g.early_feedback IN (0,1) AND g.granted_at BETWEEN '1000-01-01 00:00:00.000000' AND '9999-12-31 23:59:59.999999'
+    WHERE t.owner_id=#{owner} AND t.purpose='ANSWER_EVALUATION' AND t.status='SUCCEEDED'
+      AND s.status IN ('RUNNING','PAUSED','ENDED') AND a.version_number BETWEEN 1 AND 100
+      AND ((s.mode='LEARNING' AND a.answer_condition='LEARNING')
+        OR (s.mode IN ('FOCUSED','MOCK') AND a.answer_condition IN ('BEFORE_ASSISTANCE','ASSISTED')))
+      AND a.assistance_event_sequence BETWEEN 0 AND 2000
+      AND (a.answer_condition&lt;>'ASSISTED' OR a.assistance_event_sequence&gt;0)
+      AND (a.answer_condition&lt;>'BEFORE_ASSISTANCE' OR a.assistance_event_sequence=0)
+      AND JSON_TYPE(s.config_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='STRING'
+      AND JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming')) IN ('AFTER_ANSWER','AFTER_SESSION')
+      AND (s.status='ENDED' OR JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='AFTER_ANSWER' OR g.early_feedback=1)
+    <if test="afterId != null">AND t.id &lt; #{afterId}</if>
+    ORDER BY t.id DESC LIMIT #{limit}
+  </select>
+</mapper>

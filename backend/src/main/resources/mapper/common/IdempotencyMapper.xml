@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.common.IdempotencyMapper">
+  <resultMap id="receipt" type="com.wenjie.studio.common.IdempotencyMapper$Receipt">
+    <constructor>
+      <arg column="operation" javaType="java.lang.String"/>
+      <arg column="request_hash" javaType="java.lang.String"/>
+      <arg column="response_json" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <insert id="ensureWorkspace">
+    INSERT INTO owner_workspace(owner_id, layout_revision) VALUES(#{ownerId}, 0)
+    ON DUPLICATE KEY UPDATE owner_id = #{ownerId}
+  </insert>
+  <select id="lockWorkspace" resultType="java.lang.String">
+    SELECT owner_id FROM owner_workspace WHERE owner_id = #{ownerId} FOR UPDATE
+  </select>
+  <select id="findReceipt" resultMap="receipt">
+    SELECT operation, request_hash, response_json FROM command_receipt
+    WHERE owner_id = #{ownerId} AND idempotency_key = #{key}
+  </select>
+  <insert id="insertReceipt">
+    INSERT INTO command_receipt(owner_id, idempotency_key, operation, request_hash, response_json, created_at)
+    VALUES(#{ownerId}, #{key}, #{operation}, #{requestHash}, #{responseJson}, #{createdAt})
+  </insert>
+</mapper>

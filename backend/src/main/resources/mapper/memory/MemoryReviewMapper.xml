@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.memory.MemoryReviewMapper">
+  <select id="gate" resultType="com.wenjie.studio.memory.MemoryReviewDtos$Gate">
+    SELECT card_id,revision,review_required,last_review_decision_id,last_history_sequence,updated_at
+    FROM memory_review_gate WHERE owner_id=#{owner} AND card_id=#{id}
+  </select>
+  <sql id="upstreamReviewRequired">
+    (EXISTS (SELECT 1 FROM knowledge_revalidation_impact upstream
+      JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+        AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+      WHERE upstream.owner_id=s.owner_id AND upstream.target_item_id=s.knowledge_item_id
+        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0)
+      OR EXISTS (SELECT 1 FROM preparation_knowledge_impact upstream
+      JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+        AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+      WHERE upstream.owner_id=s.owner_id AND upstream.target_item_id=s.knowledge_item_id
+        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0))
+  </sql>
+  <!-- 按二进制比较正文，保留大小写、排版及末尾空格差异；正文不进入读取 DTO。 -->
+  <select id="sources" resultType="com.wenjie.studio.memory.MemoryReviewRows$SourceRow">
+    SELECT s.knowledge_item_id AS item_id,s.knowledge_version_id AS version_id,k.kind,v.version_number,
+      k.status,k.current_version_id,
+      CASE WHEN v.id IS NULL OR p.id IS NULL THEN NULL ELSE CAST(v.body AS BINARY) &lt;&gt; CAST(p.body AS BINARY) END AS body_changed,
+      <include refid="upstreamReviewRequired"/> AS upstream_review_required
+    FROM memory_card_source s
+    LEFT JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+    LEFT JOIN knowledge_version p ON p.owner_id=k.owner_id AND p.item_id=k.id AND p.id=k.current_version_id
+    WHERE s.owner_id=#{owner} AND s.card_id=#{id} AND s.version_id=#{versionId} ORDER BY s.position_index
+  </select>
+  <select id="upstreamImpact" resultType="com.wenjie.studio.memory.MemoryReviewRows$UpstreamImpactRow">
+    <!-- 同一历史身份不能跨类重用；另一类即使已经处理也拒绝此身份，避免按状态筛选后误选。 -->
+    SELECT i.target_item_id AS item_id,i.target_version_id AS adopted_version_id,v.version_number AS adopted_version_number,i.created_at
+    FROM knowledge_revalidation_impact i JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+    WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
+      AND NOT EXISTS (SELECT 1 FROM preparation_knowledge_impact other
+        WHERE other.owner_id=i.owner_id AND other.id=i.id)
+    UNION ALL
+    SELECT i.target_item_id AS item_id,i.target_version_id AS adopted_version_id,v.version_number AS adopted_version_number,i.created_at
+    FROM preparation_knowledge_impact i JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+    WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
+      AND NOT EXISTS (SELECT 1 FROM knowledge_revalidation_impact other
+        WHERE other.owner_id=i.owner_id AND other.id=i.id)
+  </select>
+  <select id="basis" resultType="com.wenjie.studio.memory.MemoryReviewRows$BasisRow">
+    SELECT prompt_json,reference_text FROM memory_card_version WHERE owner_id=#{owner} AND card_id=#{id} AND id=#{versionId}
+  </select>
+  <select id="affectedCards" resultType="com.wenjie.studio.memory.MemoryRows$CardRow">
+    SELECT c.id,c.owner_id,c.status,c.revision,c.current_version_id,c.version_number,c.created_at,c.updated_at
+    FROM memory_card c WHERE c.owner_id=#{owner}
+      AND EXISTS (SELECT 1 FROM memory_card_source s WHERE s.owner_id=c.owner_id AND s.card_id=c.id
+        AND s.version_id=c.current_version_id AND s.knowledge_item_id=#{itemId})
+    <if test="after != null">AND c.id &gt; #{after}</if>
+    ORDER BY c.id LIMIT #{limit}
+  </select>
+  <select id="pendingBodyImpact" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM memory_source_history WHERE owner_id=#{owner} AND card_id=#{id}
+      AND impact_reason='SOURCE_BODY_CHANGED' AND gate_revision &gt; #{afterRevision})
+  </select>
+  <insert id="insertGate">
+    INSERT INTO memory_review_gate (owner_id,card_id,revision,review_required,last_review_decision_id,last_history_sequence,updated_at)
+    VALUES (#{owner},#{gate.cardId},#{gate.revision},#{gate.reviewRequired},#{gate.lastReviewDecisionId},#{gate.lastHistorySequence},#{gate.updatedAt})
+  </insert>
+  <update id="updateGate">
+    UPDATE memory_review_gate SET revision=#{gate.revision},review_required=#{gate.reviewRequired},
+      last_review_decision_id=#{gate.lastReviewDecisionId},last_history_sequence=#{gate.lastHistorySequence},updated_at=#{gate.updatedAt}
+    WHERE owner_id=#{owner} AND card_id=#{gate.cardId} AND revision=#{expected} AND revision &lt; 9007199254740991
+  </update>
+  <insert id="insertSourceHistory">
+    INSERT INTO memory_source_history (id,owner_id,card_id,card_version_id,sequence_number,gate_revision,history_kind,impact_reason,snapshot_json,created_at)
+    VALUES (#{id},#{owner},#{cardId},#{versionId},#{sequence},#{gateRevision},#{kind},#{reason},#{snapshot},#{now})
+  </insert>
+  <!-- 登记只核对历史卡版的绑定与版本元数据，不读取正文或今天的发布／归档状态。 -->
+  <select id="historySourceBindings" resultType="com.wenjie.studio.memory.MemoryHistoryKnowledgeReferences$Binding">
+    SELECT s.knowledge_item_id AS item_id,s.knowledge_version_id AS version_id,s.position_index AS ordinal,
+      k.kind,v.version_number,c.source_count
+    FROM memory_card_version c
+    LEFT JOIN memory_card_source s ON s.owner_id=c.owner_id AND s.card_id=c.card_id AND s.version_id=c.id
+    LEFT JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+    WHERE c.owner_id=#{owner} AND c.card_id=#{cardId} AND c.id=#{versionId} ORDER BY s.position_index
+  </select>
+  <insert id="insertHistoryKnowledgeReference">
+    INSERT INTO memory_source_history_knowledge_reference
+      (owner_id,card_id,history_id,role,source_ordinal,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{cardId},#{historyId},#{role},#{ordinal},#{itemId},#{versionId})
+  </insert>
+  <select id="sourceHistory" resultType="com.wenjie.studio.memory.MemoryReviewRows$HistoryRow">
+    SELECT sequence_number AS sequence,snapshot_json FROM memory_source_history WHERE owner_id=#{owner} AND card_id=#{id}
+    <if test="before != null">AND sequence_number &lt; #{before}</if>
+    ORDER BY sequence_number DESC LIMIT #{limit}
+  </select>
+  <select id="decisionRevision" resultType="java.lang.Long">
+    SELECT gate_revision FROM memory_source_history WHERE owner_id=#{owner} AND card_id=#{id} AND id=#{decisionId} AND history_kind='SOURCE_REVIEW'
+  </select>
+  <select id="schedule" resultType="com.wenjie.studio.memory.MemoryReviewRows$ScheduleRow">
+    SELECT card_id,revision,cycle_id,status,pause_reason,algorithm_version,parameter_version,phase,step,
+      stability,difficulty,suggested_due_at,last_review_at,defer_until,last_rated_event_id,last_history_sequence,created_at,updated_at
+    FROM memory_schedule WHERE owner_id=#{owner} AND card_id=#{id}
+  </select>
+  <insert id="insertSchedule">
+    INSERT INTO memory_schedule (owner_id,card_id,revision,cycle_id,status,pause_reason,algorithm_version,parameter_version,
+      phase,step,stability,difficulty,suggested_due_at,last_review_at,defer_until,last_rated_event_id,last_history_sequence,created_at,updated_at)
+    VALUES (#{owner},#{value.cardId},#{value.revision},#{value.cycleId},#{value.status},#{value.pauseReason},#{value.algorithmVersion},#{value.parameterVersion},
+      #{value.state.phase},#{value.state.step},#{value.state.stability},#{value.state.difficulty},#{value.suggestedDueAt},#{value.state.lastReviewAt},
+      #{value.deferUntil},#{value.lastRatedEventId},#{value.lastHistorySequence},#{value.createdAt},#{value.updatedAt})
+  </insert>
+  <update id="updateSchedule">
+    UPDATE memory_schedule SET revision=#{value.revision},cycle_id=#{value.cycleId},status=#{value.status},pause_reason=#{value.pauseReason},
+      algorithm_version=#{value.algorithmVersion},parameter_version=#{value.parameterVersion},phase=#{value.state.phase},step=#{value.state.step},
+      stability=#{value.state.stability},difficulty=#{value.state.difficulty},suggested_due_at=#{value.suggestedDueAt},last_review_at=#{value.state.lastReviewAt},
+      defer_until=#{value.deferUntil},last_rated_event_id=#{value.lastRatedEventId},last_history_sequence=#{value.lastHistorySequence},updated_at=#{value.updatedAt}
+    WHERE owner_id=#{owner} AND card_id=#{value.cardId} AND revision=#{expected} AND revision &lt; 9007199254740991
+  </update>
+  <insert id="insertScheduleHistory">
+    INSERT INTO memory_schedule_history (id,owner_id,card_id,card_version_id,sequence_number,schedule_revision,change_kind,impact_id,snapshot_json,created_at)
+    VALUES (#{id},#{owner},#{cardId},#{versionId},#{sequence},#{revision},#{kind},#{impactId},#{snapshot},#{now})
+  </insert>
+  <select id="scheduleHistory" resultType="com.wenjie.studio.memory.MemoryReviewRows$HistoryRow">
+    SELECT sequence_number AS sequence,snapshot_json FROM memory_schedule_history WHERE owner_id=#{owner} AND card_id=#{id}
+    <if test="before != null">AND sequence_number &lt; #{before}</if>
+    ORDER BY sequence_number DESC LIMIT #{limit}
+  </select>
+  <select id="settings" resultType="com.wenjie.studio.memory.MemoryReviewDtos$Settings">
+    SELECT TRUE AS configured,revision,zone_id,daily_new_budget,daily_review_budget,created_at,updated_at
+    FROM memory_review_settings WHERE owner_id=#{owner}
+  </select>
+  <insert id="insertSettings">
+    INSERT INTO memory_review_settings (owner_id,revision,zone_id,daily_new_budget,daily_review_budget,created_at,updated_at)
+    VALUES (#{owner},#{value.revision},#{value.zoneId},#{value.dailyNewBudget},#{value.dailyReviewBudget},#{value.createdAt},#{value.updatedAt})
+  </insert>
+  <update id="updateSettings">
+    UPDATE memory_review_settings SET revision=#{value.revision},zone_id=#{value.zoneId},daily_new_budget=#{value.dailyNewBudget},
+      daily_review_budget=#{value.dailyReviewBudget},updated_at=#{value.updatedAt}
+    WHERE owner_id=#{owner} AND revision=#{expected} AND revision &lt; 9007199254740991
+  </update>
+</mapper>

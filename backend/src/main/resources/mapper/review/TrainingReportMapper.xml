@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.TrainingReportMapper">
+  <select id="questionCounts" resultType="com.wenjie.studio.review.TrainingReportRows$QuestionCountRow">
+    <!-- 提交事实与末状态分开；提交后跳过仍计入提交，最新入口也从不可变答案取出。 -->
+    SELECT q.id AS question_id,
+      (SELECT COUNT(*) FROM training_answer a
+        WHERE a.owner_id=q.owner_id AND a.session_id=q.session_id AND a.question_id=q.id) AS answer_count,
+      (SELECT a.id FROM training_answer a
+        WHERE a.owner_id=q.owner_id AND a.session_id=q.session_id AND a.question_id=q.id
+        ORDER BY a.version_number DESC LIMIT 1) AS latest_answer_id
+    FROM training_question q WHERE q.owner_id=#{owner} AND q.session_id=#{sessionId}
+    ORDER BY q.position_index
+  </select>
+  <select id="questionTitle" resultType="string">
+    SELECT title FROM training_question
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{questionId}
+  </select>
+  <select id="submissions" resultType="com.wenjie.studio.review.TrainingReportRows$SubmissionRow">
+    SELECT a.id AS answer_id,a.version_number AS number,a.created_at,a.answer_condition AS `condition`,a.exposure_json,
+      EXISTS(SELECT 1 FROM ai_evaluation_access x
+        WHERE x.owner_id=a.owner_id AND x.session_id=a.session_id AND x.question_id=a.question_id AND x.answer_id=a.id) AS access_allowed,
+      <!-- 只读取当前修订的类型，不把历史修订重复计数，也不返回观察正文。 -->
+      (SELECT COUNT(*) FROM review_feedback f JOIN review_feedback_revision r
+        ON r.owner_id=f.owner_id AND r.feedback_id=f.id AND r.revision=f.revision
+        WHERE f.owner_id=a.owner_id AND f.session_id=a.session_id AND f.question_id=a.question_id AND f.answer_id=a.id
+          AND JSON_UNQUOTE(JSON_EXTRACT(r.content_json,'$.kind'))='SELF_CHECK') AS self_check_count,
+      (SELECT COUNT(*) FROM review_feedback f JOIN review_feedback_revision r
+        ON r.owner_id=f.owner_id AND r.feedback_id=f.id AND r.revision=f.revision
+        WHERE f.owner_id=a.owner_id AND f.session_id=a.session_id AND f.question_id=a.question_id AND f.answer_id=a.id
+          AND JSON_UNQUOTE(JSON_EXTRACT(r.content_json,'$.kind'))='EXTERNAL_FEEDBACK') AS external_feedback_count,
+      (SELECT COUNT(DISTINCT s.id) FROM review_action_source s
+        WHERE s.owner_id=a.owner_id AND s.session_id=a.session_id AND s.question_id=a.question_id AND s.answer_id=a.id) AS action_source_count,
+      (SELECT COUNT(DISTINCT s.id) FROM review_action_source s
+        WHERE s.owner_id=a.owner_id AND s.session_id=a.session_id AND s.question_id=a.question_id AND s.answer_id=a.id
+          AND s.tracking='TRACKING') AS tracking_source_count
+    FROM training_answer a
+    WHERE a.owner_id=#{owner} AND a.session_id=#{sessionId} AND a.question_id=#{questionId}
+    <if test="before != null">AND a.version_number &lt; #{before}</if>
+    ORDER BY a.version_number DESC LIMIT #{limit}
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.review.TrainingReportRows$TaskRow">
+    SELECT e.answer_id,t.id,t.status,t.revision,t.updated_at,t.error_code
+    FROM ai_evaluation e JOIN ai_task t ON t.owner_id=e.owner_id AND t.id=e.task_id
+    WHERE e.owner_id=#{owner} AND e.session_id=#{sessionId} AND e.question_id=#{questionId}
+      AND t.purpose='ANSWER_EVALUATION'
+      AND e.answer_id IN
+      <foreach collection="answerIds" item="answerId" open="(" separator="," close=")">#{answerId}</foreach>
+    ORDER BY e.answer_id,t.created_at,t.id
+  </select>
+</mapper>

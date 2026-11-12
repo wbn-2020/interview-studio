@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.ComparisonMapper">
+  <select id="binding" resultType="com.wenjie.studio.ai.ComparisonRows$BindingRow">
+    SELECT owner_id,task_id,comparison_id,created_at FROM ai_comparison
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.ai.AiRows$TaskRow">
+    SELECT t.id,t.owner_id,t.purpose,t.status,t.revision,t.title,t.provider,t.model,t.currency,t.manifest_json,t.manifest_hash,
+      t.configuration_fingerprint,t.authorization_epoch,t.current_attempt_id,t.attempt_count,t.candidate_json,
+      t.error_code,t.created_at,t.updated_at
+    FROM ai_comparison c JOIN ai_task t ON t.owner_id=c.owner_id AND t.id=c.task_id
+    WHERE c.owner_id=#{owner} AND c.comparison_id=#{comparisonId}
+    <if test="cursor != null">AND t.id &gt; #{cursor}</if>
+    ORDER BY t.id LIMIT #{limit}
+  </select>
+  <select id="taskCount" resultType="int">
+    SELECT COUNT(*) FROM ai_comparison WHERE owner_id=#{owner} AND comparison_id=#{comparisonId}
+  </select>
+  <select id="pendingCount" resultType="int">
+    SELECT COUNT(*) FROM ai_comparison c JOIN ai_task t ON t.owner_id=c.owner_id AND t.id=c.task_id
+    WHERE c.owner_id=#{owner} AND c.comparison_id=#{comparisonId}
+      AND t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+    <if test="excludedTaskId != null">AND c.task_id &lt;&gt; #{excludedTaskId}</if>
+  </select>
+  <insert id="insertBinding">
+    INSERT INTO ai_comparison (owner_id,task_id,comparison_id,created_at)
+    VALUES (#{binding.ownerId},#{binding.taskId},#{binding.comparisonId},#{binding.createdAt})
+  </insert>
+</mapper>

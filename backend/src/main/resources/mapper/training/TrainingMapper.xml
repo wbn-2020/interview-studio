@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.training.TrainingMapper">
+  <sql id="sessionColumns">id,owner_id,title,mode,status,revision,material_access,assistance_event_sequence,
+    event_count,config_json,context_json,question_count,observed_millis,unobserved_millis,paused_millis,
+    observation_at,pause_started_at,created_at,updated_at,started_at,ended_at,end_checklist_json,generation</sql>
+  <sql id="questionColumns">id,owner_id,session_id,source_question_id,source_version_id,stage,title,status,
+    revision,snapshot_json,draft_json,draft_saved_at,latest_answer_id,answer_count,exposure_json,position_index,
+    question_kind AS kind,root_question_id,parent_question_id,parent_answer_id,ai_task_id</sql>
+  <select id="session" resultType="com.wenjie.studio.training.TrainingRows$SessionRow">
+    SELECT <include refid="sessionColumns"/> FROM training_session WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="active" resultType="com.wenjie.studio.training.TrainingRows$SessionRow">
+    SELECT <include refid="sessionColumns"/> FROM training_session
+    WHERE owner_id=#{owner} AND status IN ('RUNNING','PAUSED') LIMIT 1
+  </select>
+  <select id="sessions" resultType="com.wenjie.studio.training.TrainingRows$SessionRow">
+    SELECT <include refid="sessionColumns"/> FROM training_session WHERE owner_id=#{owner}
+    <if test="status != null">AND status=#{status}</if>
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="questions" resultType="com.wenjie.studio.training.TrainingRows$QuestionRow">
+    SELECT <include refid="questionColumns"/> FROM training_question
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} ORDER BY position_index
+  </select>
+  <select id="question" resultType="com.wenjie.studio.training.TrainingRows$QuestionRow">
+    SELECT <include refid="questionColumns"/> FROM training_question
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{id}
+  </select>
+  <select id="answer" resultType="com.wenjie.studio.training.TrainingRows$AnswerRow">
+    SELECT id,owner_id,session_id,question_id,version_number,content_json,answer_condition AS `condition`,
+      assistance_event_sequence,exposure_json,created_at FROM training_answer
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND question_id=#{questionId} AND id=#{id}
+  </select>
+  <select id="answers" resultType="com.wenjie.studio.training.TrainingDtos$AnswerSummary">
+    SELECT id,version_number AS number,created_at,answer_condition AS `condition` FROM training_answer
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND question_id=#{questionId}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="events" resultType="com.wenjie.studio.training.TrainingDtos$Event">
+    SELECT id,event_sequence AS `sequence`,event_kind AS kind,question_id,detail,duration_seconds,created_at
+    FROM training_event WHERE owner_id=#{owner} AND session_id=#{sessionId}
+    <if test="before != null">AND event_sequence &lt; #{before}</if>
+    ORDER BY event_sequence DESC LIMIT #{limit}
+  </select>
+  <select id="exposure" resultType="com.wenjie.studio.training.TrainingDtos$PriorExposure">
+    SELECT COALESCE(SUM(exposure_kind='AUTHORED'),0) AS authored_count,
+      COALESCE(SUM(exposure_kind='REFERENCE_VIEW'),0) AS reference_view_count,MAX(created_at) AS last_exposure_at,
+      COALESCE(SUM(exposure_kind='EVALUATION_ACCESS'),0) AS evaluation_access_count
+    FROM question_exposure WHERE owner_id=#{owner} AND question_id=#{sourceQuestionId}
+  </select>
+  <select id="boardImport" resultType="com.wenjie.studio.training.TrainingRows$BoardImportRow">
+    SELECT id,owner_id,session_id,board_id,board_revision,created_at FROM training_board_import
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{importId}
+  </select>
+  <insert id="insertSession">
+    INSERT INTO training_session (id,owner_id,title,mode,status,revision,material_access,assistance_event_sequence,
+      event_count,config_json,context_json,question_count,observed_millis,unobserved_millis,paused_millis,
+      observation_at,pause_started_at,created_at,updated_at,started_at,ended_at,end_checklist_json,generation)
+    VALUES (#{session.id},#{session.ownerId},#{session.title},#{session.mode},#{session.status},#{session.revision},
+      #{session.materialAccess},#{session.assistanceEventSequence},#{session.eventCount},#{session.configJson},
+      #{session.contextJson},#{session.questionCount},#{session.observedMillis},#{session.unobservedMillis},
+      #{session.pausedMillis},#{session.observationAt},#{session.pauseStartedAt},#{session.createdAt},
+      #{session.updatedAt},#{session.startedAt},#{session.endedAt},#{session.endChecklistJson},#{session.generation})
+  </insert>
+  <insert id="insertQuestion">
+    INSERT INTO training_question (id,owner_id,session_id,source_question_id,source_version_id,stage,title,status,
+      revision,snapshot_json,draft_json,draft_saved_at,latest_answer_id,answer_count,exposure_json,position_index,
+      question_kind,root_question_id,parent_question_id,parent_answer_id,ai_task_id)
+    VALUES (#{question.id},#{question.ownerId},#{question.sessionId},#{question.sourceQuestionId},#{question.sourceVersionId},
+      #{question.stage},#{question.title},#{question.status},#{question.revision},#{question.snapshotJson},
+      #{question.draftJson},#{question.draftSavedAt},#{question.latestAnswerId},#{question.answerCount},
+      #{question.exposureJson},#{question.positionIndex},#{question.kind},#{question.rootQuestionId},
+      #{question.parentQuestionId},#{question.parentAnswerId},#{question.aiTaskId})
+  </insert>
+  <insert id="insertAnswer">
+    INSERT INTO training_answer (id,owner_id,session_id,question_id,version_number,content_json,answer_condition,
+      assistance_event_sequence,exposure_json,created_at)
+    VALUES (#{answer.id},#{answer.ownerId},#{answer.sessionId},#{answer.questionId},#{answer.versionNumber},
+      #{answer.contentJson},#{answer.condition},#{answer.assistanceEventSequence},#{answer.exposureJson},#{answer.createdAt})
+  </insert>
+  <insert id="insertQuestionKnowledgeSnapshot">
+    INSERT INTO training_question_knowledge_snapshot (owner_id,session_id,question_id,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{sessionId},#{questionId},#{itemId},#{versionId})
+  </insert>
+  <insert id="insertDraftKnowledgeReference">
+    INSERT INTO training_draft_knowledge_reference (owner_id,session_id,question_id,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{sessionId},#{questionId},#{itemId},#{versionId})
+  </insert>
+  <insert id="insertAnswerKnowledgeReference">
+    INSERT INTO training_answer_knowledge_reference
+      (owner_id,session_id,question_id,answer_id,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{sessionId},#{questionId},#{answerId},#{itemId},#{versionId})
+  </insert>
+  <delete id="clearDraftKnowledgeReferences">
+    DELETE FROM training_draft_knowledge_reference
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND question_id=#{questionId}
+  </delete>
+  <insert id="insertBoardImport">
+    INSERT INTO training_board_import (id,owner_id,session_id,board_id,board_revision,created_at)
+    VALUES (#{entry.id},#{entry.ownerId},#{entry.sessionId},#{entry.boardId},#{entry.boardRevision},#{entry.createdAt})
+  </insert>
+  <insert id="insertEvent">
+    INSERT INTO training_event (id,owner_id,session_id,event_sequence,event_kind,question_id,detail,duration_seconds,created_at)
+    VALUES (#{event.id},#{owner},#{sessionId},#{event.sequence},#{event.kind},#{event.questionId},
+      #{event.detail},#{event.durationSeconds},#{event.createdAt})
+  </insert>
+  <update id="incrementEventCount">
+    UPDATE training_session SET event_count=event_count+1
+    WHERE owner_id=#{owner} AND id=#{id} AND event_count=#{expectedCount} AND event_count &lt; 2000
+  </update>
+  <update id="changeState">
+    UPDATE training_session SET status=#{status},revision=revision+1,generation=generation+1,material_access=#{materialAccess},
+      observation_at=#{observationAt},pause_started_at=#{pauseStartedAt},started_at=#{startedAt},ended_at=#{endedAt},
+      end_checklist_json=#{endChecklistJson},updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND generation &lt; 9007199254740991
+  </update>
+  <update id="incrementQuestionCount">
+    UPDATE training_session SET question_count=question_count+1,revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND question_count &lt; 60
+      AND revision &lt; 9007199254740991 AND status='RUNNING'
+  </update>
+  <update id="grantAssistance">
+    UPDATE training_session SET material_access=TRUE,assistance_event_sequence=#{sequence},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="updateTiming">
+    UPDATE training_session SET observed_millis=#{observedMillis},unobserved_millis=#{unobservedMillis},
+      paused_millis=#{pausedMillis},observation_at=#{observationAt},pause_started_at=#{pauseStartedAt}
+    WHERE owner_id=#{owner} AND id=#{id}
+  </update>
+  <update id="freezeExposure">
+    UPDATE training_question SET exposure_json=#{exposureJson}
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{questionId}
+  </update>
+  <update id="saveDraft">
+    UPDATE training_question SET draft_json=#{draftJson},draft_saved_at=#{savedAt},revision=revision+1
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="submit">
+    UPDATE training_question SET status='ANSWERED',latest_answer_id=#{answerId},answer_count=#{answerCount},
+      draft_json=NULL,draft_saved_at=NULL,revision=revision+1
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="changeQuestionStatus">
+    UPDATE training_question SET status=#{status},revision=revision+1
+    WHERE owner_id=#{owner} AND session_id=#{sessionId} AND id=#{id} AND revision=#{expected}
+  </update>
+</mapper>

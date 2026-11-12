@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.RelationEvidenceMapper">
+  <select id="source" resultType="com.wenjie.studio.ai.RelationEvidenceRows$SourceRow">
+    SELECT owner_id,task_id,kind,session_id,question_id,answer_id
+    FROM ai_relation_evidence_source WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <select id="materials" resultType="com.wenjie.studio.ai.RelationEvidenceRows$MaterialRow">
+    SELECT owner_id,task_id,kind,excerpt_id,ordinal FROM ai_relation_evidence_material
+    WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <insert id="insertSource">
+    INSERT INTO ai_relation_evidence_source (owner_id,task_id,kind,session_id,question_id,answer_id)
+    VALUES (#{source.ownerId},#{source.taskId},#{source.kind},#{source.sessionId},#{source.questionId},#{source.answerId})
+  </insert>
+  <insert id="insertMaterial">
+    INSERT INTO ai_relation_evidence_material (owner_id,task_id,kind,excerpt_id,ordinal)
+    VALUES (#{source.ownerId},#{source.taskId},#{source.kind},#{source.excerptId},#{source.ordinal})
+  </insert>
+</mapper>

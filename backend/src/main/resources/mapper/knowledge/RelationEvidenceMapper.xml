@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.RelationEvidenceMapper">
+  <sql id="entryColumns">
+    owner_id,id,relation_id,source_id,target_id,relation_type AS type,reason,source_kind,source_count,
+    session_id,question_id,answer_id,created_at
+  </sql>
+  <select id="relation" resultType="com.wenjie.studio.knowledge.RelationSupplementRows$RelationRow">
+    SELECT r.owner_id,r.id,r.source_id,r.target_id,r.relation_type AS type,
+      s.kind AS source_kind,s.status AS source_status,t.kind AS target_kind,t.status AS target_status
+    FROM knowledge_relation r
+    JOIN knowledge_item s ON s.owner_id=r.owner_id AND s.id=r.source_id
+    JOIN knowledge_item t ON t.owner_id=r.owner_id AND t.id=r.target_id
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <select id="entry" resultType="com.wenjie.studio.knowledge.RelationEvidenceRows$EntryRow">
+    SELECT <include refid="entryColumns"/> FROM knowledge_relation_evidence WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="hasHistory" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM knowledge_relation_evidence WHERE owner_id=#{owner} AND relation_id=#{relationId})
+  </select>
+  <select id="entries" resultType="com.wenjie.studio.knowledge.RelationEvidenceRows$EntryRow">
+    SELECT <include refid="entryColumns"/> FROM knowledge_relation_evidence
+    WHERE owner_id=#{owner} AND relation_id=#{relationId}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="snapshot" resultType="com.wenjie.studio.knowledge.RelationEvidenceRows$SnapshotRow">
+    SELECT owner_id,id,snapshot_json FROM knowledge_relation_evidence WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="materials" resultType="com.wenjie.studio.knowledge.RelationEvidenceRows$MaterialBindingRow">
+    SELECT owner_id,evidence_id,source_kind,excerpt_id,ordinal FROM knowledge_relation_evidence_material
+    WHERE owner_id=#{owner} AND evidence_id=#{evidenceId} ORDER BY ordinal
+  </select>
+  <insert id="insertEntry">
+    INSERT INTO knowledge_relation_evidence
+      (owner_id,id,relation_id,source_id,target_id,relation_type,reason,source_kind,source_count,
+       session_id,question_id,answer_id,snapshot_json,created_at)
+    VALUES (#{row.ownerId},#{row.id},#{row.relationId},#{row.sourceId},#{row.targetId},#{row.type},#{row.reason},
+      #{row.sourceKind},#{row.sourceCount},#{row.sessionId},#{row.questionId},#{row.answerId},#{snapshotJson},#{row.createdAt})
+  </insert>
+  <insert id="insertMaterial">
+    INSERT INTO knowledge_relation_evidence_material (owner_id,evidence_id,source_kind,excerpt_id,ordinal)
+    VALUES (#{row.ownerId},#{row.evidenceId},#{row.sourceKind},#{row.excerptId},#{row.ordinal})
+  </insert>
+</mapper>

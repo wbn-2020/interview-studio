@@ -3,8 +3,10 @@ node_modules/
 
 # 构建产物
 dist/
+/frontend/dist-*/
 build/
 out/
+backend/target/
 
 # 本地环境与密钥
 .env

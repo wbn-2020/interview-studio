@@ -1,0 +1,130 @@
+-- 原件、传输尝试和解析执行分别计入保留容量；失败不表示磁盘文件已经清除。
+CREATE TABLE material_attachment (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    file_name VARCHAR(200) NOT NULL,
+    kind VARCHAR(8) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    byte_size BIGINT NOT NULL,
+    sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    description VARCHAR(5000) NOT NULL,
+    status VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    ready_upload_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_attachment_owner (owner_id,id),
+    UNIQUE KEY uk_material_attachment_digest (owner_id,id,sha256),
+    CONSTRAINT fk_material_attachment_owner FOREIGN KEY (owner_id) REFERENCES owner_workspace(owner_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_material_attachment_kind CHECK (kind IN ('PDF','DOCX','PNG','JPEG')),
+    CONSTRAINT ck_material_attachment_size CHECK (byte_size BETWEEN 1 AND 20971520),
+    CONSTRAINT ck_material_attachment_state CHECK ((status='RESERVED' AND ready_upload_id IS NULL) OR (status='READY' AND ready_upload_id IS NOT NULL)),
+    CONSTRAINT ck_material_attachment_revision CHECK (revision BETWEEN 0 AND 9007199254740991)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE material_upload (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    reserved_bytes BIGINT NOT NULL,
+    received_bytes BIGINT NOT NULL DEFAULT 0,
+    error_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    claim_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    lease_until DATETIME(6) NULL,
+    created_at DATETIME(6) NOT NULL,
+    started_at DATETIME(6) NULL,
+    finished_at DATETIME(6) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_upload_owner (owner_id,id),
+    UNIQUE KEY uk_material_upload_attachment (owner_id,attachment_id,id),
+    KEY ix_material_upload_attachment_status (owner_id,attachment_id,status),
+    KEY ix_material_upload_lease (owner_id,status,lease_until),
+    CONSTRAINT fk_material_upload_attachment FOREIGN KEY (owner_id,attachment_id) REFERENCES material_attachment(owner_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_material_upload_status CHECK (status IN ('RESERVED','RECEIVING','SUCCEEDED','FAILED','INTERRUPTED')),
+    CONSTRAINT ck_material_upload_capacity CHECK (reserved_bytes BETWEEN 1 AND 20971520 AND received_bytes BETWEEN 0 AND reserved_bytes),
+    CONSTRAINT ck_material_upload_claim CHECK ((status='RECEIVING' AND claim_token IS NOT NULL AND lease_until IS NOT NULL) OR status<>'RECEIVING')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE material_parse_run (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    reserved_bytes BIGINT NOT NULL,
+    parser_version VARCHAR(100) NOT NULL,
+    truncated BOOLEAN NOT NULL DEFAULT FALSE,
+    warnings_json TEXT NOT NULL,
+    error_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    segment_count INT NOT NULL DEFAULT 0,
+    has_preview BOOLEAN NOT NULL DEFAULT FALSE,
+    claim_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    lease_until DATETIME(6) NULL,
+    created_at DATETIME(6) NOT NULL,
+    started_at DATETIME(6) NULL,
+    finished_at DATETIME(6) NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_run_owner (owner_id,id),
+    UNIQUE KEY uk_material_run_attachment (owner_id,attachment_id,id),
+    KEY ix_material_run_attachment_time (owner_id,attachment_id,created_at,id),
+    KEY ix_material_run_queue (owner_id,status,created_at,id),
+    CONSTRAINT fk_material_run_attachment FOREIGN KEY (owner_id,attachment_id,attachment_sha256) REFERENCES material_attachment(owner_id,id,sha256) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_material_run_status CHECK (status IN ('QUEUED','RUNNING','SUCCEEDED','FAILED','UNSUPPORTED','INTERRUPTED')),
+    CONSTRAINT ck_material_run_capacity CHECK (reserved_bytes IN (2097152,25165824)),
+    CONSTRAINT ck_material_run_segments CHECK (segment_count BETWEEN 0 AND 1000),
+    CONSTRAINT ck_material_run_warnings CHECK (JSON_VALID(warnings_json) AND JSON_TYPE(CAST(warnings_json AS JSON))='ARRAY'),
+    CONSTRAINT ck_material_run_claim CHECK ((status='RUNNING' AND claim_token IS NOT NULL AND lease_until IS NOT NULL) OR status<>'RUNNING')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE material_segment (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    run_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    ordinal INT NOT NULL,
+    locator VARCHAR(500) NOT NULL,
+    text MEDIUMTEXT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_segment_owner (owner_id,id),
+    UNIQUE KEY uk_material_segment_origin (owner_id,attachment_id,run_id,id),
+    UNIQUE KEY uk_material_segment_ordinal (run_id,ordinal),
+    CONSTRAINT fk_material_segment_run FOREIGN KEY (owner_id,attachment_id,run_id) REFERENCES material_parse_run(owner_id,attachment_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_material_segment_ordinal CHECK (ordinal BETWEEN 1 AND 1000),
+    CONSTRAINT ck_material_segment_text CHECK (CHAR_LENGTH(text) BETWEEN 1 AND 10000)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE material_excerpt (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    attachment_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    run_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    segment_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    origin VARCHAR(8) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    locator VARCHAR(500) NOT NULL,
+    text MEDIUMTEXT NOT NULL,
+    start_offset INT NULL,
+    end_offset INT NULL,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_excerpt_owner (owner_id,id),
+    KEY ix_material_excerpt_attachment (owner_id,attachment_id,id),
+    CONSTRAINT fk_material_excerpt_attachment FOREIGN KEY (owner_id,attachment_id,attachment_sha256) REFERENCES material_attachment(owner_id,id,sha256) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_material_excerpt_segment FOREIGN KEY (owner_id,attachment_id,run_id,segment_id) REFERENCES material_segment(owner_id,attachment_id,run_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_material_excerpt_origin CHECK ((origin='MANUAL' AND run_id IS NULL AND segment_id IS NULL AND start_offset IS NULL AND end_offset IS NULL)
+      OR (origin='PARSED' AND run_id IS NOT NULL AND segment_id IS NOT NULL AND start_offset IS NOT NULL AND end_offset IS NOT NULL AND start_offset>=0 AND end_offset>start_offset AND end_offset<=10000)),
+    CONSTRAINT ck_material_excerpt_text CHECK (CHAR_LENGTH(text) BETWEEN 1 AND 10000),
+    CONSTRAINT ck_material_excerpt_locator CHECK (CHAR_LENGTH(TRIM(locator)) BETWEEN 1 AND 500)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE preparation_material_reference (
+    owner_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    item_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    excerpt_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (version_id,excerpt_id),
+    KEY ix_preparation_material_excerpt (owner_id,excerpt_id,item_id),
+    CONSTRAINT fk_preparation_material_version FOREIGN KEY (owner_id,item_id,version_id) REFERENCES preparation_version(owner_id,item_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_preparation_material_excerpt FOREIGN KEY (owner_id,excerpt_id) REFERENCES material_excerpt(owner_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

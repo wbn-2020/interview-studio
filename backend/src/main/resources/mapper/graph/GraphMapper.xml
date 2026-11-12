@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.graph.GraphMapper">
+  <resultMap id="viewport" type="com.wenjie.studio.graph.GraphDtos$Viewport">
+    <constructor>
+      <arg column="x" javaType="java.lang.Double"/>
+      <arg column="y" javaType="java.lang.Double"/>
+      <arg column="zoom" javaType="java.lang.Double"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="historyEntry" type="com.wenjie.studio.graph.GraphDtos$HistoryEntry">
+    <constructor>
+      <arg column="revision" javaType="_long"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+      <arg column="position_count" javaType="_int"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="historyRow" type="com.wenjie.studio.graph.GraphDtos$HistoryRow">
+    <constructor>
+      <arg column="revision" javaType="_long"/>
+      <arg column="before_json" javaType="java.lang.String"/>
+      <arg column="after_json" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="viewport" resultMap="viewport">
+    SELECT x, y, zoom FROM graph_viewport WHERE owner_id = #{owner}
+  </select>
+  <insert id="saveViewport">
+    INSERT INTO graph_viewport (owner_id, x, y, zoom)
+    VALUES (#{owner}, #{viewport.x}, #{viewport.y}, #{viewport.zoom}) AS incoming
+    ON DUPLICATE KEY UPDATE x = incoming.x, y = incoming.y, zoom = incoming.zoom
+  </insert>
+  <select id="activeNodes" resultMap="com.wenjie.studio.knowledge.KnowledgeMapper.node">
+    SELECT i.id, v.title, p.x, p.y FROM knowledge_item i
+    JOIN knowledge_version v ON v.id = i.current_version_id AND v.item_id = i.id AND v.owner_id = i.owner_id
+    JOIN knowledge_position p ON p.item_id = i.id AND p.owner_id = i.owner_id
+    WHERE i.owner_id = #{owner} AND i.kind = 'CONCEPT' AND i.status = 'ACTIVE' AND i.id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY i.id
+  </select>
+  <select id="activeRelations" resultMap="com.wenjie.studio.knowledge.KnowledgeMapper.relation">
+    SELECT r.id, r.source_id, r.target_id, r.relation_type FROM knowledge_relation r
+    JOIN knowledge_item s ON s.id = r.source_id AND s.owner_id = r.owner_id
+    JOIN knowledge_item t ON t.id = r.target_id AND t.owner_id = r.owner_id
+    WHERE r.owner_id = #{owner} AND s.kind = 'CONCEPT' AND t.kind = 'CONCEPT'
+      AND s.status = 'ACTIVE' AND t.status = 'ACTIVE'
+    <if test="type != null">AND r.relation_type = #{type}</if>
+    ORDER BY r.id LIMIT #{limit}
+  </select>
+  <insert id="insertHistory">
+    INSERT INTO graph_layout_history (owner_id, revision, before_json, after_json, position_count, created_at)
+    VALUES (#{owner}, #{revision}, #{beforeJson}, #{afterJson}, #{positionCount}, #{now})
+  </insert>
+  <select id="history" resultMap="historyEntry">
+    SELECT revision, created_at, position_count FROM graph_layout_history WHERE owner_id = #{owner}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <select id="historyEntry" resultMap="historyRow">
+    SELECT revision, before_json, after_json FROM graph_layout_history
+    WHERE owner_id = #{owner} AND revision = #{revision}
+  </select>
+</mapper>

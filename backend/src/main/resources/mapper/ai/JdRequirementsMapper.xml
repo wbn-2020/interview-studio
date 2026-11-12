@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.JdRequirementsMapper">
+  <select id="sources" resultType="com.wenjie.studio.ai.JdRequirementsRows$SourceRow">
+    SELECT owner_id,task_id,source_item_id AS item_id,source_version_id AS version_id,
+      source_version_number AS number,source_title AS title,source_kind AS kind,ordinal
+    FROM ai_preparation_source WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <select id="decision" resultType="com.wenjie.studio.ai.JdRequirementsRows$DecisionRow">
+    SELECT owner_id,task_id,status,target_item_id,target_version_id,requirements_json,created_at
+    FROM ai_jd_requirement_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertDecision">
+    INSERT INTO ai_jd_requirement_decision (owner_id,task_id,status,target_item_id,target_version_id,requirements_json,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.targetItemId},
+      #{decision.targetVersionId},#{decision.requirementsJson},#{decision.createdAt})
+  </insert>
+  <select id="targetVersion" resultType="com.wenjie.studio.ai.JdRequirementsRows$TargetVersion">
+    SELECT v.id,v.owner_id,v.item_id,i.kind,v.version_number AS number
+    FROM preparation_version v JOIN preparation_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+  </select>
+  <select id="requirementIds" resultType="string">
+    SELECT requirements.requirement_id FROM preparation_version v
+    JOIN JSON_TABLE(v.content_json,'$.requirements[*]'
+      COLUMNS (position_index FOR ORDINALITY,requirement_id CHAR(36) PATH '$.id' ERROR ON EMPTY ERROR ON ERROR)) requirements
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+    ORDER BY requirements.position_index
+  </select>
+  <select id="origins" resultType="com.wenjie.studio.ai.JdRequirementsRows$OriginRow">
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,
+      t.purpose,t.status AS task_status,t.manifest_json,t.manifest_hash,
+      JSON_EXTRACT(t.candidate_json,'$.requirements[*].number') AS candidate_numbers_json,d.requirements_json
+    FROM ai_jd_requirement_decision d
+    JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId} AND d.status='ADOPTED' AND v.version_number &lt;=#{through}
+    <if test="before != null">AND v.version_number &lt; #{before}</if>
+    ORDER BY v.version_number DESC LIMIT #{limit}
+  </select>
+</mapper>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.prepare.ExpressionBasisReviewMapper">
+  <sql id="reviewColumns">id,item_id,version_id,version_number,revision,kind,reason,item_revision,created_at</sql>
+  <select id="revision" resultType="long">
+    SELECT COALESCE(MAX(revision),0) FROM expression_basis_review WHERE owner_id=#{owner} AND item_id=#{itemId}
+  </select>
+  <select id="latest" resultType="com.wenjie.studio.prepare.ExpressionBasisReviewRows$ReviewRow">
+    SELECT <include refid="reviewColumns"/> FROM expression_basis_review
+    WHERE owner_id=#{owner} AND item_id=#{itemId} AND version_id=#{versionId} ORDER BY revision DESC LIMIT 1
+  </select>
+  <select id="history" resultType="com.wenjie.studio.prepare.ExpressionBasisReviewRows$ReviewRow">
+    SELECT <include refid="reviewColumns"/> FROM expression_basis_review
+    WHERE owner_id=#{owner} AND item_id=#{itemId}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <select id="basis" resultType="com.wenjie.studio.prepare.ExpressionBasisReviewRows$BasisRow">
+    SELECT ordinal,fact_item_id AS item_id,fact_version_id AS version_id,title,version_number,
+      project_id,source_generation,project_generation
+    FROM expression_basis_review_fact WHERE owner_id=#{owner} AND review_id=#{reviewId} ORDER BY ordinal LIMIT 51
+  </select>
+  <insert id="insertReview">
+    INSERT INTO expression_basis_review
+      (id,owner_id,item_id,version_id,version_number,revision,kind,reason,item_revision,created_at)
+    VALUES (#{row.id},#{owner},#{row.itemId},#{row.versionId},#{row.versionNumber},#{row.revision},
+      #{row.kind},#{row.reason},#{row.itemRevision},#{row.createdAt})
+  </insert>
+  <insert id="insertBasis">
+    INSERT INTO expression_basis_review_fact
+      (owner_id,review_id,item_id,version_id,ordinal,fact_item_id,fact_version_id,title,version_number,
+       project_id,source_generation,project_generation)
+    VALUES (#{owner},#{review.id},#{review.itemId},#{review.versionId},#{row.ordinal},#{row.itemId},#{row.versionId},
+      #{row.title},#{row.versionNumber},#{row.projectId},#{row.sourceGeneration},#{row.projectGeneration})
+  </insert>
+  <update id="confirmItem">
+    UPDATE preparation_item SET revision=revision+1,source_generation=source_generation+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{itemId} AND kind='EXPRESSION' AND status='ACTIVE'
+      AND revision=#{expected} AND current_version_id=#{versionId}
+      AND revision &lt; 9007199254740991 AND source_generation &lt; 9007199254740991
+  </update>
+</mapper>

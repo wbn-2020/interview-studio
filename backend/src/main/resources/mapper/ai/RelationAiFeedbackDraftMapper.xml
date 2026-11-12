@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.RelationAiFeedbackDraftMapper">
+    <select id="binding" resultType="com.wenjie.studio.ai.RelationAiFeedbackDraftRows$Binding">
+        SELECT owner_id, task_id, evaluation_task_id, attempt_id, report_hash, feedback_id,
+               session_id, question_id, answer_id, decision_revision, decision_choice, level, source_count
+        FROM ai_relation_feedback_draft_source
+        WHERE owner_id = #{owner} AND task_id = #{taskId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO ai_relation_feedback_draft_source (
+            owner_id, task_id, evaluation_task_id, attempt_id, report_hash, feedback_id,
+            session_id, question_id, answer_id, decision_revision, decision_choice, level, source_count
+        ) VALUES (
+            #{binding.ownerId}, #{binding.taskId}, #{binding.evaluationTaskId}, #{binding.attemptId},
+            #{binding.reportHash}, #{binding.feedbackId}, #{binding.sessionId}, #{binding.questionId},
+            #{binding.answerId}, #{binding.decisionRevision}, #{binding.decisionChoice}, #{binding.level},
+            #{binding.sourceCount}
+        )
+    </insert>
+</mapper>

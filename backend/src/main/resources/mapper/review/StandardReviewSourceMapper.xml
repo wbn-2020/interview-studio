@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.StandardReviewSourceMapper">
+  <select id="question" resultType="com.wenjie.studio.review.StandardReviewSourceRows$Question">
+    SELECT q.id,q.owner_id,q.status,current_version.id AS current_version_id,v.id AS version_id,
+      v.prompt_json,v.reference_answer,v.checkpoints_json
+    FROM question q JOIN question_version v ON v.owner_id=q.owner_id AND v.question_id=q.id
+    LEFT JOIN question_version current_version ON current_version.owner_id=q.owner_id
+      AND current_version.question_id=q.id AND current_version.id=q.current_version_id
+    WHERE q.owner_id=#{owner} AND q.id=#{id} AND v.id=#{versionId}
+  </select>
+  <select id="referenceExposure" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM question_exposure WHERE owner_id=#{owner} AND id=#{id}
+      AND question_id=#{questionId} AND version_id=#{versionId} AND exposure_kind='REFERENCE_VIEW')
+  </select>
+  <select id="knowledge" resultType="com.wenjie.studio.review.StandardReviewSourceRows$Knowledge">
+    SELECT i.id,i.owner_id,i.kind,i.status,i.current_version_id,v.id AS version_id,v.body,
+      current_version.body AS current_body
+    FROM knowledge_item i
+    LEFT JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    LEFT JOIN knowledge_version current_version ON current_version.owner_id=i.owner_id
+      AND current_version.item_id=i.id AND current_version.id=i.current_version_id
+    WHERE i.owner_id=#{owner} AND i.id=#{id}
+  </select>
+  <select id="attachment" resultType="com.wenjie.studio.review.StandardReviewSourceRows$Attachment">
+    SELECT id,owner_id,status,sha256 FROM material_attachment WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <insert id="insertReferenceExposure">
+    INSERT INTO question_exposure (id,owner_id,question_id,version_id,exposure_kind,created_at)
+    VALUES (#{id},#{owner},#{questionId},#{versionId},'REFERENCE_VIEW',#{now})
+  </insert>
+</mapper>

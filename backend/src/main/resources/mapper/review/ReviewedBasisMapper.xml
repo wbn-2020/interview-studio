@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewedBasisMapper">
+  <sql id="generationColumns">owner_id,source_kind,source_id,generation,updated_at</sql>
+  <sql id="changeColumns">owner_id,source_kind,source_id,generation,change_kind,
+    previous_version_id,current_version_id,previous_status,current_status,created_at,upstream_version_id</sql>
+
+  <select id="knowledge" resultType="com.wenjie.studio.review.ReviewedBasisRows$KnowledgeRow">
+    SELECT i.owner_id,i.id AS item_id,v.id AS version_id,i.status
+    FROM knowledge_item i JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+    JOIN knowledge_version adopted ON adopted.owner_id=i.owner_id AND adopted.item_id=i.id AND adopted.id=#{versionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId} AND v.version_number &gt;= adopted.version_number
+  </select>
+  <select id="generation" resultType="com.wenjie.studio.review.ReviewedBasisRows$GenerationRow">
+    SELECT <include refid="generationColumns"/> FROM review_basis_generation
+    WHERE owner_id=#{owner} AND source_kind=#{kind} AND source_id=#{id}
+  </select>
+  <select id="lockGeneration" resultType="com.wenjie.studio.review.ReviewedBasisRows$GenerationRow">
+    SELECT <include refid="generationColumns"/> FROM review_basis_generation
+    WHERE owner_id=#{owner} AND source_kind=#{kind} AND source_id=#{id} FOR UPDATE
+  </select>
+  <select id="firstAfter" resultType="com.wenjie.studio.review.ReviewedBasisRows$ChangeRow">
+    SELECT <include refid="changeColumns"/> FROM review_basis_change
+    WHERE owner_id=#{owner} AND source_kind=#{kind} AND source_id=#{id} AND generation &gt; #{baseline}
+    ORDER BY generation LIMIT 1
+  </select>
+  <select id="upstreamCountAfter" resultType="long">
+    SELECT COUNT(*) FROM review_basis_change
+    WHERE owner_id=#{owner} AND source_kind='KNOWLEDGE' AND source_id=#{id}
+      AND generation &gt; #{baseline} AND change_kind='KNOWLEDGE_UPSTREAM_CHANGED'
+  </select>
+  <select id="firstUpstreamAfter" resultType="com.wenjie.studio.review.ReviewedBasisRows$ChangeRow">
+    SELECT c.owner_id,c.source_kind,c.source_id,c.generation,c.change_kind,
+      c.previous_version_id,c.current_version_id,c.previous_status,c.current_status,c.created_at,c.upstream_version_id
+    FROM review_basis_change c
+    JOIN knowledge_version adopted ON adopted.owner_id=c.owner_id AND adopted.item_id=c.source_id
+      AND adopted.id=c.upstream_version_id
+    JOIN knowledge_version cited ON cited.owner_id=c.owner_id AND cited.item_id=c.source_id
+      AND cited.id=#{versionId} AND cited.version_number &gt;= adopted.version_number
+    WHERE c.owner_id=#{owner} AND c.source_kind='KNOWLEDGE' AND c.source_id=#{id}
+      AND c.generation &gt; #{baseline} AND c.change_kind='KNOWLEDGE_UPSTREAM_CHANGED'
+    ORDER BY c.generation LIMIT 1
+  </select>
+  <insert id="insertGeneration">
+    INSERT INTO review_basis_generation (<include refid="generationColumns"/>)
+    VALUES (#{row.ownerId},#{row.sourceKind},#{row.sourceId},#{row.generation},#{row.updatedAt})
+  </insert>
+  <update id="updateGeneration">
+    UPDATE review_basis_generation SET generation=#{row.generation},updated_at=#{row.updatedAt}
+    WHERE owner_id=#{row.ownerId} AND source_kind=#{row.sourceKind} AND source_id=#{row.sourceId}
+      AND generation=#{expected} AND updated_at &lt;= #{row.updatedAt}
+  </update>
+  <insert id="insertChange">
+    INSERT INTO review_basis_change (<include refid="changeColumns"/>)
+    VALUES (#{row.ownerId},#{row.sourceKind},#{row.sourceId},#{row.generation},#{row.changeKind},
+      #{row.previousVersionId},#{row.currentVersionId},#{row.previousStatus},#{row.currentStatus},#{row.createdAt},#{row.upstreamVersionId})
+  </insert>
+</mapper>

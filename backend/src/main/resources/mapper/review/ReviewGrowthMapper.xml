@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewGrowthMapper">
+  <sql id="feedbackCandidates">
+    SELECT 'MANUAL_FEEDBACK' AS kind,feedback_id AS object_id,NULL AS version_id,revision,
+      created_at AS occurred_at,CONCAT('MANUAL_FEEDBACK:',feedback_id,':-:',revision,':-') AS evidence_key
+    FROM review_feedback_revision WHERE owner_id=#{owner}
+  </sql>
+  <sql id="recollectionCandidates">
+    SELECT 'RECOLLECTION' AS kind,recollection_id AS object_id,id AS version_id,NULL AS revision,
+      created_at AS occurred_at,CONCAT('RECOLLECTION:',recollection_id,':',id,':-:-') AS evidence_key
+    FROM review_recollection_version WHERE owner_id=#{owner}
+  </sql>
+  <sql id="judgmentCandidates">
+    SELECT 'REPLAY_JUDGMENT' AS kind,id AS object_id,NULL AS version_id,NULL AS revision,
+      created_at AS occurred_at,CONCAT('REPLAY_JUDGMENT:',id,':-:-:-') AS evidence_key
+    FROM review_source_judgment WHERE owner_id=#{owner}
+  </sql>
+  <sql id="candidateBounds">
+    WHERE occurred_at &gt;= #{start} AND occurred_at &lt; #{end}
+    <if test="afterAt != null">
+      AND (occurred_at &lt; #{afterAt} OR (occurred_at=#{afterAt} AND evidence_key &gt; #{afterKey}))
+    </if>
+    ORDER BY occurred_at DESC,evidence_key ASC LIMIT #{limit}
+  </sql>
+  <select id="candidates" resultType="com.wenjie.studio.review.ReviewGrowthRows$Candidate">
+    SELECT * FROM (
+      <choose>
+        <when test="kind == 'MANUAL_FEEDBACK'"><include refid="feedbackCandidates"/></when>
+        <when test="kind == 'RECOLLECTION'"><include refid="recollectionCandidates"/></when>
+        <otherwise><include refid="judgmentCandidates"/></otherwise>
+      </choose>
+    ) candidate <include refid="candidateBounds"/>
+  </select>
+  <select id="activityCandidates" resultType="com.wenjie.studio.review.ReviewGrowthRows$Candidate">
+    SELECT * FROM (
+      <include refid="feedbackCandidates"/> UNION ALL
+      <include refid="recollectionCandidates"/> UNION ALL
+      <include refid="judgmentCandidates"/> UNION ALL
+      SELECT 'REPLAY_START' AS kind,r.id AS object_id,NULL AS version_id,NULL AS revision,
+        s.started_at AS occurred_at,CONCAT('REPLAY_START:',r.id) AS evidence_key
+      FROM review_repractice r JOIN training_session s ON s.owner_id=r.owner_id AND s.id=r.session_id
+      WHERE r.owner_id=#{owner} AND s.started_at IS NOT NULL
+    ) candidate <include refid="candidateBounds"/>
+  </select>
+
+  <select id="feedback" resultType="com.wenjie.studio.review.ReviewGrowthRows$Feedback">
+    SELECT v.owner_id,v.feedback_id AS id,v.revision,f.revision AS current_revision,
+      f.session_id,f.question_id,f.answer_id,v.created_at,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.kind')) AS kind,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.authorLabel')) AS author_label,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.dimension')) AS dimension,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.coverage')) AS coverage,
+      SHA2(CAST(v.content_json AS BINARY),256) AS content_hash,
+      (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=10
+        AND OCTET_LENGTH(v.content_json)&lt;=131072
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.kind'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.authorLabel'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.dimension'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.coverage'))='STRING') AS metadata_valid
+    FROM review_feedback_revision v LEFT JOIN review_feedback f
+      ON f.owner_id=v.owner_id AND f.id=v.feedback_id
+    WHERE v.owner_id=#{owner} AND v.feedback_id=#{id} AND v.revision=#{revision}
+  </select>
+  <select id="latestDecision" resultType="com.wenjie.studio.review.ReviewGrowthRows$Decision">
+    SELECT id,owner_id,feedback_id,feedback_revision,revision,choice,created_at
+    FROM review_feedback_decision WHERE owner_id=#{owner} AND feedback_id=#{id} AND feedback_revision=#{revision}
+    ORDER BY revision DESC LIMIT 1
+  </select>
+  <select id="recollection" resultType="com.wenjie.studio.review.ReviewGrowthRows$Recollection">
+    SELECT v.owner_id,v.recollection_id AS id,v.id AS version_id,v.version_number,v.title,v.baseline_kind,v.created_at,
+      r.status,r.revision,r.current_version_id,r.version_number AS head_version_number,
+      current_v.version_number AS actual_current_version_number,v.interview_id,v.interview_revision,v.interview_json,
+      (CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.answerFragment')))&gt;0) AS has_answer_fragment,
+      (CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.feedback')))&gt;0) AS has_feedback,
+      (CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.uncertainty')))&gt;0) AS has_uncertainty,
+      SHA2(CAST(v.content_json AS BINARY),256) AS content_hash,
+      (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=9
+        AND OCTET_LENGTH(v.content_json)&lt;=196608
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.title'))='STRING'
+        AND JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.title'))=v.title
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.baselineKind'))='STRING'
+        AND JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.baselineKind'))=v.baseline_kind
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.answerFragment'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.feedback'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.uncertainty'))='STRING') AS metadata_valid
+    FROM review_recollection_version v LEFT JOIN review_recollection r
+      ON r.owner_id=v.owner_id AND r.id=v.recollection_id
+    LEFT JOIN review_recollection_version current_v
+      ON current_v.owner_id=r.owner_id AND current_v.recollection_id=r.id AND current_v.id=r.current_version_id
+    WHERE v.owner_id=#{owner} AND v.recollection_id=#{id} AND v.id=#{versionId}
+  </select>
+  <sql id="judgmentColumns">
+    owner_id,id,source_id,revision,comparison_id,repractice_id,answer_id,
+    SHA2(CAST(verification AS BINARY),256) AS verification_hash,outcome,created_at,
+    SHA2(CAST(JSON_ARRAY(reason,citations_json) AS BINARY),256) AS content_hash,
+    (CHAR_LENGTH(verification) BETWEEN 1 AND 2000 AND JSON_TYPE(citations_json)='ARRAY'
+      AND JSON_LENGTH(citations_json)&lt;=6 AND OCTET_LENGTH(citations_json)&lt;=32768) AS metadata_valid
+  </sql>
+  <select id="judgment" resultType="com.wenjie.studio.review.ReviewGrowthRows$Judgment">
+    SELECT <include refid="judgmentColumns"/> FROM review_source_judgment WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="latestJudgment" resultType="com.wenjie.studio.review.ReviewGrowthRows$Judgment">
+    SELECT <include refid="judgmentColumns"/> FROM review_source_judgment
+    WHERE owner_id=#{owner} AND source_id=#{sourceId} ORDER BY revision DESC LIMIT 1
+  </select>
+  <select id="comparison" resultType="com.wenjie.studio.review.ReviewGrowthRows$Comparison">
+    SELECT c.owner_id,c.id,c.repractice_id,c.session_id,c.question_id,c.answer_id,c.answer_number,
+      a.version_number AS actual_answer_number,s.status AS session_status
+    FROM review_comparison c LEFT JOIN training_answer a
+      ON a.owner_id=c.owner_id AND a.session_id=c.session_id AND a.question_id=c.question_id AND a.id=c.answer_id
+    LEFT JOIN training_session s ON s.owner_id=c.owner_id AND s.id=c.session_id
+    WHERE c.owner_id=#{owner} AND c.id=#{id}
+  </select>
+  <select id="repractice" resultType="com.wenjie.studio.review.RepracticeRows$RepracticeRow">
+    SELECT id,owner_id,baseline_session_id,baseline_question_id,baseline_answer_id,session_id,question_id,
+      question_mode,created_at,baseline_kind,recollection_id,recollection_version_id,recollection_revision
+    FROM review_repractice WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="snapshot" resultType="com.wenjie.studio.review.ReviewGrowthRows$Snapshot">
+    SELECT owner_id,repractice_id,source_id,action_id,action_revision,position_index AS position,
+      JSON_OBJECT(
+        'sourceId',JSON_EXTRACT(snapshot_json,'$.sourceId'),
+        'actionId',JSON_EXTRACT(snapshot_json,'$.actionId'),
+        'actionRevision',JSON_EXTRACT(snapshot_json,'$.actionRevision'),
+        'id',JSON_EXTRACT(snapshot_json,'$.source.id'),
+        'originActionId',JSON_EXTRACT(snapshot_json,'$.source.originActionId'),
+        'kind',JSON_EXTRACT(snapshot_json,'$.source.kind'),
+        'sessionId',JSON_EXTRACT(snapshot_json,'$.source.answer.sessionId'),
+        'questionId',JSON_EXTRACT(snapshot_json,'$.source.answer.questionId'),
+        'answerId',JSON_EXTRACT(snapshot_json,'$.source.answer.answerId'),
+        'feedbackId',JSON_EXTRACT(snapshot_json,'$.source.feedbackId'),
+        'feedbackRevision',JSON_EXTRACT(snapshot_json,'$.source.feedbackRevision'),
+        'taskId',JSON_EXTRACT(snapshot_json,'$.source.taskId'),
+        'observationId',JSON_EXTRACT(snapshot_json,'$.source.observationId'),
+        'recollectionId',JSON_EXTRACT(snapshot_json,'$.source.recollection.recollectionId'),
+        'recollectionVersionId',JSON_EXTRACT(snapshot_json,'$.source.recollection.versionId'),
+        'recollectionVersionNumber',JSON_EXTRACT(snapshot_json,'$.source.recollection.versionNumber'),
+        'recollectionBaselineKind',JSON_EXTRACT(snapshot_json,'$.source.recollection.baselineKind'),
+        'tracking',JSON_EXTRACT(snapshot_json,'$.source.tracking')) AS identity_json,
+      SHA2(CAST(JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.source.verification')) AS BINARY),256) AS verification_hash,
+      (JSON_TYPE(snapshot_json)='OBJECT' AND OCTET_LENGTH(snapshot_json)&lt;=196608
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source'))='OBJECT'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.sourceId'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.actionId'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.actionRevision'))='INTEGER'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.id'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.originActionId'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.kind'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.tracking'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.verification'))='STRING'
+        AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.source.verification'))) BETWEEN 1 AND 2000
+        AND CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.source.kind'))='RECOLLECTION' THEN
+          JSON_EXTRACT(snapshot_json,'$.source.recollection') =
+            (SELECT CAST(s.recollection_json AS JSON) FROM review_action_source s
+              WHERE s.owner_id=review_repractice_source.owner_id AND s.id=review_repractice_source.source_id)
+        ELSE JSON_EXTRACT(snapshot_json,'$.source.recollection') IS NULL
+          OR JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source.recollection'))='NULL' END) AS metadata_valid
+    FROM review_repractice_source WHERE owner_id=#{owner} AND repractice_id=#{repracticeId} AND source_id=#{sourceId}
+  </select>
+  <select id="source" resultType="com.wenjie.studio.review.ReviewGrowthRows$Source">
+    SELECT s.owner_id,s.id,s.action_id,s.origin_action_id,s.kind,s.session_id,s.question_id,s.answer_id,
+      s.feedback_id,s.feedback_revision,s.task_id,s.observation_id,s.recollection_id,s.recollection_version_id,
+      CAST(JSON_UNQUOTE(JSON_EXTRACT(s.recollection_json,'$.versionNumber')) AS UNSIGNED) AS recollection_version_number,
+      JSON_UNQUOTE(JSON_EXTRACT(s.recollection_json,'$.baselineKind')) AS recollection_baseline_kind,
+      SHA2(CAST(s.verification AS BINARY),256) AS verification_hash,s.tracking,
+      a.revision AS action_revision,a.status AS action_status,a.merged_into,
+      (CHAR_LENGTH(s.verification) BETWEEN 1 AND 2000 AND
+        CASE WHEN s.kind='RECOLLECTION' THEN
+          s.session_id IS NULL AND s.question_id IS NULL AND s.answer_id IS NULL
+          AND s.feedback_id IS NULL AND s.feedback_revision IS NULL AND s.task_id IS NULL AND s.observation_id IS NULL
+          AND s.manual_kind IS NULL AND s.author_label IS NULL AND s.observation_json IS NULL AND s.decision_json IS NULL
+          AND JSON_TYPE(s.recollection_json)='OBJECT'
+          AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.recollectionId'))='STRING'
+          AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.versionId'))='STRING'
+          AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.versionNumber'))='INTEGER'
+          AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.baselineKind'))='STRING'
+          AND JSON_UNQUOTE(JSON_EXTRACT(s.recollection_json,'$.recollectionId'))=s.recollection_id
+          AND JSON_UNQUOTE(JSON_EXTRACT(s.recollection_json,'$.versionId'))=s.recollection_version_id
+        ELSE s.recollection_id IS NULL AND s.recollection_version_id IS NULL AND s.recollection_json IS NULL END) AS metadata_valid
+    FROM review_action_source s LEFT JOIN review_action a ON a.owner_id=s.owner_id AND a.id=s.action_id
+    WHERE s.owner_id=#{owner} AND s.id=#{id}
+  </select>
+  <select id="sourceIds" resultType="java.lang.String">
+    SELECT id FROM review_action_source WHERE owner_id=#{owner}
+    <if test="after != null">AND id &gt; #{after}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="replayStart" resultType="com.wenjie.studio.review.ReviewGrowthRows$ReplayStart">
+    SELECT r.owner_id,r.id,r.session_id,r.question_id,r.question_mode,s.started_at,s.status AS session_status,
+      s.question_count,q.kind AS question_kind
+    FROM review_repractice r LEFT JOIN training_session s ON s.owner_id=r.owner_id AND s.id=r.session_id
+    LEFT JOIN training_question q ON q.owner_id=r.owner_id AND q.session_id=r.session_id AND q.id=r.question_id
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <select id="answerSessionStatus" resultType="java.lang.String">
+    SELECT s.status FROM training_answer a JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    WHERE a.owner_id=#{owner} AND a.session_id=#{sessionId} AND a.question_id=#{questionId} AND a.id=#{answerId}
+  </select>
+</mapper>

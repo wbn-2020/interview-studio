@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.RecollectionMapper">
+  <sql id="itemColumns">id,owner_id,status,revision,current_version_id,version_number,created_at,updated_at</sql>
+  <sql id="versionColumns">id,owner_id,recollection_id,version_number,title,baseline_kind,content_json,
+    interview_id,interview_revision,interview_json,created_at</sql>
+  <sql id="questionColumns">owner_id,recollection_id,recollection_version_id,question_id,question_version_id,created_at</sql>
+
+  <select id="recollection" resultType="com.wenjie.studio.review.RecollectionRows$RecollectionRow">
+    SELECT <include refid="itemColumns"/> FROM review_recollection WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="list" resultType="com.wenjie.studio.review.RecollectionRows$SummaryRow">
+    SELECT r.id,v.title,v.baseline_kind,r.status,r.revision,v.id AS version_id,v.version_number,
+      v.interview_id,JSON_UNQUOTE(JSON_EXTRACT(v.interview_json,'$.title')) AS interview_title,r.updated_at
+    FROM review_recollection r JOIN review_recollection_version v
+      ON v.owner_id=r.owner_id AND v.recollection_id=r.id AND v.id=r.current_version_id
+    WHERE r.owner_id=#{owner} AND r.status=#{status}
+    <if test="interviewId != null">AND v.interview_id=#{interviewId}</if>
+    <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="cursor != null">AND r.id &gt; #{cursor}</if>
+    ORDER BY r.id LIMIT #{limit}
+  </select>
+  <select id="version" resultType="com.wenjie.studio.review.RecollectionRows$VersionRow">
+    SELECT <include refid="versionColumns"/> FROM review_recollection_version
+    WHERE owner_id=#{owner} AND recollection_id=#{id} AND id=#{versionId}
+  </select>
+  <select id="versions" resultType="com.wenjie.studio.review.RecollectionDtos$VersionSummary">
+    SELECT id,version_number AS number,title,created_at FROM review_recollection_version
+    WHERE owner_id=#{owner} AND recollection_id=#{id}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="questionByRecollection" resultType="com.wenjie.studio.review.RecollectionRows$QuestionRow">
+    SELECT <include refid="questionColumns"/> FROM review_recollection_question
+    WHERE owner_id=#{owner} AND recollection_id=#{id} AND recollection_version_id=#{versionId}
+  </select>
+  <select id="questionSource" resultType="com.wenjie.studio.review.RecollectionRows$QuestionRow">
+    SELECT <include refid="questionColumns"/> FROM review_recollection_question
+    WHERE owner_id=#{owner} AND question_id=#{questionId} AND question_version_id=#{versionId}
+  </select>
+
+  <insert id="insertRecollection">
+    INSERT INTO review_recollection (<include refid="itemColumns"/>)
+    VALUES (#{item.id},#{item.ownerId},#{item.status},#{item.revision},#{item.currentVersionId},
+      #{item.versionNumber},#{item.createdAt},#{item.updatedAt})
+  </insert>
+  <insert id="insertVersion">
+    INSERT INTO review_recollection_version (<include refid="versionColumns"/>)
+    VALUES (#{version.id},#{version.ownerId},#{version.recollectionId},#{version.versionNumber},#{version.title},
+      #{version.baselineKind},#{version.contentJson},#{version.interviewId},#{version.interviewRevision},
+      #{version.interviewJson},#{version.createdAt})
+  </insert>
+  <update id="saveContent">
+    UPDATE review_recollection SET current_version_id=#{versionId},version_number=#{number},
+      revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND status='ACTIVE'
+      AND revision&lt;1000 AND version_number&lt;1000 AND version_number=#{number}-1
+  </update>
+  <update id="changeStatus">
+    UPDATE review_recollection SET status=#{status},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected} AND revision&lt;1000 AND status&lt;&gt;#{status}
+  </update>
+  <insert id="insertQuestion">
+    INSERT INTO review_recollection_question (<include refid="questionColumns"/>)
+    VALUES (#{link.ownerId},#{link.recollectionId},#{link.recollectionVersionId},#{link.questionId},
+      #{link.questionVersionId},#{link.createdAt})
+  </insert>
+</mapper>

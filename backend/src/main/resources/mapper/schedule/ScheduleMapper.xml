@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.schedule.ScheduleMapper">
+  <sql id="eventColumns">e.id,e.owner_id,e.target_id,e.target_version_id,e.title,e.round_name AS `round`,
+    e.location,e.meeting_url,e.notes,e.local_start,e.zone_id,e.utc_offset AS `offset`,e.start_at,e.end_at,
+    e.duration_minutes,e.remind_before_minutes,e.remind_at,e.reminder_acknowledged_at,e.status,
+    e.revision,e.created_at,e.updated_at</sql>
+  <select id="event" resultType="com.wenjie.studio.schedule.ScheduleRows$EventRow">
+    SELECT <include refid="eventColumns"/> FROM interview_event e WHERE e.owner_id=#{owner} AND e.id=#{id}
+  </select>
+  <select id="events" resultType="com.wenjie.studio.schedule.ScheduleRows$EventRow">
+    SELECT <include refid="eventColumns"/> FROM interview_event e
+    WHERE e.owner_id=#{owner} AND e.start_at &lt; #{to} AND e.end_at &gt; #{from}
+    <if test="targetId != null">AND e.target_id=#{targetId}</if>
+    <if test="status != null">AND e.status=#{status}</if>
+    <if test="cursorTime != null">
+      AND (e.start_at &gt; #{cursorTime} OR (e.start_at=#{cursorTime} AND e.id &gt; #{cursorId}))
+    </if>
+    ORDER BY e.start_at,e.id LIMIT #{limit}
+  </select>
+  <select id="reminders" resultType="com.wenjie.studio.schedule.ScheduleRows$EventRow">
+    SELECT <include refid="eventColumns"/> FROM interview_event e
+    WHERE e.owner_id=#{owner} AND e.status='PLANNED' AND e.reminder_acknowledged_at IS NULL AND e.remind_at &lt;= #{asOf}
+    <if test="cursorTime != null">
+      AND (e.remind_at &gt; #{cursorTime} OR (e.remind_at=#{cursorTime} AND e.id &gt; #{cursorId}))
+    </if>
+    ORDER BY e.remind_at,e.id LIMIT #{limit}
+  </select>
+  <select id="materials" resultType="com.wenjie.studio.schedule.ScheduleRows$MaterialRow">
+    SELECT source_kind,COALESCE(preparation_source_item_id,knowledge_source_item_id) AS source_item_id,
+      COALESCE(preparation_source_version_id,knowledge_source_version_id) AS source_version_id
+    FROM interview_event_material WHERE owner_id=#{owner} AND event_id=#{id} AND event_revision=#{revision}
+    ORDER BY ordinal
+  </select>
+  <select id="histories" resultType="com.wenjie.studio.schedule.ScheduleDtos$HistorySummary">
+    SELECT revision,action,title,start_at,status,reason,created_at FROM interview_event_history
+    WHERE owner_id=#{owner} AND event_id=#{id}
+    <if test="before != null">AND revision &lt; #{before}</if>
+    ORDER BY revision DESC LIMIT #{limit}
+  </select>
+  <select id="snapshot" resultType="string">
+    SELECT snapshot_json FROM interview_event_history WHERE owner_id=#{owner} AND event_id=#{id} AND revision=#{revision}
+  </select>
+  <insert id="insertEvent">
+    INSERT INTO interview_event (id,owner_id,target_id,target_version_id,title,round_name,location,meeting_url,
+      notes,local_start,zone_id,utc_offset,start_at,end_at,duration_minutes,remind_before_minutes,remind_at,
+      reminder_acknowledged_at,status,revision,created_at,updated_at)
+    VALUES (#{event.id},#{event.ownerId},#{event.targetId},#{event.targetVersionId},#{event.title},#{event.round},
+      #{event.location},#{event.meetingUrl},#{event.notes},#{event.localStart},#{event.zoneId},#{event.offset},
+      #{event.startAt},#{event.endAt},#{event.durationMinutes},#{event.remindBeforeMinutes},#{event.remindAt},
+      #{event.reminderAcknowledgedAt},#{event.status},#{event.revision},#{event.createdAt},#{event.updatedAt})
+  </insert>
+  <update id="updateEvent">
+    UPDATE interview_event SET target_id=#{event.targetId},target_version_id=#{event.targetVersionId},
+      title=#{event.title},round_name=#{event.round},location=#{event.location},meeting_url=#{event.meetingUrl},
+      notes=#{event.notes},local_start=#{event.localStart},zone_id=#{event.zoneId},utc_offset=#{event.offset},
+      start_at=#{event.startAt},end_at=#{event.endAt},duration_minutes=#{event.durationMinutes},
+      remind_before_minutes=#{event.remindBeforeMinutes},remind_at=#{event.remindAt},
+      reminder_acknowledged_at=#{event.reminderAcknowledgedAt},status=#{event.status},
+      revision=#{event.revision},updated_at=#{event.updatedAt}
+    WHERE owner_id=#{event.ownerId} AND id=#{event.id} AND revision=#{expected} AND status='PLANNED'
+  </update>
+  <insert id="insertHistory">
+    INSERT INTO interview_event_history (owner_id,event_id,revision,action,target_id,target_version_id,title,
+      start_at,status,reason,snapshot_json,created_at)
+    VALUES (#{history.ownerId},#{history.eventId},#{history.revision},#{history.action},#{history.targetId},
+      #{history.targetVersionId},#{history.title},#{history.startAt},#{history.status},#{history.reason},
+      #{history.snapshotJson},#{history.createdAt})
+  </insert>
+  <insert id="insertMaterial">
+    INSERT INTO interview_event_material (owner_id,event_id,event_revision,ordinal,source_kind,
+      preparation_source_item_id,preparation_source_version_id,knowledge_source_item_id,knowledge_source_version_id)
+    VALUES (#{owner},#{id},#{revision},#{ordinal},#{kind},
+      <choose><when test="kind != 'KNOWLEDGE'">#{itemId},#{versionId},NULL,NULL)</when>
+        <otherwise>NULL,NULL,#{itemId},#{versionId})</otherwise></choose>
+  </insert>
+</mapper>

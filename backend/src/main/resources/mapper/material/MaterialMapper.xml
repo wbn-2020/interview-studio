@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialMapper">
+  <sql id="attachmentColumns">id,owner_id,file_name,kind,byte_size,sha256,description,status,revision,ready_upload_id,created_at,updated_at</sql>
+  <sql id="uploadColumns">id,owner_id,attachment_id,status,reserved_bytes,received_bytes,error_code,claim_token,lease_until,created_at,started_at,finished_at</sql>
+  <sql id="runColumns">id,owner_id,attachment_id,attachment_sha256,status,reserved_bytes,parser_version,truncated,warnings_json,error_code,segment_count,has_preview,claim_token,lease_until,created_at,started_at,finished_at</sql>
+  <sql id="excerptColumns">id,owner_id,attachment_id,attachment_sha256,run_id,segment_id,origin,locator,text,start_offset,end_offset,created_at</sql>
+  <select id="attachment" resultType="com.wenjie.studio.material.MaterialRows$Attachment">SELECT <include refid="attachmentColumns"/> FROM material_attachment WHERE owner_id=#{owner} AND id=#{id}</select>
+  <select id="attachments" resultType="com.wenjie.studio.material.MaterialRows$Attachment">
+    SELECT <include refid="attachmentColumns"/> FROM material_attachment WHERE owner_id=#{owner}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    <if test="pattern != null">AND file_name LIKE #{pattern} ESCAPE '!'</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <insert id="insertAttachment">
+    INSERT INTO material_attachment (id,owner_id,file_name,kind,byte_size,sha256,description,status,revision,ready_upload_id,created_at,updated_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.fileName},#{row.kind},#{row.byteSize},#{row.sha256},#{row.description},#{row.status},#{row.revision},#{row.readyUploadId},#{row.createdAt},#{row.updatedAt})
+  </insert>
+  <update id="description">UPDATE material_attachment SET description=#{description},revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}</update>
+  <update id="touchAttachment">UPDATE material_attachment SET revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}</update>
+  <update id="ready">UPDATE material_attachment SET status='READY',ready_upload_id=#{uploadId},revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND status='RESERVED' AND revision&lt;9007199254740991</update>
+  <select id="usedBytes" resultType="long">SELECT COALESCE((SELECT SUM(reserved_bytes) FROM material_upload WHERE owner_id=#{owner}),0)+COALESCE((SELECT SUM(reserved_bytes) FROM material_parse_run WHERE owner_id=#{owner}),0)</select>
+  <select id="upload" resultType="com.wenjie.studio.material.MaterialRows$Upload">SELECT <include refid="uploadColumns"/> FROM material_upload WHERE owner_id=#{owner} AND id=#{id}</select>
+  <select id="uploads" resultType="com.wenjie.studio.material.MaterialRows$Upload">SELECT <include refid="uploadColumns"/> FROM material_upload WHERE owner_id=#{owner} AND attachment_id=#{id} ORDER BY created_at,id</select>
+  <insert id="insertUpload">
+    INSERT INTO material_upload (id,owner_id,attachment_id,status,reserved_bytes,received_bytes,error_code,claim_token,lease_until,created_at,started_at,finished_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.attachmentId},#{row.status},#{row.reservedBytes},#{row.receivedBytes},#{row.errorCode},#{row.claimToken},#{row.leaseUntil},#{row.createdAt},#{row.startedAt},#{row.finishedAt})
+  </insert>
+  <update id="claimUpload">UPDATE material_upload SET status='RECEIVING',claim_token=#{token},lease_until=#{lease},started_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND status='RESERVED'</update>
+  <update id="finishUpload">UPDATE material_upload SET status=#{status},received_bytes=#{received},error_code=#{error},finished_at=#{now},lease_until=NULL WHERE owner_id=#{owner} AND id=#{id} AND status='RECEIVING' AND claim_token=#{token} AND lease_until&gt;#{now}</update>
+  <update id="recoverUploads">UPDATE material_upload SET status='INTERRUPTED',error_code='UPLOAD_INTERRUPTED',finished_at=#{now},lease_until=NULL WHERE owner_id=#{owner} AND status='RECEIVING' AND lease_until&lt;=#{now}</update>
+  <select id="run" resultType="com.wenjie.studio.material.MaterialRows$Run">SELECT <include refid="runColumns"/> FROM material_parse_run WHERE owner_id=#{owner} AND id=#{id}</select>
+  <select id="runs" resultType="com.wenjie.studio.material.MaterialRows$Run">
+    SELECT <include refid="runColumns"/> FROM material_parse_run WHERE owner_id=#{owner} AND attachment_id=#{id}
+    <if test="beforeTime != null">AND (created_at &lt; #{beforeTime} OR (created_at=#{beforeTime} AND id &lt; #{beforeId}))</if>
+    ORDER BY created_at DESC,id DESC LIMIT #{limit}
+  </select>
+  <select id="runCount" resultType="int">SELECT COUNT(*) FROM material_parse_run WHERE owner_id=#{owner} AND attachment_id=#{id}</select>
+  <select id="pendingRuns" resultType="int">SELECT COUNT(*) FROM material_parse_run WHERE owner_id=#{owner} AND status IN ('QUEUED','RUNNING')<if test="id != null">AND attachment_id=#{id}</if></select>
+  <select id="runningCount" resultType="int">SELECT COUNT(*) FROM material_parse_run WHERE owner_id=#{owner} AND status='RUNNING'</select>
+  <insert id="insertRun">
+    INSERT INTO material_parse_run (id,owner_id,attachment_id,attachment_sha256,status,reserved_bytes,parser_version,truncated,warnings_json,error_code,segment_count,has_preview,claim_token,lease_until,created_at,started_at,finished_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.attachmentId},#{row.attachmentSha256},#{row.status},#{row.reservedBytes},#{row.parserVersion},#{row.truncated},#{row.warningsJson},#{row.errorCode},#{row.segmentCount},#{row.hasPreview},#{row.claimToken},#{row.leaseUntil},#{row.createdAt},#{row.startedAt},#{row.finishedAt})
+  </insert>
+  <select id="queued" resultType="com.wenjie.studio.material.MaterialRows$Run">SELECT <include refid="runColumns"/> FROM material_parse_run WHERE owner_id=#{owner} AND status='QUEUED' ORDER BY created_at,id LIMIT 1</select>
+  <update id="claimRun">UPDATE material_parse_run SET status='RUNNING',claim_token=#{token},lease_until=#{lease},started_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND status='QUEUED'</update>
+  <update id="finishRun">UPDATE material_parse_run SET status=#{status},parser_version=#{parser},truncated=#{truncated},warnings_json=#{warnings},error_code=#{error},segment_count=#{count},has_preview=#{preview},finished_at=#{now},lease_until=NULL WHERE owner_id=#{owner} AND id=#{id} AND status='RUNNING' AND claim_token=#{token} AND lease_until&gt;#{now}</update>
+  <update id="recoverRuns">UPDATE material_parse_run SET status='INTERRUPTED',error_code='PARSE_INTERRUPTED',finished_at=#{now},lease_until=NULL WHERE owner_id=#{owner} AND status='RUNNING' AND lease_until&lt;=#{now}</update>
+  <insert id="insertSegment">INSERT INTO material_segment (id,owner_id,attachment_id,run_id,ordinal,locator,text) VALUES (#{row.id},#{owner},#{row.attachmentId},#{row.runId},#{row.ordinal},#{row.locator},#{row.text})</insert>
+  <select id="segment" resultType="com.wenjie.studio.material.MaterialDtos$Segment">SELECT id,attachment_id,run_id,ordinal,locator,text FROM material_segment WHERE owner_id=#{owner} AND id=#{id}</select>
+  <select id="segments" resultType="com.wenjie.studio.material.MaterialDtos$Segment">SELECT id,attachment_id,run_id,ordinal,locator,text FROM material_segment WHERE owner_id=#{owner} AND run_id=#{id} AND ordinal&gt;#{after} ORDER BY ordinal LIMIT #{limit}</select>
+  <insert id="insertExcerpt">
+    INSERT INTO material_excerpt (id,owner_id,attachment_id,attachment_sha256,run_id,segment_id,origin,locator,text,start_offset,end_offset,created_at)
+    VALUES (#{row.id},#{row.ownerId},#{row.attachmentId},#{row.attachmentSha256},#{row.runId},#{row.segmentId},#{row.origin},#{row.locator},#{row.text},#{row.startOffset},#{row.endOffset},#{row.createdAt})
+  </insert>
+  <select id="excerpt" resultType="com.wenjie.studio.material.MaterialRows$Excerpt">SELECT <include refid="excerptColumns"/> FROM material_excerpt WHERE owner_id=#{owner} AND id=#{id}</select>
+  <select id="excerpts" resultType="com.wenjie.studio.material.MaterialRows$Excerpt">
+    SELECT <include refid="excerptColumns"/> FROM material_excerpt WHERE owner_id=#{owner} AND attachment_id=#{id}
+    AND EXISTS(SELECT 1 FROM material_excerpt_lifecycle l
+      WHERE l.owner_id=material_excerpt.owner_id AND l.excerpt_id=material_excerpt.id
+        AND l.attachment_id=material_excerpt.attachment_id
+        <if test="status != 'ALL'">AND l.status=#{status}</if>
+        <if test="aiUse != 'ALL'">AND l.ai_use=#{aiUse}</if>)
+    <if test="cursor != null">AND id&gt;#{cursor}</if>
+    <if test="pattern != null">AND (text LIKE #{pattern} ESCAPE '!' OR locator LIKE #{pattern} ESCAPE '!')</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <insert id="insertPreparationSource">INSERT INTO preparation_material_reference (owner_id,item_id,version_id,excerpt_id) VALUES (#{owner},#{itemId},#{versionId},#{excerptId})</insert>
+</mapper>

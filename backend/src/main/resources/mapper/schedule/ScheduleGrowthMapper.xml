@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.schedule.ScheduleGrowthMapper">
+  <select id="candidates" resultType="com.wenjie.studio.schedule.ScheduleGrowthRows$Candidate">
+    SELECT event_id,revision,created_at AS occurred_at FROM interview_event_history
+    WHERE owner_id=#{owner} AND action='COMPLETED' AND created_at&gt;=#{from} AND created_at&lt;#{until}
+    <if test="after != null">
+      AND (created_at&lt;#{after.occurredAt}
+        OR (created_at=#{after.occurredAt} AND event_id&gt;#{after.eventId})
+        OR (created_at=#{after.occurredAt} AND event_id=#{after.eventId} AND revision&gt;#{after.revision}))
+    </if>
+    ORDER BY created_at DESC,event_id ASC,revision ASC LIMIT #{limit}
+  </select>
+
+  <!-- h.created_at 是用户确认完成的时刻；start_at 只用于核对当时是否已经开始。 -->
+  <select id="completions" resultType="com.wenjie.studio.schedule.ScheduleGrowthRows$CompletionRow">
+    SELECT h.owner_id,h.event_id,h.revision,h.action,h.status,h.created_at AS occurred_at,h.start_at,h.target_id,h.target_version_id,
+      e.id AS owned_event_id,v.id AS owned_target_version_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.id')) AS snapshot_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.revision')) AS snapshot_revision,
+      JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.revision')) AS snapshot_revision_type,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.status')) AS snapshot_status,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.targetId')) AS snapshot_target_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.targetVersionId')) AS snapshot_target_version_id,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.time.startAt')) AS snapshot_start_at,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.createdAt')) AS snapshot_created_at,
+      JSON_UNQUOTE(JSON_EXTRACT(h.snapshot_json,'$.updatedAt')) AS snapshot_updated_at,
+      p.event_id AS previous_event_id,p.revision AS previous_revision,p.status AS previous_status,
+      (JSON_CONTAINS_PATH(h.snapshot_json,'all','$.id','$.revision','$.status','$.targetId','$.targetVersionId','$.time.startAt','$.createdAt','$.updatedAt')=1
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.id'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.revision'))='INTEGER'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.status'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.time.startAt'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.createdAt'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.updatedAt'))='STRING'
+        AND ((h.target_id IS NULL AND h.target_version_id IS NULL
+          AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.targetId'))='NULL'
+          AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.targetVersionId'))='NULL')
+          OR (h.target_id IS NOT NULL AND h.target_version_id IS NOT NULL
+            AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.targetId'))='STRING'
+            AND JSON_TYPE(JSON_EXTRACT(h.snapshot_json,'$.targetVersionId'))='STRING'))) AS metadata_types_valid
+    FROM interview_event_history h
+    LEFT JOIN interview_event e ON e.owner_id=h.owner_id AND e.id=h.event_id
+    LEFT JOIN interview_event_history p ON p.owner_id=h.owner_id AND p.event_id=h.event_id AND p.revision=h.revision-1
+    LEFT JOIN preparation_item i ON i.owner_id=h.owner_id AND i.id=h.target_id AND i.kind='TARGET'
+    LEFT JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=h.target_version_id
+    WHERE h.owner_id=#{owner} AND
+      <foreach collection="keys" item="key" open="(" separator=" OR " close=")">
+        (h.event_id=#{key.eventId} AND h.revision=#{key.revision})
+      </foreach>
+  </select>
+</mapper>

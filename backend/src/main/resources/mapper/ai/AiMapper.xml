@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.AiMapper">
+  <select id="eventCursor" resultType="string" timeout="5">
+    SELECT cursor_id FROM ai_event_cursor WHERE owner_id=#{owner}
+  </select>
+  <insert id="advanceEventCursor">
+    INSERT INTO ai_event_cursor (owner_id,cursor_id) VALUES (#{owner},#{cursor})
+    ON DUPLICATE KEY UPDATE cursor_id=#{cursor}
+  </insert>
+  <select id="followUp" resultType="com.wenjie.studio.ai.AiRows$FollowUpRow">
+    SELECT owner_id,task_id,session_id,question_id,answer_id,root_question_id,generation,generated_question_id,created_at
+    FROM ai_follow_up WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertFollowUp">
+    INSERT INTO ai_follow_up (owner_id,task_id,session_id,question_id,answer_id,root_question_id,generation,generated_question_id,created_at)
+    VALUES (#{binding.ownerId},#{binding.taskId},#{binding.sessionId},#{binding.questionId},#{binding.answerId},
+      #{binding.rootQuestionId},#{binding.generation},#{binding.generatedQuestionId},#{binding.createdAt})
+  </insert>
+  <update id="setGeneratedQuestion">
+    UPDATE ai_follow_up SET generated_question_id=#{questionId}
+    WHERE owner_id=#{owner} AND task_id=#{taskId} AND generated_question_id IS NULL
+  </update>
+  <select id="pendingFollowUps" resultType="int">
+    SELECT COUNT(*) FROM ai_follow_up f JOIN ai_task t ON t.owner_id=f.owner_id AND t.id=f.task_id
+    WHERE f.owner_id=#{owner} AND f.session_id=#{sessionId} AND f.root_question_id=#{rootQuestionId}
+      AND t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+    <if test="excludedTaskId != null">AND f.task_id &lt;&gt; #{excludedTaskId}</if>
+  </select>
+  <select id="followUpTasks" resultType="com.wenjie.studio.ai.AiRows$SummaryRow">
+    SELECT t.id,t.purpose,t.status,t.revision,t.title,t.provider,t.model,t.currency,t.attempt_count,t.created_at,t.updated_at,t.error_code
+    FROM ai_follow_up f JOIN ai_task t ON t.owner_id=f.owner_id AND t.id=f.task_id
+    WHERE f.owner_id=#{owner} AND f.session_id=#{sessionId} AND t.purpose='FOLLOW_UP'
+    <if test="cursor != null">AND t.id &gt; #{cursor}</if>
+    ORDER BY t.id LIMIT #{limit}
+  </select>
+  <sql id="taskColumns">id,owner_id,purpose,status,revision,title,provider,model,currency,manifest_json,manifest_hash,
+    configuration_fingerprint,authorization_epoch,current_attempt_id,attempt_count,candidate_json,error_code,created_at,updated_at</sql>
+  <sql id="attemptColumns">id,owner_id,task_id,attempt_number,status,fee_status,currency,reserved_micros,accounted_micros,
+    prompt_tokens,completion_tokens,provider_request_id,error_code,reconciliation_note,budget_date,claim_token,
+    runtime_epoch,lease_until,created_at,sent_at,finished_at,scope_authorization_id,scope_authorization_revision</sql>
+  <select id="task" resultType="com.wenjie.studio.ai.AiRows$TaskRow">
+    SELECT <include refid="taskColumns"/> FROM ai_task WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="taskExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM ai_task WHERE owner_id=#{owner} AND id=#{id})
+  </select>
+  <select id="tasks" resultType="com.wenjie.studio.ai.AiRows$SummaryRow">
+    SELECT id,purpose,status,revision,title,provider,model,currency,attempt_count,created_at,updated_at,error_code
+    FROM ai_task WHERE owner_id=#{owner}
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="relationGraphTasks" resultType="com.wenjie.studio.ai.AiRows$SummaryRow">
+    SELECT id,purpose,status,revision,title,provider,model,currency,attempt_count,created_at,updated_at,error_code
+    FROM ai_task WHERE owner_id=#{owner} AND purpose='RELATION_DRAFT' AND status='SUCCEEDED'
+    <if test="cursor != null">AND id &gt; #{cursor}</if>
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="attempt" resultType="com.wenjie.studio.ai.AiRows$AttemptRow">
+    SELECT <include refid="attemptColumns"/> FROM ai_attempt WHERE owner_id=#{owner} AND task_id=#{taskId} AND id=#{id}
+  </select>
+  <select id="attempts" resultType="com.wenjie.studio.ai.AiRows$AttemptRow">
+    SELECT <include refid="attemptColumns"/> FROM ai_attempt WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY attempt_number
+  </select>
+  <select id="pending" resultType="com.wenjie.studio.ai.AiRows$TaskRow">
+    SELECT <include refid="taskColumns"/> FROM ai_task
+    WHERE owner_id=#{owner} AND status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED') ORDER BY created_at,id LIMIT 20
+  </select>
+  <!-- 撤回只读取更新任务状态需要的元数据，不加载外发清单或候选正文。 -->
+  <select id="pendingAuthorizationTasks" resultType="com.wenjie.studio.ai.AiRows$TaskRow">
+    SELECT t.id,t.owner_id,t.purpose,t.status,t.revision,t.title,t.provider,t.model,t.currency,
+      NULL AS manifest_json,t.manifest_hash,t.configuration_fingerprint,t.authorization_epoch,t.current_attempt_id,
+      t.attempt_count,NULL AS candidate_json,t.error_code,t.created_at,t.updated_at
+    FROM ai_task t JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    WHERE t.owner_id=#{owner} AND a.scope_authorization_id=#{authorizationId}
+      AND t.status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED') ORDER BY t.created_at,t.id LIMIT 20
+  </select>
+  <select id="queued" resultType="com.wenjie.studio.ai.AiRows$TaskRow">
+    SELECT <include refid="taskColumns"/> FROM ai_task WHERE owner_id=#{owner} AND status='QUEUED'
+    ORDER BY created_at,id LIMIT 1
+  </select>
+  <select id="runningCount" resultType="int">
+    SELECT COUNT(*) FROM ai_task WHERE owner_id=#{owner} AND status IN ('RUNNING','VALIDATING','CANCEL_REQUESTED')
+  </select>
+  <select id="pendingCount" resultType="int">
+    SELECT COUNT(*) FROM ai_task WHERE owner_id=#{owner} AND status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+  </select>
+  <select id="budget" resultType="com.wenjie.studio.ai.AiRows$BudgetRow">
+    SELECT COALESCE(SUM(CASE WHEN currency=#{currency} AND fee_status IN ('REPORTED','RECONCILED') AND budget_date=#{date}
+      THEN accounted_micros ELSE 0 END),0) AS reported_micros,
+      COALESCE(SUM(CASE WHEN currency=#{currency} AND fee_status='RESERVED' THEN reserved_micros ELSE 0 END),0) AS reserved_micros,
+      COALESCE(SUM(CASE WHEN currency=#{currency} AND fee_status='UNKNOWN' THEN reserved_micros ELSE 0 END),0) AS unknown_micros,
+      COALESCE(SUM(CASE WHEN currency&lt;&gt;#{currency} AND
+        (fee_status IN ('RESERVED','UNKNOWN') OR (fee_status IN ('REPORTED','RECONCILED') AND budget_date=#{date}))
+        THEN 1 ELSE 0 END),0) AS unaccountable_count
+    FROM ai_attempt WHERE owner_id=#{owner}
+      AND (fee_status IN ('RESERVED','UNKNOWN') OR (fee_status IN ('REPORTED','RECONCILED') AND budget_date=#{date}))
+  </select>
+  <insert id="insertTask">
+    INSERT INTO ai_task (id,owner_id,purpose,status,revision,title,provider,model,currency,manifest_json,manifest_hash,
+      configuration_fingerprint,authorization_epoch,current_attempt_id,attempt_count,candidate_json,error_code,created_at,updated_at)
+    VALUES (#{task.id},#{task.ownerId},#{task.purpose},#{task.status},#{task.revision},#{task.title},#{task.provider},#{task.model},
+      #{task.currency},#{task.manifestJson},#{task.manifestHash},#{task.configurationFingerprint},#{task.authorizationEpoch},
+      #{task.currentAttemptId},#{task.attemptCount},#{task.candidateJson},#{task.errorCode},#{task.createdAt},#{task.updatedAt})
+  </insert>
+  <insert id="insertDraftKnowledgeInput">
+    INSERT INTO ai_draft_knowledge_input (owner_id,task_id,ordinal,source_kind,knowledge_item_id,knowledge_version_id)
+    VALUES (#{owner},#{taskId},#{ordinal},#{source.kind},#{source.itemId},#{source.versionId})
+  </insert>
+  <insert id="insertAttempt">
+    INSERT INTO ai_attempt (id,owner_id,task_id,attempt_number,status,fee_status,currency,reserved_micros,accounted_micros,
+      prompt_tokens,completion_tokens,provider_request_id,error_code,reconciliation_note,budget_date,claim_token,
+      runtime_epoch,lease_until,created_at,sent_at,finished_at,scope_authorization_id,scope_authorization_revision)
+    VALUES (#{attempt.id},#{attempt.ownerId},#{attempt.taskId},#{attempt.attemptNumber},#{attempt.status},#{attempt.feeStatus},
+      #{attempt.currency},#{attempt.reservedMicros},#{attempt.accountedMicros},#{attempt.promptTokens},#{attempt.completionTokens},
+      #{attempt.providerRequestId},#{attempt.errorCode},#{attempt.reconciliationNote},#{attempt.budgetDate},#{attempt.claimToken},
+      #{attempt.runtimeEpoch},#{attempt.leaseUntil},#{attempt.createdAt},#{attempt.sentAt},#{attempt.finishedAt},
+      #{attempt.scopeAuthorizationId},#{attempt.scopeAuthorizationRevision})
+  </insert>
+  <insert id="insertMaterialQaSource">
+    INSERT INTO ai_material_qa_source (owner_id,task_id,excerpt_id,ordinal)
+    VALUES (#{owner},#{taskId},#{excerptId},#{ordinal})
+  </insert>
+  <insert id="insertMaterialDraftSource">
+    INSERT INTO ai_material_draft_source (owner_id,task_id,excerpt_id,ordinal)
+    VALUES (#{owner},#{taskId},#{excerptId},#{ordinal})
+  </insert>
+  <insert id="insertTrainingDraftSource">
+    INSERT INTO ai_training_draft_source (owner_id,task_id,session_id,question_id,answer_id,evaluation_task_id)
+    VALUES (#{source.ownerId},#{source.taskId},#{source.sessionId},#{source.questionId},#{source.answerId},#{source.evaluationTaskId})
+  </insert>
+  <insert id="insertPreparationSource">
+    INSERT INTO ai_preparation_source
+      (owner_id,task_id,source_item_id,source_version_id,source_kind,source_version_number,source_title,ordinal)
+    VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.kind},#{source.number},#{source.title},#{ordinal})
+  </insert>
+  <update id="updateTask">
+    UPDATE ai_task SET status=#{task.status},revision=#{task.revision},authorization_epoch=#{task.authorizationEpoch},
+      current_attempt_id=#{task.currentAttemptId},attempt_count=#{task.attemptCount},candidate_json=#{task.candidateJson},
+      error_code=#{task.errorCode},updated_at=#{task.updatedAt}
+    WHERE owner_id=#{task.ownerId} AND id=#{task.id} AND revision=#{expected}
+  </update>
+  <update id="updateAttempt">
+    UPDATE ai_attempt SET status=#{attempt.status},fee_status=#{attempt.feeStatus},accounted_micros=#{attempt.accountedMicros},
+      prompt_tokens=#{attempt.promptTokens},completion_tokens=#{attempt.completionTokens},provider_request_id=#{attempt.providerRequestId},
+      error_code=#{attempt.errorCode},reconciliation_note=#{attempt.reconciliationNote},budget_date=#{attempt.budgetDate},
+      claim_token=#{attempt.claimToken},runtime_epoch=#{attempt.runtimeEpoch},lease_until=#{attempt.leaseUntil},
+      sent_at=#{attempt.sentAt},finished_at=#{attempt.finishedAt}
+    WHERE owner_id=#{attempt.ownerId} AND task_id=#{attempt.taskId} AND id=#{attempt.id} AND status=#{expectedStatus}
+      AND claim_token &lt;=&gt; #{expectedToken}
+  </update>
+  <select id="decision" resultType="com.wenjie.studio.ai.AiRows$DecisionRow">
+    SELECT owner_id,task_id,status,mode,target_item_id,target_version_id,created_at
+    FROM ai_candidate_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertDecision">
+    INSERT INTO ai_candidate_decision (owner_id,task_id,status,mode,target_item_id,target_version_id,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.mode},#{decision.targetItemId},
+      #{decision.targetVersionId},#{decision.createdAt})
+  </insert>
+  <insert id="insertKnowledgeSource">
+    INSERT INTO ai_knowledge_source
+      (owner_id,task_id,source_item_id,source_version_id,source_version_number,source_title,ordinal)
+    VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.number},#{source.title},#{ordinal})
+  </insert>
+  <select id="origins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    FROM ai_candidate_decision d
+    JOIN knowledge_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId} AND d.status='ADOPTED'
+      AND v.version_number &lt;=#{through}
+    <if test="before != null">AND v.version_number &lt; #{before}</if>
+    ORDER BY v.version_number DESC LIMIT #{limit}
+  </select>
+  <select id="originSources" resultType="com.wenjie.studio.ai.AiRows$OriginSourceRow">
+    SELECT s.task_id,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,
+      CASE WHEN i.id IS NULL OR v.id IS NULL THEN 'UNAVAILABLE'
+        WHEN i.status='ARCHIVED' THEN 'ARCHIVED'
+        WHEN i.status&lt;&gt;'ACTIVE' THEN 'UNAVAILABLE'
+        WHEN i.current_version_id=s.source_version_id THEN 'CURRENT'
+        ELSE 'SUPERSEDED' END AS state, i.kind
+    FROM ai_knowledge_source s
+    LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+    WHERE s.owner_id=#{owner} AND s.task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY s.task_id,s.ordinal
+  </select>
+  <select id="preparationOriginSources" resultType="com.wenjie.studio.ai.AiRows$PreparationOriginSourceRow">
+    SELECT s.task_id,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,s.source_kind AS kind,s.ordinal
+    FROM ai_preparation_source s
+    WHERE s.owner_id=#{owner} AND s.task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+      AND (EXISTS (SELECT 1 FROM ai_candidate_decision d
+        WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED')
+        OR EXISTS (SELECT 1 FROM ai_question_decision d
+          WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'))
+    ORDER BY s.task_id,s.ordinal
+  </select>
+  <select id="materialDraftOriginSources" resultType="com.wenjie.studio.ai.AiRows$MaterialDraftOriginRow">
+    SELECT s.task_id,s.excerpt_id,s.ordinal
+    FROM ai_material_draft_source s
+    WHERE s.owner_id=#{owner} AND s.task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+      AND (EXISTS (SELECT 1 FROM ai_candidate_decision d
+        WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED')
+        OR EXISTS (SELECT 1 FROM ai_question_decision d
+          WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'))
+    ORDER BY s.task_id,s.ordinal
+  </select>
+  <select id="trainingDraftOriginSources" resultType="com.wenjie.studio.ai.AiRows$TrainingDraftSourceRow">
+    SELECT owner_id,task_id,session_id,question_id,answer_id,evaluation_task_id
+    FROM ai_training_draft_source
+    WHERE owner_id=#{owner} AND task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY task_id
+  </select>
+  <!-- 授予许可核对首次任务输入绑定；不能复用仅在采用后才返回数据的出处查询。 -->
+  <select id="authorizationPreparationSources" resultType="com.wenjie.studio.ai.AiRows$PreparationOriginSourceRow">
+    SELECT task_id,source_item_id AS item_id,source_version_id AS version_id,
+      source_version_number AS number,source_title AS title,source_kind AS kind,ordinal
+    FROM ai_preparation_source WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <select id="authorizationMaterialDraftSources" resultType="com.wenjie.studio.ai.AiRows$MaterialDraftOriginRow">
+    SELECT task_id,excerpt_id,ordinal FROM ai_material_draft_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <select id="authorizationMaterialQaSources" resultType="com.wenjie.studio.ai.AiRows$MaterialDraftOriginRow">
+    SELECT task_id,excerpt_id,ordinal FROM ai_material_qa_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <select id="questionDecision" resultType="com.wenjie.studio.ai.AiRows$QuestionDecisionRow">
+    SELECT owner_id,task_id,status,target_question_id,target_version_id,created_at
+    FROM ai_question_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertQuestionDecision">
+    INSERT INTO ai_question_decision (owner_id,task_id,status,target_question_id,target_version_id,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.targetQuestionId},
+      #{decision.targetVersionId},#{decision.createdAt})
+  </insert>
+  <select id="expressionDecision" resultType="com.wenjie.studio.ai.AiRows$ExpressionDecisionRow">
+    SELECT owner_id,task_id,status,mode,target_item_id,target_version_id,created_at
+    FROM ai_expression_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertExpressionDecision">
+    INSERT INTO ai_expression_decision (owner_id,task_id,status,mode,target_item_id,target_version_id,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.mode},#{decision.targetItemId},
+      #{decision.targetVersionId},#{decision.createdAt})
+  </insert>
+  <select id="preparationPlanDecision" resultType="com.wenjie.studio.ai.AiRows$PreparationPlanDecisionRow">
+    SELECT owner_id,task_id,status,content_json,tasks_json,created_at
+    FROM ai_preparation_plan_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertPreparationPlanDecision">
+    INSERT INTO ai_preparation_plan_decision (owner_id,task_id,status,content_json,tasks_json,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.contentJson},#{decision.tasksJson},#{decision.createdAt})
+  </insert>
+  <select id="relationDecisions" resultType="com.wenjie.studio.ai.AiRows$RelationDecisionRow">
+    SELECT owner_id,task_id,candidate_id,status,relation_id,content_json,created_at,supplement_id
+    FROM ai_relation_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY CHAR_LENGTH(candidate_id),candidate_id
+  </select>
+  <select id="relationDecision" resultType="com.wenjie.studio.ai.AiRows$RelationDecisionRow">
+    SELECT owner_id,task_id,candidate_id,status,relation_id,content_json,created_at,supplement_id
+    FROM ai_relation_decision WHERE owner_id=#{owner} AND task_id=#{taskId} AND candidate_id=#{candidateId}
+  </select>
+  <insert id="insertRelationDecision">
+    INSERT INTO ai_relation_decision (owner_id,task_id,candidate_id,status,relation_id,content_json,created_at,supplement_id)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.candidateId},#{decision.status},
+      #{decision.relationId},#{decision.contentJson},#{decision.createdAt},#{decision.supplementId})
+  </insert>
+  <insert id="insertRelationSource">
+    INSERT INTO ai_relation_source
+      (owner_id,task_id,source_item_id,source_version_id,source_kind,source_version_number,source_title,ordinal)
+    VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.kind},#{source.number},#{source.title},#{ordinal})
+  </insert>
+  <select id="relationSources" resultType="com.wenjie.studio.ai.AiRows$RelationSourceRow">
+    SELECT s.task_id,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,s.source_kind AS kind,s.ordinal,
+      CASE WHEN i.id IS NULL OR v.id IS NULL OR i.kind&lt;&gt;s.source_kind THEN 'UNAVAILABLE'
+        WHEN i.status='ARCHIVED' THEN 'ARCHIVED'
+        WHEN i.status&lt;&gt;'ACTIVE' OR i.current_version_id IS NULL THEN 'UNAVAILABLE'
+        WHEN i.current_version_id=s.source_version_id THEN 'CURRENT'
+        ELSE 'SUPERSEDED' END AS state
+    FROM ai_relation_source s
+    LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+    WHERE s.owner_id=#{owner} AND s.task_id=#{taskId}
+    ORDER BY s.ordinal
+  </select>
+  <select id="relationOrigin" resultType="com.wenjie.studio.ai.AiRows$RelationDecisionRow">
+    <!-- 正式关系删除后，仍按原关系身份读取采用决定。 -->
+    SELECT owner_id,task_id,candidate_id,status,relation_id,content_json,created_at,supplement_id
+    FROM ai_relation_decision WHERE owner_id=#{owner} AND relation_id=#{relationId} AND status='ADOPTED'
+      AND supplement_id IS NULL
+  </select>
+  <select id="relationExists" resultType="boolean">
+    SELECT EXISTS (SELECT 1 FROM knowledge_relation WHERE owner_id=#{owner} AND id=#{relationId})
+  </select>
+  <insert id="insertQuestionSource">
+    INSERT INTO ai_question_source
+      (owner_id,task_id,source_item_id,source_version_id,source_version_number,source_title,ordinal)
+    VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.number},#{source.title},#{ordinal})
+  </insert>
+  <select id="questionOrigins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    FROM ai_question_decision d
+    JOIN question_version v ON v.owner_id=d.owner_id AND v.question_id=d.target_question_id AND v.id=d.target_version_id
+    JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    WHERE d.owner_id=#{owner} AND d.target_question_id=#{questionId} AND d.status='ADOPTED'
+      AND v.version_number &lt;=#{through}
+    <if test="before != null">AND v.version_number &lt; #{before}</if>
+    ORDER BY v.version_number DESC LIMIT #{limit}
+  </select>
+  <select id="questionOriginSources" resultType="com.wenjie.studio.ai.AiRows$OriginSourceRow">
+    SELECT s.task_id,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,
+      CASE WHEN i.id IS NULL OR v.id IS NULL THEN 'UNAVAILABLE'
+        WHEN i.status='ARCHIVED' THEN 'ARCHIVED'
+        WHEN i.status&lt;&gt;'ACTIVE' THEN 'UNAVAILABLE'
+        WHEN i.current_version_id=s.source_version_id THEN 'CURRENT'
+        ELSE 'SUPERSEDED' END AS state, i.kind
+    FROM ai_question_source s
+    LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+    WHERE s.owner_id=#{owner} AND s.task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY s.task_id,s.ordinal
+  </select>
+  <select id="expressionOrigins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    FROM ai_expression_decision d
+    JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id AND i.kind='EXPRESSION'
+    JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id AND t.purpose='EXPRESSION_DRAFT'
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{expressionId} AND d.status='ADOPTED'
+      AND v.version_number &lt;=#{through}
+    <if test="before != null">AND v.version_number &lt; #{before}</if>
+    ORDER BY v.version_number DESC LIMIT #{limit}
+  </select>
+  <select id="expressionOriginSources" resultType="com.wenjie.studio.ai.AiRows$ExpressionOriginSourceRow">
+    SELECT s.task_id,s.source_item_id AS item_id,s.source_version_id AS version_id,
+      s.source_version_number AS number,s.source_title AS title,s.source_kind AS kind,s.ordinal
+    FROM ai_preparation_source s
+    JOIN ai_expression_decision d ON d.owner_id=s.owner_id AND d.task_id=s.task_id AND d.status='ADOPTED'
+    WHERE s.owner_id=#{owner} AND s.task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY s.task_id,s.ordinal
+  </select>
+</mapper>

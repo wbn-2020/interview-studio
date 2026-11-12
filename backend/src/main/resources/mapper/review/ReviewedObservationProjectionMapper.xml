@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewedObservationProjectionMapper">
+  <!-- 原列为 utf8mb4 文本；摘要与保存时 JDBC 字符串 UTF-8 字节的一致性须在服务器核验，不能先解析并重排 JSON。 -->
+  <select id="answer" resultType="com.wenjie.studio.review.ReviewedObservationProjectionRows$Answer">
+    SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,s.mode,
+      q.source_question_id,q.source_version_id,q.question_kind,a.version_number AS answer_number,
+      a.answer_condition,a.assistance_event_sequence,
+      JSON_OBJECT('authoredCount',JSON_EXTRACT(a.exposure_json,'$.authoredCount'),
+        'referenceViewCount',JSON_EXTRACT(a.exposure_json,'$.referenceViewCount'),
+        'lastExposureAt',JSON_EXTRACT(a.exposure_json,'$.lastExposureAt'),
+        'evaluationAccessCount',JSON_EXTRACT(a.exposure_json,'$.evaluationAccessCount')) AS exposure_json,
+      a.created_at AS answer_created_at,
+      SHA2(CAST(CONVERT(a.content_json USING utf8mb4) AS BINARY),256) AS content_fingerprint,
+      SHA2(CAST(CONVERT(q.snapshot_json USING utf8mb4) AS BINARY),256) AS snapshot_fingerprint,
+      CASE WHEN JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.technology'))='STRING'
+        AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')))&lt;=2000
+        THEN JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')) ELSE NULL END AS technology,
+      CASE WHEN JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario'))='STRING'
+        AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')))&lt;=2000
+        THEN JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')) ELSE NULL END AS scenario,
+      CASE WHEN JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions'))='STRING'
+        AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')))&lt;=5000
+        THEN JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')) ELSE NULL END AS question_conditions,
+      REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')),'[^[:space:]]') AS technology_recorded,
+      REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),'[^[:space:]]') AS scenario_recorded,
+      REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),'[^[:space:]]') AS conditions_recorded,
+      COALESCE(JSON_TYPE(a.content_json)='OBJECT' AND JSON_TYPE(q.snapshot_json)='OBJECT'
+        AND JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content'))='OBJECT'
+        AND JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.sourceQuestionId'))='STRING'
+        AND CAST(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.sourceQuestionId')) AS BINARY)=CAST(q.source_question_id AS BINARY)
+        AND JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.sourceVersionId'))='STRING'
+        AND CAST(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.sourceVersionId')) AS BINARY)=CAST(q.source_version_id AS BINARY)
+        AND JSON_TYPE(a.exposure_json)='OBJECT'
+        AND JSON_TYPE(JSON_EXTRACT(a.exposure_json,'$.authoredCount'))='INTEGER'
+        AND JSON_TYPE(JSON_EXTRACT(a.exposure_json,'$.referenceViewCount'))='INTEGER',FALSE) AS metadata_valid
+    FROM training_answer a
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    WHERE a.owner_id=#{owner} AND a.session_id=#{sessionId} AND a.question_id=#{questionId} AND a.id=#{answerId}
+  </select>
+</mapper>

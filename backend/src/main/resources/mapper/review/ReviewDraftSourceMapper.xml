@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewDraftSourceMapper">
+  <select id="feedback" resultType="com.wenjie.studio.review.ReviewDraftSourceRows$Feedback">
+    SELECT f.owner_id,f.id,v.revision,f.revision AS current_revision,h.revision AS actual_head_revision,f.session_id,f.question_id,f.answer_id,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.kind')) AS kind,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.dimension')) AS dimension,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.coverage')) AS coverage,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.observation')) AS observation,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.condition')) AS `condition`,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.basis')) AS basis,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.limitation')) AS limitation,
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.suggestion')) AS suggestion,
+      d.id AS decision_id,d.revision AS decision_revision,d.choice AS decision_choice,
+      (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=10
+        AND OCTET_LENGTH(v.content_json)&lt;=131072
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.kind'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.authorLabel'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.dimension'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.coverage'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.observation'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.condition'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.basis'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.limitation'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.suggestion'))='STRING'
+        AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.citations'))='ARRAY'
+        AND JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.citations'))&lt;=6) AS metadata_valid
+    FROM review_feedback f JOIN review_feedback_revision v
+      ON v.owner_id=f.owner_id AND v.feedback_id=f.id AND v.revision=#{revision}
+    LEFT JOIN review_feedback_revision h ON h.owner_id=f.owner_id AND h.feedback_id=f.id AND h.revision=f.revision
+    LEFT JOIN review_feedback_decision d ON d.owner_id=v.owner_id AND d.feedback_id=v.feedback_id
+      AND d.feedback_revision=v.revision AND d.revision=(SELECT MAX(x.revision) FROM review_feedback_decision x
+        WHERE x.owner_id=v.owner_id AND x.feedback_id=v.feedback_id AND x.feedback_revision=v.revision)
+    WHERE f.owner_id=#{owner} AND f.id=#{id}
+  </select>
+  <select id="recollection" resultType="com.wenjie.studio.review.ReviewDraftSourceRows$Recollection">
+    SELECT r.owner_id,r.id,v.id AS version_id,v.version_number,r.revision AS source_revision,
+      r.current_version_id,r.version_number AS head_version_number,h.version_number AS actual_head_version_number,
+      r.status,v.title,v.baseline_kind,v.content_json
+    FROM review_recollection r JOIN review_recollection_version v
+      ON v.owner_id=r.owner_id AND v.recollection_id=r.id AND v.id=#{versionId}
+    LEFT JOIN review_recollection_version h ON h.owner_id=r.owner_id AND h.recollection_id=r.id AND h.id=r.current_version_id
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <!-- 回执前只核本人确切提交及当前反馈时机；不读取原答、标准或题面正文。 -->
+  <select id="access" resultType="com.wenjie.studio.review.ReviewDraftSourceRows$Access" timeout="5">
+    SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,a.version_number AS answer_number,
+      a.answer_condition,s.mode,s.status AS session_status,
+      JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming')) AS feedback_timing,
+      (JSON_TYPE(s.config_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='STRING') AS config_valid,
+      e.early_feedback,e.granted_at
+    FROM training_answer a
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    LEFT JOIN ai_evaluation_access e ON e.owner_id=a.owner_id AND e.session_id=a.session_id
+      AND e.question_id=a.question_id AND e.answer_id=a.id
+    WHERE a.owner_id=#{owner} AND a.session_id=#{sessionId} AND a.question_id=#{questionId} AND a.id=#{answerId}
+  </select>
+</mapper>

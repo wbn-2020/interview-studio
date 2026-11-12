@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.memory.MemoryGrowthMapper">
+  <sql id="ids"><foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></sql>
+
+  <!-- RATE 的发生时间和事件身份固定；多读的一条仅判断后续存在，不读取其快照。 -->
+  <select id="candidates" resultType="com.wenjie.studio.memory.MemoryGrowthRows$Candidate">
+    SELECT id,occurred_at FROM memory_attempt_event
+    WHERE owner_id=#{owner} AND event_kind='RATE' AND occurred_at&gt;=#{from} AND occurred_at&lt;#{until}
+    <if test="afterTime != null">
+      AND (occurred_at&lt;#{afterTime} OR (occurred_at=#{afterTime} AND id&gt;#{afterId}))
+    </if>
+    ORDER BY occurred_at DESC,id ASC LIMIT #{limit}
+  </select>
+
+  <!-- 依据是评分时的固定卡版；两类已处理影响仍证明评分冻结后发生过上游变化。 -->
+  <select id="ratings" resultType="com.wenjie.studio.memory.MemoryGrowthRows$RatingRow">
+    SELECT e.id,e.card_id,e.attempt_id,e.attempt_sequence,e.sequence_number AS event_sequence,
+      e.attempt_revision,e.count_regular,e.rate_basis_kind AS basis_kind,e.occurred_at,e.snapshot_json AS event_json,
+      a.id AS stored_attempt_id,a.card_version_id,a.sequence_number AS stored_attempt_sequence,
+      a.revision AS stored_attempt_revision,a.state,a.mode,a.count_regular AS stored_count_regular,
+      a.cram_batch_id,a.start_snapshot_json AS start_json,a.started_at,a.revealed_at,a.rated_at,a.closed_at,
+      a.rating,a.last_event_sequence,
+      (EXISTS (SELECT 1 FROM memory_card_source fixed_source
+        JOIN knowledge_version referenced ON referenced.owner_id=fixed_source.owner_id
+          AND referenced.item_id=fixed_source.knowledge_item_id AND referenced.id=fixed_source.knowledge_version_id
+        JOIN knowledge_revalidation_impact upstream ON upstream.owner_id=referenced.owner_id
+          AND upstream.target_item_id=referenced.item_id
+        JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+          AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+        WHERE fixed_source.owner_id=a.owner_id AND fixed_source.card_id=a.card_id AND fixed_source.version_id=a.card_version_id
+          AND adopted.version_number &lt;= referenced.version_number AND upstream.created_at &gt; e.occurred_at)
+      OR EXISTS (SELECT 1 FROM memory_card_source fixed_source
+        JOIN knowledge_version referenced ON referenced.owner_id=fixed_source.owner_id
+          AND referenced.item_id=fixed_source.knowledge_item_id AND referenced.id=fixed_source.knowledge_version_id
+        JOIN preparation_knowledge_impact upstream ON upstream.owner_id=referenced.owner_id
+          AND upstream.target_item_id=referenced.item_id
+        JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+          AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+        WHERE fixed_source.owner_id=a.owner_id AND fixed_source.card_id=a.card_id AND fixed_source.version_id=a.card_version_id
+          AND adopted.version_number &lt;= referenced.version_number AND upstream.created_at &gt; e.occurred_at)) AS upstream_changed
+    FROM memory_attempt_event e
+    LEFT JOIN memory_recall_attempt a ON a.owner_id=e.owner_id AND a.card_id=e.card_id AND a.id=e.attempt_id
+    WHERE e.owner_id=#{owner} AND e.event_kind='RATE' AND e.id IN <include refid="ids"/>
+  </select>
+
+  <!-- 与 MemoryInvalidation 同一含义边界：标题、关联概念和来源顺序不改变卡片依据。 -->
+  <select id="versions" resultType="com.wenjie.studio.memory.MemoryGrowthRows$VersionRow">
+    SELECT v.id,v.card_id,v.version_number,v.card_kind AS kind,v.title,v.source_count,v.related_concept_count,
+      p.id AS current_version_id,
+      CASE WHEN p.id IS NULL THEN NULL ELSE
+        v.card_kind&lt;&gt;p.card_kind
+        OR CAST(JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json,'$.prompt')) AS BINARY)
+          &lt;&gt;CAST(JSON_UNQUOTE(JSON_EXTRACT(p.prompt_json,'$.prompt')) AS BINARY)
+        OR CAST(v.reference_text AS BINARY)&lt;&gt;CAST(p.reference_text AS BINARY)
+        OR v.source_count&lt;&gt;p.source_count
+        OR EXISTS (SELECT 1 FROM memory_card_source s
+          WHERE s.owner_id=v.owner_id AND s.card_id=v.card_id AND s.version_id=v.id
+            AND NOT EXISTS (SELECT 1 FROM memory_card_source n
+              WHERE n.owner_id=p.owner_id AND n.card_id=p.card_id AND n.version_id=p.id
+                AND n.knowledge_item_id=s.knowledge_item_id AND n.knowledge_version_id=s.knowledge_version_id))
+        END AS basis_changed
+    FROM memory_card_version v
+    LEFT JOIN memory_card c ON c.owner_id=v.owner_id AND c.id=v.card_id
+    LEFT JOIN memory_card_version p ON p.owner_id=c.owner_id AND p.card_id=c.id AND p.id=c.current_version_id
+    WHERE v.owner_id=#{owner} AND v.id IN <include refid="ids"/>
+  </select>
+
+  <select id="sources" resultType="com.wenjie.studio.memory.MemoryGrowthRows$SourceRow">
+    SELECT s.version_id AS card_version_id,s.knowledge_item_id AS item_id,s.knowledge_version_id AS version_id,
+      k.kind,v.version_number,k.status,k.current_version_id,
+      CASE WHEN v.id IS NULL OR p.id IS NULL THEN NULL ELSE CAST(v.body AS BINARY)&lt;&gt;CAST(p.body AS BINARY) END AS body_changed,
+      s.position_index,
+      <include refid="com.wenjie.studio.memory.MemoryReviewMapper.upstreamReviewRequired"/> AS upstream_review_required
+    FROM memory_card_source s
+    LEFT JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+    LEFT JOIN knowledge_version p ON p.owner_id=k.owner_id AND p.item_id=k.id AND p.id=k.current_version_id
+    WHERE s.owner_id=#{owner} AND s.version_id IN <include refid="ids"/>
+    ORDER BY s.version_id,s.position_index
+  </select>
+
+  <!-- 只检查选中主题；固定历史卡版的来源和关联概念决定分类入口，不借新卡版回填过去。 -->
+  <select id="topicVersions" resultType="java.lang.String">
+    SELECT v.id FROM memory_card_version v
+    WHERE v.owner_id=#{owner} AND v.id IN <include refid="ids"/>
+      AND (EXISTS (SELECT 1 FROM memory_card_source s
+        JOIN knowledge_item k ON k.owner_id=s.owner_id AND k.id=s.knowledge_item_id
+        JOIN knowledge_item_topic l ON l.item_id=k.id
+        JOIN knowledge_topic t ON t.owner_id=k.owner_id AND t.id=l.topic_id
+        WHERE s.owner_id=v.owner_id AND s.card_id=v.card_id AND s.version_id=v.id AND t.id=#{topicId})
+      OR EXISTS (SELECT 1 FROM memory_card_concept c
+        JOIN knowledge_item k ON k.owner_id=c.owner_id AND k.id=c.concept_id
+        JOIN knowledge_item_topic l ON l.item_id=k.id
+        JOIN knowledge_topic t ON t.owner_id=k.owner_id AND t.id=l.topic_id
+        WHERE c.owner_id=v.owner_id AND c.card_id=v.card_id AND c.version_id=v.id AND t.id=#{topicId}))
+  </select>
+</mapper>

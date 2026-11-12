@@ -746,7 +746,7 @@
     if (!attempt || attempt.status !== 'active') return;
     state.pendingEnd = { attemptId: attempt.id, next };
     const dirty = dirtyAnswer(attempt);
-    const unsentFollowups = Object.values(attempt.followups).filter(item => item.draft.trim() && !item.answer).length;
+    const unsentFollowups = Object.values(attempt.followups).filter(item => item.draft.trim() && item.draft !== (item.answer?.body || '')).length;
     const unsentNote = attempt.noteDraft !== (attempt.noteSaved?.body || '');
     $('end-dialog-help').textContent = `${attempt.id}：${next ? '开始另一尝试前，请显式结束当前来源。' : '结束后主回答、用户自检与笔记都只读。'}后续只能新建 Attempt，旧来源不会移到新版本。`;
     const manifest = node('div', '', 'confirmation-summary');
@@ -919,7 +919,7 @@
       if (attempt.manifest) bodies.append(node('p', `结束时冻结：${attempt.manifest.revisionIds.join(' / ') || '空清单'}；最新 ${attempt.manifest.latestRevisionId || '无'}。${attempt.manifest.reason}`, 'frozen-note'));
       if (attempt.excludedDraft) bodies.append(node('p', attempt.excludedDraft.reason, 'deleted-draft space-top'), node('pre', attempt.excludedDraft.body, 'answer-copy'));
       savedFollowups(attempt).forEach(item => (item.revisions || [item.answer]).forEach(revision => bodies.append(node('h3', `${revision.id} · 主动选择的预设追问修订`), node('pre', revision.body, 'answer-copy'))));
-      Object.values(attempt.followups).filter(item => item.draft.trim() && !item.answer && attempt.status === 'ended').forEach(item => bodies.append(node('p', `${item.preset.id} 未交草稿，不在冻结清单内：${item.draft}`, 'deleted-draft space-top')));
+      Object.values(attempt.followups).filter(item => item.draft.trim() && item.draft !== (item.answer?.body || '') && attempt.status === 'ended').forEach(item => bodies.append(node('p', `${item.preset.id} 未交草稿，不在冻结清单内：${item.draft}`, 'deleted-draft space-top')));
       if (attempt.noteSaved) bodies.append(node('h3', '唯一练后笔记 · 已显式保存'), node('p', attempt.noteSaved.body, 'frozen-note'));
       if (attempt.status === 'ended' && attempt.noteDraft !== (attempt.noteSaved?.body || '')) bodies.append(node('p', `未保存笔记草稿，保留但不纳入清单：${attempt.noteDraft}`, 'deleted-draft space-top'));
       attempt.conflictPreserved.forEach(record => {

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.growth.GrowthEvidenceLinkMapper">
+  <select id="hasActiveLink" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM growth_evidence_use
+      WHERE owner_id=#{owner} AND evidence_key=#{evidenceKey} AND status='ACTIVE'
+        AND target_id=#{targetId} AND target_version_id=#{targetVersionId})
+  </select>
+</mapper>

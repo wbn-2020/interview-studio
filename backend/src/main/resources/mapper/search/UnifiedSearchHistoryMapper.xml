@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.search.UnifiedSearchHistoryMapper">
+  <resultMap id="answerRow" type="com.wenjie.studio.search.UnifiedSearchHistoryRows$AnswerRow">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="id" javaType="java.lang.String"/>
+      <arg column="session_id" javaType="java.lang.String"/><arg column="question_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="java.lang.Integer"/><arg column="latest_answer_id" javaType="java.lang.String"/>
+      <arg column="answer_count" javaType="java.lang.Integer"/><arg column="latest_number" javaType="java.lang.Integer"/>
+      <arg column="title" javaType="java.lang.String"/><arg column="mode" javaType="java.lang.String"/>
+      <arg column="session_status" javaType="java.lang.String"/><arg column="feedback_timing" javaType="java.lang.String"/>
+      <arg column="question_kind" javaType="java.lang.String"/><arg column="answer_condition" javaType="java.lang.String"/>
+      <arg column="assistance_event_sequence" javaType="java.lang.Integer"/><arg column="exposure_json" javaType="java.lang.String"/>
+      <arg column="created_at" javaType="java.time.Instant"/><arg column="question_context_json" javaType="java.lang.String"/>
+      <arg column="metadata_valid" javaType="java.lang.Boolean"/><arg column="texts_json" javaType="java.lang.String"/>
+      <arg column="body_valid" javaType="java.lang.Boolean"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="feedbackBindingRow" type="com.wenjie.studio.search.UnifiedSearchHistoryRows$FeedbackBinding">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="id" javaType="java.lang.String"/>
+      <arg column="session_id" javaType="java.lang.String"/><arg column="question_id" javaType="java.lang.String"/>
+      <arg column="answer_id" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="feedbackRow" type="com.wenjie.studio.search.UnifiedSearchHistoryRows$FeedbackRow">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="id" javaType="java.lang.String"/>
+      <arg column="revision" javaType="java.lang.Integer"/><arg column="current_revision" javaType="java.lang.Integer"/>
+      <arg column="actual_head_revision" javaType="java.lang.Integer"/><arg column="session_id" javaType="java.lang.String"/>
+      <arg column="question_id" javaType="java.lang.String"/><arg column="answer_id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/><arg column="author_label" javaType="java.lang.String"/>
+      <arg column="dimension" javaType="java.lang.String"/><arg column="coverage" javaType="java.lang.String"/>
+      <arg column="observation" javaType="java.lang.String"/><arg column="condition" javaType="java.lang.String"/>
+      <arg column="basis" javaType="java.lang.String"/><arg column="limitation" javaType="java.lang.String"/>
+      <arg column="suggestion" javaType="java.lang.String"/><arg column="decision_id" javaType="java.lang.String"/>
+      <arg column="decision_revision" javaType="java.lang.Integer"/><arg column="decision_choice" javaType="java.lang.String"/>
+      <arg column="decision_reason" javaType="java.lang.String"/><arg column="decision_created_at" javaType="java.time.Instant"/>
+      <arg column="metadata_valid" javaType="java.lang.Boolean"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="recollectionRow" type="com.wenjie.studio.search.UnifiedSearchHistoryRows$RecollectionRow">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="id" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/><arg column="version_number" javaType="java.lang.Integer"/>
+      <arg column="source_revision" javaType="java.lang.Long"/><arg column="current_version_id" javaType="java.lang.String"/>
+      <arg column="head_version_number" javaType="java.lang.Integer"/><arg column="actual_head_version_number" javaType="java.lang.Integer"/>
+      <arg column="status" javaType="java.lang.String"/><arg column="title" javaType="java.lang.String"/>
+      <arg column="baseline_kind" javaType="java.lang.String"/><arg column="content_json" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <sql id="contextColumns">
+    a.owner_id,a.id,a.session_id,a.question_id,a.version_number,q.latest_answer_id,q.answer_count,
+    h.version_number AS latest_number,q.title,s.mode,s.status AS session_status,
+    JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming')) AS feedback_timing,
+    q.question_kind,a.answer_condition,a.assistance_event_sequence,a.exposure_json,a.created_at,
+    JSON_OBJECT('technology',JSON_EXTRACT(q.snapshot_json,'$.content.technology'),
+      'scenario',JSON_EXTRACT(q.snapshot_json,'$.content.scenario'),
+      'conditions',JSON_EXTRACT(q.snapshot_json,'$.content.conditions')) AS question_context_json,
+    (JSON_TYPE(s.config_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='STRING'
+      AND JSON_TYPE(q.snapshot_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content'))='OBJECT') AS metadata_valid
+  </sql>
+  <sql id="answerJoins">
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    LEFT JOIN training_answer h ON h.owner_id=a.owner_id AND h.session_id=a.session_id AND h.question_id=a.question_id AND h.id=q.latest_answer_id
+  </sql>
+  <!-- 仅返回文字数组，数组位置由原 JSON 保持；图引用、画布来源和坐标不会进入 Java。 -->
+  <sql id="answerTextColumns">
+    JSON_OBJECT('text',JSON_EXTRACT(a.content_json,'$.text'),
+      'nodeLabels',COALESCE(JSON_EXTRACT(a.content_json,'$.diagram.nodes[*].label'),JSON_ARRAY()),
+      'nodeDescriptions',COALESCE(JSON_EXTRACT(a.content_json,'$.diagram.nodes[*].description'),JSON_ARRAY()),
+      'edgeLabels',COALESCE(JSON_EXTRACT(a.content_json,'$.diagram.edges[*].label'),JSON_ARRAY())) AS texts_json,
+    (JSON_TYPE(a.content_json)='OBJECT' AND JSON_LENGTH(a.content_json)=2 AND OCTET_LENGTH(a.content_json)&lt;=196608
+      AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.text'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram'))='OBJECT'
+      AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))='ARRAY'
+      AND JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram.edges'))='ARRAY'
+      AND JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))&lt;=80
+      AND JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.edges'))&lt;=160
+      AND JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))=COALESCE(JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes[*].label')),0)
+      AND JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes'))=COALESCE(JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.nodes[*].description')),0)
+      AND JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.edges'))=COALESCE(JSON_LENGTH(JSON_EXTRACT(a.content_json,'$.diagram.edges[*].label')),0)) AS body_valid
+  </sql>
+  <select id="context" resultMap="answerRow" timeout="5">
+    SELECT <include refid="contextColumns"/>,NULL AS texts_json,NULL AS body_valid
+    FROM training_answer a <include refid="answerJoins"/>
+    WHERE a.owner_id=#{owner} AND a.id=#{id}
+  </select>
+  <select id="answer" resultMap="answerRow" timeout="5">
+    SELECT <include refid="contextColumns"/>,<include refid="answerTextColumns"/>
+    FROM training_answer a <include refid="answerJoins"/>
+    WHERE a.owner_id=#{owner} AND a.id=#{id}
+  </select>
+  <select id="answers" resultMap="answerRow" timeout="5">
+    SELECT <include refid="contextColumns"/>,<include refid="answerTextColumns"/>
+    FROM training_answer a <include refid="answerJoins"/>
+    WHERE a.owner_id=#{owner} AND s.status IN ('RUNNING','PAUSED','ENDED')
+    <if test="afterId != null">AND a.id &lt; #{afterId}</if>
+    AND (
+      JSON_UNQUOTE(JSON_EXTRACT(a.content_json,'$.text')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR EXISTS (SELECT 1 FROM JSON_TABLE(a.content_json,'$.diagram.nodes[*]'
+        COLUMNS (node_label VARCHAR(200) PATH '$.label' NULL ON EMPTY ERROR ON ERROR,
+          node_description VARCHAR(5000) PATH '$.description' NULL ON EMPTY ERROR ON ERROR)) node_text
+        WHERE CONVERT(node_text.node_label USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+          OR CONVERT(node_text.node_description USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+      OR EXISTS (SELECT 1 FROM JSON_TABLE(a.content_json,'$.diagram.edges[*]'
+        COLUMNS (edge_label VARCHAR(200) PATH '$.label' NULL ON EMPTY ERROR ON ERROR)) edge_text
+        WHERE CONVERT(edge_text.edge_label USING utf8mb4) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')
+    )
+    ORDER BY a.id DESC LIMIT #{limit}
+  </select>
+
+  <select id="feedbackBinding" resultMap="feedbackBindingRow" timeout="5">
+    SELECT f.owner_id,f.id,f.session_id,f.question_id,f.answer_id
+    FROM review_feedback f JOIN review_feedback_revision v
+      ON v.owner_id=f.owner_id AND v.feedback_id=f.id AND v.revision=#{revision}
+    WHERE f.owner_id=#{owner} AND f.id=#{id}
+  </select>
+  <sql id="feedbackColumns">
+    f.owner_id,f.id,v.revision,f.revision AS current_revision,fh.revision AS actual_head_revision,
+    f.session_id,f.question_id,f.answer_id,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.kind')) AS kind,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.authorLabel')) AS author_label,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.dimension')) AS dimension,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.coverage')) AS coverage,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.observation')) AS observation,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.condition')) AS `condition`,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.basis')) AS basis,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.limitation')) AS limitation,
+    JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.suggestion')) AS suggestion,
+    d.id AS decision_id,d.revision AS decision_revision,d.choice AS decision_choice,
+    d.reason AS decision_reason,d.created_at AS decision_created_at,
+    (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=10 AND OCTET_LENGTH(v.content_json)&lt;=131072
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.kind'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.authorLabel'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.dimension'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.coverage'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.observation'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.condition'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.basis'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.limitation'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.suggestion'))='STRING'
+      AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.citations'))='ARRAY'
+      AND JSON_LENGTH(JSON_EXTRACT(v.content_json,'$.citations'))&lt;=6) AS metadata_valid
+  </sql>
+  <sql id="feedbackStateJoins">
+    LEFT JOIN review_feedback_revision fh ON fh.owner_id=f.owner_id AND fh.feedback_id=f.id AND fh.revision=f.revision
+    LEFT JOIN review_feedback_decision d ON d.owner_id=v.owner_id AND d.feedback_id=v.feedback_id
+      AND d.feedback_revision=v.revision AND d.revision=(SELECT MAX(x.revision) FROM review_feedback_decision x
+        WHERE x.owner_id=v.owner_id AND x.feedback_id=v.feedback_id AND x.feedback_revision=v.revision)
+  </sql>
+  <select id="feedback" resultMap="feedbackRow" timeout="5">
+    SELECT <include refid="feedbackColumns"/>
+    FROM review_feedback f JOIN review_feedback_revision v
+      ON v.owner_id=f.owner_id AND v.feedback_id=f.id AND v.revision=#{revision}
+    <include refid="feedbackStateJoins"/>
+    WHERE f.owner_id=#{owner} AND f.id=#{id}
+  </select>
+  <!-- 许可先约束可检索集合；未许可正文不能成为候选、分页额外项或扫描计数。 -->
+  <select id="feedbacks" resultMap="feedbackRow" timeout="5">
+    SELECT <include refid="feedbackColumns"/>
+    FROM review_feedback f
+    JOIN training_answer a ON a.owner_id=f.owner_id AND a.session_id=f.session_id AND a.question_id=f.question_id AND a.id=f.answer_id
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    JOIN ai_evaluation_access e ON e.owner_id=a.owner_id AND e.session_id=a.session_id AND e.question_id=a.question_id AND e.answer_id=a.id
+      AND e.early_feedback IN (0,1) AND e.granted_at BETWEEN '1000-01-01 00:00:00.000000' AND '9999-12-31 23:59:59.999999'
+    JOIN review_feedback_revision v ON v.owner_id=f.owner_id AND v.feedback_id=f.id AND v.revision=f.revision
+    <include refid="feedbackStateJoins"/>
+    WHERE f.owner_id=#{owner} AND s.status IN ('RUNNING','PAUSED','ENDED') AND a.version_number BETWEEN 1 AND 100
+      AND ((s.mode='LEARNING' AND a.answer_condition='LEARNING')
+        OR (s.mode IN ('FOCUSED','MOCK') AND a.answer_condition IN ('BEFORE_ASSISTANCE','ASSISTED')))
+      AND a.assistance_event_sequence BETWEEN 0 AND 2000
+      AND (a.answer_condition&lt;>'ASSISTED' OR a.assistance_event_sequence&gt;0)
+      AND (a.answer_condition&lt;>'BEFORE_ASSISTANCE' OR a.assistance_event_sequence=0)
+      AND JSON_TYPE(s.config_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='STRING'
+      AND JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming')) IN ('AFTER_ANSWER','AFTER_SESSION')
+      AND (s.status='ENDED' OR JSON_UNQUOTE(JSON_EXTRACT(s.config_json,'$.feedbackTiming'))='AFTER_ANSWER' OR e.early_feedback=1)
+    <if test="afterId != null">AND f.id &lt; #{afterId}</if>
+    AND (
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.observation')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.condition')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.basis')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.limitation')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.suggestion')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+    )
+    ORDER BY f.id DESC LIMIT #{limit}
+  </select>
+
+  <sql id="recollectionColumns">
+    r.owner_id,r.id,v.id AS version_id,v.version_number,r.revision AS source_revision,
+    r.current_version_id,r.version_number AS head_version_number,h.version_number AS actual_head_version_number,
+    r.status,v.title,v.baseline_kind,v.content_json
+  </sql>
+  <sql id="recollectionHead">
+    LEFT JOIN review_recollection_version h ON h.owner_id=r.owner_id AND h.recollection_id=r.id AND h.id=r.current_version_id
+  </sql>
+  <select id="recollection" resultMap="recollectionRow" timeout="5">
+    SELECT <include refid="recollectionColumns"/>
+    FROM review_recollection r JOIN review_recollection_version v
+      ON v.owner_id=r.owner_id AND v.recollection_id=r.id AND v.id=#{versionId}
+    <include refid="recollectionHead"/>
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <select id="recollections" resultMap="recollectionRow" timeout="5">
+    SELECT <include refid="recollectionColumns"/>
+    FROM review_recollection r JOIN review_recollection_version v
+      ON v.owner_id=r.owner_id AND v.recollection_id=r.id AND v.id=r.current_version_id
+    <include refid="recollectionHead"/>
+    WHERE r.owner_id=#{owner} AND r.status=#{status}
+    <if test="afterId != null">AND r.id &lt; #{afterId}</if>
+    AND (
+      JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.title')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.question')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.conditions')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.answerFragment')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.feedback')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.uncertainty')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+      OR JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.gap')) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+    )
+    ORDER BY r.id DESC LIMIT #{limit}
+  </select>
+</mapper>

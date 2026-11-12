@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.ReviewDraftBindingMapper">
+  <sql id="columns">owner_id,task_id,kind,feedback_id,feedback_revision,session_id,question_id,answer_id,
+    decision_revision,decision_choice,recollection_id,recollection_version_id,recollection_revision</sql>
+  <select id="binding" resultType="com.wenjie.studio.ai.ReviewDraftBindingRows$Binding">
+    SELECT <include refid="columns"/> FROM ai_review_draft_source WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <select id="bindings" resultType="com.wenjie.studio.ai.ReviewDraftBindingRows$Binding">
+    SELECT <include refid="columns"/> FROM ai_review_draft_source WHERE owner_id=#{owner} AND task_id IN
+    <foreach collection="taskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY task_id
+  </select>
+  <insert id="insert">
+    INSERT INTO ai_review_draft_source (<include refid="columns"/>)
+    VALUES (#{binding.ownerId},#{binding.taskId},#{binding.kind},#{binding.feedbackId},#{binding.feedbackRevision},
+      #{binding.sessionId},#{binding.questionId},#{binding.answerId},#{binding.decisionRevision},#{binding.decisionChoice},
+      #{binding.recollectionId},#{binding.recollectionVersionId},#{binding.recollectionRevision})
+  </insert>
+</mapper>

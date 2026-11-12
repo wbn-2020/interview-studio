@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.review.ReviewedObservationSourceMapper">
+  <sql id="exactAnswer">
+    FROM training_answer a
+    JOIN training_question q ON q.owner_id=a.owner_id AND q.session_id=a.session_id AND q.id=a.question_id
+    JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    JOIN ai_evaluation_access e ON e.owner_id=a.owner_id AND e.session_id=a.session_id
+      AND e.question_id=a.question_id AND e.answer_id=a.id
+    WHERE a.owner_id=#{owner} AND a.session_id=#{sessionId} AND a.question_id=#{questionId} AND a.id=#{answerId}
+  </sql>
+  <!-- 回执恢复及撤回只读取访问事实，不依赖标准或引用来源仍有效。 -->
+  <select id="access" resultType="com.wenjie.studio.review.ReviewedObservationSourceRows$Access">
+    SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,
+      s.status AS session_status,s.config_json,e.early_feedback,e.granted_at
+    <include refid="exactAnswer"/>
+  </select>
+  <select id="answer" resultType="com.wenjie.studio.review.ReviewedObservationSourceRows$Answer">
+    SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,s.mode,s.status AS session_status,
+      s.config_json,q.source_question_id,q.source_version_id,q.question_kind,q.snapshot_json,
+      a.content_json,a.version_number AS answer_number,a.answer_condition,a.assistance_event_sequence,
+      a.exposure_json,a.created_at AS answer_created_at,e.early_feedback,e.granted_at
+    <include refid="exactAnswer"/>
+  </select>
+</mapper>

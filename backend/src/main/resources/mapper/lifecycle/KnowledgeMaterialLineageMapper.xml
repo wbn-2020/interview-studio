@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageMapper">
+  <select id="version" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$VersionRow" timeout="5">
+    SELECT v.owner_id,v.item_id,v.id AS version_id,v.version_number,v.title,v.body,
+      i.owner_id AS item_owner_id,i.kind AS item_kind,i.status AS item_status
+    FROM knowledge_version v
+    LEFT JOIN knowledge_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+    LIMIT #{limit}
+  </select>
+  <select id="adoptions" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$AdoptionRow" timeout="5">
+    SELECT d.owner_id,d.task_id,d.status,d.mode,d.target_item_id,d.target_version_id,
+      t.owner_id AS task_owner_id,t.id AS actual_task_id,t.purpose,t.status AS task_status,
+      t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
+      i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
+      v.id AS actual_version_id,v.version_number AS target_version_number,
+      NULL AS target_project_id,NULL AS actual_project_id
+    FROM ai_candidate_decision d
+    LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    LEFT JOIN knowledge_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
+    LEFT JOIN knowledge_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId}
+      <!-- 缺失目标版本和未知决定也交给完整性校验，不能在 SQL 中静默丢掉。 -->
+      AND (v.version_number &lt;=#{through} OR v.id IS NULL OR v.version_number IS NULL)
+    <if test="knownTaskIds != null and !knownTaskIds.isEmpty()">
+      AND d.task_id NOT IN
+      <foreach collection="knownTaskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </if>
+    ORDER BY v.version_number,d.task_id LIMIT #{limit}
+  </select>
+  <select id="expressionAdoptions" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$AdoptionRow" timeout="5">
+    SELECT d.owner_id,d.task_id,d.status,d.mode,d.target_item_id,d.target_version_id,
+      t.owner_id AS task_owner_id,t.id AS actual_task_id,t.purpose,t.status AS task_status,
+      t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
+      i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
+      v.id AS actual_version_id,v.version_number AS target_version_number,
+      NULL AS target_project_id,i.project_id AS actual_project_id
+    FROM ai_expression_decision d
+    LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    LEFT JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
+    LEFT JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId}
+      AND (v.version_number &lt;=#{through} OR v.id IS NULL OR v.version_number IS NULL)
+    <if test="knownTaskIds != null and !knownTaskIds.isEmpty()">
+      AND d.task_id NOT IN
+      <foreach collection="knownTaskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </if>
+    ORDER BY v.version_number,d.task_id LIMIT #{limit}
+  </select>
+  <select id="factAdoptions" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$AdoptionRow" timeout="5">
+    SELECT d.owner_id,d.task_id,d.status,NULL AS mode,d.target_item_id,d.target_version_id,
+      t.owner_id AS task_owner_id,t.id AS actual_task_id,t.purpose,t.status AS task_status,
+      t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
+      i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
+      v.id AS actual_version_id,v.version_number AS target_version_number,
+      d.target_project_id,i.project_id AS actual_project_id
+    FROM ai_fact_draft_decision d
+    LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    LEFT JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
+    LEFT JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId}
+      AND (v.version_number &lt;=#{through} OR v.id IS NULL OR v.version_number IS NULL)
+    <if test="knownTaskIds != null and !knownTaskIds.isEmpty()">
+      AND d.task_id NOT IN
+      <foreach collection="knownTaskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </if>
+    ORDER BY v.version_number,d.task_id LIMIT #{limit}
+  </select>
+  <select id="knowledgeBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$KnowledgeBinding" timeout="5">
+    SELECT owner_id,task_id,source_item_id AS item_id,source_version_id AS version_id,
+      source_version_number AS version_number,source_title AS title,ordinal
+    FROM ai_knowledge_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY ordinal,source_item_id,source_version_id LIMIT #{limit}
+  </select>
+  <select id="questionAdoptions" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$AdoptionRow" timeout="5">
+    SELECT d.owner_id,d.task_id,d.status,NULL AS mode,d.target_question_id AS target_item_id,d.target_version_id,
+      t.owner_id AS task_owner_id,t.id AS actual_task_id,t.purpose,t.status AS task_status,
+      t.manifest_json,t.manifest_hash,q.owner_id AS item_owner_id,q.id AS actual_item_id,
+      'QUESTION' AS item_kind,q.status AS item_status,v.owner_id AS version_owner_id,v.question_id AS version_item_id,
+      v.id AS actual_version_id,v.version_number AS target_version_number,
+      NULL AS target_project_id,NULL AS actual_project_id
+    FROM ai_question_decision d
+    LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    LEFT JOIN question q ON q.owner_id=d.owner_id AND q.id=d.target_question_id
+    LEFT JOIN question_version v ON v.owner_id=d.owner_id AND v.question_id=d.target_question_id AND v.id=d.target_version_id
+    WHERE d.owner_id=#{owner} AND d.target_question_id=#{itemId}
+      AND (v.version_number &lt;=#{through} OR v.id IS NULL OR v.version_number IS NULL)
+    <if test="knownTaskIds != null and !knownTaskIds.isEmpty()">
+      AND d.task_id NOT IN
+      <foreach collection="knownTaskIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </if>
+    ORDER BY v.version_number,d.task_id LIMIT #{limit}
+  </select>
+  <select id="questionKnowledgeBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$KnowledgeBinding" timeout="5">
+    SELECT owner_id,task_id,source_item_id AS item_id,source_version_id AS version_id,
+      source_version_number AS version_number,source_title AS title,ordinal
+    FROM ai_question_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY ordinal,source_item_id,source_version_id LIMIT #{limit}
+  </select>
+  <select id="materialBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$MaterialBinding" timeout="5">
+    SELECT s.owner_id,s.task_id,s.excerpt_id,s.ordinal,e.owner_id AS excerpt_owner_id,
+      e.id AS actual_excerpt_id,e.attachment_id,e.attachment_sha256,a.owner_id AS attachment_owner_id,
+      a.id AS actual_attachment_id,a.file_name,a.sha256 AS actual_sha256,e.origin,e.run_id,e.segment_id,
+      e.locator,e.text,e.start_offset,e.end_offset,NULL AS kind
+    FROM ai_material_draft_source s
+    LEFT JOIN material_excerpt e ON e.owner_id=s.owner_id AND e.id=s.excerpt_id
+    LEFT JOIN material_attachment a ON a.owner_id=e.owner_id AND a.id=e.attachment_id
+    WHERE s.owner_id=#{owner} AND s.task_id=#{taskId}
+    ORDER BY s.ordinal,s.excerpt_id LIMIT #{limit}
+  </select>
+  <select id="preparationBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationBinding" timeout="5">
+    SELECT owner_id,task_id,source_item_id AS item_id,source_version_id AS version_id,
+      source_kind AS kind,source_version_number AS version_number,source_title AS title,ordinal
+    FROM ai_preparation_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY ordinal,source_item_id,source_version_id LIMIT #{limit}
+  </select>
+  <select id="preparationVersion" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationVersionRow" timeout="5">
+    SELECT v.owner_id,v.item_id,v.id AS version_id,v.version_number,v.title,v.content_json,
+      i.owner_id AS item_owner_id,i.kind AS item_kind,i.status AS item_status,i.project_id,
+      p.owner_id AS project_owner_id,p.id AS actual_project_id,p.kind AS project_kind
+    FROM preparation_version v
+    LEFT JOIN preparation_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    LEFT JOIN preparation_item p ON p.owner_id=i.owner_id AND p.id=i.project_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+    LIMIT #{limit}
+  </select>
+  <select id="preparationMaterials" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationMaterialBinding" timeout="5">
+    SELECT r.owner_id,r.item_id,r.version_id,r.excerpt_id,e.owner_id AS excerpt_owner_id,
+      e.id AS actual_excerpt_id,e.attachment_id,e.attachment_sha256,a.owner_id AS attachment_owner_id,
+      a.id AS actual_attachment_id,a.sha256 AS actual_sha256
+    FROM preparation_material_reference r
+    LEFT JOIN material_excerpt e ON e.owner_id=r.owner_id AND e.id=r.excerpt_id
+    LEFT JOIN material_attachment a ON a.owner_id=e.owner_id AND a.id=e.attachment_id
+    <!-- 不按 item_id 过滤，保留确切版本上错绑对象的原始行供完整性校验。 -->
+    WHERE r.owner_id=#{owner} AND r.version_id=#{versionId}
+    ORDER BY r.excerpt_id,r.item_id LIMIT #{limit}
+  </select>
+  <select id="preparationReferences" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationReferenceBinding" timeout="5">
+    SELECT owner_id,target_item_id,target_version_id,source_kind,
+      preparation_source_item_id AS preparation_item_id,preparation_source_version_id AS preparation_version_id,
+      knowledge_source_item_id AS knowledge_item_id,knowledge_source_version_id AS knowledge_version_id,use_type
+    FROM preparation_reference
+    <!-- 不筛关系用途或目标对象，异常 FACT_BASIS 也不能成为“无依据”。 -->
+    WHERE owner_id=#{owner} AND target_version_id=#{versionId}
+    ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="factSources" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$FactSourceBinding" timeout="5">
+    SELECT owner_id,task_id,kind,session_id,question_id,answer_id
+    FROM ai_fact_draft_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY task_id LIMIT #{limit}
+  </select>
+  <select id="trainingSources" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$TrainingSourceBinding" timeout="5">
+    SELECT owner_id,task_id,session_id,question_id,answer_id,evaluation_task_id
+    FROM ai_training_draft_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY task_id LIMIT #{limit}
+  </select>
+  <select id="trainingAnswer" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$TrainingAnswerRow" timeout="5">
+    SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,a.version_number AS answer_number,
+      a.answer_condition,a.content_json AS answer_content_json,q.owner_id AS question_owner_id,
+      q.id AS actual_question_id,q.session_id AS question_session_id,
+      s.owner_id AS session_owner_id,s.id AS actual_session_id
+    FROM training_answer a
+    LEFT JOIN training_question q ON q.owner_id=a.owner_id AND q.id=a.question_id
+    LEFT JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    <!-- 按原答案身份读取，缺失或错绑的父身份由代码核验，不读取题面与隐式会话背景。 -->
+    WHERE a.owner_id=#{owner} AND a.id=#{answerId}
+    ORDER BY a.id LIMIT #{limit}
+  </select>
+  <select id="answerKnowledgeBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$AnswerKnowledgeBinding" timeout="5">
+    SELECT owner_id,session_id,question_id,answer_id,knowledge_item_id AS item_id,knowledge_version_id AS version_id
+    FROM training_answer_knowledge_reference
+    <!-- 不筛会话与题目，保留原答案上错绑的登记行供全量一致性核验。 -->
+    WHERE owner_id=#{owner} AND answer_id=#{answerId}
+    ORDER BY knowledge_item_id,knowledge_version_id,session_id,question_id LIMIT #{limit}
+  </select>
+  <select id="trainingQuestion" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$TrainingQuestionRow" timeout="5">
+    SELECT q.owner_id,q.session_id,q.id AS question_id,q.source_question_id,q.source_version_id,q.title,q.stage,q.question_kind,
+      q.root_question_id,q.parent_question_id,q.parent_answer_id,q.ai_task_id,q.snapshot_json,
+      s.owner_id AS session_owner_id,s.id AS actual_session_id,q.position_index
+    FROM training_question q
+    LEFT JOIN training_session s ON s.owner_id=q.owner_id AND s.id=q.session_id
+    WHERE q.owner_id=#{owner} AND q.id=#{questionId}
+    ORDER BY q.id LIMIT #{limit}
+  </select>
+  <select id="bankVersion" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$BankVersionRow" timeout="5">
+    SELECT v.owner_id,v.question_id,v.id AS version_id,v.version_number,v.title,v.prompt_json,
+      q.owner_id AS item_owner_id,q.id AS actual_question_id,q.status AS item_status
+    FROM question_version v
+    LEFT JOIN question q ON q.owner_id=v.owner_id AND q.id=v.question_id
+    WHERE v.owner_id=#{owner} AND v.question_id=#{itemId} AND v.id=#{versionId}
+    LIMIT #{limit}
+  </select>
+  <select id="trainingQuestionKnowledgeBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$TrainingQuestionKnowledgeBinding" timeout="5">
+    SELECT owner_id,session_id,question_id,knowledge_item_id AS item_id,knowledge_version_id AS version_id
+    FROM training_question_knowledge_snapshot
+    <!-- 不筛会话，错绑的原题面登记也须参与全量核验。 -->
+    WHERE owner_id=#{owner} AND question_id=#{questionId}
+    ORDER BY knowledge_item_id,knowledge_version_id,session_id LIMIT #{limit}
+  </select>
+  <select id="bankKnowledgeBindings" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$BankKnowledgeBinding" timeout="5">
+    SELECT owner_id,question_id,version_id,knowledge_item_id,knowledge_version_id,position_index
+    FROM question_knowledge_reference
+    <!-- 不筛题库对象，保留确切版本上的错绑及原位置。 -->
+    WHERE owner_id=#{owner} AND version_id=#{versionId}
+    ORDER BY position_index,knowledge_item_id,knowledge_version_id,question_id LIMIT #{limit}
+  </select>
+  <select id="evaluationSource" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$EvaluationSourceRow" timeout="5">
+    SELECT t.owner_id,t.id AS task_id,t.purpose,t.status AS task_status,t.current_attempt_id,t.attempt_count,
+      t.manifest_json,t.manifest_hash,t.candidate_json,e.owner_id AS binding_owner_id,e.task_id AS binding_task_id,
+      e.session_id,e.question_id,e.answer_id,a.owner_id AS attempt_owner_id,a.task_id AS attempt_task_id,
+      a.id AS attempt_id,a.attempt_number,a.status AS attempt_status,s.owner_id AS session_owner_id,
+      s.id AS actual_session_id,s.mode AS session_mode,s.config_json AS session_config_json
+    FROM ai_task t
+    LEFT JOIN ai_evaluation e ON e.owner_id=t.owner_id AND e.task_id=t.id
+    LEFT JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    LEFT JOIN training_session s ON s.owner_id=e.owner_id AND s.id=e.session_id
+    <!-- 只取原固定条件；不读取今天的评价许可、决定或会话背景。 -->
+    WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+    LIMIT #{limit}
+  </select>
+  <select id="bankStandard" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$BankStandardRow" timeout="5">
+    SELECT v.owner_id,v.question_id,v.id AS version_id,v.standard_status,v.reference_answer,v.checkpoints_json,
+      q.owner_id AS item_owner_id,q.id AS actual_question_id
+    FROM question_version v
+    LEFT JOIN question q ON q.owner_id=v.owner_id AND q.id=v.question_id
+    WHERE v.owner_id=#{owner} AND v.question_id=#{itemId} AND v.id=#{versionId}
+    LIMIT #{limit}
+  </select>
+  <select id="followUpSource" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$FollowUpSourceRow" timeout="5">
+    SELECT t.owner_id,t.id AS task_id,t.purpose,t.status AS task_status,t.current_attempt_id,t.attempt_count,
+      t.manifest_json,t.manifest_hash,t.candidate_json,f.owner_id AS binding_owner_id,f.task_id AS binding_task_id,
+      f.session_id,f.question_id AS parent_question_id,f.answer_id AS parent_answer_id,f.root_question_id,
+      f.generation,f.generated_question_id,a.owner_id AS attempt_owner_id,a.task_id AS attempt_task_id,
+      a.id AS attempt_id,a.attempt_number,a.status AS attempt_status,s.owner_id AS session_owner_id,
+      s.id AS actual_session_id,s.context_json AS session_context_json
+    FROM ai_task t
+    LEFT JOIN ai_follow_up f ON f.owner_id=t.owner_id AND f.task_id=t.id
+    LEFT JOIN ai_attempt a ON a.owner_id=t.owner_id AND a.task_id=t.id AND a.id=t.current_attempt_id
+    LEFT JOIN training_session s ON s.owner_id=f.owner_id AND s.id=f.session_id
+    <!-- 固定背景与原绑定共同核验；不读取今天的训练状态或来源资格。 -->
+    WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+    LIMIT #{limit}
+  </select>
+  <select id="factMaterials" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$MaterialBinding" timeout="5">
+    SELECT s.owner_id,s.task_id,s.excerpt_id,s.ordinal,e.owner_id AS excerpt_owner_id,
+      e.id AS actual_excerpt_id,e.attachment_id,e.attachment_sha256,a.owner_id AS attachment_owner_id,
+      a.id AS actual_attachment_id,a.file_name,a.sha256 AS actual_sha256,e.origin,e.run_id,e.segment_id,
+      e.locator,e.text,e.start_offset,e.end_offset,s.kind
+    FROM ai_fact_draft_material s
+    LEFT JOIN material_excerpt e ON e.owner_id=s.owner_id AND e.id=s.excerpt_id
+    LEFT JOIN material_attachment a ON a.owner_id=e.owner_id AND a.id=e.attachment_id
+    WHERE s.owner_id=#{owner} AND s.task_id=#{taskId}
+    ORDER BY s.ordinal,s.excerpt_id LIMIT #{limit}
+  </select>
+</mapper>

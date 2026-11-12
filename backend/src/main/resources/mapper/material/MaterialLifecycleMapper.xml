@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialLifecycleMapper">
+  <resultMap id="row" type="com.wenjie.studio.material.MaterialLifecycleMapper$Row">
+    <constructor>
+      <idArg column="excerpt_id" javaType="java.lang.String"/>
+      <arg column="attachment_id" javaType="java.lang.String"/>
+      <arg column="baseline_excerpt_id" javaType="java.lang.String"/>
+      <arg column="baseline_attachment_id" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="ai_use" javaType="java.lang.String"/>
+      <arg column="revision" javaType="java.lang.Long"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+      <arg column="updated_at" javaType="java.time.Instant"/>
+      <arg column="excerpt_created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="event" type="com.wenjie.studio.material.MaterialLifecycleDtos$Event">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="excerpt_id" javaType="java.lang.String"/>
+      <arg column="action" javaType="com.wenjie.studio.material.MaterialLifecycleDtos$Action"/>
+      <arg column="previous_status" javaType="com.wenjie.studio.material.MaterialLifecycleDtos$Status"/>
+      <arg column="previous_ai_use" javaType="com.wenjie.studio.material.MaterialLifecycleDtos$AiUse"/>
+      <arg column="previous_revision" javaType="_long"/>
+      <arg column="status" javaType="com.wenjie.studio.material.MaterialLifecycleDtos$Status"/>
+      <arg column="ai_use" javaType="com.wenjie.studio.material.MaterialLifecycleDtos$AiUse"/>
+      <arg column="revision" javaType="_long"/>
+      <arg column="reason" javaType="java.lang.String"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <select id="source" resultMap="row" timeout="5">
+    SELECT e.id AS excerpt_id,e.attachment_id,l.excerpt_id AS baseline_excerpt_id,l.attachment_id AS baseline_attachment_id,
+      l.status,l.ai_use,l.revision,l.created_at,l.updated_at,e.created_at AS excerpt_created_at
+    FROM material_excerpt e JOIN material_attachment a
+      ON a.owner_id=e.owner_id AND a.id=e.attachment_id AND a.sha256=e.attachment_sha256 AND a.status='READY'
+    LEFT JOIN material_excerpt_lifecycle l ON l.owner_id=e.owner_id AND l.excerpt_id=e.id
+    WHERE e.owner_id=#{owner} AND e.id=#{id}
+  </select>
+  <select id="hasReferences" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM preparation_material_reference WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM ai_material_draft_source WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM ai_material_qa_source WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM ai_fact_draft_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM ai_relation_evidence_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM ai_source_qa_source WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM knowledge_relation_evidence_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND excerpt_id=#{id})
+  </select>
+  <select id="hasUnsupportedReferences" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM preparation_material_reference WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM knowledge_relation_evidence_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND excerpt_id=#{id})
+      OR EXISTS(
+        SELECT 1 FROM (
+          SELECT s.owner_id,s.task_id,
+            CASE WHEN t.id IS NOT NULL AND t.purpose IN ('KNOWLEDGE_DRAFT','QUESTION_DRAFT') THEN 1 ELSE 0 END AS supported
+          FROM ai_material_draft_source s
+          LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+          WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+          UNION ALL
+          SELECT s.owner_id,s.task_id,
+            CASE WHEN t.id IS NOT NULL AND t.purpose='MATERIAL_QA' THEN 1 ELSE 0 END AS supported
+          FROM ai_material_qa_source s
+          LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+          WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+          UNION ALL
+          SELECT s.owner_id,s.task_id,
+            CASE WHEN t.id IS NOT NULL AND t.purpose='FACT_DRAFT' AND s.kind='MATERIAL'
+              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported
+          FROM ai_fact_draft_material s
+          LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+          LEFT JOIN ai_fact_draft_source p ON p.owner_id=s.owner_id AND p.task_id=s.task_id AND p.kind=s.kind
+          WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+          UNION ALL
+          SELECT s.owner_id,s.task_id,
+            CASE WHEN t.id IS NOT NULL AND t.purpose='RELATION_DRAFT' AND s.kind='MATERIAL'
+              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported
+          FROM ai_relation_evidence_material s
+          LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+          LEFT JOIN ai_relation_evidence_source p ON p.owner_id=s.owner_id AND p.task_id=s.task_id AND p.kind=s.kind
+          WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+          UNION ALL
+          SELECT s.owner_id,s.task_id,
+            CASE WHEN t.id IS NOT NULL AND t.purpose='SOURCE_QA' AND s.domain='MATERIAL_EXCERPT' THEN 1 ELSE 0 END AS supported
+          FROM ai_source_qa_source s
+          LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+          WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+        ) registered
+        <!-- 只放行无决定或明确忽略；采用和未知决定均阻止，关系补充与已移除边仍按原决定检查。 -->
+        WHERE registered.supported=0
+          OR EXISTS(SELECT 1 FROM ai_candidate_decision d WHERE d.owner_id=registered.owner_id
+            AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
+          OR EXISTS(SELECT 1 FROM ai_question_decision d WHERE d.owner_id=registered.owner_id
+            AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
+          OR EXISTS(SELECT 1 FROM ai_fact_draft_decision d WHERE d.owner_id=registered.owner_id
+            AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
+          OR EXISTS(SELECT 1 FROM ai_relation_decision d WHERE d.owner_id=registered.owner_id
+            AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
+      )
+  </select>
+  <select id="missingBaseline" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM material_excerpt e LEFT JOIN material_excerpt_lifecycle l
+      ON l.owner_id=e.owner_id AND l.excerpt_id=e.id
+      WHERE e.owner_id=#{owner} AND e.attachment_id=#{attachmentId}
+        AND (l.excerpt_id IS NULL OR l.attachment_id&lt;&gt;e.attachment_id OR l.created_at&lt;&gt;e.created_at
+          OR l.status NOT IN ('ACTIVE','ARCHIVED') OR l.ai_use NOT IN ('ALLOWED','REVOKED')
+          OR l.revision&lt;0 OR l.revision&gt;9007199254740991 OR l.updated_at&lt;l.created_at
+          OR (l.revision=0 AND (l.status&lt;&gt;'ACTIVE' OR l.ai_use&lt;&gt;'ALLOWED' OR l.updated_at&lt;&gt;l.created_at))))
+  </select>
+  <insert id="initialize">
+    INSERT INTO material_excerpt_lifecycle(owner_id,excerpt_id,attachment_id,status,ai_use,revision,created_at,updated_at)
+    VALUES(#{owner},#{id},#{attachmentId},'ACTIVE','ALLOWED',0,#{now},#{now})
+  </insert>
+  <update id="change">
+    UPDATE material_excerpt_lifecycle SET status=#{status},ai_use=#{aiUse},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND excerpt_id=#{id} AND revision=#{expected} AND revision&lt;9007199254740991
+  </update>
+  <insert id="insertEvent">
+    INSERT INTO material_excerpt_lifecycle_event(owner_id,id,excerpt_id,action,previous_status,previous_ai_use,
+      previous_revision,status,ai_use,revision,reason,created_at)
+    VALUES(#{owner},#{event.id},#{event.excerptId},#{event.action},#{event.previousStatus},#{event.previousAiUse},
+      #{event.previousRevision},#{event.status},#{event.aiUse},#{event.revision},#{event.reason},#{event.createdAt})
+  </insert>
+  <select id="history" resultMap="event" timeout="5">
+    SELECT id,excerpt_id,action,previous_status,previous_ai_use,previous_revision,status,ai_use,revision,reason,created_at
+    FROM material_excerpt_lifecycle_event WHERE owner_id=#{owner} AND excerpt_id=#{id} AND revision&gt;#{after}
+    ORDER BY revision LIMIT #{limit}
+  </select>
+</mapper>

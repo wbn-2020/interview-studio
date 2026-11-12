@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.bank.QuestionMapper">
+  <select id="question" resultType="com.wenjie.studio.bank.QuestionRows$QuestionRow">
+    SELECT id,owner_id,status,revision,favorite,current_version_id,version_number,created_at,updated_at
+    FROM question WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="questions" resultType="com.wenjie.studio.bank.QuestionRows$SummaryRow">
+    SELECT q.id,v.title,v.question_type AS type,v.difficulty,q.status,q.revision,q.favorite,
+      v.id AS version_id,v.version_number,v.standard_status,q.updated_at
+    FROM question q JOIN question_version v
+      ON v.owner_id=q.owner_id AND v.question_id=q.id AND v.id=q.current_version_id
+    WHERE q.owner_id=#{owner} AND q.status=#{status}
+    <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="type != null">AND v.question_type=#{type}</if>
+    <if test="difficulty != null">AND v.difficulty=#{difficulty}</if>
+    <if test="scenePattern != null">AND v.scenario LIKE #{scenePattern} ESCAPE '!'</if>
+    <if test="favorite != null">AND q.favorite=#{favorite}</if>
+    <if test="dimension != null">
+      AND EXISTS (SELECT 1 FROM question_version_dimension d WHERE d.owner_id=q.owner_id
+        AND d.question_id=q.id AND d.version_id=v.id AND d.dimension=#{dimension})
+    </if>
+    <if test="topicId != null">
+      AND EXISTS (SELECT 1 FROM question_version_topic t WHERE t.owner_id=q.owner_id
+        AND t.question_id=q.id AND t.version_id=v.id AND t.topic_id=#{topicId})
+    </if>
+    <if test="knowledgeId != null">
+      AND EXISTS (SELECT 1 FROM question_knowledge_reference r WHERE r.owner_id=q.owner_id
+        AND r.question_id=q.id AND r.version_id=v.id AND r.knowledge_item_id=#{knowledgeId})
+    </if>
+    <if test="cursor != null">AND q.id &gt; #{cursor}</if>
+    ORDER BY q.id LIMIT #{limit}
+  </select>
+  <!-- 题干读取不选择 reference_answer 或 checkpoints_json，避免通过普通 GET 暴露参考。 -->
+  <select id="version" resultType="com.wenjie.studio.bank.QuestionRows$VersionRow">
+    SELECT id,question_id,owner_id,version_number,title,prompt_json,standard_status,has_reference,created_at
+    FROM question_version WHERE owner_id=#{owner} AND question_id=#{id} AND id=#{versionId}
+  </select>
+  <select id="versions" resultType="com.wenjie.studio.bank.QuestionDtos$VersionSummary">
+    SELECT id,version_number AS number,title,created_at FROM question_version
+    WHERE owner_id=#{owner} AND question_id=#{id}
+    <if test="before != null">AND version_number &lt; #{before}</if>
+    ORDER BY version_number DESC LIMIT #{limit}
+  </select>
+  <select id="topics" resultType="string">
+    SELECT topic_id FROM question_version_topic WHERE owner_id=#{owner} AND version_id=#{versionId}
+    ORDER BY position_index
+  </select>
+  <select id="knowledgeLinks" resultType="com.wenjie.studio.bank.QuestionDtos$KnowledgeLink">
+    SELECT knowledge_item_id AS item_id,knowledge_version_id AS version_id FROM question_knowledge_reference
+    WHERE owner_id=#{owner} AND version_id=#{versionId} ORDER BY position_index
+  </select>
+  <select id="reference" resultType="com.wenjie.studio.bank.QuestionRows$ReferenceRow">
+    SELECT reference_answer,checkpoints_json FROM question_version
+    WHERE owner_id=#{owner} AND question_id=#{id} AND id=#{versionId}
+  </select>
+  <select id="exposures" resultType="com.wenjie.studio.bank.QuestionDtos$Exposure">
+    SELECT id,question_id,version_id,exposure_kind AS kind,created_at FROM question_exposure
+    WHERE owner_id=#{owner} AND question_id=#{id}
+    <if test="beforeTime != null">
+      AND (created_at &lt; #{beforeTime} OR (created_at=#{beforeTime} AND id &lt; #{beforeId}))
+    </if>
+    ORDER BY created_at DESC,id DESC LIMIT #{limit}
+  </select>
+  <insert id="insertQuestion">
+    INSERT INTO question (id,owner_id,status,revision,favorite,current_version_id,version_number,created_at,updated_at)
+    VALUES (#{question.id},#{question.ownerId},#{question.status},#{question.revision},#{question.favorite},
+      #{question.currentVersionId},#{question.versionNumber},#{question.createdAt},#{question.updatedAt})
+  </insert>
+  <insert id="insertVersion">
+    INSERT INTO question_version (id,question_id,owner_id,version_number,title,question_type,difficulty,scenario,
+      prompt_json,standard_status,has_reference,reference_answer,checkpoints_json,created_at)
+    VALUES (#{version.id},#{version.questionId},#{version.ownerId},#{version.versionNumber},#{version.title},
+      #{type},#{difficulty},#{scenario},#{version.promptJson},#{version.standardStatus},#{version.hasReference},
+      #{referenceAnswer},#{checkpointsJson},#{version.createdAt})
+  </insert>
+  <insert id="insertTopic">
+    INSERT INTO question_version_topic (owner_id,question_id,version_id,topic_id,position_index)
+    VALUES (#{owner},#{id},#{versionId},#{topicId},#{position})
+  </insert>
+  <insert id="insertDimension">
+    INSERT INTO question_version_dimension (owner_id,question_id,version_id,dimension)
+    VALUES (#{owner},#{id},#{versionId},#{dimension})
+  </insert>
+  <insert id="insertKnowledgeLink">
+    INSERT INTO question_knowledge_reference (owner_id,question_id,version_id,knowledge_item_id,knowledge_version_id,position_index)
+    VALUES (#{owner},#{id},#{versionId},#{itemId},#{knowledgeVersionId},#{position})
+  </insert>
+  <update id="saveContent">
+    UPDATE question SET current_version_id=#{versionId},version_number=#{number},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="changeStatus">
+    UPDATE question SET status=#{status},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <update id="setFavorite">
+    UPDATE question SET favorite=#{favorite},revision=revision+1,updated_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}
+  </update>
+  <insert id="insertExposure">
+    INSERT INTO question_exposure (id,owner_id,question_id,version_id,exposure_kind,created_at)
+    VALUES (#{id},#{owner},#{questionId},#{versionId},#{kind},#{now})
+  </insert>
+</mapper>

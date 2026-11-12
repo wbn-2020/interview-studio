@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.prepare.GrowthTargetMapper">
+  <select id="target" resultType="com.wenjie.studio.prepare.GrowthTargetMapper$TargetRow">
+    SELECT i.owner_id,i.id AS item_id,v.id AS version_id,v.title,
+      NULLIF(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.capturedOn')),'null') AS captured_on,
+      i.revision AS item_revision,i.status,i.current_version_id,i.source_generation,
+      JSON_EXTRACT(v.content_json,'$.requirements') AS requirements_json
+    FROM preparation_item i
+      JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=#{versionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId} AND i.kind='TARGET'
+  </select>
+  <select id="topicExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_topic WHERE owner_id=#{owner} AND id=#{id})
+  </select>
+</mapper>

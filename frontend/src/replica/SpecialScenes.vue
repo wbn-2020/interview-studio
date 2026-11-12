@@ -1,0 +1,122 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import RIcon from './RIcon.vue'
+import GraphScene from './GraphScene.vue'
+import MobileScene from './MobileScene.vue'
+import LoginTodayScenes from './LoginTodayScenes.vue'
+
+const props = defineProps<{ scene: number }>()
+const emit = defineEmits<{ navigate: [id: number]; notify: [text: string] }>()
+const commandOpen = ref(true)
+const query = ref('缓存')
+const commandInput = ref<HTMLInputElement>()
+const commandSelected = ref(0)
+const sourceFilter = ref(0)
+const inboxSelected = ref(0)
+const inboxChecked = ref<number[]>([])
+const allRead = ref(false)
+const sort = ref('按时间倒序')
+const taskDone = ref<number[]>([])
+const inboxEntries = [
+  { title: '缓存删除失败的三种情况', source: '快速记录 · 今天 14:20', kind: 1, state: '未归类', icon: 'zap' },
+  { title: '发奖链路恢复判据', source: '面后回忆 · 11.12', kind: 4, state: '已关联', icon: 'file-text' },
+  { title: '一致性哈希摘录', source: '导入 · 11.08', kind: 2, state: '未归类', icon: 'cloud-upload' },
+  { title: '对账任务失败案例', source: '训练片段 · 11.06', kind: 3, state: '已关联', icon: 'play' },
+]
+const visibleInbox = computed(() => {
+  const entries = inboxEntries.map((entry, index) => ({ ...entry, index })).filter(entry => sourceFilter.value === 0 || entry.kind === sourceFilter.value)
+  return sort.value === '按时间顺序' ? entries.reverse() : entries
+})
+const commands = computed(() => {
+  const entries = [
+    { title: '知识星图 · 缓存一致性', sub: 'meta 概念 · 分布式系统', icon: 'share-2', scene: 9, group: '页面', shortcut: '打开 ↵' },
+    { title: '今日安排', sub: '今日 · 任务总览', icon: 'calendar', scene: 2, group: '页面', shortcut: '打开 ↵' },
+    { title: '新建笔记', sub: '', icon: 'file-plus', scene: 11, group: '新建', shortcut: '⌘N' },
+    { title: '新建回忆卡', sub: '', icon: 'credit-card', scene: 16, group: '新建', shortcut: '⇧⌘N' },
+  ]
+  // 参考面板展示页面与新建命令；查询变化仅筛选固定命令，不读取正文。
+  return query.value === '缓存' || !query.value.trim() ? entries : entries.filter(entry => entry.title.includes(query.value.trim()))
+})
+function go(id: number) { emit('navigate', id) }
+function notify(text: string) { emit('notify', text) }
+function toggleInbox(index: number) {
+  inboxChecked.value = inboxChecked.value.includes(index) ? inboxChecked.value.filter(value => value !== index) : [...inboxChecked.value, index]
+}
+function toggleAll() {
+  inboxChecked.value = visibleInbox.value.every(entry => inboxChecked.value.includes(entry.index)) ? [] : visibleInbox.value.map(entry => entry.index)
+}
+function taskToggle(index: number) {
+  taskDone.value = taskDone.value.includes(index) ? taskDone.value.filter(value => value !== index) : [...taskDone.value, index]
+}
+async function openCommand() {
+  if (props.scene !== 25) return
+  commandOpen.value = true
+  await nextTick()
+  commandInput.value?.focus({ preventScroll: true })
+}
+function keydown(event: KeyboardEvent) {
+  if (props.scene !== 25 || !commandOpen.value) return
+  if (event.key === 'Escape') { event.preventDefault(); commandOpen.value = false }
+  else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    const count = commands.value.length
+    if (count) commandSelected.value = (commandSelected.value + (event.key === 'ArrowDown' ? 1 : count - 1)) % count
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    const entry = commands.value[commandSelected.value]
+    if (entry) go(entry.scene)
+  }
+}
+onMounted(() => {
+  if (props.scene === 25) void openCommand()
+  window.addEventListener('keydown', keydown)
+  window.addEventListener('replica:open-command', openCommand)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', keydown)
+  window.removeEventListener('replica:open-command', openCommand)
+})
+</script>
+<template>
+  <LoginTodayScenes v-if="scene === 1 || scene === 2" :scene="scene" @navigate="go" @notify="notify" />
+  <GraphScene v-else-if="scene === 9" :scene="scene" @navigate="go" @notify="notify" />
+  <MobileScene v-else-if="scene === 29" :scene="scene" @navigate="go" @notify="notify" />
+
+  <section v-else-if="scene === 25" class="sp-command-page">
+    <div class="sp-command-heading"><h1>今日</h1><p class="r-muted">专注完成每一步</p></div>
+    <div class="r-panel sp-task-intro r-between"><div class="r-row"><span class="sp-task-emblem">◉</span><span>今日任务<p class="r-muted">按计划推进</p></span></div><div class="r-row"><button class="r-btn" @click="notify('新建任务流程待确认')"><RIcon name="plus" />新建任务</button><button class="r-icon-btn" title="更多" @click="notify('任务操作流程待确认')"><RIcon name="ellipsis" /></button></div></div>
+    <section class="r-panel sp-task-table"><h3>任务列表</h3><div class="sp-task-search" /><table class="r-table"><thead><tr><th><input class="r-checkbox" type="checkbox" aria-label="全选任务" @change="taskDone = taskDone.length === 5 ? [] : [0, 1, 2, 3, 4]" /></th><th>任务</th><th>优先级</th><th>状态</th></tr></thead><tbody><tr v-for="(task, i) in ['深度理解线程池', '分布式事务', '缓存一致性', '准备技术面试', '复习 JVM']" :key="task"><td><input class="r-checkbox" type="checkbox" :aria-label="task" :checked="taskDone.includes(i)" @change="taskToggle(i)" /></td><td>{{ task }}</td><td><span class="r-pill" :class="i === 3 ? 'green' : 'amber'">{{ ['高', '中', '高', '低', '中'][i] }}</span></td><td><span class="r-pill" :class="i === 0 ? 'blue' : ''">{{ taskDone.includes(i) ? '已完成' : i === 0 ? '进行中' : '未开始' }}</span></td></tr></tbody></table></section>
+    <div v-if="commandOpen" class="sp-command-scrim" @click.self="commandOpen = false" />
+    <section v-if="commandOpen" class="sp-command-modal" role="dialog" aria-modal="true" aria-label="全局命令面板">
+      <label class="sp-command-input r-row"><RIcon name="search" :size="29" /><input ref="commandInput" v-model="query" aria-label="搜索命令" autocomplete="off" @input="commandSelected = 0" /><kbd>⌘K</kbd></label>
+      <div class="sp-command-items">
+        <p class="sp-command-section">页面</p>
+        <template v-for="(entry, i) in commands" :key="entry.title">
+          <p v-if="entry.group === '新建' && commands[i - 1]?.group !== '新建'" class="sp-command-section sp-new-divider">新建</p>
+          <button class="sp-command-item r-row" :class="{ selected: commandSelected === i, compact: !entry.sub }" @click="go(entry.scene)" @pointermove="commandSelected = i"><RIcon :name="entry.icon" :size="38" /><span>{{ entry.title }}<small v-if="entry.sub">{{ entry.sub }}</small></span><kbd>{{ entry.shortcut }}</kbd></button>
+        </template>
+        <p v-if="!commands.length" class="sp-no-commands r-muted">无匹配命令</p>
+        <div class="sp-domain-section"><p>搜索八个域</p><div class="sp-domain-pills"><button v-for="(entry, i) in [['知识', 'book-open'], ['准备', 'calendar-check'], ['摘录', 'share-2'], ['题面', 'file-text'], ['回答', 'message-square'], ['反馈', 'thumbs-up'], ['回忆', 'history'], ['AI 观察', 'sparkles']]" :key="entry[0]" class="r-pill" @click="notify(`${entry[0]}正文检索待确认；当前面板仅展示固定命令`)"><RIcon :name="entry[1]!" :size="21" />{{ entry[0] }}</button></div><p class="sp-domain-note r-row"><RIcon name="info" :size="22" />到达搜索页后才会查询正文</p></div>
+      </div>
+      <footer class="r-between"><span><kbd>Esc</kbd> 关闭 <i /> <kbd>↑ ↓</kbd> 选择</span><span>不自动读取正文 ○</span></footer>
+    </section>
+    <button v-if="!commandOpen" class="sp-command-reopen r-btn" @click="openCommand"><RIcon name="search" />打开命令面板</button>
+  </section>
+
+  <section v-else-if="scene === 30" class="sp-inbox-page">
+    <div class="sp-inbox-heading"><h1>知识收件箱</h1><p class="r-muted">{{ allRead ? 0 : 3 }} 条待整理 · 来自快速记录和导入</p></div><div class="sp-inbox-actions r-row"><button class="r-btn" @click="allRead = true">全部标为已读</button><button class="r-btn r-primary" @click="go(11)"><RIcon name="plus" />新建笔记</button></div>
+    <aside class="r-panel sp-inbox-sources"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" @click="sourceFilter = i"><RIcon :name="source[2]!" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
+    <section class="r-panel sp-inbox-list"><header class="r-between"><label class="r-row"><input type="checkbox" class="r-checkbox" aria-label="全选收件箱" :checked="visibleInbox.length > 0 && visibleInbox.every(entry => inboxChecked.includes(entry.index))" @change="toggleAll" />全选</label><select v-model="sort" aria-label="收件箱排序"><option>按时间倒序</option><option>按时间顺序</option></select></header><article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: inboxSelected === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" :size="23" />{{ entry.source }}</small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''">{{ entry.state }}</span></article></section>
+    <aside class="r-panel sp-inbox-detail"><header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><RIcon name="external-link" :size="23" /></button></header><h3 class="sp-excerpt-heading">原始摘录</h3><div class="sp-inbox-excerpt"><template v-if="inboxSelected === 0"><p>缓存删除失败通常有三种情况：</p><p>1. key 不存在，删除返回 0；<br>2. 网络超时，客户端误判；<br>3. 连接池耗尽，导致删除请求被拒绝。<br>需要根据业务场景选择合适的重试策略...</p></template><template v-else><h3>{{ inboxEntries[inboxSelected]!.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div><div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" :size="28" />转为笔记</button><button class="r-btn" @click="go(12)"><RIcon name="box" :size="30" />新建概念</button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" :size="27" />创建回忆卡</button><button class="r-btn" @click="go(9)"><RIcon name="link" :size="29" />关联已有知识</button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" />来源与候选分开保存，不会自动发布</p></aside>
+  </section>
+</template>
+<style scoped>
+.sp-command-heading { position: absolute; top: 132px; left: 35px; }.sp-command-heading h1 { font-size: 45px; }.sp-command-heading p { font-size: 26px; margin-top: 7px; }
+.sp-task-intro { position: absolute; top: 269px; left: 19px; right: 32px; height: 108px; padding: 20px 27px; border-color: #2c251d; }.sp-task-intro > .r-row { gap: 18px; font-size: 24px; }.sp-task-intro p { font-size: 19px; }.sp-task-emblem { display: grid; place-items: center; height: 39px; width: 39px; border-radius: 50%; background: #915b37; color: #f0caa6; }.sp-task-intro .r-btn { font-size: 21px; min-height: 49px; color: #e0a572; padding: 8px 20px !important; border-radius: 19px; }.sp-task-intro .r-icon-btn { background: #ffffff09; width: 49px; height: 49px; border-radius: 18px; }
+.sp-task-table { position: absolute; top: 399px; left: 19px; right: 32px; height: 511px; border-color: #30271e; }.sp-task-table h3 { padding: 23px 25px; font-size: 23px; }.sp-task-search { position: absolute; top: 15px; right: 26px; width: 40%; height: 53px; background: #ffffff03; border: 1px solid #ffffff03; border-radius: 25px; }.sp-task-table table { margin-top: 0; }.sp-task-table th { padding: 14px 8px; font-size: 20px; }.sp-task-table th:first-child { padding-left: 29px; width: 64px; }.sp-task-table th:nth-child(2) { width: 77%; }.sp-task-table th:nth-child(3) { min-width: 110px; }.sp-task-table td { font-size: 22px; border: 0; padding: 14px 8px; white-space: nowrap; }.sp-task-table td:first-child { padding-left: 29px; }.sp-task-table td:nth-child(3) { width: 116px; }.sp-task-table td:nth-child(4) { padding-right: 33px; }.sp-task-table .r-pill { font-size: 19px; min-width: 59px; }.sp-command-scrim { position: absolute; inset: 0 0 0 -212px; background: #0002; z-index: 30; }
+.sp-command-modal { position: absolute; left: 184px; top: 135px; width: 847px; height: 728px; border: 1px solid #51483e; border-radius: 32px; background: linear-gradient(110deg, #28241fee, #1e1b17f7 75%); z-index: 45; box-shadow: 0 24px 50px #0008; overflow: hidden; }.sp-command-input { height: 82px; padding: 0 28px; border-bottom: 1px solid #50443755; gap: 15px; background: #ffffff02; }.sp-command-input input { background: transparent; border: 0; outline: 0; font-size: 29px; width: 100%; min-width: 0; caret-color: transparent; padding: 0; }.sp-command-input kbd { font: 19px "Segoe UI", sans-serif; background: #ffffff08; padding: 2px 8px; border-radius: 7px; color: #c1b8ad; }.sp-command-items { padding-top: 10px; }.sp-command-section { margin-left: 29px !important; color: #cfc6ba; font-size: 23px; line-height: 1.6 !important; }.sp-command-item { position: relative; width: calc(100% - 23px); margin-left: 10px; padding: 12px 24px !important; min-height: 92px; text-align: left; gap: 26px; border-radius: 16px; color: #f1e8da; }.sp-command-item.selected { background: linear-gradient(100deg, #8c5c3b91, #684b3233) !important; }.sp-command-item.selected::before { content: ""; position: absolute; top: 0; left: -11px; bottom: 0; width: 2px; background: #e6b282; }.sp-command-item > span { flex: 1; font-size: 24px; }.sp-command-item small { display: block; font-size: 20px; color: #b7a997; line-height: 1.6; }.sp-command-item > svg { color: #d9cec0; }.sp-command-item kbd { font: 20px "Segoe UI", "Microsoft YaHei", sans-serif; color: #e8e0d4; background: #ffffff06; border-radius: 20px; padding: 3px 9px; white-space: pre; }.sp-command-item.compact { min-height: 57px; gap: 26px; padding-top: 5px !important; padding-bottom: 5px !important; }.sp-command-item.compact > svg { height: 35px; width: 35px; }.sp-command-item.compact kbd { border-radius: 7px; font-size: 20px; padding: 0 4px; }.sp-new-divider { padding-top: 7px; margin-right: 29px !important; margin-top: 3px !important; margin-bottom: 14px !important; border-top: 1px solid #55473566; }.sp-domain-section { margin: 10px 29px 0; padding-top: 9px; border-top: 1px solid #50402f77; }.sp-domain-section > p:first-child { font-size: 23px; color: #c9bfb1; margin-bottom: 13px; }.sp-domain-pills { display: flex; gap: 8px; }.sp-domain-pills .r-pill { font-size: 19px; gap: 7px; padding: 3px 10px; background: #ffffff08; }.sp-domain-note { font-size: 20px; color: #aaa194; margin-top: 19px !important; gap: 10px; }.sp-domain-note svg { color: #7eb2cc; fill: #315d7b; }.sp-command-modal footer { position: absolute; bottom: 0; left: 0; right: 0; height: 67px; border-top: 1px solid #473b2d; background: #ffffff02; padding: 0 28px; color: #b7ada0; font-size: 21px; }.sp-command-modal footer kbd { font: inherit; padding: 0 4px; border-radius: 5px; color: #f1e5d5; background: #ffffff09; }.sp-command-modal footer i { display: inline-block; height: 24px; width: 1px; background: #6b5c4b; margin: 0 16px; vertical-align: middle; }.sp-no-commands { padding: 20px 30px; }.sp-command-reopen { position: absolute; top: 145px; right: 32px; }
+.sp-inbox-heading { position: absolute; top: 109px; left: 26px; }.sp-inbox-heading h1 { font-size: 47px; }.sp-inbox-heading p { margin-top: 3px; font-size: 23px; }.sp-inbox-actions { position: absolute; right: 30px; top: 133px; gap: 17px; }.sp-inbox-actions .r-btn { font-size: 24px; min-height: 58px; border-radius: 17px; padding: 10px 24px !important; }
+.sp-inbox-sources { position: absolute; top: 233px; left: 15px; bottom: 90px; width: 233px; border-radius: 20px; padding: 20px 10px; border-color: #393023; }.sp-inbox-sources h2 { padding: 0 15px 17px; font-size: 25px; }.sp-inbox-sources > button { display: flex; width: 100%; min-height: 64px; padding: 12px 17px !important; gap: 13px; text-align: left; font-size: 23px; border-radius: 15px; white-space: nowrap; }.sp-inbox-sources button.selected { background: #7c582f50 !important; color: #faead4; }.sp-inbox-sources small { margin-left: auto; font-size: 23px; }.sp-inbox-sources svg { color: #efc38d; }
+.sp-inbox-list { position: absolute; top: 233px; left: 258px; bottom: 90px; width: 514px; border-radius: 20px; padding: 9px 5px; border-color: #3d3125; }.sp-inbox-list header { padding: 8px 13px 18px 18px; color: #c9bfb2; font-size: 23px; }.sp-inbox-list header select { background: #ffffff08; border: 0; border-radius: 23px; padding: 4px 13px; font-size: 21px; color-scheme: dark; width: 146px; outline: none; }.sp-inbox-list header label { gap: 14px; }.sp-inbox-list article { display: flex; position: relative; align-items: center; min-height: 110px; margin: 0 13px; padding: 18px 7px 16px 4px; border-bottom: 1px solid #3a3025; gap: 20px; }.sp-inbox-list article.selected { padding: 18px 18px; margin: 0; border: 1px solid #dbab6e; border-radius: 18px; min-height: 114px; background: linear-gradient(100deg, #8e603585, #6e4e2f45); }.sp-inbox-list .r-checkbox { margin: 0 0 0 0; flex: none; }.sp-inbox-entry { flex: 1; min-width: 0; text-align: left; align-self: stretch; }.sp-inbox-entry strong { display: block; font-size: 24px; font-weight: 550; white-space: nowrap; }.sp-inbox-entry small { font-size: 21px; color: #b4a795; margin-top: 7px; gap: 10px; white-space: nowrap; }.sp-inbox-list article > .r-pill { position: absolute; right: 17px; top: 29px; font-size: 19px; padding: 3px 15px; }.sp-inbox-list article.selected > .r-pill { top: 22px; }.sp-inbox-list article.selected .sp-inbox-entry { padding-right: 65px; }.sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 23px; }.sp-inbox-list article:nth-child(n+3) { padding-right: 80px; }
+.sp-inbox-detail { position: absolute; top: 233px; left: 783px; right: 24px; bottom: 90px; padding: 15px 23px 22px; border-radius: 20px; border-color: #3d3125; }.sp-inbox-detail header { border-bottom: 1px solid #30281f; padding-bottom: 11px; }.sp-inbox-detail h2 { font-size: 25px; }.sp-excerpt-heading { position: relative; margin-top: 17px !important; padding-left: 18px; font-size: 23px !important; }.sp-excerpt-heading::before { content: ""; width: 3px; height: 27px; background: #e7b77e; position: absolute; left: 0; top: 5px; }.sp-inbox-excerpt { padding: 14px 18px 15px; margin-top: 5px; border-radius: 15px; background: #ffffff02; }.sp-inbox-excerpt p { font-size: 22px; line-height: 1.75; white-space: nowrap; }.sp-inbox-excerpt h3 { font-size: 22px; margin-bottom: 10px; }.sp-inbox-detail .r-rule { margin: 21px 0 16px; }.sp-suggestions-title { color: #f2d7af; font-size: 23px !important; gap: 12px; }.sp-inbox-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 21px; }.sp-inbox-buttons .r-btn { min-height: 68px; padding: 10px 14px !important; font-size: 23px; border-radius: 14px; background: #ffffff02 !important; border-color: #44372a !important; gap: 14px; }.sp-inbox-note { background: #ffffff03; border-radius: 14px; margin-top: 26px !important; min-height: 56px; padding: 10px 13px; font-size: 18px; white-space: nowrap; gap: 10px; }
+</style>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.search.SearchMapper">
+  <resultMap id="projection" type="com.wenjie.studio.search.SearchRows$Projection">
+    <constructor>
+      <arg column="owner_id" javaType="java.lang.String"/><arg column="active_generation" javaType="java.lang.String"/>
+      <arg column="build_generation" javaType="java.lang.String"/><arg column="phase" javaType="java.lang.String"/>
+      <arg column="scan_cursor" javaType="java.lang.String"/><arg column="boundary_event_id" javaType="_long"/>
+      <arg column="last_error_code" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="content" type="com.wenjie.studio.search.SearchRows$Content">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/><arg column="owner_id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/><arg column="status" javaType="java.lang.String"/>
+      <arg column="metadata_revision" javaType="_long"/><arg column="version_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="_int"/><arg column="title" javaType="java.lang.String"/>
+      <arg column="body" javaType="java.lang.String"/><arg column="source_type" javaType="java.lang.String"/>
+      <arg column="organization_revision" javaType="_long"/><arg column="aliases_json" javaType="java.lang.String"/>
+      <arg column="tags_json" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <select id="projection" resultMap="projection">
+    SELECT owner_id, active_generation, build_generation, phase, scan_cursor, boundary_event_id, last_error_code
+    FROM search_projection WHERE owner_id=#{owner}
+  </select>
+  <select id="pendingCount" resultType="long">
+    SELECT COUNT(*) FROM knowledge_outbox WHERE owner_id=#{owner} AND processed_at IS NULL
+  </select>
+  <select id="maximumEvent" resultType="long">
+    SELECT COALESCE(MAX(id),0) FROM knowledge_outbox WHERE owner_id=#{owner}
+  </select>
+  <insert id="queueBuild">
+    INSERT INTO search_projection(owner_id,active_generation,build_generation,phase,scan_cursor,boundary_event_id,last_error_code,updated_at)
+    VALUES(#{owner},NULL,#{generation},'SCANNING',NULL,#{boundary},NULL,UTC_TIMESTAMP(6))
+    ON DUPLICATE KEY UPDATE build_generation=#{generation},phase='SCANNING',scan_cursor=NULL,
+      boundary_event_id=#{boundary},last_error_code=NULL,updated_at=UTC_TIMESTAMP(6)
+  </insert>
+  <update id="advanceScan">
+    UPDATE search_projection SET scan_cursor=#{cursor},phase=#{phase},updated_at=UTC_TIMESTAMP(6)
+    WHERE owner_id=#{owner} AND build_generation=#{generation}
+  </update>
+  <update id="activate">
+    UPDATE search_projection SET active_generation=#{generation},build_generation=NULL,phase='IDLE',scan_cursor=NULL,
+      last_error_code=NULL,updated_at=UTC_TIMESTAMP(6) WHERE owner_id=#{owner} AND build_generation=#{generation}
+  </update>
+  <update id="markError">
+    UPDATE search_projection SET last_error_code=#{code},updated_at=UTC_TIMESTAMP(6) WHERE owner_id=#{owner}
+  </update>
+  <update id="clearError">
+    UPDATE search_projection SET last_error_code=NULL WHERE owner_id=#{owner}
+  </update>
+  <select id="scanIds" resultType="string">
+    SELECT id FROM knowledge_item WHERE owner_id=#{owner} AND current_version_id IS NOT NULL
+    <if test="cursor != null">AND id &gt; #{cursor}</if> ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="contents" resultMap="content">
+    SELECT i.id,i.owner_id,i.kind,i.status,i.metadata_revision,v.id version_id,v.version_number,v.title,v.body,v.source_type,
+      COALESCE(o.revision,0) organization_revision,COALESCE(o.aliases_json,JSON_ARRAY()) aliases_json,
+      COALESCE(o.tags_json,JSON_ARRAY()) tags_json
+    FROM knowledge_item i JOIN knowledge_version v ON v.id=i.current_version_id AND v.item_id=i.id AND v.owner_id=i.owner_id
+    LEFT JOIN knowledge_organization o ON o.item_id=i.id AND o.owner_id=i.owner_id
+    WHERE i.owner_id=#{owner} AND i.id IN
+    <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    ORDER BY i.id
+  </select>
+  <select id="topicLinks" resultType="com.wenjie.studio.search.SearchRows$TopicLink">
+    SELECT l.item_id,l.topic_id FROM knowledge_item_topic l
+    JOIN knowledge_item i ON i.id=l.item_id AND i.owner_id=#{owner}
+    JOIN knowledge_topic t ON t.id=l.topic_id AND t.owner_id=i.owner_id WHERE i.id IN
+    <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    ORDER BY l.item_id,l.topic_id
+  </select>
+  <select id="pendingEvents" resultType="com.wenjie.studio.search.SearchRows$Event">
+    SELECT id,item_id FROM knowledge_outbox WHERE owner_id=#{owner} AND processed_at IS NULL ORDER BY id LIMIT #{limit}
+  </select>
+  <select id="buildEvents" resultType="com.wenjie.studio.search.SearchRows$Event">
+    SELECT e.id,e.item_id FROM knowledge_outbox e WHERE e.owner_id=#{owner} AND e.id &gt; #{boundary}
+      AND NOT EXISTS(SELECT 1 FROM search_generation_event a WHERE a.owner_id=e.owner_id AND a.generation=#{generation} AND a.event_id=e.id)
+    ORDER BY e.id LIMIT #{limit}
+  </select>
+  <update id="acknowledge">
+    UPDATE knowledge_outbox SET processed_at=UTC_TIMESTAMP(6) WHERE owner_id=#{owner} AND id IN
+    <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+  </update>
+  <insert id="applyBuildEvent">
+    INSERT IGNORE INTO search_generation_event(owner_id,generation,event_id,applied_at)
+    VALUES(#{owner},#{generation},#{eventId},UTC_TIMESTAMP(6))
+  </insert>
+</mapper>

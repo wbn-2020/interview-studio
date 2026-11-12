@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.lifecycle.PreparationKnowledgeMapper">
+  <select id="observation" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$ObservationRow">
+    SELECT i.id AS item_id,i.kind,i.project_id,v.title,v.id AS version_id,v.version_number,
+      i.source_generation,i.revision,i.status,i.verification
+    FROM preparation_item i JOIN preparation_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id AND v.version_number=i.version_number
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId}
+  </select>
+  <insert id="insertEvent">
+    INSERT INTO preparation_knowledge_event
+      (id,owner_id,root_item_id,root_kind,root_title,root_project_id,change_kind,
+       previous_version_id,previous_version_number,previous_generation,previous_revision,previous_status,previous_verification,
+       current_version_id,current_version_number,current_generation,current_revision,current_status,current_verification,created_at)
+    VALUES (#{event.id},#{owner},#{event.rootItemId},#{event.rootKind},#{event.rootTitle},#{event.rootProjectId},#{event.changeKind},
+       #{event.previousVersionId},#{event.previousVersionNumber},#{event.previousGeneration},#{event.previousRevision},
+       #{event.previousStatus},#{event.previousVerification},#{event.currentVersionId},#{event.currentVersionNumber},
+       #{event.currentGeneration},#{event.currentRevision},#{event.currentStatus},#{event.currentVerification},#{event.createdAt})
+  </insert>
+  <select id="event" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$EventRow">
+    SELECT id,root_item_id,root_kind,root_title,root_project_id,change_kind,
+      previous_version_id,previous_version_number,previous_generation,previous_revision,previous_status,previous_verification,
+      current_version_id,current_version_number,current_generation,current_revision,current_status,current_verification,created_at
+    FROM preparation_knowledge_event WHERE owner_id=#{owner} AND id=#{eventId}
+  </select>
+  <select id="candidates" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$Candidate">
+    SELECT t.id AS task_id,t.manifest_json,d.target_item_id,d.target_version_id,v.version_number AS target_version_number
+    FROM ai_task t JOIN ai_candidate_decision d ON d.owner_id=t.owner_id AND d.task_id=t.id AND d.status='ADOPTED'
+    JOIN knowledge_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    WHERE t.owner_id=#{owner} AND t.purpose='KNOWLEDGE_DRAFT'
+      AND EXISTS (SELECT 1 FROM ai_preparation_source s
+        JOIN preparation_item selected_input ON selected_input.owner_id=s.owner_id AND selected_input.id=s.source_item_id AND selected_input.kind=s.source_kind
+        WHERE s.owner_id=t.owner_id AND s.task_id=t.id AND (
+          s.source_item_id=#{rootItemId}
+          OR (#{rootKind}='PROJECT' AND selected_input.kind='FACT' AND selected_input.project_id=#{rootItemId})
+          <!-- 依据完整性正是后续校验目标；不能先靠待核验关系筛掉损坏的历史表达。 -->
+          OR (#{rootKind} IN ('FACT','PROJECT') AND selected_input.kind='EXPRESSION')))
+    <if test="after != null">AND t.id &gt; #{after}</if>
+    ORDER BY t.id LIMIT #{limit}
+  </select>
+  <select id="bindings" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$Binding">
+    SELECT source_item_id AS item_id,source_version_id AS version_id,source_kind AS kind,
+      source_version_number AS number,source_title AS title,ordinal
+    FROM ai_preparation_source WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal LIMIT 6
+  </select>
+  <select id="itemExists" resultType="boolean">
+    SELECT
+    <choose>
+      <when test="context == 'PREPARATION'">EXISTS(SELECT 1 FROM preparation_item WHERE owner_id=#{owner} AND id=#{itemId})</when>
+      <when test="context == 'KNOWLEDGE'">EXISTS(SELECT 1 FROM knowledge_item WHERE owner_id=#{owner} AND id=#{itemId})</when>
+      <otherwise>FALSE</otherwise>
+    </choose>
+  </select>
+  <select id="edgeExists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM preparation_knowledge_impact
+      WHERE owner_id=#{owner} AND event_id=#{eventId} AND source_domain=#{domain} AND task_id=#{taskId}
+      <choose>
+        <when test="domain == 'PREPARATION'">AND preparation_source_item_id=#{sourceItemId} AND preparation_source_version_id=#{sourceVersionId}</when>
+        <when test="domain == 'KNOWLEDGE'">AND knowledge_source_item_id=#{sourceItemId} AND knowledge_source_version_id=#{sourceVersionId}</when>
+        <otherwise>AND 1=0</otherwise>
+      </choose>)
+  </select>
+  <insert id="insertImpact">
+    INSERT INTO preparation_knowledge_impact
+      (id,owner_id,event_id,source_domain,source_kind,preparation_source_item_id,preparation_source_version_id,
+       knowledge_source_item_id,knowledge_source_version_id,dependency_kind,via_fact_item_id,via_fact_version_id,
+       task_id,target_item_id,target_version_id,depth,parent_impact_id,propagation_pending,revision,created_at)
+    VALUES (#{row.id},#{owner},#{row.eventId},#{row.sourceDomain},#{row.sourceKind},
+      <choose>
+        <when test="row.sourceDomain == 'PREPARATION'">#{row.sourceItemId},#{row.sourceVersionId},NULL,NULL,</when>
+        <otherwise>NULL,NULL,#{row.sourceItemId},#{row.sourceVersionId},</otherwise>
+      </choose>
+      #{row.dependencyKind},#{row.viaFactItemId},#{row.viaFactVersionId},#{row.taskId},#{row.targetItemId},
+      #{row.targetVersionId},#{row.depth},#{row.parentImpactId},1,0,#{row.createdAt})
+  </insert>
+  <sql id="impactColumns">
+    i.id,i.revision,i.event_id,i.source_domain,i.source_kind,
+    COALESCE(i.preparation_source_item_id,i.knowledge_source_item_id) AS source_item_id,
+    COALESCE(prep.title,knowledge.title) AS source_title,
+    COALESCE(i.preparation_source_version_id,i.knowledge_source_version_id) AS source_version_id,
+    COALESCE(prep.version_number,knowledge.version_number) AS source_version_number,
+    i.dependency_kind,i.via_fact_item_id,via.title AS via_fact_title,i.via_fact_version_id,
+    via.version_number AS via_fact_version_number,i.task_id,i.target_item_id,target.title AS target_title,
+    i.target_version_id,target.version_number AS target_version_number,i.depth,i.parent_impact_id,i.created_at,
+    i.choice,i.reason,i.resolution_target_version_id,i.resolution_target_revision,i.decided_at
+  </sql>
+  <sql id="impactJoins">
+    FROM preparation_knowledge_impact i
+    JOIN preparation_knowledge_event e ON e.owner_id=i.owner_id AND e.id=i.event_id
+    LEFT JOIN preparation_version prep ON prep.owner_id=i.owner_id AND prep.item_id=i.preparation_source_item_id
+      AND prep.id=i.preparation_source_version_id
+    LEFT JOIN knowledge_version knowledge ON knowledge.owner_id=i.owner_id AND knowledge.item_id=i.knowledge_source_item_id
+      AND knowledge.id=i.knowledge_source_version_id
+    LEFT JOIN preparation_version via ON via.owner_id=i.owner_id AND via.item_id=i.via_fact_item_id AND via.id=i.via_fact_version_id
+    JOIN knowledge_version target ON target.owner_id=i.owner_id AND target.item_id=i.target_item_id AND target.id=i.target_version_id
+  </sql>
+  <select id="pendingImpacts" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$ImpactRow">
+    SELECT <include refid="impactColumns"/><include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner} AND i.event_id=#{eventId} AND i.propagation_pending=1
+      AND i.depth=(SELECT MIN(frontier.depth) FROM preparation_knowledge_impact frontier
+        WHERE frontier.owner_id=#{owner} AND frontier.event_id=#{eventId} AND frontier.propagation_pending=1)
+    ORDER BY i.depth,i.task_id,i.source_domain,i.preparation_source_item_id,i.knowledge_source_item_id,i.id LIMIT #{limit}
+  </select>
+  <select id="propagationPending" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM preparation_knowledge_impact WHERE owner_id=#{owner} AND event_id=#{eventId} AND propagation_pending=1)
+  </select>
+  <update id="completePropagation">
+    UPDATE preparation_knowledge_impact SET propagation_pending=0
+    WHERE owner_id=#{owner} AND event_id=#{eventId} AND id=#{impactId} AND propagation_pending=1
+  </update>
+  <select id="impacts" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$ImpactRow">
+    SELECT <include refid="impactColumns"/><include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner}
+    <choose>
+      <when test="context == 'PREPARATION'">AND e.root_item_id=#{itemId}</when>
+      <when test="context == 'KNOWLEDGE'">AND i.target_item_id=#{itemId}</when>
+      <otherwise>AND 1=0</otherwise>
+    </choose>
+    <if test="state == 'PENDING'">AND i.revision=0</if>
+    <if test="beforeTime != null">
+      AND (i.created_at &lt; #{beforeTime} OR (i.created_at=#{beforeTime} AND i.id &lt; #{beforeId}))
+    </if>
+    ORDER BY i.created_at DESC,i.id DESC LIMIT #{limit}
+  </select>
+  <select id="impact" resultType="com.wenjie.studio.lifecycle.PreparationKnowledgeRows$ImpactRow">
+    SELECT <include refid="impactColumns"/><include refid="impactJoins"/>
+    WHERE i.owner_id=#{owner} AND i.id=#{impactId}
+  </select>
+  <update id="resolve">
+    UPDATE preparation_knowledge_impact i
+    SET i.revision=1,i.choice=#{choice},i.reason=#{reason},i.resolution_target_version_id=#{targetVersionId},
+      i.resolution_target_revision=#{targetRevision},i.decided_at=#{now}
+    WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND i.id=#{impactId} AND i.revision=#{expected} AND i.revision=0
+      AND EXISTS(SELECT 1 FROM knowledge_item k WHERE k.owner_id=i.owner_id AND k.id=i.target_item_id
+        AND k.metadata_revision=#{targetRevision} AND k.current_version_id=#{targetVersionId})
+  </update>
+</mapper>

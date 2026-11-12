@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.FactDraftMapper">
+  <select id="source" resultType="com.wenjie.studio.ai.FactDraftRows$SourceRow">
+    SELECT owner_id,task_id,kind,session_id,question_id,answer_id
+    FROM ai_fact_draft_source WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertSource">
+    INSERT INTO ai_fact_draft_source (owner_id,task_id,kind,session_id,question_id,answer_id)
+    VALUES (#{source.ownerId},#{source.taskId},#{source.kind},#{source.sessionId},#{source.questionId},#{source.answerId})
+  </insert>
+  <select id="materials" resultType="com.wenjie.studio.ai.FactDraftRows$MaterialRow">
+    SELECT owner_id,task_id,excerpt_id,ordinal FROM ai_fact_draft_material
+    WHERE owner_id=#{owner} AND task_id=#{taskId} ORDER BY ordinal
+  </select>
+  <insert id="insertMaterial">
+    INSERT INTO ai_fact_draft_material (owner_id,task_id,kind,excerpt_id,ordinal)
+    VALUES (#{source.ownerId},#{source.taskId},'MATERIAL',#{source.excerptId},#{source.ordinal})
+  </insert>
+  <select id="decision" resultType="com.wenjie.studio.ai.FactDraftRows$DecisionRow">
+    SELECT owner_id,task_id,status,target_project_id,target_item_id,target_version_id,created_at
+    FROM ai_fact_draft_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <insert id="insertDecision">
+    INSERT INTO ai_fact_draft_decision (owner_id,task_id,status,target_project_id,target_item_id,target_version_id,created_at)
+    VALUES (#{decision.ownerId},#{decision.taskId},#{decision.status},#{decision.targetProjectId},
+      #{decision.targetItemId},#{decision.targetVersionId},#{decision.createdAt})
+  </insert>
+  <select id="targetVersion" resultType="com.wenjie.studio.ai.FactDraftRows$TargetVersion">
+    SELECT v.id,v.owner_id,v.item_id,i.kind,i.project_id,p.kind AS project_kind,v.version_number AS number
+    FROM preparation_version v JOIN preparation_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    LEFT JOIN preparation_item p ON p.owner_id=i.owner_id AND p.id=i.project_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+  </select>
+  <select id="targetSource" resultType="com.wenjie.studio.ai.FactDraftRows$TargetSource">
+    SELECT JSON_UNQUOTE(JSON_EXTRACT(content_json,'$.responsibility')) AS responsibility,
+      JSON_EXTRACT(content_json,'$.source') AS source_json
+    FROM preparation_version WHERE owner_id=#{owner} AND item_id=#{itemId} AND id=#{versionId}
+  </select>
+  <select id="targetMaterials" resultType="string">
+    SELECT excerpt_id FROM preparation_material_reference
+    WHERE owner_id=#{owner} AND item_id=#{itemId} AND version_id=#{versionId} ORDER BY excerpt_id
+  </select>
+  <select id="origins" resultType="com.wenjie.studio.ai.FactDraftRows$OriginRow">
+    SELECT d.task_id,d.target_project_id,d.target_item_id,d.target_version_id,
+      v.version_number AS target_version_number,d.created_at AS adopted_at,t.purpose,t.status AS task_status,
+      t.manifest_json,t.manifest_hash,(t.candidate_json IS NOT NULL) AS candidate_present,
+      t.created_at AS task_created_at,t.updated_at AS task_updated_at
+    FROM ai_fact_draft_decision d
+    JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
+    WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId} AND d.status='ADOPTED' AND v.version_number &lt;=#{through}
+    <if test="before != null">AND v.version_number &lt; #{before}</if>
+    ORDER BY v.version_number DESC LIMIT #{limit}
+  </select>
+</mapper>

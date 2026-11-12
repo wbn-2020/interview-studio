@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialReferencesMapper">
+  <resultMap id="source" type="com.wenjie.studio.material.MaterialReferencesDtos$Source">
+    <constructor>
+      <idArg column="excerpt_id" javaType="java.lang.String"/>
+      <arg column="attachment_id" javaType="java.lang.String"/>
+      <arg column="origin" javaType="java.lang.String"/>
+      <arg column="run_id" javaType="java.lang.String"/>
+      <arg column="segment_id" javaType="java.lang.String"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="entry" type="com.wenjie.studio.material.MaterialReferencesDtos$Entry">
+    <constructor>
+      <idArg column="reference_id" javaType="java.lang.String"/>
+      <arg column="reference_revision" javaType="_long"/>
+      <arg column="target_kind" javaType="com.wenjie.studio.material.MaterialReferencesDtos$TargetKind"/>
+      <arg column="target_id" javaType="java.lang.String"/>
+      <arg column="target_version_id" javaType="java.lang.String"/>
+      <arg column="target_version_number" javaType="java.lang.Integer"/>
+      <arg column="target_revision" javaType="java.lang.Long"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="target_current" javaType="_boolean"/>
+      <arg column="anchor_item_id" javaType="java.lang.String"/>
+      <arg column="other_item_id" javaType="java.lang.String"/>
+      <arg column="anchor_version_id" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <select id="source" resultMap="source" timeout="5">
+    SELECT e.id AS excerpt_id,e.attachment_id,e.origin,e.run_id,e.segment_id,e.created_at
+    FROM material_excerpt e JOIN material_attachment a
+      ON a.owner_id=e.owner_id AND a.id=e.attachment_id AND a.sha256=e.attachment_sha256 AND a.status='READY'
+    WHERE e.owner_id=#{owner} AND e.id=#{excerptId}
+  </select>
+  <sql id="aiColumns">
+    t.id AS reference_id,0 AS reference_revision,'AI_TASK' AS target_kind,t.id AS target_id,
+    NULL AS target_version_id,NULL AS target_version_number,NULL AS target_revision,t.status,TRUE AS target_current,
+    NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+  </sql>
+  <sql id="aiAfter">
+    <if test="afterId != null">AND t.id &gt; #{afterId}</if>
+  </sql>
+  <!-- 各分类只读取已登记的直接绑定；当前指针、撤回和移除状态不筛掉历史记录。 -->
+  <select id="references" resultMap="entry" timeout="5">
+    <choose>
+      <when test="kind == 'PREPARATION_VERSIONS'">
+        SELECT v.id AS reference_id,0 AS reference_revision,'PREPARATION' AS target_kind,i.id AS target_id,
+          v.id AS target_version_id,v.version_number AS target_version_number,NULL AS target_revision,i.status,
+          i.current_version_id=v.id AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        FROM preparation_material_reference s JOIN preparation_version v
+          ON v.owner_id=s.owner_id AND v.item_id=s.item_id AND v.id=s.version_id
+        JOIN preparation_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}
+        <if test="afterId != null">AND s.version_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'AI_KNOWLEDGE_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM ai_material_draft_source s JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}<include refid="aiAfter"/>
+      </when>
+      <when test="kind == 'AI_QUESTION_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM ai_material_draft_source s JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='QUESTION_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}<include refid="aiAfter"/>
+      </when>
+      <when test="kind == 'AI_MATERIAL_QA_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM ai_material_qa_source s JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='MATERIAL_QA'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}<include refid="aiAfter"/>
+      </when>
+      <when test="kind == 'AI_FACT_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM ai_fact_draft_material s JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='FACT_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND s.kind='MATERIAL'<include refid="aiAfter"/>
+      </when>
+      <when test="kind == 'AI_RELATION_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM ai_relation_evidence_material s JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='RELATION_DRAFT'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND s.kind='MATERIAL'<include refid="aiAfter"/>
+      </when>
+      <when test="kind == 'AI_SOURCE_QA_INPUTS'">
+        SELECT <include refid="aiColumns"/>
+        FROM (SELECT DISTINCT task_id FROM ai_source_qa_source
+          WHERE owner_id=#{owner} AND excerpt_id=#{excerptId} AND domain='MATERIAL_EXCERPT'
+          <if test="afterId != null">AND task_id &gt; #{afterId}</if>) s
+        JOIN ai_task t ON t.owner_id=#{owner} AND t.id=s.task_id AND t.purpose='SOURCE_QA'
+      </when>
+      <when test="kind == 'RELATION_EVIDENCE'">
+        SELECT e.id AS reference_id,0 AS reference_revision,'RELATION' AS target_kind,e.relation_id AS target_id,
+          NULL AS target_version_id,NULL AS target_version_number,NULL AS target_revision,
+          CASE WHEN r.id IS NULL THEN 'REMOVED' ELSE 'ACTIVE' END AS status,r.id IS NOT NULL AS target_current,
+          e.source_id AS anchor_item_id,e.target_id AS other_item_id,NULL AS anchor_version_id
+        FROM knowledge_relation_evidence_material s JOIN knowledge_relation_evidence e
+          ON e.owner_id=s.owner_id AND e.id=s.evidence_id AND e.source_kind=s.source_kind
+        LEFT JOIN knowledge_relation r ON r.owner_id=e.owner_id AND r.id=e.relation_id
+          AND r.source_id=e.source_id AND r.target_id=e.target_id AND r.relation_type=e.relation_type
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND s.source_kind='MATERIAL'
+        <if test="afterId != null">AND s.evidence_id &gt; #{afterId}</if>
+      </when>
+      <when test="kind == 'STANDARD_REVIEW_EVIDENCE'">
+        SELECT h.review_id AS reference_id,h.revision AS reference_revision,'STANDARD_REVIEW' AS target_kind,
+          h.review_id AS target_id,NULL AS target_version_id,NULL AS target_version_number,h.revision AS target_revision,
+          r.status,r.revision=h.revision AS target_current,h.question_id AS anchor_item_id,NULL AS other_item_id,
+          h.question_version_id AS anchor_version_id
+        FROM (SELECT DISTINCT review_id,revision FROM standard_review_evidence
+          WHERE owner_id=#{owner} AND excerpt_id=#{excerptId} AND basis_kind='MATERIAL_EXCERPT'
+          <if test="afterId != null">
+            AND (review_id &gt; #{afterId} OR (review_id=#{afterId} AND revision &gt; #{afterRevision}))
+          </if>) s
+        JOIN standard_review_revision h ON h.owner_id=#{owner} AND h.review_id=s.review_id AND h.revision=s.revision
+        JOIN standard_review r ON r.owner_id=h.owner_id AND r.id=h.review_id
+          AND r.question_id=h.question_id AND r.question_version_id=h.question_version_id
+      </when>
+      <otherwise>
+        SELECT NULL AS reference_id,0 AS reference_revision,'AI_TASK' AS target_kind,NULL AS target_id,
+          NULL AS target_version_id,NULL AS target_version_number,NULL AS target_revision,NULL AS status,
+          FALSE AS target_current,NULL AS anchor_item_id,NULL AS other_item_id,NULL AS anchor_version_id
+        WHERE 1=0
+      </otherwise>
+    </choose>
+    ORDER BY reference_id,reference_revision LIMIT #{limit}
+  </select>
+</mapper>
