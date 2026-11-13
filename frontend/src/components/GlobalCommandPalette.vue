@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
-import { NInput, NModal } from 'naive-ui'
-import type { InputInst } from 'naive-ui'
+import { NModal } from 'naive-ui'
 import type { WorkspaceCommand } from '../navigation/commands'
 import { filterWorkspaceCommands, readSearchPrefill, SEARCH_PREFILL_EVENT, searchPrefillCommands, workspaceCommands } from '../navigation/commands'
 import { useWorkspaceStore } from '../state/workspace'
@@ -12,7 +11,7 @@ import RIcon from '../replica/RIcon.vue'
 const props = withDefaults(defineProps<{ enabled: boolean; showTrigger?: boolean }>(), { showTrigger: true })
 const router = useRouter(), route = useRoute(), workspace = useWorkspaceStore(), access = useTrainingAccessStore()
 const visible = ref(false), closing = ref(false), input = ref(''), selectedIndex = ref(-1), navigating = ref(false), message = ref('')
-const panel = ref<HTMLElement>(), filterInput = ref<InputInst>()
+const panel = ref<HTMLElement>(), filterInput = ref<HTMLInputElement>()
 const optionElements = new Map<string, HTMLElement>()
 const accessCommandLocked = computed(() => Boolean(workspace.changes.get('training-access-command')?.locked))
 const canOpen = computed(() => props.enabled && workspace.sessionActive && !access.checking && !access.challenge && !accessCommandLocked.value && !navigating.value && !closing.value)
@@ -22,16 +21,18 @@ const commands = computed(() => {
   const matches = filterWorkspaceCommands(input.value)
   const pages = matches.filter(command => command.group === 'PAGE')
   const create = matches.filter(command => command.group === 'CREATE')
-  return [...(pages.length || !input.value.trim() ? pages : workspaceCommands.filter(command => command.id === 'knowledge' || command.id === 'today')),
+  return [...(pages.length || !input.value.trim() ? pages : ['knowledge', 'today'].flatMap(id => workspaceCommands.filter(command => command.id === id))),
     ...(input.value.trim() && !create.length ? workspaceCommands.filter(command => command.id === 'create-note' || command.id === 'create-memory-card') : create),
     ...searchPrefillCommands(input.value)]
 })
 const domainCommands = computed(() => commands.value.filter(command => command.group === 'SEARCH'))
+const navigationCommands = computed(() => commands.value.filter(command => command.group !== 'SEARCH'))
 const selected = computed(() => commands.value[selectedIndex.value])
 const groupLabels = { PAGE: '页面', CREATE: '新建', SEARCH: '搜索八个域' }
-const commandIcons: Record<string, string> = { today: 'calendar-days', knowledge: 'network', prepare: 'clipboard', training: 'play', review: 'refresh-cw', growth: 'chart-no-axes-combined', 'create-note': 'file-plus', 'create-memory-card': 'credit-card', recent: 'history', search: 'search' }
+const commandIcons: Record<string, string> = { today: 'calendar-days', knowledge: 'knowledge-network', prepare: 'clipboard', training: 'play', review: 'refresh-cw', growth: 'chart-no-axes-combined', 'create-note': 'file-plus', 'create-memory-card': 'credit-card', recent: 'history', search: 'search' }
+const commandShortcuts: Record<string, string> = { 'create-note': '⌘N', 'create-memory-card': '⇧⌘N' }
 const domainLabels: Record<string, string> = { KNOWLEDGE: '知识', PREPARATION: '准备', MATERIAL_EXCERPT: '摘录', QUESTION: '题面', TRAINING_ANSWER: '回答', REVIEW_FEEDBACK: '反馈', RECOLLECTION: '回忆', AI_FEEDBACK: 'AI 观察' }
-const domainIcons = ['book-open', 'list-checks', 'network', 'file-text', 'message-square', 'thumbs-up', 'history', 'sparkles']
+const domainIcons = ['book-open', 'calendar-check', 'share-2', 'file-text', 'message-square', 'thumbs-up', 'history', 'sparkles']
 const searchProblem = computed(() => {
   if (!input.value.trim()) return ''
   const prefill = readSearchPrefill({ q: input.value })
@@ -120,7 +121,10 @@ function inputKeydown(event: KeyboardEvent) {
 }
 function panelKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented || event.repeat || event.isComposing || composing || event.keyCode === 229) return
-  if (event.key === 'Escape' && !event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+  if (!event.altKey && event.ctrlKey !== event.metaKey && event.key.toLowerCase() === 'n') {
+    const command = commands.value.find(item => item.id === (event.shiftKey ? 'create-memory-card' : 'create-note'))
+    if (command) { event.preventDefault(); void execute(command) }
+  } else if (event.key === 'Escape' && !event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
     event.preventDefault(); event.stopPropagation(); close()
   } else if (event.key === 'Tab' && !event.altKey && !event.ctrlKey && !event.metaKey && panel.value) {
     const focusable = [...panel.value.querySelectorAll<HTMLElement>('input, button, [tabindex="0"]')].filter(element => element.tabIndex >= 0 && usable(element))
@@ -189,37 +193,52 @@ onBeforeUnmount(() => {
     <span>命令面板</span><kbd aria-label="Control K 或 Command K">Ctrl / ⌘ K</kbd>
   </button>
   <!-- 自行管理焦点进出，避免 NModal 在导航卸载或页面隐藏后自动聚焦旧节点。 -->
-  <NModal :show="visible" :trap-focus="false" :auto-focus="false" :close-on-esc="false" :mask-closable="false" :z-index="40"
+  <NModal :show="visible" class="studio-command-overlay" :trap-focus="false" :auto-focus="false" :close-on-esc="false" :mask-closable="false" :z-index="40"
     @mask-click="close()" @after-enter="focusInput" @after-leave="afterClose">
     <section id="global-command-panel" ref="panel" tabindex="-1" class="command-panel" role="dialog" aria-modal="true" aria-labelledby="command-title" aria-describedby="command-description" @keydown="panelKeydown">
-      <header class="sr-only"><h2 id="command-title">命令面板</h2><p id="command-description">页面 · 新建 · 搜索</p></header>
+      <header class="sr-only"><h2 id="command-title">命令面板</h2><p id="command-description">页面 · 新建 · 搜索。Enter 打开所选命令；检索词会写入地址和历史。</p></header>
       <div class="command-filter">
         <label for="command-filter" class="sr-only">查找命令或输入检索词</label>
-        <RIcon name="search" :size="28" />
-        <NInput ref="filterInput" v-model:value="input" :disabled="navigating" placeholder="搜索知识、笔记、题目..."
-          :input-props="{ id: 'command-filter', autocomplete: 'off', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': true, 'aria-controls': 'command-options',
-            'aria-activedescendant': selected ? `command-option-${selected.id}` : undefined, 'aria-describedby': 'command-search-notice',
-            onKeydown: inputKeydown, onCompositionstart: () => composing = true, onCompositionend: () => composing = false }" />
+        <RIcon name="search" :size="29" />
+        <input id="command-filter" ref="filterInput" v-model="input" :disabled="navigating" placeholder="搜索知识、笔记、题目..."
+          autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="command-options"
+          :aria-activedescendant="selected ? `command-option-${selected.id}` : undefined" aria-describedby="command-search-notice"
+          @keydown="inputKeydown" @compositionstart="composing = true" @compositionend="composing = false" />
         <kbd>⌘K</kbd>
       </div>
-      <p v-if="searchProblem" class="command-notice" role="status">{{ searchProblem }}</p>
-      <p v-if="searchRestricted" class="command-notice" role="status">资料条件尚未允许搜索预填。可浏览静态页面目录，跳转仍需经过原页面的资料确认。</p>
-      <p v-if="navigating || access.checking" class="command-notice" role="status">{{ navigating ? '正在核对离开条件并打开页面…' : '正在核对资料条件，筛选词继续保留。' }}</p>
-      <p v-if="message" class="command-notice" role="status">{{ message }}</p>
-      <div id="command-options" class="command-options" role="listbox" aria-label="可用命令" :aria-busy="navigating">
-        <template v-for="(command, index) in commands.filter(command => command.group !== 'SEARCH')" :key="command.id">
-          <p v-if="index === 0 || commands[index - 1]?.group !== command.group" class="command-group" role="presentation">{{ groupLabels[command.group] }}</p>
-          <button :id="`command-option-${command.id}`" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1"
-            :aria-selected="selectedIndex === index" :aria-disabled="commandDisabled(command) || !canExecute" :disabled="commandDisabled(command) || !canExecute"
-            :class="{ selected: selectedIndex === index }" @mouseenter="!commandDisabled(command) && (selectedIndex = index)" @mousedown.prevent @click="execute(command)">
-            <RIcon :name="commandIcons[command.id] || (command.group === 'CREATE' ? 'file-plus' : 'file-text')" :size="35" /><span class="command-copy"><span class="command-label">{{ command.label }}</span><span class="command-detail">{{ command.description }}</span></span><span class="command-open">{{ command.group === 'CREATE' ? '新建' : '打开' }}<RIcon name="arrow-right" :size="18" /></span>
-          </button>
-        </template>
-        <template v-if="domainCommands.length"><p class="command-group command-domain-heading" role="presentation">{{ groupLabels.SEARCH }}</p><div class="command-domains"><button v-for="(command, index) in domainCommands" :id="`command-option-${command.id}`" :key="command.id" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1" :aria-selected="selected?.id === command.id" :disabled="commandDisabled(command) || !canExecute" :class="{ selected: selected?.id === command.id }" @mouseenter="!commandDisabled(command) && (selectedIndex = commands.findIndex(value => value.id === command.id))" @mousedown.prevent @click="execute(command)"><RIcon :name="domainIcons[index]!" :size="21" />{{ domainLabels[command.id.replace('search-', '')] }}</button></div></template>
-        <p v-if="!commands.length" class="command-empty" role="status">没有匹配的固定命令。试试页面名称，或输入有效检索词预填搜索。</p>
+      <div class="command-content">
+        <p v-if="searchProblem" class="command-notice" role="status">{{ searchProblem }}</p>
+        <p v-if="searchRestricted" class="command-notice" role="status">资料条件尚未允许搜索预填。可浏览静态页面目录，跳转仍需经过原页面的资料确认。</p>
+        <p v-if="navigating || access.checking" class="command-notice" role="status">{{ navigating ? '正在核对离开条件并打开页面…' : '正在核对资料条件，筛选词继续保留。' }}</p>
+        <p v-if="message" class="command-notice" role="status">{{ message }}</p>
+        <div id="command-options" class="command-options" role="listbox" aria-label="可用命令" :aria-busy="navigating">
+          <template v-for="(command, index) in navigationCommands" :key="command.id">
+            <p v-if="index === 0 || navigationCommands[index - 1]?.group !== command.group" class="command-group" :class="{ 'command-create-heading': command.group === 'CREATE' }" role="presentation">{{ groupLabels[command.group] }}</p>
+            <button :id="`command-option-${command.id}`" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1"
+              :aria-selected="selected?.id === command.id" :aria-disabled="commandDisabled(command) || !canExecute" :disabled="commandDisabled(command) || !canExecute"
+              class="command-item" :class="{ selected: selected?.id === command.id, compact: command.group === 'CREATE' }"
+              @mouseenter="!commandDisabled(command) && (selectedIndex = commands.findIndex(item => item.id === command.id))" @mousedown.prevent @click="execute(command)">
+              <span class="command-icon"><RIcon :name="commandIcons[command.id] || (command.group === 'CREATE' ? 'file-plus' : 'file-text')" :size="38" /><RIcon v-if="command.id === 'create-memory-card'" class="command-card-plus" name="plus" :size="18" /></span>
+              <span class="command-copy"><span class="command-label">{{ command.label }}</span><span v-if="command.group === 'PAGE'" class="command-detail">{{ command.description }}</span></span>
+              <kbd v-if="commandShortcuts[command.id]" class="command-shortcut">{{ commandShortcuts[command.id] }}</kbd>
+              <span v-else class="command-open"><span>{{ command.group === 'CREATE' ? '新建' : '打开' }}</span><span aria-hidden="true">↵</span></span>
+            </button>
+          </template>
+          <template v-if="domainCommands.length">
+            <p class="command-group command-domain-heading" role="presentation">{{ groupLabels.SEARCH }}</p>
+            <div class="command-domains">
+              <button v-for="(command, index) in domainCommands" :id="`command-option-${command.id}`" :key="command.id" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1"
+                :aria-selected="selected?.id === command.id" :disabled="commandDisabled(command) || !canExecute" :class="{ selected: selected?.id === command.id }"
+                @mouseenter="!commandDisabled(command) && (selectedIndex = commands.findIndex(value => value.id === command.id))" @mousedown.prevent @click="execute(command)">
+                <RIcon :name="domainIcons[index]!" :size="21" />{{ domainLabels[command.id.replace('search-', '')] }}
+              </button>
+            </div>
+          </template>
+          <p v-if="!commands.length" class="command-empty" role="status">没有匹配的固定命令。试试页面名称，或输入有效检索词预填搜索。</p>
+        </div>
+        <p id="command-search-notice" class="command-help"><RIcon name="info" :size="22" />到达搜索页后才会查询正文</p>
       </div>
-      <p id="command-search-notice" class="command-help"><RIcon name="info" :size="22" />到达搜索页后才会查询正文。检索词会写入地址和历史。</p>
-      <footer><button @click="close()"><kbd>Esc</kbd> 关闭</button><span>↑ ↓ 选择</span><span>Enter 打开</span><span class="command-read-boundary">不自动读取正文<RIcon name="circle" :size="20" /></span></footer>
+      <footer><button type="button" @click="close()"><kbd>Esc</kbd> 关闭</button><i aria-hidden="true" /><span class="command-key-hint"><kbd>↑ ↓</kbd> 选择</span><span class="command-read-boundary">不自动读取正文<RIcon name="circle" :size="20" /></span></footer>
     </section>
   </NModal>
 </template>
@@ -228,30 +247,78 @@ onBeforeUnmount(() => {
 .command-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; text-align: left; font-size: 12px; }
 .command-trigger:hover:not(:disabled) { background: var(--surface-soft); }
 .command-trigger:disabled { opacity: .55; cursor: not-allowed; }
-kbd { color: var(--muted); font-family: inherit; font-size: 10px; line-height: 1.5; white-space: nowrap; }
-.command-panel { width: min(620px, calc(100vw - 28px)); max-height: calc(100dvh - 48px); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; } h2, p { margin: 0; } h2 { font-size: 19px; } header p { margin-top: 5px; color: var(--muted); font-size: 12px; } header > button { flex: none; }
-.command-filter { display: grid; gap: 6px; } .command-filter label, .command-help { font-size: 12px; color: var(--muted); }
-.command-help, .command-notice, .command-detail { overflow-wrap: anywhere; }
-.command-notice { padding: 8px 10px; border-radius: 5px; background: var(--surface-soft); font-size: 12px; }
-.command-options { min-height: 90px; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 0 0; }
-.command-group { padding: 13px 10px 7px; color: var(--muted); font-size: 11px; }
-.command-options button { display: grid; gap: 4px; width: 100%; padding: 10px; border-radius: 5px; text-align: left; }
-.command-options button.selected { background: var(--brand-soft); color: var(--brand-strong); }
-.command-options button:disabled { opacity: .5; cursor: not-allowed; }
-.command-label { font-size: 13px; font-weight: 600; }.command-detail { color: var(--muted); font-size: 12px; }
-.command-empty { padding: 18px 10px; color: var(--muted); font-size: 13px; }
-footer { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+/* 1536×1024 下按25号参考定位；长目录和权限提示仅在内容区滚动。 */
+.command-panel {
+  --command-background: linear-gradient(110deg, #28241fee, #1e1b17f7 75%);
+  --command-border: #51483e; --command-divider: #50443755; --command-text: #f1e8da;
+  --command-muted: #b7a997; --command-group: #cfc6ba; --command-soft: #ffffff08;
+  --command-selected: linear-gradient(100deg, #8c5c3b91, #684b3233); --command-marker: #e6b282;
+  width: min(847px, calc(100vw - 32px)); height: min(728px, calc(100dvh - 32px));
+  margin: clamp(16px, calc((100dvh - 754px) / 2), 135px) auto auto; left: 51.5px; align-self: flex-start;
+  display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--command-border); border-radius: 32px;
+  background: var(--command-background); color: var(--command-text); box-shadow: 0 24px 50px #0008;
+  font-size: 20px; line-height: 1.5; letter-spacing: 0; transition: none !important;
+}
+.command-panel p { margin: 0; text-wrap: initial; }
+.command-panel kbd { font-family: inherit; font-weight: 400; white-space: nowrap; }
+.command-filter { position: relative; display: flex; align-items: center; gap: 15px; height: 82px; flex: none; padding: 0 28px; border-bottom: 1px solid var(--command-divider); background: #ffffff02; }
+.command-filter::before { content: ""; position: absolute; inset: 12px 13px; background: #00000013; border-radius: 23px; pointer-events: none; }
+.command-filter > :is(svg, input, kbd) { position: relative; }
+.command-filter > svg { flex: none; color: var(--command-group); }
+.command-filter input { flex: 1; min-width: 0; height: 58px; padding: 0; border: 0; border-radius: 0; outline: 0; color: inherit; background: transparent; font-size: 29px; }
+.command-filter input::placeholder { color: var(--command-muted); opacity: 1; }
+.command-filter > kbd { padding: 2px 8px; border-radius: 7px; background: var(--command-soft); color: var(--command-group); font-size: 19px; }
+.command-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--command-border) transparent; }
+.command-group { height: 55px; padding: 0 29px; display: flex; align-items: center; color: var(--command-group); font-size: 23px; line-height: 1.6; }
+.command-group.command-create-heading { height: 57px; margin: 4px 29px 0; padding: 7px 0 10px; border-top: 1px solid var(--command-divider); }
+.command-item { position: relative; display: flex; align-items: center; gap: 26px; width: calc(100% - 23px); height: 92px; margin-left: 10px; padding: 12px 24px; border-radius: 16px; text-align: left; }
+.command-icon { position: relative; display: inline-flex; flex: none; color: var(--command-group); }
+.command-copy { display: grid; flex: 1; min-width: 0; }
+.command-label { font-size: 24px; line-height: 1.5; }
+.command-detail { font-size: 20px; line-height: 1.6; color: var(--command-muted); }
+.command-label, .command-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.command-open { display: inline-flex; align-items: center; gap: 5px; flex: none; font-size: 20px; }
+.command-open > span:first-child { padding: 3px 15px; border-radius: 20px; background: var(--command-soft); }
+.command-item.compact { height: 57px; padding-block: 5px; }
+.command-item.compact .command-icon > svg:first-child { width: 35px; height: 35px; }
+.command-card-plus { position: absolute; right: -2px; bottom: -1px; background: var(--surface); }
+.command-shortcut { flex: none; padding: 0 4px; border-radius: 7px; background: var(--command-soft); font-size: 20px; }
+.command-item.selected, .command-domains > button.selected { background: var(--command-selected); }
+.command-item.selected::before { content: ""; position: absolute; left: -11px; top: 0; bottom: 0; width: 2px; background: var(--command-marker); }
+.command-group.command-domain-heading { height: 57px; margin: 0 29px; padding: 9px 0 10px; border-top: 1px solid var(--command-divider); }
+.command-domains { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 29px; }
+.command-domains > button { display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 7px; height: 40px; padding: 3px 10px; border-radius: 22px; background: var(--command-soft); font-size: 19px; white-space: nowrap; }
+.command-help { display: flex; align-items: center; gap: 10px; min-height: 66px; padding: 14px 29px 0; font-size: 20px; line-height: 1.6; color: var(--command-muted); }
+.command-help > svg { flex: none; color: #7eb2cc; fill: #315d7b; }
+.command-notice { margin: 10px 29px !important; padding: 10px 12px; border-radius: 8px; background: var(--command-soft); font-size: 15px; overflow-wrap: anywhere; }
+.command-empty { padding: 20px 29px; color: var(--command-muted); font-size: 18px; }
+.command-panel footer { display: flex; align-items: center; flex: none; gap: 0; height: 67px; padding: 0 28px; border-top: 1px solid var(--command-divider); background: #ffffff02; color: var(--command-muted); font-size: 21px; white-space: nowrap; }
+.command-panel footer > button { padding: 0; color: inherit; }
+.command-panel footer > i { height: 24px; width: 1px; margin: 0 16px; background: var(--command-border); }
+.command-panel footer kbd { padding: 0 4px; border-radius: 5px; background: var(--command-soft); color: var(--command-text); font-size: inherit; }
+.command-read-boundary { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.command-read-boundary > svg { flex: none; }
 button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-@media (max-width: 600px) { .command-panel { max-height: calc(100dvh - 24px); padding: 16px; gap: 10px; } .command-options button { padding: 12px 9px; } footer { gap: 12px; } }
-</style>
-
-<style scoped>
-.command-panel { width: min(790px, calc(100vw - 32px)); max-height: min(820px, calc(100dvh - 72px)); padding: 28px; gap: 16px; border: 1px solid #8b6a48; border-radius: 28px; background: linear-gradient(120deg, #2c241b, #15120e 75%); color: #f3eadc; box-shadow: 0 24px 80px #0009; }
-.command-panel header h2 { font-size: 30px; }.command-panel header p { font-size: 16px; color: #b2a695; }.command-panel .command-filter { position: relative; display: block; }.command-filter > svg { position: absolute; left: 18px; top: 13px; z-index: 1; color: #bdab93; }.command-filter :deep(.n-input) { border-radius: 17px; padding-left: 38px; font-size: 22px; }.command-filter :deep(.n-input__input-el) { height: 54px; }.command-panel .command-help { font-size: 13px; color: #b1a38f; }.command-panel .command-group { padding: 18px 12px 10px; font-size: 16px; }.command-panel .command-options button { padding: 14px 18px; border-radius: 15px; gap: 6px; }.command-panel .command-options button.selected { background: linear-gradient(110deg, #a06d3b99, #67442177); box-shadow: inset 0 0 0 1px #c9945c99; color: #fff0db; }.command-panel .command-label { font-size: 22px; font-weight: 500; }.command-panel .command-detail { font-size: 15px; color: #c3b7a6; }.command-panel footer { font-size: 15px; padding-top: 18px; gap: 28px; }.command-panel .command-notice { font-size: 15px; }
-</style>
-
-<style scoped>
-.command-panel { width: min(848px,calc(100vw - 32px)); padding: 12px 12px 0; gap: 0; border-color: var(--line); border-radius: 28px; color: var(--ink); background: var(--surface); }.command-panel .command-filter { padding: 0 0 12px; border-bottom: 1px solid var(--line); }.command-filter > svg { top: 16px; left: 18px; }.command-filter :deep(.n-input) { padding-right: 66px; border-radius: 24px; font-size: 27px; }.command-filter :deep(.n-input__input-el) { height: 58px; }.command-filter > kbd { position: absolute; top: 15px; right: 12px; padding: 2px 8px; border-radius: 6px; background: var(--surface-deep); color: var(--muted); font-size: 20px; }.command-panel .command-options { min-height: 0; max-height: min(550px,calc(100dvh - 230px)); padding: 0; }.command-panel .command-group { padding: 14px 17px 7px; font-size: 22px; color: var(--muted); }.command-panel .command-options > button { display: flex; align-items: center; gap: 24px; min-height: 84px; padding: 15px 22px; border-radius: 15px; }.command-options > button > svg { flex: none; color: var(--muted); }.command-copy { display: grid; gap: 5px; flex: 1; min-width: 0; }.command-panel .command-label { font-size: 23px; }.command-panel .command-detail { font-size: 17px; color: var(--muted); }.command-open { display: flex; gap: 10px; align-items: center; font-size: 18px; color: var(--muted); }.command-panel .command-domain-heading { border-top: 1px solid var(--line); margin: 12px 16px 0; padding-left: 0; }.command-domains { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 16px 13px; }.command-panel .command-domains button { display: flex; align-items: center; width: auto; gap: 6px; border-radius: 24px; padding: 7px 10px; font-size: 17px; background: var(--surface-soft); color: var(--ink); }.command-panel .command-options button.selected { background: var(--brand-soft); color: var(--brand-strong); box-shadow: inset 0 0 0 1px var(--brand); }.command-panel .command-help { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--muted); padding: 15px 16px; }.command-panel .command-notice { padding: 10px 16px; margin: 10px; }.command-panel footer { align-items: center; padding: 18px 16px; border-top: 1px solid var(--line); font-size: 18px; gap: 22px; }.command-panel footer > button { padding: 0; }.command-panel footer kbd { font-size: 18px; background: var(--surface-deep); border-radius: 6px; padding: 2px 4px; }.command-read-boundary { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; color: var(--muted); font-size: 17px; }
-@media(max-width:600px) { .command-panel .command-options > button { gap: 12px; padding: 12px; }.command-panel .command-label { font-size: 19px; }.command-panel .command-detail { font-size: 14px; }.command-open { display: none; }.command-panel .command-domains button { font-size: 15px; }.command-panel footer { font-size: 15px; gap: 14px; }.command-read-boundary { display: none; } }
+:global(.n-modal-container:has(.studio-command-overlay) > .n-modal-mask) { background: #0002; transition: none !important; }
+:global(html[data-studio-theme="light"] #global-command-panel) {
+  --command-background: var(--surface); --command-border: var(--line); --command-divider: var(--line);
+  --command-text: var(--ink); --command-muted: var(--muted); --command-group: var(--ink); --command-soft: var(--surface-soft);
+  --command-selected: var(--brand-soft); --command-marker: var(--brand);
+}
+@media (max-width: 1100px) { .command-panel { left: 0; } }
+@media (max-width: 600px) {
+  .command-panel { border-radius: 24px; }
+  .command-filter { padding-inline: 18px; gap: 10px; }
+  .command-filter input { font-size: 24px; }
+  .command-item { gap: 14px; padding-inline: 14px; }
+  .command-label { font-size: 19px; }
+  .command-detail { font-size: 14px; }
+  .command-open { display: none; }
+  .command-group, .command-domains { padding-inline: 19px; }
+  .command-group.command-create-heading, .command-group.command-domain-heading { margin-inline: 19px; padding-inline: 0; }
+  .command-domains > button { font-size: 16px; }
+  .command-help { padding-inline: 19px; font-size: 16px; }
+  .command-panel footer { padding-inline: 19px; font-size: 16px; }
+  .command-read-boundary { display: none; }
+}
 </style>

@@ -126,7 +126,7 @@ try {
       await ready()
       if (scene.id === '25') {
         ensure(await page.getByRole('dialog', { name: '全局命令面板' }).isVisible(), '25命令面板未打开')
-        ensure(await page.getByRole('textbox', { name: '搜索命令' }).evaluate(node => node === document.activeElement && node.value === '缓存'), '25初始查询或焦点不符')
+        ensure(await page.getByRole('combobox', { name: '搜索命令' }).evaluate(node => node === document.activeElement && node.value === '缓存'), '25初始查询或焦点不符')
       }
       if (scene.id === '29') ensure(await page.locator('.mobile-phone').count() === 3, '29未保持三手机并列构图')
       const captured = await screenshot()
@@ -135,11 +135,64 @@ try {
       await ready()
       ensure(captured.equals(await screenshot()), `${scene.id} 刷新后的参考初态不能恢复`)
       if (scene.id === '25') {
+        const dialog = page.getByRole('dialog', { name: '全局命令面板' })
+        const input = dialog.getByRole('combobox', { name: '搜索命令' })
+        const options = dialog.getByRole('option')
+        const box = await dialog.boundingBox()
+        ensure(box && box.x === 396 && box.y === 135 && box.width === 847 && box.height === 728, '25面板位置或尺寸不符')
+        ensure(await options.count() === 12 && await options.first().getAttribute('aria-selected') === 'true', '25初始选项数量或首项选择不符')
+        const domains = dialog.locator('.sp-domain-pills').getByRole('option')
+        ensure(JSON.stringify(await domains.allTextContents()) === JSON.stringify(['知识', '准备', '摘录', '题面', '回答', '反馈', '回忆', 'AI 观察']), '25八域文案或顺序不符')
+        const domainRows = await domains.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top))
+        ensure(new Set(domainRows).size === 1, '25八域没有保持同一排')
+        ensure(await dialog.locator('.sp-command-items').evaluate(node => node.scrollTop === 0 && node.scrollHeight <= node.clientHeight), '25初态出现滚动或内容溢出')
+        // 合成输入法生命周期，只核对真实组件事件处理；不注入页面或替换服务器资源。
+        await input.dispatchEvent('compositionstart', { data: '存' })
+        await input.press('Enter')
+        await input.press('Escape')
+        await input.press('ArrowDown')
+        ensure(await dialog.isVisible() && await options.first().getAttribute('aria-selected') === 'true'
+          && new URL(page.url()).searchParams.get('scene') === '25', '25输入法确认或取消错误执行命令')
+        await input.dispatchEvent('compositionend', { data: '存' })
+        for (let i = 0; i < 4; i++) await input.press('ArrowDown')
+        ensure(await domains.first().getAttribute('aria-selected') === 'true'
+          && await input.getAttribute('aria-activedescendant') === await domains.first().getAttribute('id'), '25方向键没有进入八域选项')
+        for (let i = 0; i < 8; i++) await input.press('ArrowDown')
+        ensure(await options.first().getAttribute('aria-selected') === 'true', '25向下循环选择失败')
+        await input.press('ArrowUp')
+        ensure(await domains.last().getAttribute('aria-selected') === 'true', '25向上循环选择失败')
+        await input.press('Enter')
+        ensure(await page.locator('.r-toast').textContent() === 'AI 观察正文检索待确认；当前面板仅展示固定命令'
+          && new URL(page.url()).searchParams.get('scene') === '25', '25八域操作未保留待确认边界')
+        const close = dialog.getByRole('button', { name: 'Esc 关闭', exact: true })
+        await input.press('Tab')
+        ensure(await close.evaluate(node => node === document.activeElement), '25 Tab没有到达关闭按钮')
+        await close.press('Tab')
+        ensure(await input.evaluate(node => node === document.activeElement), '25 Tab焦点离开面板')
+        await input.press('Shift+Tab')
+        ensure(await close.evaluate(node => node === document.activeElement), '25反向Tab没有保留焦点')
+        await close.press('Shift+Tab')
         await page.keyboard.press('Escape')
-        ensure(await page.getByRole('dialog', { name: '全局命令面板' }).count() === 0, '25 Esc未关闭面板')
+        ensure(await dialog.count() === 0, '25 Esc未关闭面板')
         await page.keyboard.press('Control+k')
-        await page.getByRole('dialog', { name: '全局命令面板' }).waitFor({ state: 'visible' })
-        checks.push({ check: 'command-close-reopen', scene: scene.id, passed: true })
+        await dialog.waitFor({ state: 'visible' })
+        ensure(await input.evaluate(node => node === document.activeElement) && await options.first().getAttribute('aria-selected') === 'true', '25重开后焦点或选择不符')
+        for (const [shortcut, target] of [['Control+n', '11'], ['Control+Shift+n', '16']]) {
+          await input.press(shortcut)
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, `25${shortcut}没有打开对应新建入口`)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '25快捷键返回后加载失败')
+          await ready()
+        }
+        for (const [index, target] of [[0, '09'], [1, '02']]) {
+          await options.nth(index).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '25页面选项未同步场景地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '25页面导航返回后加载失败')
+          await ready()
+        }
+        ensure(captured.equals(await screenshot()), '25交互后重新访问没有恢复静止初态')
+        checks.push({ check: 'command-geometry-domains-ime-keyboard-focus-shortcuts-navigation-refresh', scene: scene.id, passed: true })
       }
       if (scene.id === '09') {
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
