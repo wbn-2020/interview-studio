@@ -167,6 +167,49 @@ try {
         ensure(captured.equals(await screenshot()), '09交互后重新访问的初态与原截图不符')
         checks.push({ check: 'graph-candidates-zoom-whiteboard-attachment', scene: scene.id, passed: true })
       }
+      if (scene.id === '30') {
+        const list = page.getByRole('region', { name: '待整理内容' })
+        const sources = page.getByRole('complementary', { name: '收件箱来源' })
+        const detail = page.getByRole('complementary', { name: '内容详情' })
+        const all = page.getByRole('checkbox', { name: '全选收件箱', exact: true })
+        const rows = list.locator('article')
+        ensure(await rows.count() === 4 && await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true',
+          '30初始行数或首项选择不符')
+        ensure(await detail.locator('.sp-inbox-excerpt').textContent() === '缓存删除失败通常有三种情况：1. key 不存在，删除返回 0；2. 网络超时，客户端误判；3. 连接池耗尽，导致删除请求被拒绝。需要根据业务场景选择合适的重试策略...',
+          '30初始摘录不符')
+        await rows.first().getByRole('checkbox').check()
+        ensure(await all.evaluate(node => node.indeterminate && !node.checked), '30部分勾选没有同步全选中间状态')
+        await all.check()
+        ensure(await list.getByRole('checkbox').evaluateAll(nodes => nodes.every(node => node.checked)), '30全选没有勾选可见行')
+        await sources.getByRole('button', { name: '导入 2', exact: true }).click()
+        ensure(await rows.count() === 1 && await rows.first().getByRole('checkbox').isChecked() === false,
+          '30来源切换后行数或勾选状态不符')
+        ensure(await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true'
+          && await detail.getByRole('heading', { name: '一致性哈希摘录', exact: true }).isVisible()
+          && await detail.getByText('该条目的原始摘录待确认', { exact: true }).isVisible(),
+          '30来源切换后列表选择与详情不一致')
+        await sources.getByRole('button', { name: '全部 7', exact: true }).click()
+        await page.getByRole('combobox', { name: '收件箱排序' }).selectOption({ label: '按时间顺序' })
+        ensure(await rows.first().locator('strong').textContent() === '对账任务失败案例', '30时间顺序未反转')
+        await rows.first().locator('.sp-inbox-entry').click()
+        ensure(await detail.getByRole('heading', { name: '对账任务失败案例', exact: true }).isVisible(), '30点击行没有同步详情')
+        await page.getByRole('button', { name: '全部标为已读', exact: true }).click()
+        ensure(await page.getByRole('button', { name: '全部标为已读', exact: true }).isDisabled()
+          && await page.getByText('3 条待整理 · 来自快速记录和导入', { exact: true }).isVisible(),
+          '30已读操作没有保持待整理语义')
+        await page.reload({ waitUntil: 'networkidle' })
+        await ready()
+        ensure(captured.equals(await screenshot()), '30筛选、排序、勾选和已读交互后刷新未恢复参考初态')
+        for (const [name, target] of [['转为笔记', '11'], ['新建概念', '12'], ['创建回忆卡', '16'], ['关联已有知识', '09']]) {
+          await page.getByRole('button', { name, exact: true }).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, `30${name}未进入对应场景`)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), `30${name}返回后加载失败`)
+          await ready()
+        }
+        ensure(captured.equals(await screenshot()), '30操作入口返回后初态与截图不符')
+        checks.push({ check: 'inbox-source-selection-sort-checkbox-read-navigation-refresh', scene: scene.id, passed: true })
+      }
       const resourceErrors = (await Promise.all(resourceTasks)).filter(Boolean)
       ensure(!pageErrors.length && !resourceErrors.length, [...pageErrors, ...resourceErrors].join('\n'))
       const png = await sharp(captured).withIccProfile('srgb').png().toBuffer()
