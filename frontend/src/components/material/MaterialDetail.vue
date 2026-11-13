@@ -34,6 +34,7 @@ const runBefore = ref<string>()
 const runCursors = ref<(string | undefined)[]>([])
 const createdRunId = ref<string>()
 const previewOpen = ref(false)
+const originalPreviewOpen = ref(true)
 const excerptCursor = ref<string>()
 const excerptCursors = ref<(string | undefined)[]>([])
 const excerptStatus = ref<'ACTIVE' | 'ARCHIVED' | 'ALL'>('ACTIVE')
@@ -161,6 +162,16 @@ function showExcerpt(id: string) { void router.replace({ name: 'materials', quer
   <section class="material-detail" aria-label="附件资料详情"><div v-if="!current && attachment.isPending.value" class="loading-block" role="status">正在读取附件…</div><p v-else-if="!current" class="notice error">{{ errorText(attachment.error.value) }}<NButton text @click="attachment.refetch()">重试读取</NButton></p>
     <template v-else><header class="detail-header"><div><p class="section-label">{{ materialKindLabels[current.kind] }} · {{ attachmentLabels[current.status] }}</p><h2>{{ current.fileName }}</h2></div><button class="icon-button" aria-label="关闭附件详情" @click="emit('close')">×</button></header><p class="field-help">{{ bytesLabel(current.byteSize) }} · {{ new Date(current.createdAt).toLocaleString('zh-CN') }}<span class="material-digest">SHA-256 {{ current.sha256 }}</span></p>
       <p v-if="attachment.error.value" class="notice error">最新读取未完成，本地输入继续保留：{{ errorText(attachment.error.value) }}<NButton text @click="attachment.refetch()">重试</NButton></p><div v-if="writer.error.value" class="notice error" role="alert"><p>{{ errorText(writer.error.value) }}</p><NButton v-if="writer.pending.value && !writer.busy.value" size="small" :disabled="!store.sessionActive" @click="writer.retry">用原请求重试</NButton><NButton v-if="writer.error.value instanceof ApiError && writer.error.value.status === 409" text :disabled="writer.locked.value" @click="compareServer">查看服务器说明</NButton></div><p v-if="localError" class="notice error">{{ localError }}</p><p v-if="savedMessage" class="success-text" role="status">{{ savedMessage }}</p>
+      <div class="material-document-layout">
+      <section class="material-document" aria-label="附件原件预览">
+        <header><strong>文档预览</strong><NButton size="small" :disabled="current.status !== 'READY'" @click="originalPreviewOpen = !originalPreviewOpen">{{ originalPreviewOpen ? '收起预览' : '打开预览' }}</NButton></header>
+        <template v-if="originalPreviewOpen && current.status === 'READY' && store.sessionActive">
+          <object v-if="current.kind === 'PDF'" class="material-pdf" :data="materialContentUrl(current.id)" type="application/pdf" :aria-label="`${current.fileName} 原件`"><p>浏览器无法内嵌该 PDF。<a class="text-link" :href="materialContentUrl(current.id)" download>下载原件</a></p></object>
+          <img v-else-if="current.kind === 'PNG' || current.kind === 'JPEG'" class="material-original-image" :src="materialContentUrl(current.id)" :alt="current.fileName" />
+          <div v-else class="document-unavailable"><h3>{{ current.fileName }}</h3><p>当前格式无法在浏览器内直接预览。</p><a class="text-link" :href="materialContentUrl(current.id)" download>下载原件</a></div>
+        </template><p v-else class="document-unavailable">{{ current.status === 'READY' ? '原件预览已收起。' : '原件完成上传后可预览。' }}</p>
+      </section>
+      <div class="material-processing" aria-label="解析结果与来源摘录">
       <section class="material-section"><h3>资料说明</h3><label class="description-label">仅修改说明，原件和解析历史各自保留<NInput v-model:value="description" type="textarea" :maxlength="5000" :autosize="{ minRows: 2, maxRows: 7 }" :disabled="!editable" /></label><div class="row-actions"><NButton size="small" :disabled="!editable || !descriptionDirty" @click="saveDescription">保存说明</NButton><a v-if="current.status === 'READY' && store.sessionActive" class="text-link" :href="materialContentUrl(current.id)" download>下载鉴权原件</a><span class="field-help">{{ descriptionDirty ? '说明尚未保存' : `服务器修订 ${current.revision}` }}</span></div><p v-if="attachment.data.value && attachment.data.value.revision !== current.revision" class="notice">服务器修订有变化，当前输入仍使用原基线。<NButton text @click="compareServer">查看服务器说明</NButton></p><div v-if="serverCopy" class="comparison-panel"><h4>服务器说明 · 修订 {{ serverCopy.revision }}</h4><p class="preserve">{{ serverCopy.description || '未填写说明' }}</p><div class="row-actions"><NButton size="small" :disabled="!editable" @click="adoptServer">采用服务器说明</NButton><NButton text size="small" @click="serverCopy = undefined">保留本地输入</NButton></div></div></section>
       <MaterialUpload v-if="current.status !== 'READY'" :attachment="attachment.data.value ?? current" :status="status" :disabled="dirty || writer.locked.value" @changed="refresh" @ready="uploadReady" />
       <section class="material-section"><h3>上传尝试与保留容量</h3><p class="field-help">失败、中断和部分接收仍占预留额度；本阶段不自动清除原件或旧结果。</p><article v-for="attempt in (attachment.data.value?.uploads ?? current.uploads)" :key="attempt.id" class="attempt-row"><div><strong>{{ uploadLabels[attempt.status] }}</strong><small>{{ attempt.id }}</small></div><p>预留 {{ bytesLabel(attempt.reservedBytes) }} · 接收 {{ bytesLabel(attempt.receivedBytes) }}</p><p v-if="attempt.errorCode" class="error-text">{{ attempt.errorCode }}</p></article></section>
@@ -172,6 +183,8 @@ function showExcerpt(id: string) { void router.replace({ name: 'materials', quer
         <MaterialDependencyImpacts v-if="shownExcerptId" :key="shownExcerptId" :excerpt-id="shownExcerptId"
           :enabled="knowledgePreviewEnabled" @changed="refresh" />
       </template>
+      </div>
+      </div>
     </template>
   </section>
 </template>
@@ -200,5 +213,13 @@ function showExcerpt(id: string) { void router.replace({ name: 'materials', quer
 .saved-excerpt > button { text-align: left; }
 .excerpt-status-filter { display: grid; gap: 8px; max-width: 280px; font-size: 12px; }
 .preserve { white-space: pre-wrap; }
+.material-document-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; align-items: start; gap: 14px; min-width: 0; }
+.material-document, .material-processing { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.material-document > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 68px; padding: 16px 20px; border-bottom: 1px solid var(--line); font-size: 22px; }
+.material-pdf { display: block; width: 100%; height: 700px; border: 0; background: #ddd8ce; }
+.material-original-image { display: block; max-width: 100%; height: 700px; object-fit: contain; margin: auto; }
+.document-unavailable { display: grid; place-content: center; gap: 18px; min-height: 600px; padding: 30px; text-align: center; font-size: 20px; color: var(--muted); }
+.material-processing { padding: 22px; max-height: 770px; overflow-y: auto; }.material-processing .material-section:first-child { padding-top: 0; border-top: 0; }.material-processing h3 { font-size: 23px; }.material-processing label { font-size: 16px; }.material-processing :is(.attempt-row,.run-history > button,.saved-excerpt) { font-size: 16px; padding-block: 16px; }.material-processing :deep(.material-segments textarea) { font-size: 17px; }.material-processing :deep(.material-segments article > header) { font-size: 16px; }
+@media(max-width:1200px) { .material-document-layout { grid-template-columns: minmax(0, 1fr); }.material-processing { max-height: none; }.material-pdf { height: 650px; } }
 @media (max-width: 600px) { .run-history > button { grid-template-columns: 1fr; } }
 </style>

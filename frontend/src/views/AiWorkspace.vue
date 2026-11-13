@@ -13,6 +13,7 @@ import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import { useAiUpdatesStore } from '../state/aiUpdates'
+import RIcon from '../replica/RIcon.vue'
 
 const AiTaskCreate = defineAsyncComponent(() => import('../components/ai/AiTaskCreate.vue'))
 const AiMaterialQaCreate = defineAsyncComponent(() => import('../components/ai/AiMaterialQaCreate.vue'))
@@ -164,8 +165,11 @@ function next() { if (tasks.data.value?.nextCursor) { cursors.value.push(cursor.
 </script>
 
 <template>
-  <header class="page-heading"><div><p class="section-label">有范围、有授权、可追溯</p><h1>AI 任务</h1><p class="muted">从训练片段或所选资料整理知识与事实候选，从资料生成题目或提问，从事实生成表达，从原始 JD 整理要求，按目标生成准备建议，或从知识生成关系与回忆卡候选；保留外发依据、每次尝试和费用状态。</p></div><div class="row-actions"><NButton :disabled="!readable" @click="create('FACT_DRAFT')">从资料整理事实候选</NButton><NButton :disabled="!readable" @click="create('JD_REQUIREMENT_DRAFT')">整理 JD 要求</NButton><NButton :disabled="!readable" @click="create('MEMORY_CARD_DRAFT')">生成回忆卡候选</NButton><NButton :disabled="!readable" @click="create('RELATION_DRAFT')">生成关系建议</NButton><NButton :disabled="!readable" @click="create('PREPARATION_PLAN')">生成准备建议</NButton><NButton :disabled="!readable" @click="create('EXPRESSION_DRAFT')">生成表达素材</NButton><NButton :disabled="!readable" @click="create('MATERIAL_QA')">向资料提问</NButton><NButton type="primary" :disabled="!readable" @click="create()">＋ 新建整理／出题候选</NButton></div></header>
+  <div class="ai-product">
+  <header class="page-heading"><div><h1>任务与授权</h1><p class="muted"><RIcon name="shield-check" />所有外发都由你确认</p></div><div class="row-actions"><details class="ai-create-menu"><summary>新建任务<RIcon name="chevron-down" /></summary><div><NButton :disabled="!readable" @click="create('FACT_DRAFT')">从资料整理事实候选</NButton><NButton :disabled="!readable" @click="create('JD_REQUIREMENT_DRAFT')">整理 JD 要求</NButton><NButton :disabled="!readable" @click="create('MEMORY_CARD_DRAFT')">生成回忆卡候选</NButton><NButton :disabled="!readable" @click="create('RELATION_DRAFT')">生成关系建议</NButton><NButton :disabled="!readable" @click="create('PREPARATION_PLAN')">生成准备建议</NButton><NButton :disabled="!readable" @click="create('EXPRESSION_DRAFT')">生成表达素材</NButton><NButton :disabled="!readable" @click="create('MATERIAL_QA')">向资料提问</NButton><NButton type="primary" :disabled="!readable" @click="create()">新建整理／出题候选</NButton></div></details><NButton :disabled="!readable" @click="refresh"><RIcon name="refresh-cw" />刷新</NButton></div></header>
+  <details class="ai-config-collapse"><summary>供应商配置与预算 · {{ configLabel }}</summary>
   <section class="ai-settings" aria-label="安全配置与预算"><header class="settings-heading"><div><strong>{{ configLabel }}</strong><p v-if="settings.data.value" class="field-help">{{ settings.data.value.configuration.provider || '供应商未配置' }} · {{ settings.data.value.configuration.model || '模型未配置' }}。这里只读服务器的公开配置，页面不填写密钥。</p></div><div class="row-actions"><NButton size="small" :disabled="!readable" @click="settings.refetch()">刷新配置与预算</NButton><NButton size="small" :disabled="!settings.data.value" @click="configurationOpen = !configurationOpen">{{ configurationOpen ? '收起配置' : '查看配置' }}</NButton></div></header><p v-if="settings.error.value" class="notice error" role="alert">{{ errorText(settings.error.value) }}</p><template v-if="settings.data.value"><div class="budget-grid"><div><span>当前可用</span><strong>{{ formatAiAmount(settings.data.value.budget.remainingMicros, settings.data.value.budget.currency) }}</strong></div><div><span>已报告／用户核对</span><strong>{{ formatAiAmount(settings.data.value.budget.reportedMicros, settings.data.value.budget.currency) }}</strong></div><div><span>待结算预留</span><strong>{{ formatAiAmount(settings.data.value.budget.reservedMicros, settings.data.value.budget.currency) }}</strong></div><div><span>未知费用占用</span><strong>{{ formatAiAmount(settings.data.value.budget.unknownMicros, settings.data.value.budget.currency) }}</strong></div></div><p class="field-help">UTC {{ settings.data.value.budget.date }} 日预算 {{ formatAiAmount(settings.data.value.budget.limitMicros, settings.data.value.budget.currency) }}。预留和未知费用跨日期占用；按报告用量估算的金额不等于供应商账单实扣。</p><dl v-if="configurationOpen" class="configuration-grid"><div><dt>接口协议</dt><dd>{{ settings.data.value.configuration.protocol === 'RESPONSES' ? 'Responses' : settings.data.value.configuration.protocol === 'CHAT_COMPLETIONS' ? 'Chat Completions' : '未配置' }}</dd></div><div class="full"><dt>HTTPS 请求端点</dt><dd>{{ settings.data.value.configuration.endpoint || '未配置' }}</dd></div><div><dt>配置修订／价格修订</dt><dd>{{ settings.data.value.configuration.configVersion || '未配置' }} / {{ settings.data.value.configuration.priceVersion || '未配置' }}</dd></div><div><dt>输入价格／百万 token</dt><dd>{{ formatAiAmount(settings.data.value.configuration.inputPriceMicrosPerMillion, settings.data.value.configuration.currency) }}</dd></div><div><dt>输出价格／百万 token</dt><dd>{{ formatAiAmount(settings.data.value.configuration.outputPriceMicrosPerMillion, settings.data.value.configuration.currency) }}</dd></div><div><dt>最大输出／超时</dt><dd>{{ settings.data.value.configuration.maxOutputTokens }} token / {{ settings.data.value.configuration.timeoutSeconds }} 秒</dd></div><div><dt>资料与要求上限</dt><dd>{{ settings.data.value.configuration.maxInputBytes }} 字节</dd></div><div><dt>单任务尝试上限</dt><dd>{{ settings.data.value.configuration.maxAttempts }} 次</dd></div><div><dt>输出额度字段</dt><dd>{{ settings.data.value.configuration.maxTokensField || '未配置' }}</dd></div><div><dt>JSON mode</dt><dd>{{ settings.data.value.configuration.jsonMode ? '服务器配置为启用' : '服务器配置为关闭' }}</dd></div></dl></template></section>
+  </details>
   <p class="authorization-entry"><RouterLink class="text-link" :to="{ name: 'ai-authorizations' }">管理与撤回持续范围授权</RouterLink><span class="field-help">安全元数据管理在独立训练期间仍可使用；完整清单从原任务核对。</span></p>
   <nav v-if="creatingRelation || !creating && !selectedId" class="row-actions" aria-label="关系建议来源">
     <NButton :disabled="!readable" :type="creatingRelation && !creatingRelationEvidence && !creatingRelationReview ? 'primary' : 'default'" @click="create('RELATION_DRAFT')">从知识生成关系建议</NButton>
@@ -174,7 +178,7 @@ function next() { if (tasks.data.value?.nextCursor) { cursors.value.push(cursor.
   </nav>
   <div class="ai-workspace">
     <aside class="task-catalog" aria-label="AI 任务记录">
-      <header><h2>任务记录</h2><NButton text size="small" :disabled="!readable" @click="tasks.refetch()">刷新</NButton></header>
+      <header><h2>任务队列{{ tasks.data.value ? ` (${tasks.data.value.items.length})` : '' }}</h2><NButton text size="small" :disabled="!readable" @click="tasks.refetch()">刷新</NButton></header>
       <p class="field-help">每次外发、尝试和费用分别保留。</p>
       <p v-if="tasks.isPending.value" class="loading-block" role="status">正在读取任务…</p>
       <p v-else-if="tasks.error.value" class="notice error" role="alert">{{ errorText(tasks.error.value) }}<NButton text :disabled="!readable" @click="tasks.refetch()">重试</NButton></p>
@@ -206,6 +210,7 @@ function next() { if (tasks.data.value?.nextCursor) { cursors.value.push(cursor.
     </section>
   </div>
   <p class="workspace-footnote" role="status">{{ aiUpdates.message }} AI 回答与候选仍需要人工检查技术正确性和语义依据。</p>
+  </div>
 </template>
 
 <style scoped>
@@ -216,4 +221,15 @@ function next() { if (tasks.data.value?.nextCursor) { cursors.value.push(cursor.
 .ai-welcome { display: grid; gap: 20px; justify-items: start; align-self: center; max-width: 720px; padding: 42px clamp(22px, 4vw, 58px); } .ai-welcome h2 { font-size: 26px; margin: 0; } .ai-welcome > p { color: var(--muted); max-width: 68ch; } .welcome-notes { display: grid; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 @media (max-width: 1050px) { .ai-workspace { grid-template-columns: 225px minmax(0, 1fr); } .settings-heading { flex-wrap: wrap; } .budget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .ai-workspace { grid-template-columns: 1fr; } .task-catalog { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; } .task-list { max-height: 270px; overflow-y: auto; } .configuration-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ai-welcome { padding: 35px 22px; } }
+</style>
+
+<style scoped>
+.ai-product { min-width: 0; }.page-heading .muted { display: flex; align-items: center; gap: 12px; }
+.ai-config-collapse { margin-bottom: 14px; color: var(--muted); }.ai-config-collapse > summary { font-size: 16px; cursor: pointer; }.ai-config-collapse[open] > .ai-settings { margin-top: 16px; max-width: none; }.authorization-entry { max-width: none; margin-bottom: 20px; }
+.ai-create-menu { position: relative; }.ai-create-menu > summary { display: flex; align-items: center; gap: 16px; cursor: pointer; padding: 10px 18px; border: 1px solid var(--line); border-radius: 16px; font-size: 19px; list-style: none; }.ai-create-menu > div { position: absolute; z-index: 15; right: 0; top: 58px; display: grid; gap: 7px; width: 300px; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.ai-workspace { max-width: none; grid-template-columns: 305px minmax(0, 1fr); gap: 18px; border: 0; border-radius: 0; background: transparent; min-height: 710px; align-items: start; }
+.task-catalog { padding: 26px 18px; min-height: 710px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }.task-catalog h2 { font-size: 25px; }.task-list { margin: 20px -18px 0; gap: 0; }.task-list > button { border: 1px solid transparent; border-bottom-color: var(--line); border-radius: 0; padding: 22px; gap: 10px; }.task-list > button.selected { border: 1px solid var(--brand); border-radius: 15px; background: var(--brand-soft); }.task-list strong { font-size: 22px; }.task-list span { font-size: 18px; }.task-list :is(small,time) { font-size: 15px; }
+.ai-welcome { align-self: stretch; max-width: none; padding: 40px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }.ai-welcome h2 { font-size: 31px; }.ai-welcome > p { font-size: 20px; line-height: 1.8; }.welcome-notes { font-size: 17px; line-height: 1.8; }
+@media(max-width:1100px) { .ai-workspace { grid-template-columns: 255px minmax(0,1fr); } }
+@media(max-width:760px) { .ai-workspace { grid-template-columns: minmax(0,1fr); }.task-catalog { min-height: auto; }.ai-welcome { padding: 24px; }.ai-create-menu > div { width: 260px; } }
 </style>

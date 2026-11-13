@@ -97,14 +97,18 @@ watch(() => props.viewport, value => {
 </template>
 
 <style scoped>
-.board-canvas { position: relative; height: min(72vh, 760px); min-height: 480px; background: var(--surface-soft); }
-.board-card { width: 222px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
-.board-card.reference { border-left: 3px solid var(--brand); }
+.board-canvas { position: relative; height: 680px; min-height: 480px; background-color: var(--bg); background-image: radial-gradient(circle, var(--line) 1px, transparent 1px); background-size: 20px 20px; }
+.board-card { width: 222px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface-soft); color: var(--ink); }
+.board-card.reference { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); }
 .board-card strong { display: block; margin: 6px 0; line-height: 1.45; overflow-wrap: anywhere; }
-.board-card p { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; font-size: 12px; }
-.board-card small { color: var(--muted); font-size: 10px; }
+.board-card strong { font-size: 21px; }
+.board-card p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; font-size: 16px; line-height: 1.65; }
+.board-card small { color: var(--muted); font-size: 14px; }
 :deep(.vue-flow__node.selected .board-card) { outline: 2px solid var(--brand); outline-offset: 3px; }
 :deep(.vue-flow__edge-text) { fill: var(--ink); }
+:deep(.vue-flow__edge-textbg) { fill: var(--surface); }
+:deep(.vue-flow__edge-path) { stroke-width: 2; }
+:deep(.vue-flow__edge-text) { font-size: 16px; }
 .board-canvas-empty { position: absolute; top: 36%; left: 20%; width: 60%; text-align: center; pointer-events: none; }
 .board-canvas-empty p { margin-top: 8px; color: var(--muted); font-size: 12px; }
 </style>

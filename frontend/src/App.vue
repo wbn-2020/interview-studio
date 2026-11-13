@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NButton, NConfigProvider, NInput, NMessageProvider, NModal, zhCN, dateZhCN, darkTheme } from 'naive-ui'
+import { NConfigProvider, NMessageProvider, NModal, zhCN, dateZhCN, darkTheme } from 'naive-ui'
 import { read, login, logout, errorText, clearCsrf } from './api/client'
 import type { Schema } from './api/client'
 import { queryClient } from './api/queryClient'
@@ -13,6 +13,8 @@ import { usePreferencesStore } from './state/preferences'
 import { recentIdValid } from './api/recent'
 import TrainingAccessNotice from './components/training/TrainingAccessNotice.vue'
 import GlobalCommandPalette from './components/GlobalCommandPalette.vue'
+import StudioShell from './components/studio/StudioShell.vue'
+import StudioLogin from './components/studio/StudioLogin.vue'
 
 const session = ref<Schema['Session'] | null>(null)
 const entered = ref(false)
@@ -35,20 +37,21 @@ const trainingBlocked = computed(() => !safeManagementShell.value && (trainingAc
   || workspace.changes.get('training-access-command')?.locked
   || (trainingAccess.restricted && trainingAccess.needsGuard(route.name, route.query.item, route.query.create))))
 let trainingChannel: BroadcastChannel | undefined
-const navigation = [
-  { path: '/today', label: '今日', mark: '◷' }, { path: '/prepare', label: '准备', mark: '▤' },
-  { path: '/knowledge', label: '知识', mark: '✧' }, { path: '/practice', label: '训练', mark: '▷' },
-  { path: '/review', label: '复盘', mark: '↶' }, { path: '/growth', label: '成长', mark: '↗' },
-]
-const preparationNavigation = [
-  { path: '/prepare', label: '准备材料' }, { path: '/prepare/materials', label: '附件资料' },
-  { path: '/prepare/tasks', label: '准备任务' }, { path: '/prepare/schedule', label: '面试安排' },
-]
-const practiceNavigation = [
-  { path: '/practice/questions', label: '题库' }, { path: '/practice/collections', label: '题单与路线' },
-  { path: '/practice/sessions', label: '文字训练' },
-]
-const theme = computed(() => ({ common: { primaryColor: preferences.isDark ? '#8bcbb0' : '#246450', primaryColorHover: preferences.isDark ? '#a2ddc3' : '#357b65', primaryColorPressed: preferences.isDark ? '#74b298' : '#194e3e', borderRadius: '7px', fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif', fontSize: `${preferences.current.fontSize}px` } }))
+const commandPalette = ref<InstanceType<typeof GlobalCommandPalette>>()
+const theme = computed(() => ({
+  common: {
+    primaryColor: preferences.isDark ? '#dda16a' : '#a36429', primaryColorHover: '#efb77e', primaryColorPressed: '#bb7d44',
+    primaryColorSuppl: '#dda16a', borderRadius: '14px', fontFamily: '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif',
+    fontSize: '17px', bodyColor: preferences.isDark ? '#0b0a08' : '#f1eee8',
+    cardColor: preferences.isDark ? '#211c16' : '#fffdf9', modalColor: preferences.isDark ? '#211c16' : '#fffdf9',
+    popoverColor: preferences.isDark ? '#282119' : '#fffdf9', tableColor: preferences.isDark ? '#1b1814' : '#fffdf9',
+    borderColor: preferences.isDark ? '#4a3d2e' : '#d9cdbc', textColorBase: preferences.isDark ? '#f3eee5' : '#30271e',
+  },
+  Button: { heightMedium: '49px', heightSmall: '36px', heightLarge: '56px', fontSizeMedium: '18px', fontSizeSmall: '15px', borderRadiusMedium: '25px', borderRadiusSmall: '18px', borderRadiusLarge: '28px', textColorPrimary: '#201307', textColorHoverPrimary: '#201307', textColorPressedPrimary: '#201307' },
+  Input: { heightMedium: '46px', fontSizeMedium: '17px', color: preferences.isDark ? '#171410' : '#fffdf9', borderRadius: '14px' },
+  Select: { peers: { InternalSelection: { heightMedium: '46px', fontSizeMedium: '17px', borderRadius: '14px' } } },
+  Card: { borderRadius: '22px', titleFontSizeMedium: '25px' },
+}))
 
 async function refreshSession() {
   loading.value = true
@@ -149,50 +152,19 @@ onUnmounted(() => {
 <template>
   <NConfigProvider :theme="preferences.isDark ? darkTheme : null" :theme-overrides="theme" :locale="zhCN" :date-locale="dateZhCN">
     <NMessageProvider>
-      <div v-if="entered" class="app-shell" :inert="!session?.authenticated || undefined">
-        <aside class="app-nav">
-          <a class="brand" href="/knowledge" @click.prevent="$router.push('/knowledge')"><span class="brand-symbol">阶</span><span>问阶<small>Interview Studio</small></span></a>
-          <nav aria-label="主导航">
-            <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" :class="{ 'router-link-active': ['/prepare', '/practice', '/knowledge'].includes(item.path) && $route.path.startsWith(item.path) }"><span aria-hidden="true">{{ item.mark }}</span>{{ item.label }}</RouterLink>
-          </nav>
-          <nav aria-label="资料与个人设置"><RouterLink :to="{ name: 'knowledge-packages' }">知识包导入</RouterLink><RouterLink :to="{ name: 'knowledge-merge' }">概念合并</RouterLink><RouterLink :to="{ name: 'settings' }">个人设置</RouterLink><RouterLink :to="{ name: 'data-management' }">数据管理</RouterLink></nav>
-          <div class="nav-footer"><GlobalCommandPalette :enabled="Boolean(session?.authenticated && workspace.sessionActive && !loading && !busy)" /><RouterLink :to="{ name: 'search' }">全局搜索</RouterLink><RouterLink :to="{ name: 'recent' }">最近访问<span v-if="recent.pendingCount"> · {{ recent.pendingCount }} 待确认</span></RouterLink><span v-if="recent.message" role="status">{{ recent.message }}</span><RouterLink to="/ai">AI 任务与用量</RouterLink><RouterLink :to="{ name: 'ai-authorizations' }">AI 授权管理</RouterLink><span>个人知识与面试工作台</span><span class="muted">{{ session?.username }}</span><NButton quaternary size="small" :loading="busy" @click="signOut">退出登录</NButton></div>
-        </aside>
-        <main id="main-content" class="app-main">
+      <StudioShell v-if="entered" :inert="!session?.authenticated || undefined" :username="session?.username" :unsaved="unsavedCount" :unresolved="unresolvedCount" :busy="busy" @command="commandPalette?.open()" @signout="signOut">
           <div v-if="preferences.current.saveRecoveryNotice && (unsavedCount || unresolvedCount)" class="preference-save-notice" role="status">{{ unsavedCount }} 处未保存输入，{{ unresolvedCount }} 个保存中或结果待确认操作。请完成保存或用原请求恢复；关闭页面可能丢失尚未保存的内容。</div>
-          <nav v-if="$route.path.startsWith('/prepare')" class="preparation-navigation" aria-label="准备工作区"><RouterLink v-for="item in preparationNavigation" :key="item.path" :to="item.path">{{ item.label }}</RouterLink></nav>
-          <nav v-if="$route.path.startsWith('/practice')" class="preparation-navigation" aria-label="训练工作区"><RouterLink v-for="item in practiceNavigation" :key="item.path" :to="item.path">{{ item.label }}</RouterLink></nav>
+          <p v-if="recent.message" class="notice" role="status">{{ recent.message }}</p>
           <TrainingAccessNotice v-show="!authorizationManagement" />
           <div v-show="!trainingBlocked" :inert="trainingBlocked || undefined">
             <NConfigProvider :namespace="trainingBlocked ? 'studio-material-layer-hidden' : 'studio-material-layer'"><RouterView /></NConfigProvider>
           </div>
-        </main>
-      </div>
+      </StudioShell>
+      <GlobalCommandPalette ref="commandPalette" :show-trigger="false" :enabled="Boolean(session?.authenticated && workspace.sessionActive && !loading && !busy)" />
       <NModal :show="!session?.authenticated" :mask-closable="false" :close-on-esc="false" :z-index="50" aria-labelledby="login-title">
-        <form class="login-form" @submit.prevent="signIn">
-          <div class="brand-symbol">阶</div>
-          <h1 id="login-title">{{ entered ? '回到你的工作台' : '欢迎来到问阶' }}</h1>
-          <p>把每一次思考，留在自己的知识宇宙。</p>
-          <div v-if="loading" class="loading-block" role="status">正在确认会话…</div>
-          <template v-else>
-            <p v-if="error" class="notice error" role="alert">{{ error }}</p>
-            <label for="username">登录名</label>
-            <NInput id="username" v-model:value="username" :disabled="busy" :input-props="{ autocomplete: 'username', required: true }" placeholder="服务器配置的登录名" />
-            <label for="password">密码</label>
-            <NInput id="password" v-model:value="password" type="password" :disabled="busy" :input-props="{ autocomplete: 'current-password', required: true }" placeholder="输入密码" />
-            <NButton type="primary" attr-type="submit" block :loading="busy" :disabled="!username || !password">进入工作台</NButton>
-            <NButton v-if="error" text @click="refreshSession">重新检查连接</NButton>
-            <small class="muted">个人部署 · 账号由服务器管理员配置</small>
-          </template>
-        </form>
+        <StudioLogin v-model:username="username" v-model:password="password" :busy="busy" :loading="loading" :error="error" @submit="signIn" @reconnect="refreshSession" />
       </NModal>
       <div v-if="session?.authenticated && error" class="global-notice" role="alert">{{ error }} <button @click="error = ''">关闭</button></div>
     </NMessageProvider>
   </NConfigProvider>
 </template>
-
-<style scoped>
-.preparation-navigation { display: flex; gap: 24px; max-width: 1280px; margin: 0 auto 24px; border-bottom: 1px solid var(--line); overflow-x: auto; }
-.preparation-navigation a { padding: 8px 0 12px; border-bottom: 2px solid transparent; color: var(--muted); white-space: nowrap; font-size: 13px; }
-.preparation-navigation a.router-link-exact-active { color: var(--brand-strong); border-bottom-color: var(--brand); font-weight: 650; }
-</style>

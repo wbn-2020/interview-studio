@@ -8,6 +8,7 @@ import { collectionKindLabels } from '../api/collections'
 import type { Collection, CollectionKind, CollectionPage, CollectionStatus } from '../api/collections'
 import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
+import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 
 const CollectionEditor = defineAsyncComponent(() => import('../components/bank/CollectionEditor.vue'))
 const route = useRoute()
@@ -34,7 +35,6 @@ const list = useQuery({
 watch([kind, status], () => { cursor.value = undefined; cursors.value = [] })
 function open(id: string, valueKind: CollectionKind = kind.value) { void router.push({ name: 'collections', query: { kind: valueKind, item: id } }) }
 function close() { void router.push({ name: 'collections', query: { kind: kind.value } }) }
-function selectKind(value: CollectionKind) { void router.push({ name: 'collections', query: { kind: value } }) }
 function create() { void router.push({ name: 'collections', query: { kind: kind.value, create: '1' } }) }
 function created(value: Collection) { open(value.id, value.kind) }
 function refresh() { void queryClient.invalidateQueries({ queryKey: ['bank-collections'] }) }
@@ -43,10 +43,11 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 </script>
 
 <template>
-  <header class="page-heading"><div><p class="section-label">把练习组织起来</p><h1>题单与学习路线</h1><p class="muted">保存练习顺序、明确学习目的，并保留每一道题的确切版本。</p></div><NButton type="primary" :disabled="!store.sessionActive" @click="create">＋ 新建{{ collectionKindLabels[kind] }}</NButton></header>
-  <nav class="collection-kind-tabs" aria-label="集合类型"><button v-for="value in (['LIST', 'ROUTE'] as const)" :key="value" :aria-current="kind === value ? 'page' : undefined" :class="{ selected: kind === value }" @click="selectKind(value)">{{ collectionKindLabels[value] }}</button></nav>
+  <header class="page-heading"><div><h1>题单与路线</h1></div><NButton type="primary" :disabled="!store.sessionActive" @click="create">＋ 新建{{ collectionKindLabels[kind] }}</NButton></header>
+  <WorkspaceTabs area="practice" catalog />
   <div class="collections-workspace">
     <aside class="collection-catalog" :aria-label="`${collectionKindLabels[kind]}列表`">
+      <h2 class="catalog-title">{{ kind === 'ROUTE' ? '路线列表' : '题单列表' }}</h2>
       <NSelect v-model:value="status" :options="statusOptions" aria-label="集合状态" />
       <form class="title-search" @submit.prevent="submit"><NInput v-model:value="input" :maxlength="100" placeholder="筛选已保存标题" :aria-label="`筛选${collectionKindLabels[kind]}标题`" /><NButton attr-type="submit">查找</NButton></form>
       <p class="field-help">只筛选保存标题，不搜索步骤正文。</p>
@@ -83,4 +84,9 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 .collection-welcome .collection-welcome-note { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; }
 @media (max-width: 1000px) { .collections-workspace { grid-template-columns: 225px minmax(0, 1fr); } }
 @media (max-width: 700px) { .collections-workspace { grid-template-columns: 1fr; } .collection-catalog { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; } .collection-item-list { max-height: 260px; overflow-y: auto; } .collection-welcome { padding: 38px 22px; } .page-heading { align-items: start; flex-wrap: wrap; } }
+</style>
+
+<style scoped>
+.collections-workspace { max-width: none; grid-template-columns: 323px minmax(0, 1fr); border: 0; border-radius: 0; background: none; gap: 12px; min-height: 748px; }.collection-catalog { border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(120deg, #ffffff03, transparent), var(--surface); padding: 24px 12px; }.catalog-title { margin: 0 8px 22px; font-size: 23px; }.collection-item-list { gap: 16px; }.collection-item-list button { min-height: 92px; gap: 10px; padding: 18px 22px; border-radius: 16px; }.collection-item-list button.selected { background: linear-gradient(120deg, #a7774770, #6e4d3270); border: 1px solid #b3865850; }.collection-item-list strong { font-size: 21px; font-weight: 500; }.collection-item-list span { font-size: 16px; }.collection-catalog .title-search { margin-block: 14px; }.collection-welcome { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); align-self: stretch; align-content: center; max-width: none; }.collections-workspace :deep(.collection-editor) { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }.collections-workspace :deep(.collection-detail-header h2) { font-size: 28px; }.collections-workspace :deep(.collection-form label) { font-size: 17px; }.collections-workspace :deep(.detail-tabs button) { font-size: 17px; padding: 6px 15px; }
+@media(max-width:1100px) { .collections-workspace { grid-template-columns: 260px minmax(0,1fr); } }@media(max-width:700px) { .collections-workspace { grid-template-columns: 1fr; }.collection-item-list { max-height: 300px; }.collection-catalog { border-radius: 18px; } }
 </style>

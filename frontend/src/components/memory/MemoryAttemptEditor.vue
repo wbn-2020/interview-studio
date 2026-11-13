@@ -18,6 +18,7 @@ import { useWorkspaceStore } from '../../state/workspace'
 import { useTrainingAccessStore } from '../../state/trainingAccess'
 import MarkdownPreview from '../MarkdownPreview.vue'
 import MemoryAttemptHistory from './MemoryAttemptHistory.vue'
+import RIcon from '../../replica/RIcon.vue'
 
 const props = defineProps<{ id: string; disabled?: boolean }>()
 const emit = defineEmits<{ changed: []; close: [] }>()
@@ -248,6 +249,7 @@ function time(value: string | null) { if (!value) return '尚未发生'; try { r
 
 <template>
   <section class="attempt-editor" aria-label="独立回忆与自评">
+    <div class="attempt-main">
     <header class="editor-heading"><div><p class="section-label">先回忆，再对照</p><h2>{{ visible ? current?.detail.version.content.title : '主动回忆' }}</h2><p v-if="visible && attempt" class="field-help">{{ memoryAttemptModeLabels[attempt.start.mode] }} · 第 {{ attempt.sequence }} 次 · v{{ attempt.start.cardVersionNumber }} · {{ memoryAttemptStateLabels[attempt.state] }}</p></div><NButton text :disabled="locked || otherLocked" @click="emit('close')">返回队列</NButton></header>
     <p v-if="!readable" class="notice" role="status">资料访问暂未恢复，题面、回答和参考已遮挡。本地输入与原请求继续保留。</p>
     <template v-else>
@@ -282,9 +284,31 @@ function time(value: string | null) { if (!value) return '尚未发生'; try { r
         <MemoryAttemptHistory v-show="tab === 'history'" :card-id="attempt.cardId" :disabled="!readable || tab !== 'history'" @select="selectHistory" />
       </template>
     </template>
+    </div>
+    <aside v-if="visible && current && attempt" class="attempt-card-info" aria-label="这张卡">
+      <h3>这张卡</h3>
+      <section><h4><RIcon name="file-text" />来源</h4><RouterLink v-for="source in attempt.start.sources" :key="source.versionId" :to="{ name: 'knowledge', query: { item: source.itemId, version: source.versionId } }">{{ source.kind === 'CONCEPT' ? '概念' : '笔记' }} · v{{ source.versionNumber }}<RIcon name="arrow-up-right" :size="17" /></RouterLink></section>
+      <section><h4><RIcon name="calendar" />开始时计划</h4><p>{{ attempt.start.schedule ? time(attempt.start.schedule.effectiveDueAt) : '额外练习' }}</p><h4><RIcon name="clock" />本次回忆</h4><p>第 {{ attempt.sequence }} 次 · {{ memoryAttemptStateLabels[attempt.state] }}</p></section>
+      <section><h4><RIcon name="refresh-cw" />当前计划</h4><p>{{ current.recall.schedule ? time(current.recall.schedule.effectiveDueAt) : '尚未启用排程' }}</p><NButton block round :disabled="locked" @click="tab = 'history'"><RIcon name="history" />查看记忆历史</NButton></section>
+      <section><h4><RIcon name="file-text" />备注</h4><p class="muted">自评不会成为能力结论。</p></section>
+    </aside>
   </section>
 </template>
 
 <style scoped>
 .attempt-editor, .answer-panel, .response-form, .fixed-answer, .reference-panel, .rating-panel, .skip-panel, .server-comparison, .local-draft { display: grid; gap: 17px; min-width: 0; }.attempt-editor { padding: 26px 30px; align-content: start; }.editor-heading, .reference-panel > header, .row-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }.editor-heading, .reference-panel > header { justify-content: space-between; }.editor-heading > div { min-width: 0; display: grid; gap: 7px; }h2, h3, p { margin: 0; }h2 { font-size: 23px; overflow-wrap: anywhere; }h3 { font-size: 16px; }.editor-tabs { display: flex; gap: 23px; border-bottom: 1px solid var(--line); }.editor-tabs button { padding: 10px 0; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; }.editor-tabs button[aria-pressed=true] { color: var(--brand-strong); border-bottom-color: var(--brand); font-weight: 650; }.editor-tabs button:focus-visible, .rating-options button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }.prompt, .fixed-answer { display: grid; gap: 13px; padding: 5px 0 20px; border-bottom: 1px solid var(--line); }.response-form > label, .skip-panel > label { display: grid; gap: 8px; font-size: 13px; }.save-draft, .reference-panel > .n-button, .rating-panel > .n-button, .skip-panel > .n-button, .local-draft > .n-button { justify-self: start; }.reveal-action { display: grid; gap: 15px; justify-items: start; padding-top: 17px; border-top: 1px solid var(--line); }.reference-panel, .server-comparison, .local-draft { padding: 18px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 7px; }.rating-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }.rating-options button { display: grid; gap: 8px; padding: 15px 11px; text-align: left; border: 1px solid var(--line); border-radius: 6px; }.rating-options button[aria-pressed=true] { border-color: var(--brand); background: var(--surface-soft); }.rating-options strong { font-size: 14px; }.rating-options span { font-size: 12px; color: var(--muted); }.skip-panel { padding-top: 18px; border-top: 1px solid var(--line); }pre, .reason { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; }pre { margin: 0; max-height: 320px; overflow-y: auto; }.attempt-editor :deep(.markdown-preview) { max-width: 78ch; overflow-wrap: anywhere; }.attempt-editor :deep(.n-checkbox) { align-items: start; }.attempt-editor :deep(.n-checkbox__label) { white-space: normal; }@media (max-width: 800px) { .attempt-editor { padding: 22px 17px; }.rating-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+
+<style scoped>
+.attempt-editor { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 12px; padding: 0; align-items: start; }
+.attempt-main, .attempt-card-info { min-width: 0; padding: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
+.attempt-main { min-height: 690px; }.attempt-card-info { min-height: 690px; padding: 30px 25px; }
+.editor-heading { padding-bottom: 20px; border-bottom: 1px solid var(--line); margin-bottom: 25px; }.editor-heading h2 { font-size: 23px; }.editor-tabs { margin-bottom: 25px; }.editor-tabs button { font-size: 17px; }
+.answer-panel { gap: 24px; }.prompt { padding: 0 0 20px; }.prompt > h3 { font-size: 17px; color: var(--muted); }.prompt :deep(.markdown-preview) { font-size: 29px; line-height: 1.55; font-weight: 550; }
+.response-form { gap: 18px; }.response-form > h3 { font-size: 22px; }.response-form > label { font-size: 18px; }.response-form :deep(.n-input__textarea-el) { min-height: 230px !important; font-size: 21px; line-height: 1.75; padding: 18px; }
+.reveal-action { padding-top: 24px; }.reveal-action > .n-button { min-height: 58px; padding-inline: 28px; border-radius: 32px; font-size: 21px; }
+.attempt-card-info > h3 { margin: 0 0 26px; font-size: 27px; }.attempt-card-info > section { display: grid; gap: 14px; padding: 24px 0; border-top: 1px solid var(--line); }.attempt-card-info h4 { display: flex; gap: 14px; align-items: center; margin: 0; font-size: 21px; color: var(--muted); font-weight: 400; }.attempt-card-info :is(p,a) { margin: 0; font-size: 18px; line-height: 1.6; overflow-wrap: anywhere; }.attempt-card-info a { display: flex; align-items: center; justify-content: space-between; color: var(--ink); }.attempt-card-info :deep(.n-button) { margin-top: 8px; }
+.reference-panel, .rating-panel { border-radius: 16px; }.rating-options strong { font-size: 18px; }.rating-options span { font-size: 14px; }
+@media(max-width:1250px) { .attempt-editor { grid-template-columns: minmax(0, 1fr); }.attempt-card-info { min-height: auto; }.attempt-main { padding: 24px; } }
+@media(max-width:600px) { .attempt-main, .attempt-card-info { padding: 20px 16px; }.prompt :deep(.markdown-preview) { font-size: 24px; } }
 </style>

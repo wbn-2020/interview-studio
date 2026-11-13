@@ -86,6 +86,9 @@ watch([detail.data, detail.dataUpdatedAt, detail.isSuccess, readable, dirty, loc
   recordRecentVisit(value.id)
 }, { immediate: true })
 watch(tab, value => { if (value === 'preparation') preparationVisited.value = true; if (value === 'plan') planVisited.value = true })
+watch(() => route.query.panel, value => {
+  if (props.id && !locked.value && (value === 'plan' || value === 'preparation' || value === 'read' || value === 'edit') && typeof route.query.version !== 'string') tab.value = value
+}, { immediate: true })
 watch(() => route.query.version, value => { if (typeof value === 'string' && props.id) tab.value = 'history' }, { immediate: true })
 watch(() => store.sessionEpoch, () => { preview.value = undefined; previewKey.value = ''; previewRequest++ })
 onUnmounted(() => { alive = false; previewRequest++; if (store.changes.get('schedule-editor') === changeState) store.changes.delete('schedule-editor') })

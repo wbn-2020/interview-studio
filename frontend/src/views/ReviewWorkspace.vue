@@ -388,24 +388,29 @@ function nextTasks() { if (!blocked.value && !tasks.isFetching.value && tasks.da
 </script>
 
 <template>
+  <div class="review-product">
   <header class="page-heading"><div><h1>复盘</h1><p class="muted">从一次确切提交出发，保留观察依据，明确下一步如何验证。</p></div></header>
-  <nav class="review-tabs" aria-label="复盘工作区"><NButton :type="tab === 'feedback' ? 'primary' : 'default'" @click="tab = 'feedback'">提交复盘</NButton><NButton :type="tab === 'actions' ? 'primary' : 'default'" @click="tab = 'actions'">改进动作</NButton><RouterLink class="text-link" :to="{ name: 'repractice', query: link && session.data.value?.status === 'ENDED' ? { ...link } : {} }">独立复练与对照</RouterLink><RouterLink class="text-link" :to="{ name: 'recollections' }">面后回忆</RouterLink></nav>
+  <nav class="review-tabs" aria-label="复盘工作区"><button :class="{ active: tab === 'feedback' }" @click="tab = 'feedback'">回答与反馈</button><RouterLink :to="{ name: 'repractice', query: link && session.data.value?.status === 'ENDED' ? { ...link } : {} }">新旧对照</RouterLink><button :class="{ active: tab === 'actions' }" @click="tab = 'actions'">改进动作</button><RouterLink :to="{ name: 'recollections' }">面后回忆</RouterLink></nav>
   <p v-if="!readable" class="review-note notice" role="status">正在核对登录与资料访问条件。当前输入保留，复盘资料暂不可读写。</p>
   <p v-if="routeProblem" class="review-note notice error" role="alert">{{ routeProblem }}</p>
-  <div v-show="tab === 'feedback'" class="review-workspace" :inert="!readable || undefined">
-    <aside class="review-catalog" aria-label="训练历史">
+  <div class="review-body" :class="{ 'has-answer': tab === 'feedback' && link && allowed && currentInput }">
+  <div v-show="tab === 'feedback'" class="review-workspace" :class="{ focused: link }" :inert="!readable || undefined">
+    <details class="review-catalog" :open="!link" aria-label="训练历史">
+      <summary>选择训练记录</summary>
       <h2>选择训练记录</h2><p class="field-help">依次选择训练、题目和提交版本。尚未提交的草稿不能成为复盘原答。</p>
       <p v-if="sessionList.isPending.value" role="status">正在读取训练历史…</p><p v-if="sessionList.error.value" class="notice error" role="alert">{{ errorText(sessionList.error.value) }}<NButton text :disabled="blocked" @click="sessionList.refetch()">重新读取</NButton></p>
       <p v-if="sessionList.data.value && !sessionList.data.value.items.length" class="field-help">还没有训练记录。先完成一次文字提交，再回到这里复盘。</p>
       <div class="session-list"><button v-for="item in sessionList.data.value?.items" :key="item.id" :disabled="blocked" :class="{ selected: item.id === sessionId }" :aria-current="item.id === sessionId ? 'true' : undefined" @click="selectSession(item.id)"><strong>{{ item.title }}</strong><span>{{ trainingModeLabels[item.mode] }} · {{ trainingStatusLabels[item.status] }}</span><small>{{ reviewDate(item.createdAt) }}</small></button></div>
       <div class="row-actions"><NButton v-if="sessionCursors.length" size="small" :disabled="blocked || sessionList.isFetching.value" @click="sessionCursor = sessionCursors.pop()">上一页</NButton><NButton v-if="sessionList.data.value?.nextCursor" size="small" :disabled="blocked || sessionList.isFetching.value" @click="nextSessions">下一页</NButton></div>
       <RouterLink class="text-link" :to="{ name: 'training' }">进入文字训练</RouterLink>
-    </aside>
+    </details>
     <section class="review-stage">
       <template v-if="sessionId && !routeProblem">
         <p v-if="session.isPending.value" role="status">正在读取所选训练…</p><p v-if="session.error.value" class="notice error" role="alert">{{ errorText(session.error.value) }}<NButton text :disabled="blocked" @click="session.refetch()">重新读取训练</NButton></p>
+        <details class="review-source-details" :open="!link"><summary>训练、题目与提交版本</summary>
         <template v-if="session.data.value"><header><h2>{{ session.data.value.title }}</h2><p class="field-help">{{ trainingModeLabels[session.data.value.mode] }} · {{ trainingStatusLabels[session.data.value.status] }}</p></header><label class="question-select">选择题目<NSelect :value="questionId" :options="questionOptions" :disabled="blocked" placeholder="选择一题，查看它的提交版本" @update:value="selectQuestion" /></label><p v-if="questionId && !knownQuestion" class="notice error" role="alert">这道题不属于所选训练，请重新选择。</p></template>
         <section v-if="knownQuestion" class="answer-picker" aria-label="选择确切提交"><h3>提交版本</h3><p v-if="answers.isPending.value" role="status">正在读取提交…</p><p v-if="answers.error.value" class="notice error" role="alert">{{ errorText(answers.error.value) }}<NButton text :disabled="blocked" @click="answers.refetch()">重新读取提交</NButton></p><p v-if="answers.data.value && !answers.data.value.items.length" class="field-help">这页没有提交记录。可回到训练明确提交回答。</p><div class="answer-list"><button v-for="item in answers.data.value?.items" :key="item.id" :disabled="blocked || answers.isFetching.value" :class="{ selected: item.id === answerId }" :aria-current="item.id === answerId ? 'true' : undefined" @click="selectAnswer(item.id)"><strong>第 {{ item.number }} 版</strong><span>{{ answerConditions[item.condition] }}</span><small>{{ reviewDate(item.createdAt) }}</small></button></div><div class="row-actions"><NButton v-if="answerCursors.length" size="small" :disabled="blocked || answers.isFetching.value" @click="answerBefore = answerCursors.pop()">上一页</NButton><NButton v-if="answers.data.value?.nextCursor != null" size="small" :disabled="blocked || answers.isFetching.value" @click="nextAnswers">更早提交</NButton></div></section>
+        </details>
         <template v-if="link">
           <p v-if="accessQuery.isPending.value" role="status">正在核对这次提交的访问记录…</p><p v-if="accessQuery.error.value" class="notice error" role="alert">{{ errorText(accessQuery.error.value) }}<NButton text :disabled="blocked" @click="recheckAccess">重新核对访问</NButton></p>
           <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :disabled="!readable" :loading="writer.busy.value" @click="retryAccess">用原请求重试</NButton><NButton v-else text :disabled="blocked" @click="recheckAccess">核对访问和训练状态</NButton></p><p v-if="deferred" class="notice" role="status">已确认访问暂缓接收。<NButton text :disabled="!readable" @click="receiveDeferred">接收已确认结果</NButton></p><p v-if="message" class="notice" role="status">{{ message }}</p>
@@ -443,8 +448,10 @@ function nextTasks() { if (!blocked.value && !tasks.isFetching.value && tasks.da
       <section v-else class="review-welcome"><h2>把一次回答变成下一步的依据</h2><p>先从左侧选择训练，再选定题目和提交版本。记录自检或外部意见时，可以定位原文、补充限制，并保留你的决定。</p><p class="field-help">结束训练后，可从确切原答创建空白复练，再针对选中的动作来源记录判断。停止跟踪与完成验证分别保留。</p></section>
     </section>
   </div>
-  <section v-show="tab === 'actions'" class="review-actions-stage" :inert="!readable || undefined"><ReviewActions :source="selectedSource" :answer="link" :action-id="actionId && reviewIdValid(actionId) ? actionId : undefined" :disabled="!readable || ownLocked || feedbackLocked || aiLocked || observationLocked" @state="actionsState = $event" @consumed="selectedSource = null" @open="openAction" @close="closeAction" /></section>
+  <section v-show="tab === 'actions' || (link && allowed && currentInput)" class="review-actions-stage" :inert="!readable || undefined"><ReviewActions :source="selectedSource" :answer="link" :action-id="actionId && reviewIdValid(actionId) ? actionId : undefined" :disabled="!readable || ownLocked || feedbackLocked || aiLocked || observationLocked" @state="actionsState = $event" @consumed="selectedSource = null" @open="openAction" @close="closeAction" /></section>
+  </div>
   <p class="workspace-footnote">仅在收到匹配的服务器回执后显示保存成功。未发送的输入与待确认请求保留在当前页，刷新不会自动恢复。</p>
+  </div>
 </template>
 
 <style scoped>
@@ -456,4 +463,11 @@ h2 { margin: 0 0 8px; font-size: 22px; overflow-wrap: anywhere; } h3 { margin: 0
 .review-welcome { max-width: 65ch; display: grid; gap: 18px; padding: 30px 5px; } .review-welcome p { color: var(--muted); } .review-actions-stage { min-width: 0; }
 @media (max-width: 900px) { .review-workspace { grid-template-columns: 210px minmax(0, 1fr); } .review-stage { padding: 20px; } }
 @media (max-width: 720px) { .review-workspace { grid-template-columns: 1fr; } .review-catalog { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; } .session-list { max-height: 230px; overflow-y: auto; } .review-stage { padding: 20px 16px; } }
+</style>
+
+<style scoped>
+.review-product .review-tabs { max-width: none; align-items: center; gap: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }.review-tabs > :is(button,a) { min-height: 62px; padding: 12px 27px; font-size: 23px; color: var(--muted); border-bottom: 2px solid transparent; }.review-tabs > .active { color: var(--ink); background: linear-gradient(120deg,#75533325,transparent); border-color: var(--brand); }.review-body { display: grid; gap: 18px; align-items: start; }.review-product .review-workspace { max-width: none; border: 0; background: none; gap: 20px; }.review-catalog { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.review-catalog > summary { font-size: 18px; color: var(--muted); cursor: pointer; }.review-catalog h2 { margin-top: 15px; }.review-workspace.focused { display: block; }.review-workspace.focused .review-catalog { padding: 12px 18px; margin-bottom: 14px; }.review-stage { padding: 0; }.review-source-details { padding: 12px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }.review-source-details > summary { font-size: 17px; }.review-source-details[open] > :not(summary) { margin-top: 15px; }.original-answer { border: 1px solid var(--line); border-radius: 18px; padding: 26px; background: var(--surface); min-height: 380px; align-content: start; }.original-answer h3 { font-size: 28px; }.original-answer :deep(.markdown-preview) { font-size: 24px; line-height: 1.8; }.feedback-catalog,.ai-records { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.feedback-catalog h3,.ai-records h3 { font-size: 25px; }.feedback-list button { padding: 18px; border: 1px solid var(--line); border-radius: 16px; gap: 12px; }.feedback-list strong { font-size: 18px; }.feedback-list span { white-space: normal; font-size: 21px; line-height: 1.7; }.review-body.has-answer { grid-template-columns: minmax(0,1fr) 298px; }.review-actions-stage { max-width: none; padding: 23px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.has-answer .review-actions-stage { position: sticky; top: 20px; }.review-actions-stage :deep(.review-actions) { padding: 0; }.review-actions-stage :deep(.actions-columns) { grid-template-columns: 1fr; }.review-actions-stage :deep(.action-list) { max-height: 360px; overflow: auto; }.review-actions-stage :deep(h2) { font-size: 25px; }.session-list strong { font-size: 19px; }.session-list :is(span,small) { font-size: 15px; }
+.has-answer .review-actions-stage :deep(.action-columns) { grid-template-columns: minmax(0, 1fr); }
+@media(min-width:1400px) { .has-answer .review-stage { grid-template-columns: minmax(0, .95fr) minmax(0,1.05fr); gap: 18px; }.has-answer .review-stage > * { grid-column: 1/-1; }.has-answer .review-stage .original-answer { grid-column: 1; grid-row: span 2; min-height: 565px; }.has-answer .review-stage .feedback-catalog { grid-column: 2; min-height: 565px; } }
+@media(max-width:1100px) { .review-body.has-answer { grid-template-columns: 1fr; }.has-answer .review-actions-stage { position: static; }.review-tabs > :is(button,a) { padding: 10px 16px; font-size: 19px; } }
 </style>

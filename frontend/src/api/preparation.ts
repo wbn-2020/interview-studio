@@ -30,7 +30,7 @@ export const kindLabels: Record<PreparationKind, string> = { TARGET: '目标与 
 export const verificationLabels: Record<Verification, string> = { UNVERIFIED: '待核实', CONFIRMED: '已由用户核实', WITHDRAWN: '已撤回' }
 export const referenceLabels: Record<ReferenceState, string> = { CURRENT: '当前有效', SUPERSEDED: '来源已改版', WITHDRAWN: '来源已撤回', ARCHIVED: '来源已归档', UNVERIFIED: '来源待核实' }
 export const responsibilityLabels = { OWNER: '本人负责', PARTICIPANT: '参与', FAMILIAR: '仅了解', UNVERIFIED: '职责待核实' }
-export const dimensionOptions = [{ label: '解释', value: 'EXPLAIN' }, { label: '排错', value: 'DEBUG' }, { label: '取舍', value: 'TRADEOFF' }, { label: '职责', value: 'OWNERSHIP' }, { label: '表达', value: 'COMMUNICATION' }, { label: '其他', value: 'OTHER' }]
+export const dimensionOptions: { label: string; value: Schema['PrepareDimension'] }[] = [{ label: '解释', value: 'EXPLAIN' }, { label: '排错', value: 'DEBUG' }, { label: '取舍', value: 'TRADEOFF' }, { label: '职责', value: 'OWNERSHIP' }, { label: '表达', value: 'COMMUNICATION' }, { label: '其他', value: 'OTHER' }]
 export const expressionOptions = [{ label: '自我介绍', value: 'INTRO' }, { label: '简短项目介绍', value: 'PROJECT_SHORT' }, { label: '完整项目介绍', value: 'PROJECT_LONG' }, { label: 'STAR 表达', value: 'STAR' }, { label: '技术取舍', value: 'TRADEOFF' }]
 
 export function emptyContent(kind: PreparationKind): PreparationContent {

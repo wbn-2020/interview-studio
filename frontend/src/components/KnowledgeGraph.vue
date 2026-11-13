@@ -13,7 +13,7 @@ import type { RelationGraphCandidateEdge, RelationGraphCandidateIdentity } from 
 import { relationGraphEdgeId } from '../api/relationGraph'
 import RelationGraphCandidates from './RelationGraphCandidates.vue'
 
-const props = defineProps<{ graph: GraphResponse; selectedId?: string; selectedKind?: 'NOTE' | 'CONCEPT'; topicId?: string }>()
+const props = defineProps<{ graph: GraphResponse; selectedId?: string; selectedKind?: 'NOTE' | 'CONCEPT'; topicId?: string; topicIds?: string[]; relationTypes?: Relation['type'][] }>()
 const emit = defineEmits<{ select: [id: string]; saved: []; reload: [] }>()
 type Position = { id: string; x: number; y: number }
 type Viewport = { x: number; y: number; zoom: number }
@@ -158,7 +158,7 @@ function refreshGraph() {
       } else cy!.add({ group: 'nodes', data: { id: node.id, label: node.title, color }, position: { x: node.x, y: node.y } })
     }
     for (const edge of displayed.value.edges) {
-      cy!.add({ group: 'edges', data: { id: edge.id, source: edge.sourceId, target: edge.targetId, directed: !['RELATED', 'CONTRASTS'].includes(edge.type), typeLabel: relationNames[edge.type] } })
+      cy!.add({ group: 'edges', data: { id: edge.id, source: edge.sourceId, target: edge.targetId, directed: !['RELATED', 'CONTRASTS'].includes(edge.type), relationType: edge.type, typeLabel: relationNames[edge.type] } })
     }
   })
   if (!dirty.value && paired.value) layoutRevision.value = displayed.value.layoutRevision
@@ -169,11 +169,15 @@ function highlight() {
   cy.elements().removeClass('dimmed chosen path')
   const chosen = props.selectedId ? cy.$id(props.selectedId) : undefined
   chosen?.addClass('chosen')
-  if (props.topicId) {
-    const matching = new Set(displayed.value.nodes.filter(node => node.topicIds.includes(props.topicId!)).map(node => node.id))
+  const topics = props.topicIds?.length ? props.topicIds : props.topicId ? [props.topicId] : []
+  if (topics.length) {
+    const matching = new Set(displayed.value.nodes.filter(node => node.topicIds.some(id => topics.includes(id))).map(node => node.id))
     cy.nodes().filter(node => !matching.has(node.id())).addClass('dimmed')
     cy.edges().filter(edge => !matching.has(edge.source().id()) && !matching.has(edge.target().id())).addClass('dimmed')
   }
+  cy.edges().filter(edge => !edge.hasClass('candidate-edge')).forEach(edge => {
+    edge.style('display', props.relationTypes && !props.relationTypes.includes(edge.data('relationType')) ? 'none' : 'element')
+  })
   for (const id of pathQuery.data.value?.nodeIds ?? []) cy.$id(id).addClass('path')
   for (const edge of pathQuery.data.value?.edges ?? []) cy.$id(edge.id).addClass('path')
   highlightCandidate()
@@ -330,17 +334,17 @@ watch([() => props.selectedId, () => props.selectedKind], ([id, kind]) => {
   if (kind === 'CONCEPT' && !displayed.value.nodes.some(node => node.id === id) && !dirty.value && !writer.locked.value) focus(id)
   highlight()
 }, { immediate: true })
-watch([() => props.topicId, pathQuery.data], highlight)
+watch([() => props.topicId, () => props.topicIds, () => props.relationTypes, pathQuery.data], highlight, { deep: true })
 watch([editable, preview], ([enabled, pendingPreview]) => { cy?.autoungrabify(!enabled || Boolean(pendingPreview)); cy?.userPanningEnabled(enabled && !pendingPreview); cy?.userZoomingEnabled(enabled && !pendingPreview) })
 onMounted(() => {
   cy = cytoscape({ container: canvas.value, elements: [], layout: { name: 'preset' }, minZoom: .05, maxZoom: 10, wheelSensitivity: .2, autoungrabify: !editable.value, userPanningEnabled: editable.value, userZoomingEnabled: editable.value,
     style: [
-      { selector: 'node', style: { width: 26, height: 26, 'background-color': 'data(color)', 'border-width': 5, 'border-color': 'data(color)', 'border-opacity': .17, label: 'data(label)', color: '#e6eff6', 'font-size': 12, 'font-family': 'Segoe UI, Microsoft YaHei, sans-serif', 'text-valign': 'bottom', 'text-margin-y': 11, 'text-max-width': '120px', 'text-wrap': 'ellipsis', 'min-zoomed-font-size': 8 } },
-      { selector: 'edge', style: { width: 1.4, 'line-color': '#52677f', opacity: .75, 'curve-style': 'bezier', 'target-arrow-color': '#7c9bb8', 'arrow-scale': .8 } },
+      { selector: 'node', style: { width: 15, height: 15, 'background-color': 'data(color)', 'border-width': 6, 'border-color': 'data(color)', 'border-opacity': .12, label: 'data(label)', color: '#f4eee4', 'font-size': 20, 'font-family': 'Segoe UI, Microsoft YaHei, sans-serif', 'text-valign': 'center', 'text-halign': 'right', 'text-margin-x': 18, 'text-max-width': '180px', 'text-wrap': 'ellipsis', 'text-background-color': '#15120e', 'text-background-opacity': .85, 'text-background-padding': '10px', 'text-background-shape': 'roundrectangle', 'min-zoomed-font-size': 10 } },
+      { selector: 'edge', style: { width: 1.2, 'line-color': '#73c9c3', opacity: .55, 'curve-style': 'bezier', 'target-arrow-color': '#73c9c3', 'arrow-scale': .9 } },
       { selector: 'edge[?directed]', style: { 'target-arrow-shape': 'triangle' } },
-      { selector: 'edge.candidate-edge', style: { width: 1.8, 'line-style': 'dashed', 'line-dash-pattern': [7, 5], 'line-color': '#b9a4ed', 'target-arrow-color': '#b9a4ed', opacity: .85, label: 'data(label)', color: '#eadfff', 'font-size': 11, 'text-background-color': '#182434', 'text-background-opacity': .95, 'text-background-padding': '3px', 'min-zoomed-font-size': 8 } },
+      { selector: 'edge.candidate-edge', style: { width: 1.8, 'line-style': 'dashed', 'line-dash-pattern': [7, 5], 'line-color': '#e6aa55', 'target-arrow-color': '#e6aa55', opacity: .85, label: 'data(label)', color: '#f6cf8e', 'font-size': 14, 'text-background-color': '#17120b', 'text-background-opacity': .95, 'text-background-padding': '5px', 'min-zoomed-font-size': 8 } },
       { selector: '.dimmed', style: { opacity: .16 } },
-      { selector: 'node.chosen', style: { 'border-width': 9, 'border-opacity': .45, width: 34, height: 34, 'font-size': 14, 'font-weight': 'bold' } },
+      { selector: 'node.chosen', style: { shape: 'star', 'background-color': '#ffd180', 'border-color': '#e6a43c', 'border-width': 12, 'border-opacity': .16, width: 43, height: 43, 'font-size': 24, 'font-weight': 'bold', 'text-background-color': '#67431f', 'text-background-opacity': .75 } },
       { selector: 'edge.path', style: { width: 3, opacity: 1, 'line-color': '#d9c491', 'target-arrow-color': '#d9c491' } },
       { selector: 'node.path', style: { 'border-color': '#d9c491', 'border-opacity': .8 } },
       { selector: 'edge.candidate-edge.candidate-chosen', style: { width: 3, opacity: 1, 'line-color': '#eadfff', 'target-arrow-color': '#eadfff', 'font-weight': 'bold' } },
@@ -370,6 +374,7 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
     <div ref="canvas" class="galaxy-canvas" role="img" aria-label="概念关系画布；可通过左侧列表选择节点，通过下方按钮移动位置；开启候选层后可在候选列表审阅虚线关系" />
     <div v-if="!displayed.nodes.length" class="galaxy-empty"><span aria-hidden="true">✧</span><h2>从一个概念开始</h2><p>创建概念，再添加有意义的关系。<br />你的知识会在同一片星空中逐渐相连。</p></div>
     <div class="galaxy-actions">
+      <div class="galaxy-legend"><span><i class="legend-core" />核心关系</span><span><i class="legend-related" />关联关系</span><span><i class="legend-candidate" />候选关系</span></div>
       <button :disabled="!editable || !!preview" aria-label="缩小星图" @click="magnify(.8)">−</button><span>{{ zoom }}%</span><button :disabled="!editable || !!preview" aria-label="放大星图" @click="magnify(1.25)">＋</button><button :disabled="!editable || !!preview" @click="fit">全景</button><button :disabled="!selectedConcept || dirty || writer.locked.value" @click="focus()">相邻</button><button v-if="centerId" :disabled="dirty || writer.locked.value" @click="showAll">全图</button>
     </div>
     <div v-if="selectedId && selectedConcept" class="node-movement" aria-label="通过键盘按钮移动选中节点">
@@ -425,4 +430,12 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
 .graph-explorer button:disabled, .galaxy-actions button:disabled, .node-movement button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 650px) { .graph-explorer { top: 62px; } .galaxy-status { top: 105px; } .graph-tool-content { max-height: 48vh; } }
 @media (prefers-reduced-motion: reduce) { .galaxy *, .galaxy *::before, .galaxy *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<style scoped>
+.graph-workspace > .galaxy { min-height: 755px; background: radial-gradient(ellipse at 45% 50%, #825c2117, transparent 52%); overflow: visible; }.galaxy-caption { top: 15px; left: 25px; color: #b5aa99; font-size: 16px; }.galaxy-caption > span { display: none; }.galaxy-caption small { font-size: 14px; color: #a69c8d; }.galaxy-empty { width: 340px; }.galaxy-empty > span { color: #e8b66d; font-size: 62px; }.galaxy-empty h2 { font-size: 25px; color: #f4e8d5; }.galaxy-empty p { font-size: 17px; color: #a69a87; }
+.galaxy-actions { left: 50%; right: auto; bottom: 0; transform: translateX(-50%); gap: 12px; padding: 12px 20px; border: 1px solid #77603b; border-radius: 34px; background: #14110be8; color: #d1c9bc; font-size: 19px; white-space: nowrap; }.galaxy-actions button { min-width: 36px; min-height: 36px; font-size: 20px; border: 1px solid #ffffff0c; border-radius: 50%; }.galaxy-actions button:nth-last-child(-n+3) { font-size: 15px; border-radius: 18px; }.galaxy-legend { display: flex; gap: 20px; padding-right: 20px; border-right: 1px solid #ffffff26; }.galaxy-legend span { display: flex; align-items: center; gap: 10px; font-size: 18px; }.galaxy-legend i { width: 15px; height: 15px; border-radius: 50%; }.legend-core { background: #e6ad51; }.legend-related { background: #72cec7; }.legend-candidate { background: #8b8578; }.node-movement { background: #1d170ee8; border-color: #6c5335; border-radius: 20px; bottom: 77px; left: 22px; font-size: 15px; }.node-movement button { font-size: 19px; }
+.graph-explorer { top: 50px; background: #1a150fe8; border-color: #5a4530; border-radius: 15px; color: #e8dcc9; font-size: 15px; }.graph-tool-content { border-color: #5a4530; }.graph-tool-content p { color: #b5a58e; }.graph-tool-content select { background: #241b12; color: #f1e0c7; border-color: #655137; }.galaxy-status { border-radius: 13px; background: #2b2116eb; color: #e6d4b9; }.galaxy-status p { font-size: 14px; color: inherit; }.galaxy-caption .candidate-count { color: #e8b86c; }
+@media (max-width: 1250px) { .galaxy-legend { gap: 12px; padding-right: 12px; }.galaxy-legend span { font-size: 14px; gap: 6px; }.galaxy-actions { gap: 6px; padding: 8px 12px; }.galaxy-actions button:nth-last-child(-n+3) { display: none; } }
+@media (max-width: 600px) { .graph-workspace > .galaxy { min-height: 600px; }.galaxy-legend { display: none; }.galaxy-actions button:nth-last-child(-n+3) { display: inline-block; }.galaxy-empty { width: 270px; }.graph-explorer { top: 50px; } }
 </style>

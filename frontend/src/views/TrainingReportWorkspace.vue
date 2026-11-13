@@ -12,6 +12,7 @@ import { reportAnswerConditionLabels, reportQuestionKindLabels, reportTaskDescri
 import { useRecentVisit } from '../composables/useRecentVisit'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
+import RIcon from '../replica/RIcon.vue'
 
 const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
 const routeText = (key: string) => typeof route.query[key] === 'string' ? route.query[key] as string : undefined
@@ -46,6 +47,7 @@ const reportQuery = useQuery({
 const report = computed(() => readable.value && !routeProblem.value && acceptedReport.value?.epoch === store.sessionEpoch
   && acceptedReport.value.value.sessionId === sessionId.value ? acceptedReport.value.value : undefined)
 const selectedQuestion = computed(() => report.value?.questions.find(item => item.questionId === questionId.value))
+const reviewEntry = computed(() => report.value?.questions.find(item => item.latestAnswerId !== null))
 const unknownQuestion = computed(() => Boolean(report.value && questionId.value && !selectedQuestion.value))
 const pageKey = computed(() => ['training-report', store.sessionEpoch, 'submissions', sessionId.value, questionId.value, before.value])
 const pageQuery = useQuery({
@@ -102,14 +104,25 @@ function nextPage() {
   previous.value.push(before.value); before.value = page.value.nextBefore
 }
 function previousPage() { if (readable.value && !pageQuery.isFetching.value && previous.value.length) before.value = previous.value.pop() }
+function exportSummary() {
+  if (!readable.value || !report.value) return
+  const value = report.value
+  const text = [`# ${value.title}`, '', `结束时间：${reviewDate(value.endedAt)}`,
+    `正式提交 ${value.counts.submittedQuestionCount} 题，跳过 ${value.endChecklist.skipped} 题，保留草稿 ${value.counts.draftQuestionCount} 题。`, '',
+    ...value.questions.map((question, index) => `${index + 1}. ${question.title} · ${trainingQuestionStatusLabels[question.status]} · ${question.answerCount} 次提交${question.hasDraft ? ' · 保留草稿' : ''}`)].join('\n')
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }))
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = `training-${value.sessionId}-summary.md`; anchor.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 </script>
 
 <template>
   <header class="page-heading">
-    <div><h1>训练结束报告</h1><p class="muted">查看整场训练条件与每次提交，再进入对应记录继续复盘。</p></div>
+    <div><h1>本次训练</h1><p class="muted">{{ report ? `${trainingModeLabels[report.mode]} · ${reviewDate(report.endedAt)}` : '训练结束报告' }}</p></div>
     <nav class="row-actions" aria-label="报告导航">
       <RouterLink v-if="reviewIdValid(sessionId)" class="text-link" :to="{ name: 'training', query: { item: sessionId } }">返回这场训练</RouterLink>
-      <RouterLink class="text-link" :to="{ name: 'review' }">复盘与改进动作</RouterLink>
+      <RouterLink class="report-return" :to="{ name: 'today' }"><RIcon name="arrow-left" />返回今日</RouterLink>
+      <RouterLink v-if="reviewEntry" class="report-primary" :to="{ name: 'review', query: { sessionId, questionId: reviewEntry.questionId, answerId: reviewEntry.latestAnswerId } }"><RIcon name="play" />开始复盘</RouterLink>
     </nav>
   </header>
   <section class="report-workspace" aria-label="训练结束报告内容">
@@ -124,17 +137,13 @@ function previousPage() { if (readable.value && !pageQuery.isFetching.value && p
         <NButton text size="small" :disabled="!readable || reportQuery.isFetching.value" @click="reportQuery.refetch()">重新读取全场目录</NButton>
       </div>
       <section v-if="report" class="report-overview" aria-label="结束事实">
+        <details class="report-record-identity"><summary>训练记录与统计口径</summary>
         <header class="section-heading">
           <div><h2>{{ report.title }}</h2><p class="field-help">{{ trainingModeLabels[report.mode] }} · 已结束 · 训练记录修订 {{ report.sessionRevision }}</p></div>
           <NButton size="small" :loading="reportQuery.isFetching.value" :disabled="!readable" @click="reportQuery.refetch()">刷新全场目录</NButton>
         </header>
         <p class="report-dates">{{ report.startedAt ? `${reviewDate(report.startedAt)} 开始` : '未正式开始，已结束预览' }} · {{ reviewDate(report.endedAt) }} 结束</p>
-        <dl class="report-facts">
-          <div><dt>有正式提交的题目</dt><dd>{{ report.counts.submittedQuestionCount }} / {{ report.questions.length }} 题</dd></div>
-          <div><dt>正式提交总次数</dt><dd>{{ report.counts.submissionCount }} 次</dd></div>
-          <div><dt>没有正式提交的题目</dt><dd>{{ report.counts.noSubmissionCount }} 题</dd></div>
-          <div><dt>保留服务器草稿的题目</dt><dd>{{ report.counts.draftQuestionCount }} 题</dd></div>
-        </dl>
+        <p class="field-help">正式提交总次数 {{ report.counts.submissionCount }}；没有正式提交 {{ report.counts.noSubmissionCount }} 题。</p>
         <p class="field-help">提交后再跳过仍计入正式提交；草稿独立保留，不计入提交次数。</p>
         <p v-if="report.counts.submissionCount === 0" class="notice">本场没有正式提交。已保存的草稿仍在训练记录中，没有可用于提交复盘或新旧对照的答案。</p>
         <details class="session-facts">
@@ -158,23 +167,30 @@ function previousPage() { if (readable.value && !pageQuery.isFetching.value && p
           <p class="field-help">这里只列出当时选入的资料身份。背景原文在训练记录中按访问条件读取。</p>
         </details>
         <p class="as-of">全场目录读取于 {{ reviewDate(report.asOf) }}</p>
+        </details>
+        <dl class="report-facts">
+          <div><RIcon name="circle-check" :size="52" /><span><dt>已提交</dt><dd>{{ report.counts.submittedQuestionCount }} <small>题</small></dd></span></div>
+          <div><RIcon name="skip-forward" :size="52" /><span><dt>跳过</dt><dd>{{ report.endChecklist.skipped }} <small>题</small></dd></span></div>
+          <div><RIcon name="file-text" :size="52" /><span><dt>未提交草稿</dt><dd>{{ report.counts.draftQuestionCount }} <small>题</small></dd></span></div>
+          <div class="report-note"><RIcon name="info" :size="22" /><span>不把缺答算作失败</span></div>
+        </dl>
       </section>
 
       <div class="report-columns">
+        <div class="report-main">
         <aside class="question-directory" aria-labelledby="report-questions-heading">
-          <h2 id="report-questions-heading">全部题目</h2>
-          <p class="field-help">选择一题，逐版查看真实提交与后续记录。</p>
+          <h2 id="report-questions-heading"><RIcon name="list" />题目报告</h2>
           <p v-if="!report" class="field-help">全场目录读取成功后会列出题目；已选题目的提交仍可单独读取。</p>
-          <button v-for="question in report?.questions ?? []" :key="question.questionId" type="button" class="question-row"
+          <button v-for="(question, index) in report?.questions ?? []" :key="question.questionId" type="button" class="question-row"
             :class="{ selected: questionId === question.questionId }" :aria-current="questionId === question.questionId ? 'true' : undefined"
             :disabled="!readable || navigating" @click="selectQuestion(question.questionId)">
-            <span>{{ question.stage }} · {{ reportQuestionKindLabels[question.kind] }}</span>
+            <span class="question-number">题目 {{ String(index + 1).padStart(2, '0') }}</span>
             <strong>{{ question.title }}</strong>
-            <span>{{ trainingQuestionStatusLabels[question.status] }} · {{ question.answerCount }} 次提交{{ question.hasDraft ? ' · 保留草稿' : '' }}</span>
+            <span class="question-state">{{ trainingQuestionStatusLabels[question.status] }} · {{ question.answerCount }} 次提交{{ question.hasDraft ? ' · 保留草稿' : '' }}</span><RIcon name="chevron-down" :size="23" />
           </button>
         </aside>
 
-        <section class="submission-directory" aria-labelledby="report-submissions-heading">
+        <section v-if="questionId" class="submission-directory" aria-labelledby="report-submissions-heading">
           <header class="section-heading">
             <div><h2 id="report-submissions-heading">{{ page?.questionTitle || selectedQuestion?.title || '提交与复盘记录' }}</h2><p class="field-help">按提交版本从新到旧排列；每份提交各自保留作答条件。</p></div>
             <NButton v-if="questionId && !unknownQuestion" size="small" :loading="pageQuery.isFetching.value" :disabled="!readable" @click="pageQuery.refetch()">刷新本页记录</NButton>
@@ -227,6 +243,17 @@ function previousPage() { if (readable.value && !pageQuery.isFetching.value && p
             </nav>
           </template>
         </section>
+        </div>
+        <aside v-if="report" class="report-end-conditions" aria-label="结束条件">
+          <section><h2><RIcon name="flag" />结束条件</h2><dl>
+            <div><dt><RIcon name="clock" />已观察区间</dt><dd>{{ formatTrainingDuration(report.timing.observedSeconds) }}</dd></div>
+            <div><dt><RIcon name="pause" />暂停区间</dt><dd>{{ formatTrainingDuration(report.timing.pausedSeconds) }}</dd></div>
+            <div><dt><RIcon name="eye" />反馈时机</dt><dd>{{ trainingFeedbackLabels[report.config.feedbackTiming] }}</dd></div>
+            <div><dt><RIcon name="timer" />时间预算</dt><dd>{{ report.config.timeBudgetMinutes === null ? '未设置' : `${report.config.timeBudgetMinutes} 分钟` }}</dd></div>
+          </dl><p class="field-help">服务器区间含观察间隔，不代表单题净作答时间。</p></section>
+          <section><h2><RIcon name="robot" />AI 评价</h2><p v-if="!page" class="muted">选择题目，查看对应提交的评价记录。</p><template v-else><p v-for="task in page.items.flatMap(item => item.aiTasks)" :key="task.id"><RouterLink :to="{ name: 'ai', query: { item: task.id } }">{{ reportTaskLabels[task.status] }}</RouterLink></p><p v-if="!page.items.some(item => item.aiTasks.length)" class="muted">当前页提交尚无 AI 评价。</p></template></section>
+          <NButton round type="primary" :disabled="!readable" @click="exportSummary"><RIcon name="download" />导出摘要</NButton>
+        </aside>
       </div>
       <p class="report-footnote">人工反馈按当前条目计数，记录存在不代表已接受。动作按来源计数，停止跟踪不代表完成。AI 执行状态不代表能力结论；提交原文、反馈依据和逐来源判断在对应复盘入口读取，仍受当前资料访问条件限制。</p>
     </template>
@@ -254,4 +281,18 @@ h2, h3, h4, p { margin: 0; } h2 { font-size: 20px; overflow-wrap: anywhere; } h3
 .empty-copy, .loading-copy { max-width: 68ch; color: var(--muted); font-size: 13px; line-height: 1.8; padding: 12px 0; } .report-footnote { padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.8; } .submission-pagination { padding-top: 12px; }
 @media (max-width: 900px) { .report-columns { grid-template-columns: 1fr; } .question-directory { padding: 0 0 22px; border-right: 0; border-bottom: 1px solid var(--line); } .report-overview { padding: 18px; } }
 @media (max-width: 560px) { .report-facts { gap: 18px; } .report-facts > div { flex: 1 1 150px; } .detail-facts > div { grid-template-columns: 1fr; gap: 5px; } .report-overview { padding: 16px; } .submission-counts { gap: 14px 22px; } .task-list li { padding: 12px; } }
+</style>
+
+<style scoped>
+.report-return, .report-primary { display: inline-flex; align-items: center; gap: 12px; padding: 15px 25px; border: 1px solid var(--line); border-radius: 32px; font-size: 21px; color: var(--ink); }.report-primary { color: #24160c; background: linear-gradient(120deg,#f3c88e,#d99760); border-color: #d9ab78; }
+.report-workspace { max-width: none; gap: 28px; }.report-overview { padding: 20px 25px; border-radius: 20px; gap: 12px; }.report-record-identity > summary { color: var(--muted); font-size: 16px; }.report-record-identity[open] > :not(summary) { margin-top: 16px; }
+.report-facts { flex-wrap: nowrap; gap: 0; padding: 0; border: 0; }.report-facts > div { display: flex; align-items: center; gap: 27px; flex: 1; padding: 5px 18px; border-right: 1px solid var(--line); }.report-facts > div:last-child { border: 0; }.report-facts dt { font-size: 21px; }.report-facts dd { font-size: 38px; line-height: 1.5; }.report-facts dd small { font-size: 23px; font-weight: 400; }.report-facts > div:first-child > svg { color: #7bd7b9; }.report-facts > div:nth-child(2) > svg { color: #81c9e3; }.report-facts > div:nth-child(3) > svg { color: var(--brand); }.report-facts .report-note { font-size: 18px; color: var(--muted); gap: 12px; }
+.report-columns { grid-template-columns: minmax(0, 1fr) 36%; gap: 24px; }.report-main { display: grid; gap: 24px; min-width: 0; }
+.question-directory, .submission-directory, .report-end-conditions > section { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.question-directory { gap: 0; }.question-directory h2, .report-end-conditions h2 { display: flex; align-items: center; gap: 18px; font-size: 26px; padding-bottom: 23px; border-bottom: 1px solid var(--line); }
+.question-row { grid-template-columns: 115px minmax(0, 1fr) 25px; column-gap: 20px; row-gap: 6px; padding: 24px 8px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }.question-row strong { font-size: 24px; grid-column: 2; }.question-row span { font-size: 19px; }.question-row .question-number { grid-column: 1; grid-row: 1 / 3; }.question-row .question-state { grid-column: 2; font-size: 20px; }.question-row > svg { grid-column: 3; grid-row: 1 / 3; align-self: center; }.question-row.selected { background: var(--brand-soft); border-radius: 12px; }
+.report-end-conditions { display: grid; gap: 20px; min-width: 0; }.report-end-conditions dl { margin: 24px 0; display: grid; gap: 24px; }.report-end-conditions dl > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; }.report-end-conditions dt { display: flex; gap: 16px; align-items: center; font-size: 20px; }.report-end-conditions dd { font-size: 21px; text-align: right; }.report-end-conditions :is(p,a) { font-size: 18px; line-height: 1.7; }.report-end-conditions :deep(.n-button) { justify-self: end; min-height: 58px; font-size: 22px; }
+.submission-directory > .section-heading h2 { font-size: 25px; }.submission-row h3 { font-size: 22px; }.submission-row .text-link { font-size: 17px; }.task-list strong { font-size: 18px; }.task-list :is(p,time) { font-size: 16px; }
+@media(max-width:1100px) { .report-columns { grid-template-columns: minmax(0, 1fr); }.report-facts { flex-wrap: wrap; row-gap: 20px; }.report-facts > div { flex-basis: 40%; }.report-end-conditions { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:650px) { .report-end-conditions { grid-template-columns: minmax(0,1fr); }.report-facts > div { gap: 15px; padding: 5px; }.report-facts dt { font-size: 17px; }.report-facts > div > svg { width: 32px; }.question-row { grid-template-columns: 60px minmax(0,1fr) 20px; gap: 9px; }.question-row strong { font-size: 20px; }.question-row span { font-size: 15px; } }
 </style>

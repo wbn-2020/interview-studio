@@ -10,6 +10,8 @@ import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import PreparationTaskTargetPicker from '../components/prepare/PreparationTaskTargetPicker.vue'
+import PreparationTaskBoard from '../components/prepare/PreparationTaskBoard.vue'
+import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 
 const PreparationTaskEditor = defineAsyncComponent(() => import('../components/prepare/PreparationTaskEditor.vue'))
 type TargetFilter = Pick<PreparationTaskTarget, 'itemId' | 'title'>
@@ -104,14 +106,21 @@ function next() {
 
 <template>
   <header class="page-heading"><div><p class="section-label">把准备事项落到行动</p><h1>准备任务</h1><p class="muted">写清要做的事、预计工作量和计划日期，保留每次修改与处理记录。</p></div><div class="row-actions"><NButton :disabled="!readable" @click="createWithAi">生成准备建议</NButton><NButton type="primary" :disabled="!readable" @click="create">＋ 新建准备任务</NButton></div></header>
+  <WorkspaceTabs area="prepare" />
+  <details class="task-filter-disclosure"><summary>筛选准备任务</summary>
   <form class="task-filters" aria-label="筛选准备任务" @submit.prevent="applyFilters">
     <div class="filter-fields"><label>任务状态<NSelect v-model:value="filterInput.status" :options="statusOptions" :disabled="!readable" aria-label="任务状态" /></label><label>计划日期从<input v-model="filterInput.from" type="date" min="1000-01-01" max="9999-12-31" :disabled="!readable" /></label><label>计划日期到<input v-model="filterInput.to" type="date" min="1000-01-01" max="9999-12-31" :disabled="!readable" /></label><div class="row-actions"><NButton attr-type="submit" :disabled="!readable || !!filterProblem || targetPickerBusy">应用筛选</NButton><NButton text :disabled="!readable || targetPickerBusy" @click="clearFilters">清空筛选</NButton></div></div>
     <div class="filter-target"><span class="field-help">{{ filterInput.target ? `关联目标：${filterInput.target.title}` : '所有目标（包含未关联目标的任务）' }}</span><NButton size="small" :disabled="!readable || targetPickerBusy" @click="targetPickerOpen = !targetPickerOpen">{{ targetPickerOpen ? '收起选择' : '选择目标' }}</NButton><NButton v-if="filterInput.target" text size="small" :disabled="!readable || targetPickerBusy" @click="filterInput.target = null">清除目标条件</NButton></div>
     <p class="field-help">日期区间按每条任务保存的计划日期筛选，包含首尾，最多 366 天；设置日期条件后不包含未安排日期的任务。不同任务的日期不换算到同一时区。</p>
     <p v-if="filterProblem" class="notice error" role="alert">{{ filterProblem }}</p><p v-else-if="filterChanged" class="field-help" role="status">筛选条件尚未应用，列表仍显示上一次结果。</p>
   </form>
+  </details>
   <div v-if="targetPickerOpen" class="filter-picker"><PreparationTaskTargetPicker :key="targetPickerGeneration" :disabled="!readable" @busy="targetPickerBusy = $event" @choose="chooseFilterTarget" /></div>
-  <div class="preparation-tasks-workspace">
+  <PreparationTaskBoard v-if="!selectedId && !creating && readable && list.data.value" :tasks="list.data.value.items" :disabled="!readable" @open="open" />
+  <p v-if="!selectedId && !creating && readable && list.isPending.value" class="loading-block" role="status">正在读取准备任务…</p>
+  <nav v-if="!selectedId && !creating && readable && (cursors.length || list.data.value?.nextCursor)" class="pagination" aria-label="准备任务分页"><NButton :disabled="list.isFetching.value || !cursors.length" @click="cursor = cursors.pop()">上一页</NButton><span class="field-help">第 {{ cursors.length + 1 }} 页 · 汇总仅包含当前页</span><NButton :disabled="list.isFetching.value || !list.data.value?.nextCursor" @click="next">下一页</NButton></nav>
+  <p v-if="!selectedId && !creating && list.error.value" class="notice error" role="alert">{{ errorText(list.error.value) }}<NButton text @click="list.refetch()">重新读取任务</NButton></p>
+  <div v-if="selectedId || creating" class="preparation-tasks-workspace">
     <aside class="task-catalog" aria-label="准备任务列表">
       <header><h2>{{ applied.status ? preparationTaskStatusLabels[applied.status] : '全部任务' }}</h2><NButton text size="small" :disabled="!readable || list.isFetching.value" @click="list.refetch()">刷新</NButton></header>
       <p v-if="applied.target" class="field-help">目标：{{ applied.target.title }}；包含该目标的所有历史版本。</p><p v-if="applied.from" class="field-help">计划日期：{{ applied.from }} 至 {{ applied.to }}</p>
@@ -148,4 +157,9 @@ input[type=date] { width: 100%; min-height: 34px; padding: 5px 10px; color: var(
 .welcome-notes { display: grid; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 @media (max-width: 1050px) { .preparation-tasks-workspace { grid-template-columns: 230px minmax(0, 1fr); } .filter-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } .filter-fields > .row-actions { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .preparation-tasks-workspace { grid-template-columns: 1fr; } .task-catalog { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; } .task-list { max-height: 270px; overflow-y: auto; } .filter-fields { grid-template-columns: 1fr 1fr; } .filter-fields > label:first-child { grid-column: 1 / -1; } .task-welcome { padding: 34px 22px; } }
+</style>
+
+<style scoped>
+.task-filter-disclosure { margin: 0 0 18px; }.task-filter-disclosure summary { color: var(--muted); font-size: 15px; cursor: pointer; }.task-filters { padding: 22px; margin-top: 16px; border: 1px solid var(--line); border-radius: 19px; background: var(--surface); }.preparation-tasks-workspace { max-width: none; gap: 14px; background: transparent; border: 0; grid-template-columns: 330px minmax(0, 1fr); }.task-catalog { border: 1px solid var(--line); border-radius: 21px; padding: 24px 18px; background: linear-gradient(120deg, #2d251c99, #18130fbb); }.task-catalog h2 { font-size: 25px; }.task-list article { border: 1px solid transparent; border-radius: 16px; padding: 14px; margin-top: 12px; }.task-list article.selected { border-color: #a67448; background: #8c593333; }.task-select strong { font-size: 21px; }.task-select > span { font-size: 16px; }.task-select > small { font-size: 14px; }.preparation-tasks-workspace :deep(.preparation-task-editor) { padding: 30px; border: 1px solid var(--line); border-radius: 21px; background: #211b1499; }.preparation-tasks-workspace :deep(.detail-header h2) { font-size: 29px; }
+@media (max-width: 900px) { .preparation-tasks-workspace { grid-template-columns: 1fr; } }
 </style>

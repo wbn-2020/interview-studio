@@ -2,7 +2,7 @@
 import { computed, onActivated, onDeactivated, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { NButton } from 'naive-ui'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ApiError, errorText, read } from '../../api/client'
 import type { QuestionReference } from '../../api/bank'
 import { questionTypeLabels } from '../../api/bank'
@@ -26,6 +26,12 @@ const emit = defineEmits<{ state: [questionId: string, value: EditorState]; chan
 const store = useWorkspaceStore()
 const access = useTrainingAccessStore()
 const route = useRoute()
+const router = useRouter()
+const answerView = computed(() => route.query.panel === 'follow-up' ? 'follow-up' : route.query.panel === 'evaluation' ? 'evaluation' : 'answer')
+function setAnswerView(panel: 'answer' | 'follow-up' | 'evaluation') {
+  if (locked.value || props.commandLocked) return
+  void router.replace({ query: { ...route.query, panel: panel === 'answer' ? undefined : panel } })
+}
 const writer = useCommand()
 const active = ref(true)
 const current = ref<TrainingQuestion>()
@@ -55,6 +61,15 @@ const reviewState = computed(() => reference.value ? store.changes.get(`standard
 const reviewProtected = computed(() => Boolean(reviewState.value?.dirty || reviewState.value?.locked))
 const answerLocked = computed(() => writer.locked.value || Boolean(deferredReceipt.value))
 const locked = computed(() => answerLocked.value || followUpState.value.locked || evaluationState.value.locked || Boolean(reviewState.value?.locked))
+type AnswerMode = 'diagram' | 'text' | 'versions'
+const systemDesign = computed(() => current.value?.snapshot.content.type === 'SYSTEM_DESIGN' && ['RUNNING', 'PAUSED'].includes(props.session.status))
+const answerMode = computed<AnswerMode>(() => route.query.answerMode === 'text' || route.query.answerMode === 'versions'
+  ? route.query.answerMode : 'diagram')
+function setAnswerMode(value: AnswerMode) {
+  if (locked.value || props.commandLocked) return
+  // 切换只改变可见视图，编辑器保持挂载，不能丢弃尚未保存的文字或图稿。
+  void router.replace({ query: { ...route.query, answerMode: value } })
+}
 const referenceReadable = computed(() => active.value && store.sessionActive && !access.checking && !access.challenge && !access.restricted
   && !store.changes.get('training-access-command')?.locked)
 // 子审阅自己的写入锁不能反向禁用其恢复入口；父级请求和访问变化仍立即遮挡、禁用。
@@ -309,10 +324,12 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
 </script>
 
 <template>
-  <section class="training-answer" aria-label="本题作答">
+  <section class="training-answer" :class="{ 'follow-up-active': answerView === 'follow-up' }" aria-label="本题作答">
     <p v-if="!current && detail.isPending.value" class="loading-block" role="status">正在读取题目和服务器草稿…</p>
     <p v-if="detail.error.value" class="notice error" role="alert">{{ errorText(detail.error.value) }}<NButton text :disabled="!available" @click="detail.refetch()">重试读取</NButton></p>
     <template v-if="current">
+      <nav class="answer-view-tabs" aria-label="作答与反馈"><button :class="{ active: answerView === 'answer' }" @click="setAnswerView('answer')">独立作答</button><button v-if="session.status !== 'DRAFT'" :class="{ active: answerView === 'follow-up' }" @click="setAnswerView('follow-up')">AI 追问</button><button v-if="session.status !== 'DRAFT'" :class="{ active: answerView === 'evaluation' }" @click="setAnswerView('evaluation')">评价记录</button></nav>
+      <nav v-if="systemDesign && answerView === 'answer'" class="system-answer-tabs" aria-label="系统设计回答视图"><button v-for="item in ([['diagram', '架构图'], ['text', '说明'], ['versions', '版本']] as const)" :key="item[0]" :class="{ active: answerMode === item[0] }" :aria-pressed="answerMode === item[0]" :disabled="locked || commandLocked" @click="setAnswerMode(item[0])">{{ item[1] }}</button></nav>
       <header class="answer-heading"><div><p class="section-label">{{ current.snapshot.stage }} · {{ questionKindLabel }} · {{ questionTypeLabels[current.snapshot.content.type] }}</p><h3>{{ current.snapshot.title }}</h3><p class="field-help">{{ questionOriginLabel }} · {{ session.status === 'ENDED' ? (confirmedQuestion ? trainingQuestionStatusLabels[confirmedQuestion.status] : '正在核对最终状态') : trainingQuestionStatusLabels[current.status] }}</p><p v-if="current.kind === 'FOLLOW_UP' && current.followUp" class="field-help">追问自 {{ session.questions.find(question => question.id === current?.followUp?.parentQuestionId)?.title || '父题' }} 的确切提交。<NButton text size="small" :disabled="!available" @click="emit('selectQuestion', current.followUp.parentQuestionId)">返回父题</NButton><span class="answer-origin">父答案标识：{{ current.followUp.parentAnswerId }}</span></p></div><NButton size="small" :disabled="!available || serverLoading" @click="compareServer">读取服务器副本</NButton></header>
       <p v-if="current.kind === 'REPLAY'" class="field-help">这是沿用已保存题面的新尝试。<template v-if="current.snapshot.sourceQuestionId">题面可能对应已改版或停用的题库版本。</template>题面来源与接触情况见来源说明；本次从空白回答开始，之后保存的草稿和提交属于当前训练。</p>
       <div v-if="current.snapshot.warnings.length" class="source-warnings"><p v-for="warning in current.snapshot.warnings" :key="warning">{{ warning }}</p></div>
@@ -326,12 +343,12 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
       <p v-if="serverLoading" class="field-help" role="status">正在读取服务器副本，本地输入继续保留…</p><p v-if="serverError" class="notice error" role="alert">{{ serverError }}</p>
       <section v-if="serverCopy" class="answer-panel server-copy"><h4>服务器副本 · 题目修订 {{ serverCopy.revision }}</h4><p class="field-help">{{ trainingQuestionStatusLabels[serverCopy.status] }} · {{ serverCopy.draft ? `草稿保存于 ${date(serverCopy.draft.savedAt)}` : '没有未提交草稿' }}{{ serverCopy.latestAnswer ? ` · 最近提交第 ${serverCopy.latestAnswer.number} 版` : '' }}</p><MarkdownPreview v-if="serverCopy.draft?.content.text" :value="serverCopy.draft.content.text" /><TrainingDiagram v-if="remoteDraft.diagram.nodes.length" :model-value="remoteDraft.diagram" disabled :allow-materials="false" :references="serverCopy.draft?.content.diagram.nodes" /><p class="field-help">采用副本会替换本地输入。保留本地输入时，需明确对齐此修订后再次保存。</p><div class="row-actions"><NButton size="small" :disabled="!available" @click="adoptServer(false)">采用服务器草稿</NButton><NButton v-if="session.status !== 'ENDED' && dirty" size="small" :disabled="!available" @click="adoptServer(true)">保留本地并对齐修订</NButton><NButton size="small" :disabled="!available" @click="serverCopy = undefined">收起副本</NButton></div></section>
 
-      <section v-if="session.status === 'RUNNING' || session.status === 'PAUSED'" class="answer-panel">
+      <section v-if="session.status === 'RUNNING' || session.status === 'PAUSED'" v-show="answerView === 'answer' && (!systemDesign || answerMode !== 'versions')" class="answer-panel">
         <header class="panel-heading"><h4>本题回答</h4><span class="field-help">{{ content.text.length }} / 20000 字符</span></header>
         <p v-if="session.status === 'PAUSED'" class="notice">训练已暂停，可以继续保存草稿；恢复训练后再提交或跳题。</p>
-        <MarkdownEditor v-model="content.text" :disabled="!editable" />
-        <div v-if="current.snapshot.content.type === 'SYSTEM_DESIGN'" class="row-actions"><NButton size="small" :disabled="!editable" @click="insertOutline">追加系统设计提纲</NButton><span class="field-help">提供空提纲，具体内容由你填写。</span></div>
-        <TrainingDiagram v-model="content.diagram" :disabled="!editable" :allow-materials="allowMaterials" :references="sourceNodes" @import-board="importBoard" />
+        <div v-show="!systemDesign || answerMode === 'text'" class="answer-text"><MarkdownEditor v-model="content.text" :disabled="!editable" /><div v-if="systemDesign" class="row-actions"><NButton size="small" :disabled="!editable" @click="insertOutline">追加系统设计提纲</NButton><span class="field-help">提供空提纲，具体内容由你填写。</span></div></div>
+        <section v-if="systemDesign" v-show="answerMode === 'diagram'" class="answer-architecture" aria-label="架构图"><TrainingDiagram v-model="content.diagram" :disabled="!editable" :allow-materials="allowMaterials" :references="sourceNodes" @import-board="importBoard" /></section>
+        <details v-else class="answer-diagram"><summary>架构图 <span class="field-help">{{ content.diagram.nodes.length }} 个节点 · {{ content.diagram.edges.length }} 条连线</span></summary><TrainingDiagram v-model="content.diagram" :disabled="!editable" :allow-materials="allowMaterials" :references="sourceNodes" @import-board="importBoard" /></details>
         <section v-if="boardCandidate" class="board-candidate"><h4>待采用的白板候选</h4><p>{{ boardCandidate.diagram.nodes.length }} 个节点、{{ boardCandidate.diagram.edges.length }} 条连线 · 修订 {{ boardCandidate.revision }}</p><TrainingDiagram :model-value="boardCandidate.diagram" disabled :allow-materials="false" /><div class="row-actions"><NButton size="small" :disabled="!editable || !allowMaterials" @click="adoptBoard">采用候选图</NButton><NButton size="small" :disabled="!available" @click="boardCandidate = undefined">放弃候选</NButton></div></section>
         <p v-if="problem" class="field-help unsaved" role="status">{{ problem }}</p><p v-if="conflict" class="notice">服务器已有更新，请先核对上方服务器副本。</p>
         <div class="row-actions"><NButton :loading="writer.busy.value" :disabled="!editable || !dirty || !!problem || conflict" @click="save(false)">保存草稿</NButton><NButton type="primary" :disabled="!editable || session.status !== 'RUNNING' || !content.text.trim() || !!problem || conflict || current.status === 'SKIPPED'" @click="save(true)">{{ current.latestAnswer ? '提交同题新修订' : '提交回答' }}</NButton><NButton v-if="dirty" :disabled="!available" @click="discardLocal">撤销本地修改</NButton><NButton quaternary :disabled="!available || dirty || conflict || session.status !== 'RUNNING'" @click="skip">{{ current.status === 'SKIPPED' ? '恢复此题作答' : '跳过此题' }}</NButton></div>
@@ -341,7 +358,7 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
       <section v-else-if="session.status === 'ENDED' && confirmedQuestion?.draft" class="answer-panel"><h4>结束时保留的未提交草稿</h4><MarkdownPreview :value="confirmedQuestion.draft.content.text" /><TrainingDiagram v-if="endedDraft.diagram.nodes.length" :model-value="endedDraft.diagram" disabled :allow-materials="false" :references="confirmedQuestion.draft.content.diagram.nodes" /><div class="row-actions"><NButton size="small" @click="download('text', confirmedQuestion.draft.content, 'draft')">另存草稿文字</NButton><NButton size="small" @click="download('diagram', confirmedQuestion.draft.content, 'draft')">另存草稿结构图</NButton></div></section>
       <section v-if="session.status === 'ENDED' && dirty" class="answer-panel"><h4>页面内尚未保存的副本</h4><p class="field-help">训练已经结束，这些输入未被提交或写入服务器。请先另存，刷新会丢失。</p><MarkdownPreview :value="content.text" /><TrainingDiagram v-if="content.diagram.nodes.length" :model-value="content.diagram" disabled :allow-materials="false" :references="sourceNodes" /><div class="row-actions"><NButton size="small" @click="download('text', content, 'local-unsaved')">另存本地文字</NButton><NButton size="small" @click="download('diagram', content, 'local-unsaved')">另存本地图</NButton><NButton size="small" :disabled="!available" @click="discardLocal">已另存，撤销本地副本</NButton></div></section>
 
-      <section v-if="session.status !== 'DRAFT'" class="answer-panel submission-panel">
+      <section v-if="session.status !== 'DRAFT'" v-show="!systemDesign || answerView !== 'answer' || answerMode === 'versions'" class="answer-panel submission-panel">
         <header class="panel-heading"><h4>提交记录</h4><NButton size="small" :disabled="!available" @click="historyOpen = !historyOpen">{{ historyOpen ? '收起历史列表' : '查看全部修订' }}</NButton></header>
         <template v-if="historyOpen">
           <p v-if="history.isPending.value" class="field-help" role="status">正在读取修订历史…</p>
@@ -364,8 +381,8 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
         <p v-else-if="!(historyOpen && historySelection) && !confirmedQuestion" class="field-help" role="status">尚未核对最新服务器提交，请等待读取或重试；本地输入继续保留。</p>
         <p v-else-if="!(historyOpen && historySelection)" class="field-help">{{ session.status === 'ENDED' ? '本题没有正式提交。结束时保留的草稿不构成新答案，也不能用于建立新旧对照。' : '还没有提交记录。' }}</p>
       </section>
-      <TrainingFollowUp v-if="session.status !== 'DRAFT'" :session="session" :question-id="questionId" :answer="displayedAnswer" :disabled="!active || answerLocked || commandLocked || evaluationState.locked || reviewState?.locked" @state="followUpState = $event" @changed="refresh" @select-question="emit('selectQuestion', $event)" />
-      <TrainingEvaluation v-if="session.status !== 'DRAFT'" :session="session" :question-id="questionId" :answer="displayedAnswer" :disabled="!active || answerLocked || commandLocked || followUpState.locked || reviewState?.locked" @state="evaluationState = $event" @changed="refresh" />
+      <div v-show="answerView === 'follow-up'" class="answer-follow-up"><TrainingFollowUp v-if="session.status !== 'DRAFT'" :session="session" :question-id="questionId" :answer="displayedAnswer" :disabled="!active || answerLocked || commandLocked || evaluationState.locked || reviewState?.locked" @state="followUpState = $event" @changed="refresh" @select-question="emit('selectQuestion', $event)" /></div>
+      <div v-show="answerView === 'evaluation'" class="answer-evaluation"><TrainingEvaluation v-if="session.status !== 'DRAFT'" :session="session" :question-id="questionId" :answer="displayedAnswer" :disabled="!active || answerLocked || commandLocked || followUpState.locked || reviewState?.locked" @state="evaluationState = $event" @changed="refresh" /></div>
       <p v-if="!current.snapshot.sourceQuestionId" class="field-help">这道题没有题库参考答案，比较时不借用其他题目的标准。</p>
       <section v-else-if="session.status !== 'DRAFT'" class="reference-panel"><h4>本题固定版本的参考</h4><QuestionReferenceReadout v-if="reference" v-show="referenceReadable" :reference="reference" :disabled="referenceBlocked" /><p v-if="reference && !referenceReadable" class="field-help" role="status">资料访问暂不可用，参考正文已遮挡，审阅输入和原请求继续保留。</p><template v-if="!reference"><p class="field-help">{{ session.status === 'ENDED' || allowMaterials ? '显式打开会记录一次参考查看。' : '查看参考前需明确确认辅助条件，此后的提交会保留该条件。' }}文字模拟不会自动展开参考。</p><NButton :disabled="!available" @click="loadReference">{{ session.status !== 'ENDED' && !allowMaterials ? '先确认辅助条件' : '打开参考并记录查看' }}</NButton></template></section>
     </template>
@@ -392,4 +409,16 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
 .history-list strong { font-size: 13px; } .history-list span { font-size: 12px; color: var(--muted); }
 .answer-origin { display: block; overflow-wrap: anywhere; font-size: 11px; }
 @media (max-width: 700px) { .answer-heading { flex-wrap: wrap; } .answer-heading h3 { font-size: 19px; } }
+</style>
+
+<style scoped>
+.answer-view-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }.answer-view-tabs button { padding: 8px 12px; color: var(--muted); font-size: 18px; border-bottom: 2px solid transparent; }.answer-view-tabs .active { color: var(--ink); border-color: var(--brand); }
+.system-answer-tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--line); }.system-answer-tabs button { padding: 14px 20px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 21px; }.system-answer-tabs button.active { border-color: var(--brand); color: var(--ink); }.answer-text { display: grid; gap: 16px; min-width: 0; }.answer-text > .row-actions { justify-content: end; }.answer-architecture { min-width: 0; }
+.follow-up-active { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }.follow-up-active > * { grid-column: 1/-1; }.follow-up-active .submission-panel { grid-column: 1; align-self: start; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.follow-up-active .answer-follow-up { grid-column: 2; align-self: start; }.answer-follow-up { min-width: 0; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.answer-follow-up :deep(.follow-up) { padding: 0; border: 0; }.answer-follow-up :deep(h4) { font-size: 22px; }.answer-follow-up :deep(.follow-up-form) { border-radius: 14px; }.answer-follow-up :deep(.attempt-card) { padding: 18px; border-radius: 13px; }.answer-evaluation { min-width: 0; }
+@media(max-width:1200px) { .follow-up-active { grid-template-columns: minmax(0,1fr); }.follow-up-active .submission-panel, .follow-up-active .answer-follow-up { grid-column: 1; } }
+</style>
+
+<style scoped>
+.training-answer { min-width: 0; border: 1px solid var(--line); border-radius: 22px; padding: 28px 27px; background: linear-gradient(115deg,#ffffff03,transparent),var(--surface); }.answer-heading h3 { font-size: 29px; line-height: 1.55; }.question-prompt { border: 0; padding: 10px 0 20px; font-size: 21px; line-height: 1.9; }.question-prompt :deep(.markdown-preview) { font-size: 21px; }.answer-panel { padding-top: 20px; }.panel-heading h4 { font-size: 22px; }.training-answer :deep(.markdown-editor) { border-radius: 16px; overflow: hidden; }.training-answer :deep(.cm-editor) { min-height: 420px; font-size: 20px; line-height: 1.9; background: #ffffff03; }.training-answer :deep(.cm-content) { padding: 18px 20px; min-height: 420px; }.training-answer :deep(.cm-scroller) { min-height: 420px; }.answer-save-state { font-size: 15px; }.answer-diagram { margin-block: 18px; }.answer-diagram > summary { display: flex; align-items: center; gap: 15px; padding: 12px 0; cursor: pointer; font-size: 21px; color: var(--brand-strong); }.answer-panel > .row-actions { justify-content: end; margin-top: 15px; }.saved-answer { font-size: 20px; line-height: 1.9; }.training-answer :deep(.saved-answer .markdown-preview) { font-size: 20px; line-height: 1.9; }.reference-panel h4 { font-size: 21px; }
+@media(max-width:600px) { .training-answer { padding: 20px 16px; }.answer-heading { flex-wrap: wrap; }.answer-heading h3 { font-size: 24px; }.question-prompt,.question-prompt :deep(.markdown-preview) { font-size: 18px; } }
 </style>

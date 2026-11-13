@@ -86,7 +86,7 @@ function nextPage() { if (readable.value && !list.isFetching.value && list.data.
 
 <template>
   <main class="repractice-workspace">
-    <header class="workspace-heading"><div><p class="section-label">复盘 / 独立复练</p><h1>让下一次回答给出证据</h1><p class="field-help">保留正式原答或个人回忆的固定基线，新答独立完成；每条来源都有自己的验证条件和判断。</p></div><NButton text :disabled="!readable" @click="back">返回复盘与动作</NButton></header>
+    <header class="workspace-heading"><div><h1>{{ comparisonId ? '新旧对照' : '独立复练' }}</h1><p class="field-help">保留固定基线、新答与每条来源的验证条件。</p></div><NButton :disabled="!readable" @click="back">查看固定来源</NButton></header>
     <p v-if="routeProblem" class="notice error" role="alert">{{ routeProblem }}</p><p v-else-if="!readable" class="notice">当前登录或独立训练条件限制了复盘资料访问。已有输入保留，结束训练或明确确认辅助后再继续。</p>
     <div v-show="readable" :inert="!readable || undefined" class="workspace-content">
       <RepracticeComparison v-if="comparisonId && reviewIdValid(comparisonId)" :key="comparisonId" :comparison-id="comparisonId" :selected-judgment-id="judgmentId" :selected-source-id="judgmentSourceId" :selected-judgment-revision="judgmentRevision" :disabled="!readable" />
@@ -105,4 +105,9 @@ function nextPage() { if (readable.value && !list.isFetching.value && list.data.
 .repractice-list { display: grid; align-content: start; gap: 12px; padding-right: 24px; border-right: 1px solid var(--line); } .repractice-list header { display: flex; justify-content: space-between; align-items: center; } .repractice-list h2 { font-size: 16px; margin: 0; } .repractice-row { display: grid; gap: 8px; padding: 14px; text-align: left; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; } .repractice-row.selected { border-color: var(--brand); background: var(--surface-soft); } .repractice-row strong { font-size: 14px; overflow-wrap: anywhere; } .repractice-row span, .repractice-row time { font-size: 11px; color: var(--muted); } .repractice-row:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; } .repractice-main { min-width: 0; } .row-actions { display: flex; gap: 8px; flex-wrap: wrap; } .empty-state { padding: 40px 20px; display: grid; justify-items: start; gap: 18px; max-width: 62ch; } .empty-state h2 { margin: 0; font-size: 24px; } .empty-state p { color: var(--muted); line-height: 1.8; }
 @media (max-width: 1000px) { .workspace-columns { grid-template-columns: 1fr; } .repractice-list { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 24px; } .repractice-workspace { padding: 24px 20px 48px; } }
 @media (max-width: 600px) { .workspace-heading { flex-wrap: wrap; } .repractice-workspace { padding: 20px 14px 40px; } }
+</style>
+
+<style scoped>
+.repractice-workspace { padding: 0; max-width: none; gap: 28px; }.workspace-heading h1 { margin: 0 0 10px; font-size: 48px; line-height: 1.3; letter-spacing: 0; }.repractice-list { border: 1px solid var(--line); border-radius: 20px; padding: 22px; background: var(--surface); }.repractice-list h2 { font-size: 23px; }.repractice-row { padding: 18px; border-radius: 13px; }.repractice-row strong { font-size: 19px; }.repractice-row :is(span,time) { font-size: 15px; }.repractice-main { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 25px; }
+@media(max-width:600px) { .workspace-heading h1 { font-size: 34px; }.repractice-main { padding: 20px 16px; } }
 </style>

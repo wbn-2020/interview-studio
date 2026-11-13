@@ -12,6 +12,7 @@ import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import KnowledgePicker from './KnowledgePicker.vue'
 import MarkdownPreview from './MarkdownPreview.vue'
+import RIcon from '../replica/RIcon.vue'
 
 const props = defineProps<{ sourceId?: string; enabled?: boolean }>()
 const emit = defineEmits<{ merged: [result: ConceptMergeResult]; cancel: []; state: [dirty: boolean, locked: boolean] }>()
@@ -202,19 +203,19 @@ function cancel() {
 
 <template>
   <section ref="element" class="concept-merge" aria-label="合并知识概念">
-    <header><div><p class="section-label">整理重复概念</p><h2>把两个概念收拢到同一入口</h2></div><NButton :disabled="locked" @click="cancel">关闭</NButton></header>
+    <header><div><h2>选择要合并的概念</h2></div><NButton v-if="prepared" :disabled="locked" @click="cancel">重新选择</NButton></header>
     <p v-if="!readable" class="notice" role="status">资料访问或页面可见性尚未就绪。未确认的写入请求保留原键，恢复后再继续。</p>
     <template v-else>
       <p class="notice">目标概念保留发布正文与版本；源概念归档并保留合并身份。语义关系会迁移、去重或移除自指，历史正文引用、训练证据和卡片来源仍保留原身份。请先处理双方未发布草稿；此操作没有一键撤销。</p>
       <div class="merge-pair">
-        <div><strong>源概念 · 将归档</strong><p>{{ sourceTitle || sourceId || '尚未选择' }}</p><NButton size="small" :disabled="locked || loading" @click="choosing = 'source'">选择源概念</NButton></div>
-        <div><strong>目标概念 · 保留正文</strong><p>{{ targetTitle || targetId || '尚未选择' }}</p><NButton size="small" :disabled="locked || loading" @click="choosing = 'target'">选择目标概念</NButton></div>
+        <div :class="{ 'merge-choice-active': choosing === 'source' }"><RIcon name="layers" :size="29" /><strong>源概念 <span>将归档</span></strong><p>{{ sourceTitle || sourceId || '尚未选择源概念' }}</p><NButton :disabled="locked || loading" @click="choosing = 'source'">选择源概念<RIcon name="chevron-down" :size="19" /></NButton></div>
+        <div :class="{ 'merge-choice-active': choosing === 'target' }"><RIcon name="sparkles" :size="29" /><strong>目标概念 <span>保留正文</span></strong><p>{{ targetTitle || targetId || '尚未选择目标概念' }}</p><NButton :disabled="locked || loading" @click="choosing = 'target'">选择目标概念<RIcon name="chevron-down" :size="19" /></NButton></div>
       </div>
       <details :open="!prepared"><summary>选择{{ choosing === 'source' ? '源概念' : choosing === 'target' ? '目标概念' : '新增关联笔记' }}</summary>
         <KnowledgePicker :key="choosing" :kind="choosing === 'note' ? 'NOTE' : 'CONCEPT'" :disabled="locked || loading"
           :exclude-ids="choosing === 'source' ? [targetId] : choosing === 'target' ? [sourceId] : noteIds" @choose="choose" />
       </details>
-      <div class="row-actions"><NButton :disabled="locked || loading || !sourceId || !targetId || sourceId === targetId" :loading="loading" @click="loadPreview()">{{ hasSelection ? '刷新摘要并保留当前选择' : '预览合并影响' }}</NButton><NButton v-if="hasSelection && !locked" :disabled="loading" @click="adoptSuggestions">重新预览并采用最新建议</NButton></div>
+      <div class="row-actions merge-preview-action"><NButton type="primary" :disabled="locked || loading || !sourceId || !targetId || sourceId === targetId" :loading="loading" @click="loadPreview()"><RIcon name="eye" :size="22" />{{ hasSelection ? '刷新摘要并保留当前选择' : '预览合并影响' }}</NButton><NButton v-if="hasSelection && !locked" :disabled="loading" @click="adoptSuggestions">重新预览并采用最新建议</NButton></div>
       <p v-if="sourceId && sourceId === targetId" class="notice error">源概念和目标概念必须不同。</p>
       <p v-if="problem" class="notice error" role="alert">{{ problem }}</p>
       <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :disabled="!readable || writer.busy.value" @click="retry">用原请求与原键恢复</NButton><NButton v-else-if="conflict" text :disabled="loading" @click="loadPreview(true)">重新读取预览并保留选择</NButton></p>
@@ -256,4 +257,9 @@ h2 { font-size: 21px; } h3 { margin-bottom: 8px; }
 summary { cursor: pointer; padding: 8px 0; } code { overflow-wrap: anywhere; } li { margin: 6px 0; }
 fieldset { border: 1px solid var(--line); display: grid; gap: 10px; padding: 12px; } fieldset label { display: flex; gap: 8px; align-items: center; }
 @media (max-width: 700px) { .merge-pair { grid-template-columns: 1fr; } .concept-merge { padding: 14px; } }
+</style>
+
+<style scoped>
+.concept-merge { gap: 22px; padding: 28px; border-radius: 22px; background: linear-gradient(120deg, #26211bbb, #17130fbb); }.concept-merge > header { align-items: center; }.concept-merge h2 { font-size: 26px; }.concept-merge > .notice { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.8; background: #ffffff03; padding: 18px; }.merge-pair { gap: 22px; }.merge-pair > div { padding: 22px; border-radius: 17px; min-height: 200px; background: #ffffff02; }.merge-pair > div > svg { color: #d9a164; margin-bottom: 12px; }.merge-pair strong { display: flex; justify-content: space-between; gap: 10px; font-size: 22px; font-weight: 500; }.merge-pair strong span { display: inline-block; padding: 3px 9px; border-radius: 18px; font-size: 13px; color: #c9a07a; background: #b87b3e20; }.merge-pair p { margin: 16px 0 22px; min-height: 27px; color: var(--muted); font-size: 18px; }.merge-pair > div.merge-choice-active { border-color: #ac7b4d; background: linear-gradient(120deg, #98602c22, #2a1e1233); }.merge-pair :deep(.n-button__content) { gap: 10px; }.concept-merge > details { padding: 15px 18px 20px; border: 1px solid var(--line); border-radius: 17px; background: #ffffff02; }.concept-merge > details summary { font-size: 19px; margin-bottom: 10px; }.concept-merge :deep(.knowledge-picker) { padding: 0; border: 0; background: none; }.concept-merge :deep(.picker-results) { max-height: 230px; }.concept-merge :deep(.picker-results > button) { padding: 14px 9px; font-size: 18px; }.concept-merge :deep(.picker-results small) { font-size: 12px; margin-top: 7px; color: var(--faint); }.concept-merge :deep(.knowledge-picker > .field-help) { min-height: 100px; display: grid; place-items: center; font-size: 17px; }.merge-preview-action { justify-content: end; padding-top: 4px; }.merge-fields { gap: 18px; }.merge-fields label { font-size: 16px; }.merge-fields h3 { font-size: 22px; }.concept-merge fieldset { border-radius: 12px; padding: 16px; }.concept-merge li { font-size: 16px; }
+@media (max-width: 650px) { .concept-merge { padding: 20px 16px; }.merge-pair > div { min-height: 170px; }.merge-pair { gap: 14px; } }
 </style>

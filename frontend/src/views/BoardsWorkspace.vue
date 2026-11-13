@@ -16,6 +16,7 @@ import { useTrainingAccessStore } from '../state/trainingAccess'
 import BoardCanvas from '../components/board/BoardCanvas.vue'
 import KnowledgePicker from '../components/KnowledgePicker.vue'
 import BoardTransfer from '../components/boards/BoardTransfer.vue'
+import RIcon from '../replica/RIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,6 +37,7 @@ const referenceInput = ref(''), referenceSearch = ref(''), referenceCursor = ref
 const selectingReference = ref(false)
 const transferPending = ref(false)
 const showCreate = ref(false)
+const libraryOpen = ref(false)
 const createTitle = ref('')
 const createKind = ref<'MIND_MAP' | 'BOARD'>('MIND_MAP')
 const message = ref('')
@@ -334,8 +336,8 @@ function download(format: 'json' | 'md', value = board.value) {
 </script>
 
 <template>
-  <section class="boards-workspace">
-    <header class="page-heading"><div><h1>脑图与白板</h1><p class="muted">把知识放在一起思考，引用、想法与连线各有自己的位置。</p></div><div class="row-actions"><RouterLink class="text-link" to="/knowledge">返回知识库</RouterLink><NButton @click="showCreate = !showCreate">新建画布</NButton></div></header>
+  <section class="boards-workspace" :class="{ 'board-focused': boardId }">
+    <header class="page-heading"><div><h1>{{ board?.title || '知识白板' }}</h1><p class="muted">{{ board ? `${board.kind === 'MIND_MAP' ? '脑图' : '学习白板'} v${board.revision} · ${dirty ? '有未保存修改' : '已保存'}` : '把知识放在一起思考' }}</p></div><div class="row-actions"><NButton @click="libraryOpen = !libraryOpen"><RIcon name="panel-left" />画布目录</NButton><NButton v-if="board" @click="download('json')"><RIcon name="download" />导出</NButton><NButton type="primary" @click="showCreate = !showCreate"><RIcon name="plus" />新建画布</NButton></div></header>
     <div v-if="showCreate" class="board-create">
       <NSelect v-model:value="createKind" :options="[{ label: '脑图', value: 'MIND_MAP' }, { label: '自由白板', value: 'BOARD' }]" :disabled="creator.locked.value" aria-label="画布类型" />
       <NInput v-model:value="createTitle" :maxlength="200" placeholder="为这张画布命名" :disabled="creator.locked.value" aria-label="画布名称" />
@@ -343,7 +345,7 @@ function download(format: 'json' | 'md', value = board.value) {
       <p v-if="creator.error.value" class="notice error">{{ errorText(creator.error.value) }}</p><NButton v-if="creator.pending.value" @click="creator.retry">用原请求重试创建</NButton>
     </div>
     <div class="board-layout">
-      <aside class="board-library" aria-label="画布列表">
+      <aside v-show="!boardId || libraryOpen" class="board-library" aria-label="画布列表">
         <h2>我的画布</h2><p v-if="listQuery.isPending.value" class="loading-block">正在读取画布…</p>
         <p v-if="listQuery.error.value" class="notice error">{{ errorText(listQuery.error.value) }}</p>
         <p v-if="listQuery.data.value && !listQuery.data.value.items.length" class="empty-inline">创建一张脑图整理层级，或用自由白板连接想法。</p>
@@ -380,8 +382,9 @@ function download(format: 'json' | 'md', value = board.value) {
             @select="select" @edge="id => { selectedEdgeId = id; selectedId = ''; conversion = null }" @begin="checkpoint" @move="(id, x, y) => move(id, x, y, false)" @connect="connect" @viewport="viewport" />
             <div class="board-tools"><NButton size="small" :disabled="locked" @click="zoom(.8)">缩小</NButton><span>{{ Math.round(board.viewport.zoom * 100) }}%</span><NButton size="small" :disabled="locked" @click="zoom(1.25)">放大</NButton><NButton size="small" :disabled="locked" @click="viewport({ x: 0, y: 0, zoom: 1 })">初始视口</NButton><small class="muted">{{ board.nodes.length }}/100 节点 · {{ board.edges.length }}/200 连线</small></div></div>
             <aside class="board-inspector" aria-label="节点与连线编辑">
-              <h3>节点列表</h3><p class="field-help">列表包括折叠的节点；选中后可用按钮移动。</p>
-              <div class="board-node-list"><button v-for="node in board.nodes" :key="node.id" :class="{ active: node.id === selectedId }" @click="select(node.id)">{{ label(node) }}<small>{{ node.group || nodeTypeLabel(node) }}</small></button></div>
+              <h3>{{ selectedEdge ? '连线' : selected ? '节点' : '画布检查器' }}</h3>
+              <details class="inspector-node-directory" :open="!selected && !selectedEdge"><summary>节点列表 · {{ board.nodes.length }}</summary><p class="field-help">包括已折叠节点；选中后可用按钮移动。</p>
+              <div class="board-node-list"><button v-for="node in board.nodes" :key="node.id" :class="{ active: node.id === selectedId }" @click="select(node.id)">{{ label(node) }}<small>{{ node.group || nodeTypeLabel(node) }}</small></button></div></details>
               <div v-if="selected" class="node-properties">
                 <h3>{{ selected.type === 'REFERENCE' ? nodeTypeLabel(selected) : '编辑想法' }}</h3>
                 <template v-if="selected.type === 'TEXT'"><label :for="`node-text-${selected.id}`">临时文本（最多 5000 字）</label><textarea :id="`node-text-${selected.id}`" v-model="selected.text" :disabled="locked" maxlength="5000" rows="7" @focus="checkpoint" /></template>
@@ -435,6 +438,24 @@ summary { cursor: pointer; font-weight: 600; font-size: 12px; }.conversion-previ
 .board-create { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }.board-create .n-select { width: 140px; }.board-create .n-input { flex: 1; min-width: 190px; }
 .board-main > .notice, .board-body > .notice, .board-body > .comparison-panel { margin: 10px 14px; }.board-main > .knowledge-picker { padding: 0 14px 14px; }
 .board-reference-picker { display: grid; gap: 10px; margin: 0 14px 16px; }.external-reference-list { display: grid; max-height: 240px; overflow: auto; }.external-reference-list button { display: grid; gap: 5px; padding: 10px; text-align: left; border-bottom: 1px solid var(--line); }.external-reference-list small { color: var(--muted); }
+.boards-workspace { max-width: none; }
+.board-layout { border: 0; gap: 18px; background: transparent; border-radius: 20px; overflow: visible; grid-template-columns: 245px minmax(0, 1fr); }
+.board-focused .board-layout { display: flex; align-items: start; }
+.board-library { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 22px 16px; }
+.board-focused .board-library { width: 245px; flex: none; }
+.board-library h2 { font-size: 23px; }.board-list-item { padding: 18px 13px; border-radius: 12px; }.board-list-item strong { font-size: 20px; }.board-list-item small { font-size: 15px; margin-top: 9px; }
+.board-main { flex: 1; }.board-body { position: relative; }
+.board-title { padding: 0 0 16px; }.board-tools { gap: 12px; padding: 12px 0; }
+.board-editing { border: 0; grid-template-columns: minmax(0, 1fr) 266px; gap: 18px; align-items: start; }
+.board-editing > div { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; }
+.board-editing > div > .board-tools { padding: 10px 16px; justify-content: end; background: var(--surface); }
+.board-inspector { padding: 24px 19px; max-height: 750px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.board-inspector h3 { font-size: 24px; margin: 0 0 20px; }.inspector-node-directory { margin-bottom: 20px; }
+.board-inspector summary { font-size: 17px; }.board-node-list button { font-size: 18px; padding: 12px; }.board-node-list small { font-size: 14px; }
+.node-properties { gap: 15px; padding-top: 22px; }.node-properties label { font-size: 18px; }.reference-preview { font-size: 16px; line-height: 1.7; }
+.board-inspector input:not([type=checkbox]), .board-inspector textarea { border-radius: 11px; font-size: 17px; padding: 12px; }
+.board-history { margin-top: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }.board-history summary { font-size: 18px; }
 @media (max-width: 1180px) { .board-layout { grid-template-columns: 150px minmax(0, 1fr); }.board-editing { grid-template-columns: minmax(0, 1fr); }.board-inspector { border-left: 0; border-top: 1px solid var(--line); max-height: none; }.board-node-list { display: flex; gap: 5px; }.board-node-list button { min-width: 150px; max-width: 220px; } }
 @media (max-width: 650px) { .board-layout { grid-template-columns: minmax(0, 1fr); }.board-library { max-height: 230px; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }.board-title .status-pill { order: 3; }.board-create .n-select { width: 100%; } }
+@media (max-width: 900px) { .board-focused .board-layout { display: grid; grid-template-columns: minmax(0, 1fr); }.board-focused .board-library { width: auto; }.board-inspector { border: 1px solid var(--line); } }
 </style>

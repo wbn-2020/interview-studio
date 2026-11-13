@@ -11,7 +11,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const workspace = useWorkspaceStore(), access = useTrainingAccessStore()
   const current = shallowRef<Preferences>({ ...defaultPreferences })
   const systemDark = ref(false), loading = ref(false), error = ref('')
-  const isDark = computed(() => current.value.theme === 'DARK' || (current.value.theme === 'SYSTEM' && systemDark.value))
+  // 未保存过外观设置的账户先使用参考界面的深色；已有修订仍遵循用户的明确选择。
+  const isDark = computed(() => current.value.revision === 0 || current.value.theme === 'DARK' || (current.value.theme === 'SYSTEM' && systemDark.value))
   const readable = computed(() => workspace.sessionActive && !access.checking && !access.challenge && !access.restricted
     && !workspace.changes.get('training-access-command')?.locked)
   let generation = 0, started = false

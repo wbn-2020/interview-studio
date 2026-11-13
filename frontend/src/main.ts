@@ -8,6 +8,7 @@ import { useWorkspaceStore } from './state/workspace'
 import { useTrainingAccessStore } from './state/trainingAccess'
 import './styles.css'
 import './preferences.css'
+import './studio.css'
 
 const pinia = createPinia()
 const router = createRouter({
@@ -17,6 +18,7 @@ const router = createRouter({
     { path: '/search', name: 'search', component: () => import('./views/SearchWorkspace.vue') },
     { path: '/recent', name: 'recent', component: () => import('./views/RecentWorkspace.vue') },
     { path: '/knowledge', name: 'knowledge', component: () => import('./views/KnowledgeWorkspace.vue') },
+    { path: '/knowledge/inbox', name: 'knowledge-inbox', component: () => import('./views/KnowledgeInboxWorkspace.vue') },
     { path: '/knowledge/packages', name: 'knowledge-packages', component: () => import('./views/KnowledgePackagesWorkspace.vue') },
     { path: '/knowledge/merge', name: 'knowledge-merge', component: () => import('./views/KnowledgeMergeWorkspace.vue') },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsWorkspace.vue') },
@@ -52,7 +54,12 @@ router.beforeEach((to, from) => {
   if (to.name === 'knowledge' && from.name === 'knowledge') {
     const keys: string[] = []
     if (to.query.item !== from.query.item) keys.push('editor', 'organization', 'connections', 'create')
-    if (to.query.view !== from.query.view) keys.push('layout', 'search')
+    if (to.query.edit !== from.query.edit) keys.push('editor', 'organization', 'connections')
+    if (to.query.create !== from.query.create) keys.push('create')
+    if (to.query.view !== from.query.view) {
+      keys.push('layout', 'search')
+      if (to.query.view === 'detail' || from.query.view === 'detail') keys.push('editor', 'organization', 'connections', 'create')
+    }
     return workspace.canLeave(keys)
   }
   if (to.name === 'boards' && from.name === 'boards') return workspace.canLeave(['board', 'board-create'])

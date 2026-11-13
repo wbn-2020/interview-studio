@@ -8,6 +8,7 @@ import type { ChosenVersion } from '../../api/preparation'
 import type { TrainingDiagram, TrainingDiagramInput } from '../../api/training'
 import { useWorkspaceStore } from '../../state/workspace'
 import PreparationPicker from '../prepare/PreparationPicker.vue'
+import RIcon from '../../replica/RIcon.vue'
 
 const props = defineProps<{ modelValue: TrainingDiagramInput; disabled?: boolean; allowMaterials: boolean; references?: TrainingDiagram['nodes'] }>()
 const emit = defineEmits<{ 'update:modelValue': [value: TrainingDiagramInput]; importBoard: [boardId: string, revision: number] }>()
@@ -25,6 +26,10 @@ const boardCursor = ref<string>()
 const boardCursors = ref<(string | undefined)[]>([])
 const referenceNames = reactive<Record<string, string>>({})
 const localError = ref('')
+const diagramSvg = ref<SVGSVGElement>()
+const zoom = ref(1)
+const dragViewport = ref<string>()
+let drag: { pointerId: number; id: string; x: number; y: number; nodeX: number; nodeY: number } | undefined
 const arrowId = `answer-arrow-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`
 const blocked = computed(() => Boolean(props.disabled) || !store.sessionActive)
 const selected = computed(() => diagram.value.nodes.find(node => node.id === selectedId.value))
@@ -49,6 +54,42 @@ const bounds = computed(() => {
   const minY = Math.min(0, ...nodes.map(node => node.y)) - 40
   return `${minX} ${minY} ${Math.max(700, Math.max(...nodes.map(node => node.x)) - minX + 320)} ${Math.max(320, Math.max(...nodes.map(node => node.y)) - minY + 120)}`
 })
+const zoomBounds = computed(() => {
+  if (dragViewport.value) return dragViewport.value
+  const [x = 0, y = 0, width = 800, height = 360] = bounds.value.split(' ').map(Number)
+  const scaledWidth = width / zoom.value, scaledHeight = height / zoom.value
+  return `${x + (width - scaledWidth) / 2} ${y + (height - scaledHeight) / 2} ${scaledWidth} ${scaledHeight}`
+})
+function diagramPoint(event: PointerEvent) {
+  const svg = diagramSvg.value, matrix = svg?.getScreenCTM()
+  if (!svg || !matrix) return undefined
+  const point = svg.createSVGPoint(); point.x = event.clientX; point.y = event.clientY
+  return point.matrixTransform(matrix.inverse())
+}
+function startDrag(event: PointerEvent, id: string) {
+  selectNode(id)
+  if (blocked.value || event.button !== 0) return
+  const node = nodeIndex.value.get(id), point = diagramPoint(event)
+  if (!node || !point) return
+  dragViewport.value = zoomBounds.value
+  drag = { pointerId: event.pointerId, id, x: point.x, y: point.y, nodeX: node.x, nodeY: node.y }
+  ;(event.currentTarget as SVGGElement).setPointerCapture(event.pointerId)
+}
+function dragNode(event: PointerEvent) {
+  if (!drag || event.pointerId !== drag.pointerId || blocked.value) return
+  const node = nodeIndex.value.get(drag.id), point = diagramPoint(event)
+  if (!node || !point) return
+  // 图的坐标由已保存的答案驱动；拖动只改变本地草稿，不触发布局模拟。
+  node.x = Math.round(Math.max(-1000000, Math.min(1000000, drag.nodeX + point.x - drag.x)))
+  node.y = Math.round(Math.max(-1000000, Math.min(1000000, drag.nodeY + point.y - drag.y)))
+}
+function moveByKey(event: KeyboardEvent, id: string) {
+  const delta: Record<string, [number, number]> = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] }
+  const step = delta[event.key]
+  if (!step || blocked.value) return
+  event.preventDefault(); selectNode(id); moveNode(step[0], step[1])
+}
+function stopDrag() { drag = undefined; dragViewport.value = undefined }
 const boards = useQuery({
   queryKey: computed(() => ['training-board-picker', store.sessionEpoch, boardCursor.value]),
   enabled: computed(() => store.sessionActive && props.allowMaterials && !blocked.value && boardPicker.value),
@@ -117,12 +158,12 @@ function nextBoards() { if (boards.data.value?.nextCursor) { boardCursors.value.
 </script>
 
 <template>
-  <section class="training-diagram" aria-label="答案结构图">
+  <section class="training-diagram" aria-label="答案结构图" @pointerup="stopDrag" @pointercancel="stopDrag" @lostpointercapture="stopDrag">
     <header class="diagram-heading"><div><h3>结构图 <span>{{ diagram.nodes.length }} 节点 · {{ diagram.edges.length }} 条边</span></h3><p class="field-help">图与文字一起保存。用节点说明服务边界，用连线说明数据流；约束和取舍写在回答正文。</p></div><div v-if="!disabled" class="row-actions"><NButton size="small" :disabled="blocked || diagram.nodes.length >= 80" @click="addNode">添加节点</NButton><NButton size="small" :disabled="blocked || !allowMaterials" @click="boardPicker = !boardPicker">导入白板候选</NButton></div></header>
     <p v-if="!allowMaterials && !disabled" class="field-help">关联站内资料或导入学习白板前，需要在本次训练中明确确认辅助条件。</p>
     <p v-if="diagram.boardSource" class="field-help">图源自白板 {{ diagram.boardSource.boardId.slice(0, 8) }} · 修订 {{ diagram.boardSource.revision }}，之后的白板变化不会改动本答案。</p>
     <section v-if="boardPicker && allowMaterials && !blocked" class="board-picker"><h4>选择已保存的学习白板</h4><p class="field-help">导入先生成候选；明确采用后再与本题文字一起保存。</p><p v-if="boards.isPending.value" role="status">正在读取白板…</p><p v-if="boards.error.value" class="notice error" role="alert">{{ errorText(boards.error.value) }}<NButton text @click="boards.refetch()">重试</NButton></p><button v-for="board in boards.data.value?.items" :key="board.id" class="board-option" @click="importBoard(board.id, board.revision)"><strong>{{ board.title }}</strong><span>修订 {{ board.revision }}</span></button><p v-if="boards.data.value && !boards.data.value.items.length" class="field-help">没有可选白板。</p><div v-if="boardCursors.length || boards.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!boardCursors.length" @click="boardCursor = boardCursors.pop()">上一页</NButton><NButton size="small" :disabled="!boards.data.value?.nextCursor" @click="nextBoards">下一页</NButton></div></section>
-    <div class="diagram-preview"><svg v-if="diagram.nodes.length" :viewBox="bounds" role="img" aria-label="答案结构图，可在下方节点和连线列表查看及编辑等价内容"><defs><marker :id="arrowId" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--brand)" /></marker></defs><g v-for="layout in edgeLayouts" :key="layout.edge.id"><path :d="layout.path" fill="none" stroke="var(--brand)" stroke-width="2" :marker-end="`url(#${arrowId})`" /><text :x="layout.x" :y="layout.y" text-anchor="middle" class="edge-text">{{ layout.edge.label.slice(0, 28) }}</text></g><g v-for="(node, index) in diagram.nodes" :key="node.id" :transform="`translate(${node.x}, ${node.y})`"><rect width="200" height="68" rx="7" fill="var(--surface)" :stroke="node.id === selectedId ? 'var(--brand)' : 'var(--line)'" :stroke-width="node.id === selectedId ? 3 : 1" /><text x="12" y="27" class="node-text">{{ node.label ? node.label.slice(0, 18) : `节点 ${index + 1}` }}</text><text x="12" y="49" class="node-note">{{ node.link ? '已关联确切材料版本' : node.description.slice(0, 22) || '尚未填写说明' }}</text></g></svg><p v-else class="diagram-empty">还没有图节点。纯文字回答也可以保存和提交。</p></div>
+    <div class="diagram-preview"><svg v-if="diagram.nodes.length" ref="diagramSvg" :viewBox="zoomBounds" role="group" aria-label="答案结构图，可拖动节点或用方向键移动" @pointermove="dragNode" @pointerup="drag = undefined" @pointercancel="drag = undefined"><defs><marker :id="arrowId" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--brand)" /></marker></defs><g v-for="layout in edgeLayouts" :key="layout.edge.id" class="diagram-edge" @click="selectEdge(layout.edge.id)"><path :d="layout.path" fill="none" stroke="var(--brand)" stroke-width="2" :marker-end="`url(#${arrowId})`" /><text :x="layout.x" :y="layout.y" text-anchor="middle" class="edge-text">{{ layout.edge.label.slice(0, 28) }}</text></g><g v-for="(node, index) in diagram.nodes" :key="node.id" :transform="`translate(${node.x}, ${node.y})`" class="diagram-node" tabindex="0" role="button" :aria-label="`${node.label || `节点 ${index + 1}`}，可拖动或用方向键移动`" @pointerdown.prevent="startDrag($event, node.id)" @lostpointercapture="drag = undefined" @keydown="moveByKey($event, node.id)"><rect width="200" height="68" rx="14" fill="var(--surface)" :stroke="node.id === selectedId ? 'var(--brand)' : 'var(--line)'" :stroke-width="node.id === selectedId ? 3 : 1" /><text x="12" y="27" class="node-text">{{ node.label ? node.label.slice(0, 18) : `节点 ${index + 1}` }}</text><text x="12" y="49" class="node-note">{{ node.link ? '已关联确切材料版本' : node.description.slice(0, 22) || '尚未填写说明' }}</text></g></svg><p v-else class="diagram-empty">还没有图节点。纯文字回答也可以保存和提交。</p><div class="diagram-zoom"><button title="缩小" aria-label="缩小" :disabled="zoom <= .5" @click="zoom = Math.max(.5, zoom - .1)"><RIcon name="minus" :size="20" /></button><span>{{ Math.round(zoom * 100) }}%</span><button title="放大" aria-label="放大" :disabled="zoom >= 2" @click="zoom = Math.min(2, zoom + .1)"><RIcon name="plus" :size="20" /></button><button title="适应画布" aria-label="适应画布" @click="zoom = 1"><RIcon name="scan" :size="20" /></button></div></div>
     <div v-if="diagram.nodes.length" class="diagram-controls"><div class="diagram-lists"><h4>节点</h4><button v-for="(node, index) in diagram.nodes" :key="node.id" :class="['diagram-list-row', { selected: selectedId === node.id }]" :aria-current="selectedId === node.id ? 'true' : undefined" @click="selectNode(node.id)">{{ index + 1 }}. {{ node.label || '未命名节点' }}</button><h4 v-if="diagram.edges.length">连线</h4><button v-for="edge in diagram.edges" :key="edge.id" :class="['diagram-list-row', { selected: selectedEdgeId === edge.id }]" @click="selectEdge(edge.id)">{{ nodeIndex.get(edge.source)?.label || '节点' }} → {{ nodeIndex.get(edge.target)?.label || '节点' }}{{ edge.label ? ` · ${edge.label}` : '' }}</button></div><div class="diagram-detail"><template v-if="selected"><label>节点名称<NInput v-model:value="selected.label" :disabled="blocked" :maxlength="200" placeholder="例如：订单服务" /></label><label>职责与说明<NInput v-model:value="selected.description" :disabled="blocked" type="textarea" :maxlength="5000" :autosize="{ minRows: 2, maxRows: 6 }" /></label><div class="coordinate-pair"><label>X 坐标<NInputNumber :value="selected.x" :disabled="blocked" :min="-1000000" :max="1000000" @update:value="value => { if (selected && value !== null) selected.x = value }" /></label><label>Y 坐标<NInputNumber :value="selected.y" :disabled="blocked" :min="-1000000" :max="1000000" @update:value="value => { if (selected && value !== null) selected.y = value }" /></label></div><div v-if="!disabled" class="row-actions"><NButton size="small" :disabled="blocked" @click="moveNode(-40, 0)">左移</NButton><NButton size="small" :disabled="blocked" @click="moveNode(40, 0)">右移</NButton><NButton size="small" :disabled="blocked" @click="moveNode(0, -40)">上移</NButton><NButton size="small" :disabled="blocked" @click="moveNode(0, 40)">下移</NButton></div><p v-if="selected.link" class="field-help">{{ referenceName() }}</p><div v-if="!disabled" class="row-actions"><NButton size="small" :disabled="blocked || !allowMaterials" @click="referencePicker = !referencePicker">{{ selected.link ? '更换材料引用' : '关联知识／项目事实' }}</NButton><NButton v-if="selected.link" size="small" :disabled="blocked" @click="selected.link = null">移除引用</NButton><NButton size="small" quaternary :disabled="blocked" @click="removeNode">移出节点</NButton></div><PreparationPicker v-if="referencePicker && allowMaterials && !blocked" :key="pickerGeneration" :kinds="['KNOWLEDGE', 'PROJECT', 'FACT']" :disabled="blocked" @choose="chooseReference" /></template><template v-else-if="selectedEdge"><label>连线说明<NInput v-model:value="selectedEdge.label" :disabled="blocked" :maxlength="200" /></label><p class="field-help">{{ nodeIndex.get(selectedEdge.source)?.label || '节点' }} → {{ nodeIndex.get(selectedEdge.target)?.label || '节点' }}</p><NButton v-if="!disabled" size="small" :disabled="blocked" @click="removeEdge">移出连线</NButton></template><p v-else class="field-help">选择一个节点或连线查看其内容。</p></div></div>
     <form v-if="!disabled && diagram.nodes.length" class="connect-form" @submit.prevent="addEdge"><label>起点<NSelect v-model:value="sourceId" :disabled="blocked" :options="nodeOptions" placeholder="选择节点" /></label><label>终点<NSelect v-model:value="targetId" :disabled="blocked" :options="nodeOptions" placeholder="选择节点" /></label><label>连线说明<NInput v-model:value="edgeLabel" :disabled="blocked" :maxlength="200" placeholder="例如：同步请求" /></label><NButton attr-type="submit" size="small" :disabled="blocked || !sourceId || !targetId || diagram.edges.length >= 160">添加连线</NButton></form><p v-if="localError" class="notice error" role="alert">{{ localError }}</p>
   </section>
@@ -152,4 +193,10 @@ label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); min-width
 .board-option { display: flex; justify-content: space-between; gap: 15px; padding: 9px 0; text-align: left; border-bottom: 1px solid var(--line); }
 .board-option strong { overflow-wrap: anywhere; } .board-option span { font-size: 12px; color: var(--muted); white-space: nowrap; }
 @media (max-width: 800px) { .diagram-heading { flex-wrap: wrap; } .diagram-controls { grid-template-columns: 1fr; } .diagram-lists { max-height: 200px; } .connect-form { grid-template-columns: 1fr 1fr; } }
+</style>
+
+<style scoped>
+.training-diagram { grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }.training-diagram > * { grid-column: 1/-1; }.training-diagram .diagram-preview { grid-column: 1; min-height: 470px; position: relative; border-radius: 18px; background-color: var(--bg); background-image: radial-gradient(circle,var(--line) 1px,transparent 1px); background-size: 20px 20px; overflow: hidden; }.diagram-preview svg { height: 470px; max-height: none; touch-action: none; }.training-diagram .diagram-controls { grid-column: 2; display: grid; grid-template-columns: minmax(0,1fr); gap: 20px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.diagram-lists { max-height: 150px; }.diagram-detail label { font-size: 17px; }.diagram-list-row { font-size: 16px; padding: 11px; }.node-text { font-size: 18px; }.node-note,.edge-text { font-size: 13px; }.diagram-node { cursor: grab; }.diagram-node:active { cursor: grabbing; }.diagram-node:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }.diagram-edge { cursor: pointer; }.diagram-zoom { position: absolute; right: 15px; bottom: 15px; display: flex; align-items: center; gap: 14px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); font-size: 16px; }.diagram-zoom button { display: grid; place-items: center; width: 30px; height: 30px; }.diagram-zoom span { width: 50px; text-align: center; }.connect-form label { font-size: 16px; }
+@media(max-width:1200px) { .training-diagram { grid-template-columns: minmax(0,1fr); }.training-diagram .diagram-controls { grid-column: 1; grid-template-columns: 180px minmax(0,1fr); } }
+@media(max-width:650px) { .training-diagram .diagram-controls { grid-template-columns: minmax(0,1fr); }.diagram-preview svg { height: 360px; }.training-diagram .diagram-preview { min-height: 360px; } }
 </style>

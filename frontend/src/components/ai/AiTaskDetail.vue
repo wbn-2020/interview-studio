@@ -584,6 +584,7 @@ function routeFor(citation: AiCitation) { return aiSourceRoute(sourceFor(citatio
     <p v-if="sourceQaTask && !current && writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :disabled="!store.sessionActive || disabled || sourceQaChecking" :loading="writer.busy.value" @click="retryCommand">用原请求核对</NButton></p>
     <p v-if="!current && detail.isPending.value" class="loading-block" role="status">正在读取任务记录…</p><p v-if="detail.error.value" class="notice error" role="alert">{{ errorText(detail.error.value) }}<NButton text :disabled="blocked" @click="detail.refetch()">重新读取</NButton></p>
     <template v-if="current">
+      <div class="ai-task-main">
       <header class="detail-heading"><div><p class="section-label">{{ aiPurposeLabels[current.task.purpose] }} · {{ aiTaskStatusLabel(current.task.status, current.task.purpose) }}</p><h2>{{ current.task.title }}</h2><p class="field-help">{{ current.task.provider }} · {{ current.task.model }} · 创建于 {{ aiDate(current.task.createdAt) }}</p></div><NButton text size="small" @click="emit('close')">关闭</NButton></header>
       <AiDraftPreview :task-id="taskId" :attempt="draftAttempt" :task-status="current.task.status" :streaming="current.manifest.configuration.streaming" :disabled="disabled || !candidateVisible || currentEpoch !== store.sessionEpoch || current.task.id !== taskId" @refresh="detail.refetch()" />
       <p v-if="aiPendingStatuses.includes(current.task.status)" class="notice" role="status">{{ current.task.status === 'CANCEL_REQUESTED' ? '取消已请求，等待服务器记录最终状态。已发请求仍可能产生费用。' : '任务状态会自动更新，重新进入页面后可继续查看。' }}</p><p v-if="current.task.status === 'UNKNOWN'" class="notice">服务器无法确认这次调用的完整结果。请先检查尝试记录与账单；重新尝试会新增一次授权和费用预留。</p><p v-if="current.task.errorCode" class="field-help">任务状态说明：{{ current.task.errorCode }}</p><p v-if="(current.task.purpose === 'KNOWLEDGE_DRAFT' || current.task.purpose === 'QUESTION_DRAFT') && !current.sourcesCurrent" class="notice">{{ trainingDraft ? '当时固定的训练题面、所选原答片段或评价反馈当前不可用，不能采用或再次授权。原候选、人工改写与费用继续保留，仍可忽略候选。追加新答案本身不会替换历史来源。' : '知识、准备或资料来源当前不可用，或原授权已失效。这里保留当时的版本与摘录；需要新任务时请重新选择当前来源和预览。候选改写与费用记录继续保留。' }}</p><p v-if="current.task.purpose === 'ANSWER_EVALUATION' && !current.sourcesCurrent" class="notice">这份评价的确切输入当前不可用。请回到绑定提交核对记录，当前不能授权再次尝试。</p>
@@ -698,7 +699,15 @@ function routeFor(citation: AiCitation) { return aiSourceRoute(sourceFor(citatio
       <AiExpressionAdoption v-else-if="current.task.purpose === 'EXPRESSION_DRAFT' && current.expressionCandidate" :task="current" :disabled="disabled" :peer-locked="locked || reconcilingRefresh" @locked="adoptionLocked = $event" @refreshed="refreshCandidate" @received="receiveDecision" />
       <AiPreparationPlanAdoption v-else-if="current.task.purpose === 'PREPARATION_PLAN' && (current.preparationPlanCandidate || current.preparationPlanDecision)" :task="current" :disabled="disabled" :peer-locked="locked || reconcilingRefresh" @locked="adoptionLocked = $event" @refreshed="refreshCandidate" @received="receiveDecision" />
       <section class="saved-manifest"><header class="panel-heading"><h3>已授权的固定外发清单</h3><NButton size="small" @click="manifestOpen = !manifestOpen">{{ manifestOpen ? '收起清单' : '查看完整清单' }}</NButton></header><AiManifest v-if="manifestOpen" :manifest="current.manifest" /></section>
-      <AiAuthorizationScope v-if="!sourceQaTask" :task-id="current.task.id" :manifest="current.manifest" :disabled="disabled || writer.locked.value || !!deferred || adoptionLocked || reconcilingRefresh" @state="authorizationState.dirty = $event.dirty; authorizationState.locked = $event.locked" />
+      </div>
+      <aside class="ai-task-authorization" aria-label="本次授权">
+        <h3>本次授权</h3>
+        <p class="authorization-provider">{{ current.manifest.configuration.provider || '供应商未配置' }} · {{ current.manifest.configuration.model || '模型未配置' }}</p>
+        <dl><div><dt>用途</dt><dd>{{ aiPurposeLabels[current.task.purpose] }}</dd></div><div><dt>来源</dt><dd>{{ current.manifest.sources.length }} 条固定原文</dd></div></dl>
+        <ul class="authorization-sources"><li v-for="source in current.manifest.sources" :key="source.versionId"><strong>{{ source.title }}</strong><span>v{{ source.number }}</span></li></ul>
+        <p class="field-help">这里显示本任务已授权的固定范围；再次发送前仍须核对完整清单与费用。</p>
+        <AiAuthorizationScope v-if="!sourceQaTask" :task-id="current.task.id" :manifest="current.manifest" :disabled="disabled || writer.locked.value || !!deferred || adoptionLocked || reconcilingRefresh" @state="authorizationState.dirty = $event.dirty; authorizationState.locked = $event.locked" />
+      </aside>
     </template>
   </section>
   <AiAuthorizationScope v-if="sourceQaTask" source-qa :task-id="taskId" :manifest="current?.manifest" :manifest-hash="current?.sourceQaManifestHash"
@@ -722,4 +731,14 @@ function routeFor(citation: AiCitation) { return aiSourceRoute(sourceFor(citatio
 .plan-candidate-steps h4 { overflow-wrap: anywhere; } .plan-candidate-steps header > span { font-size: 12px; color: var(--muted); }
 .card-citations { display: grid; gap: 13px; min-width: 0; }.card-citations figure { display: grid; gap: 10px; margin: 0; border-top: 1px solid var(--line); padding-top: 13px; min-width: 0; }.card-citations blockquote { max-width: 75ch; line-height: 1.75; }.card-citations figcaption { font-size: 12px; overflow-wrap: anywhere; }
 @media (max-width: 700px) { .ai-detail { padding: 22px 17px; } h2 { font-size: 21px; } .attempt-card dl { grid-template-columns: 1fr; } .reconcile-panel, .retry-panel { padding: 15px; } }
+</style>
+
+<style scoped>
+.ai-detail { grid-template-columns: minmax(0, 1fr) 330px; padding: 0; gap: 18px; align-items: start; }
+.ai-task-main, .ai-task-authorization { min-width: 0; min-height: 710px; padding: 26px 23px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.ai-task-main { display: grid; gap: 23px; align-content: start; }.ai-task-main h2 { font-size: 27px; line-height: 1.5; }.ai-task-main h3 { font-size: 23px; }.ai-task-main h4 { font-size: 20px; }.attempt-card { padding: 20px; border-radius: 15px; }.attempt-card :is(dt,dd) { font-size: 16px; }.candidate-context { grid-template-columns: 100px minmax(0,1fr); }.candidate-context :is(dt,dd), .plan-copy { font-size: 18px; }
+.ai-task-authorization > h3 { font-size: 26px; margin: 0 0 25px; }.authorization-provider { padding: 18px; border-radius: 14px; background: var(--brand-soft); font-size: 18px; line-height: 1.7; }.ai-task-authorization > dl { display: grid; gap: 28px; padding-block: 25px; margin: 0; }.ai-task-authorization > dl > div { display: grid; grid-template-columns: 60px minmax(0,1fr); gap: 20px; }.ai-task-authorization :is(dt,dd) { font-size: 20px; margin: 0; }.authorization-sources { padding: 0 0 22px; list-style: none; margin: 0; display: grid; gap: 15px; }.authorization-sources li { display: flex; justify-content: space-between; gap: 15px; font-size: 18px; }.authorization-sources strong { font-weight: 400; overflow-wrap: anywhere; }.authorization-sources span { flex: none; color: var(--muted); }.ai-task-authorization :deep(.authorization-scope) { margin-top: 26px; padding-top: 25px; }.ai-task-authorization :deep(.authorization-scope h3) { font-size: 22px; line-height: 1.5; }
+.ai-detail > .notice { grid-column: 1/-1; }
+@media(max-width:1300px) { .ai-detail { grid-template-columns: minmax(0,1fr); }.ai-task-authorization { min-height: auto; } }
+@media(max-width:600px) { .ai-task-main, .ai-task-authorization { padding: 22px 18px; } }
 </style>

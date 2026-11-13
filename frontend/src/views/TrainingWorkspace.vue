@@ -9,6 +9,7 @@ import { trainingModeLabels, trainingStatusLabels } from '../api/training'
 import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
+import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 
 const TrainingSetup = defineAsyncComponent(() => import('../components/training/TrainingSetup.vue'))
 const TrainingSessionView = defineAsyncComponent(() => import('../components/training/TrainingSession.vue'))
@@ -46,11 +47,12 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 </script>
 
 <template>
-  <header class="page-heading"><div><p class="section-label">从独立作答到可追溯的记录</p><h1>文字训练</h1><p class="muted">固定题目与练习条件，明确保存草稿和提交答案。</p></div><NButton type="primary" :disabled="!canCreate" @click="create">＋ 新建训练</NButton></header>
-  <section v-if="access.active" class="training-active" aria-label="当前训练"><div><span class="field-help">当前训练</span><strong>{{ access.active.title }}</strong><p>{{ trainingModeLabels[access.active.mode] }} · {{ trainingStatusLabels[access.active.status] }} · {{ access.active.mode === 'LEARNING' ? '学习条件' : access.active.materialAccess ? '已授权资料查阅' : '尚未授权资料查阅' }}</p></div><NButton size="small" :disabled="access.checking" @click="open(access.active.id)">{{ selectedId === access.active.id && !creating ? '当前正在查看' : '返回当前训练' }}</NButton></section>
+  <header v-if="!selectedId || creating" class="page-heading"><div><h1>文字训练</h1><p class="muted">固定题目与练习条件，明确保存草稿和提交答案。</p></div><NButton type="primary" :disabled="!canCreate" @click="create">＋ 新建训练</NButton></header>
+  <WorkspaceTabs v-if="!selectedId || creating" area="practice" />
+  <section v-if="access.active && (!selectedId || creating)" class="training-active" aria-label="当前训练"><div><span class="field-help">当前训练</span><strong>{{ access.active.title }}</strong><p>{{ trainingModeLabels[access.active.mode] }} · {{ trainingStatusLabels[access.active.status] }} · {{ access.active.mode === 'LEARNING' ? '学习条件' : access.active.materialAccess ? '已授权资料查阅' : '尚未授权资料查阅' }}</p></div><NButton size="small" :disabled="access.checking" @click="open(access.active.id)">{{ selectedId === access.active.id && !creating ? '当前正在查看' : '返回当前训练' }}</NButton></section>
   <p v-if="access.checking" class="training-status-note field-help" role="status">正在核对当前训练及资料访问条件…</p><p v-if="access.error" class="training-status-note notice error" role="alert">{{ access.error }}<NButton text @click="access.refresh()">重新核对</NButton></p>
-  <div class="training-workspace">
-    <aside class="training-catalog" aria-label="训练记录列表">
+  <div class="training-workspace" :class="{ 'session-open': selectedId && !creating }">
+    <aside v-show="!selectedId || creating" class="training-catalog" aria-label="训练记录列表">
       <NSelect v-model:value="status" :options="statusOptions" clearable placeholder="全部状态" aria-label="筛选训练状态" />
       <p class="field-help catalog-guidance">预览、进行中与已结束记录分别保留；刷新后可继续读取服务器草稿。</p>
       <p v-if="list.isPending.value" class="loading-block" role="status">正在读取训练记录…</p>
@@ -82,4 +84,8 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 .training-welcome-notes { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 20px; font-size: 12px; }
 @media (max-width: 1100px) { .training-workspace { grid-template-columns: 220px minmax(0, 1fr); } }
 @media (max-width: 780px) { .training-workspace { grid-template-columns: 1fr; } .training-catalog { border-right: 0; border-bottom: 1px solid var(--line); border-radius: 8px 8px 0 0; } .training-session-list { max-height: 260px; overflow-y: auto; } .training-active { flex-wrap: wrap; } .training-welcome { padding: 38px 22px; } }
+</style>
+
+<style scoped>
+.training-workspace { max-width: none; border: 0; background: none; gap: 20px; }.training-catalog, .training-welcome { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }.training-session-list strong { font-size: 19px; }.training-session-list :is(span, small) { font-size: 15px; }.training-session-list > button { padding: 18px 14px; border-radius: 12px; gap: 10px; }.training-workspace.session-open { display: block; min-height: 0; }.training-workspace.session-open .session-back { padding: 0; margin: -14px 0 8px; justify-content: start; }.training-welcome { align-self: stretch; align-content: center; }.training-active strong { font-size: 21px; }.training-active p { font-size: 16px; }
 </style>

@@ -15,6 +15,8 @@ import { capabilityText, countText, copy, evidenceRoute, invalidGrowth, reviewed
 import GrowthTargetPicker from '../components/growth/GrowthTargetPicker.vue'
 import GrowthUseEditor from '../components/growth/GrowthUseEditor.vue'
 import GrowthNextSteps from '../components/growth/GrowthNextSteps.vue'
+import GrowthEvidenceMatrix from '../components/growth/GrowthEvidenceMatrix.vue'
+import RIcon from '../replica/RIcon.vue'
 
 type TargetChoice = { ref: g.TargetRef; title: string; number: number }
 type Tab = 'evidence' | 'activity' | 'sources' | 'coverage' | 'next'
@@ -88,12 +90,13 @@ function loadUses(cursor?: string) {
     useCursors.add(cursor); return { ...next, items: [...new Map([...(previous?.items ?? []), ...next.items].map(item => [item.use.id, item])).values()] }
   } : undefined)
 }
-function loadTab() { if (!readable.value) return; if (tab.value === 'evidence') loadEvidence(); if (tab.value === 'activity') loadActivity(); if (tab.value === 'sources') loadSources(); if (tab.value === 'coverage') { loadCoverage(); loadUses() } }
+function loadTab() { if (!readable.value) return; if (tab.value === 'evidence') { loadEvidence(); loadCoverage(); loadUses() } if (tab.value === 'activity') loadActivity(); if (tab.value === 'sources') loadSources(); if (tab.value === 'coverage') { loadCoverage(); loadUses() } }
 function selectTab(value: Tab): boolean {
   if (!readable.value) return false
   if (value === tab.value) return true
   // 子页持有未决写请求时保留可见恢复入口，不能通过外层标签绕过原请求核对。
-  if (tab.value === 'next' && !store.canLeave(['today-placement-editor', 'growth-next-step-preference'])) return false
+  if (!store.canLeave(['today-placement-editor', 'growth-next-step-preference'])) return false
+  if (value === 'evidence') { useStatus.value = null; requirementId.value = null }
   tab.value = value
   return true
 }
@@ -137,10 +140,10 @@ onUnmounted(() => { alive = false; topicGeneration.value++; unsubscribe?.(); if 
 
 <template>
   <main class="growth-workspace">
-    <header class="growth-heading"><div><h1>成长</h1><p>从确切记录看见进展，也保留尚未验证的条件。</p></div><NButton :disabled="!readable" @click="refresh">重新读取</NButton></header>
+    <header class="page-heading growth-heading"><div><h1>成长</h1><p class="muted">证据目录 · {{ applied.target ? `按 ${applied.target.title} 筛选` : '全部目标' }}</p></div><div class="row-actions"><NButton :disabled="!readable" @click="picker = !picker"><RIcon name="target" />{{ input.target?.title || '选择目标' }}</NButton><NButton :disabled="!readable" @click="refresh"><RIcon name="refresh-cw" />刷新</NButton></div></header>
     <p v-if="!readable" class="notice" role="status">成长资料暂不可读，请完成当前训练资料访问确认或恢复会话。</p>
     <div v-show="readable" :inert="!readable || undefined" class="growth-content">
-      <form class="growth-filters" @submit.prevent="applyFilters">
+      <details class="growth-filter-details"><summary>筛选范围与统计口径</summary><form class="growth-filters" @submit.prevent="applyFilters">
         <label>起始日期<input v-model="input.from" type="date" :disabled="!readable" /></label><label>结束日期<input v-model="input.to" type="date" :disabled="!readable" /></label>
         <label>显示时区<NInput v-model:value="input.zoneId" :maxlength="100" :disabled="!readable" /></label>
         <label>目标版本<NButton :disabled="!readable" @click="picker = !picker">{{ input.target ? `${input.target.title} · v${input.target.number}` : '全部目标 · 选择确切版本' }}</NButton></label>
@@ -148,21 +151,26 @@ onUnmounted(() => { alive = false; topicGeneration.value++; unsubscribe?.(); if 
         <label>考察项<NSelect v-model:value="input.dimension" :options="dimensionOptions" clearable :disabled="!readable" placeholder="全部考察项" /></label>
         <div class="filter-switches"><NCheckbox v-model:checked="input.linked" :disabled="!readable || !input.target">包含有效跨目标关联</NCheckbox><NCheckbox v-model:checked="input.classified" :disabled="!readable">包含当前主题分类</NCheckbox></div>
         <div class="row-actions"><NButton attr-type="submit" type="primary" :disabled="!readable">应用筛选</NButton><NButton v-if="input.target" :disabled="!readable" @click="input.target = null; input.linked = false">清除目标</NButton></div>
-      </form>
-      <GrowthTargetPicker v-if="picker" :disabled="!readable" @choose="input.target = $event; picker = false" />
+      </form></details>
+      <GrowthTargetPicker v-if="picker" :disabled="!readable" @choose="input.target = $event; applyFilters()" />
       <p v-if="filterProblem || topicsError" class="notice error" role="alert">{{ filterProblem || topicsError }}</p>
-      <p class="field-help">留空日期使用服务器默认范围。活动始终按发生时记录的目标统计；跨目标复用只影响证据发现。当前来源处理与下一步不受活动日期范围影响。</p>
+      <div class="growth-layout">
+      <aside class="growth-directions" aria-label="目标方向"><h2>目标方向</h2><button v-for="(dimension, index) in dimensionOptions" :key="dimension.value" :class="{ selected: applied.dimension === dimension.value }" :disabled="!readable" @click="input.dimension = dimension.value; applyFilters()"><RIcon :name="['chart-no-axes-column','settings','box','briefcase'][index % 4]!" />{{ dimension.label }}<RIcon name="chevron-right" :size="18" /></button><button :class="{ selected: !applied.dimension }" :disabled="!readable" @click="input.dimension = null; applyFilters()">全部方向</button><hr /><h2>证据类型</h2><button v-for="option in kindOptions" :key="option.value" :class="{ selected: kind === option.value }" :disabled="!readable" @click="selectEvidenceKind(option.value)"><RIcon name="file-text" :size="20" />{{ option.label }}</button></aside>
+      <div class="growth-primary">
       <NSkeleton v-if="overview.busy.value" text :repeat="3" />
       <p v-if="overview.error.value" class="notice error" role="alert">{{ g.growthErrorText(overview.error.value) }}</p>
-      <section v-if="overview.data.value" class="growth-overview" aria-label="记录总览">
+      <details v-if="overview.data.value" class="growth-overview" aria-label="记录总览"><summary>记录总览与统计限制</summary>
         <p class="field-help">{{ overview.data.value.scope.window.from }} 至 {{ overview.data.value.scope.window.to }} · {{ applied.zoneId }} · 核对于 {{ time(overview.data.value.context.checkedAt) }}</p>
         <div class="kind-summary"><button v-for="group in overview.data.value.evidenceGroups" :key="group.kind" type="button" :disabled="!readable" @click="selectEvidenceKind(group.kind)"><span>{{ g.evidenceKindLabels[group.kind] }}</span><strong>{{ countText(group.count) }}</strong><small>{{ group.scanLimited ? '已达扫描上限' : capabilityText(group.capability) }}</small></button></div>
         <div class="coverage-counts" aria-label="当前来源处理汇总"><span v-for="item in overview.data.value.sourceProgress.counts" :key="item.disposition">{{ g.sourceDispositionLabels[item.disposition] }}：{{ countText(item.count) }}</span></div>
         <p v-if="overview.data.value.emptyState === 'RECOLLECTION_ONLY'" class="notice">当前范围只有面后回忆；回忆不等同于当时的正式原答。</p><p v-else-if="overview.data.value.emptyState === 'NO_RECORD'" class="notice">当前范围未查到记录。可以从正式训练、复盘或主动回忆开始积累。</p><p v-else-if="overview.data.value.emptyState === 'UNKNOWN'" class="notice">有来源尚未完整核对，暂不能判断当前范围没有记录。</p>
         <details><summary>统计口径与限制</summary><ul><li v-for="item in overview.data.value.limitations" :key="item">{{ g.growthLimitationLabels[item] }}</li></ul></details>
-      </section>
+      </details>
       <nav class="growth-tabs" aria-label="成长工作区"><NButton v-for="item in tabs" :key="item.value" :type="tab === item.value ? 'primary' : 'default'" :disabled="!readable" @click="selectTab(item.value)">{{ item.label }}</NButton></nav>
       <section v-show="tab === 'evidence'" class="growth-section">
+        <GrowthEvidenceMatrix :coverage="coverage.data.value" :uses="uses.data.value" :scope="overview.data.value?.scope" :level="level" :flag="flag" :busy="overview.busy.value || coverage.busy.value || uses.busy.value" :zone-id="applied.zoneId" @open="openEvidence" @choose-target="picker = true" />
+        <p v-if="coverage.error.value || uses.error.value" class="notice error">{{ g.growthErrorText(coverage.error.value || uses.error.value) }}</p>
+        <details class="growth-evidence-directory"><summary>确切证据记录 · {{ g.evidenceKindLabels[kind] }}</summary>
         <header><h2>证据目录</h2><div class="compact-filters"><NSelect v-model:value="kind" :options="kindOptions" aria-label="证据类型" /><NSelect v-model:value="level" :options="levelOptions" clearable placeholder="全部记录层级" aria-label="记录层级" /><NSelect v-model:value="flag" :options="flagOptions" clearable placeholder="全部复核状态" aria-label="复核状态" /></div></header>
         <NSkeleton v-if="evidence.busy.value" text :repeat="3" /><p v-if="evidence.error.value" class="notice error" role="alert">{{ g.growthErrorText(evidence.error.value) }} <NButton text @click="loadEvidence()">从首页重读</NButton></p>
         <template v-if="evidence.data.value"><p class="field-help">{{ capabilityText(evidence.data.value.capability) }} · {{ countText(evidence.data.value.count) }} 条{{ evidence.data.value.scanLimited ? ' · 扫描达到上限，仍可继续分页' : '' }}</p>
@@ -171,6 +179,7 @@ onUnmounted(() => { alive = false; topicGeneration.value++; unsubscribe?.(); if 
           <p v-if="!evidence.data.value.items.length" class="notice">{{ evidence.data.value.nextCursor ? '本页没有匹配项，仍有后续候选可继续核对。' : evidence.data.value.capability.status === 'READY' ? '当前读取范围没有匹配条目。' : '此来源暂未返回可展示条目，数量未知。' }}</p>
           <NButton v-if="evidence.data.value.nextCursor" :loading="evidence.busy.value" @click="loadEvidence(evidence.data.value.nextCursor)">继续读取</NButton>
         </template>
+        </details>
       </section>
       <section v-show="tab === 'activity'" class="growth-section">
         <header><h2>活动记录</h2><NSelect v-model:value="grain" :options="[{label:'按日',value:'DAY'},{label:'按周',value:'WEEK'}]" class="small-select" aria-label="活动粒度" /></header><p class="field-help">{{ g.activityMetrics.length }} 项指标保持各自口径。卡片与题目去重数不能直接累加；下界表示至少已核对这些记录。</p><p class="field-help">受审观察的首次录入与后续修订／撤回分别计为事件。维护记录不增加回答次数、独立复练数或训练时长。</p>
@@ -191,7 +200,9 @@ onUnmounted(() => { alive = false; topicGeneration.value++; unsubscribe?.(); if 
         <p v-if="uses.error.value" class="notice error" role="alert">{{ g.growthErrorText(uses.error.value) }} <NButton text @click="loadUses()">从首页重读</NButton></p><NSkeleton v-if="uses.busy.value" text :repeat="2" />
         <template v-if="uses.data.value"><article v-for="entry in uses.data.value.items" :key="entry.use.id" class="evidence-row"><div><h3>{{ entry.evidence.summary?.title ?? '来源当前不可用' }}</h3><p>{{ g.coverageLabels[entry.use.coverage] }} · {{ g.effectiveUseStateLabels[entry.effectiveState] }}</p><p class="field-help">{{ entry.requirement.text }} · 关联修订 {{ entry.use.revision }}<template v-if="entry.use.evidence.kind === 'REVIEWED_OBSERVATION'"> · 固定引用观察修订 {{ entry.use.evidence.revision }}</template></p><p v-if="entry.evidence.summary?.conditions.kind === 'REVIEWED_OBSERVATION'" class="field-help">{{ reviewedEvidenceStatus(entry.evidence.summary) }}</p></div><NButton size="small" @click="editUse(entry)">查看、修改或恢复</NButton></article><p v-if="!uses.data.value.items.length" class="notice">这个目标版本下尚无匹配的个人关联。可从证据目录选取确切记录。</p><NButton v-if="uses.data.value.nextCursor" :loading="uses.busy.value" @click="loadUses(uses.data.value.nextCursor)">继续读取关联</NButton></template>
       </section>
-      <GrowthNextSteps v-show="tab === 'next'" :disabled="!readable || tab !== 'next'" :zone-id="applied.zoneId" :target="applied.target?.ref" :refresh="refreshRound" @changed="refresh" />
+      </div>
+      <aside v-show="tab === 'evidence' || tab === 'next'" class="growth-suggestions"><GrowthNextSteps :disabled="!readable || (tab !== 'next' && tab !== 'evidence')" :zone-id="applied.zoneId" :target="applied.target?.ref" :refresh="refreshRound" @changed="refresh" /></aside>
+      </div>
       <GrowthUseEditor v-if="editorIntent" v-show="editorOpen" :disabled="!readable || !editorOpen" :intent="editorIntent" @changed="refresh" @close="closeEditor" />
       <p v-if="notice" class="notice" role="status">{{ notice }}</p>
     </div>
@@ -201,4 +212,15 @@ onUnmounted(() => { alive = false; topicGeneration.value++; unsubscribe?.(); if 
 <style scoped>
 .reviewed-metadata { display:grid; grid-template-columns:120px minmax(0,1fr); gap:8px 12px; margin:14px 0 0; max-width:85ch; }.reviewed-metadata dt { color:var(--muted); }.reviewed-metadata dd { margin:0; overflow-wrap:anywhere; line-height:1.6; }@media(max-width:560px) { .reviewed-metadata { grid-template-columns:1fr; gap:4px; }.reviewed-metadata dd { margin-bottom:8px; } }
 .growth-workspace,.growth-content,.growth-section,.growth-overview { display:grid; gap:20px; min-width:0; }.growth-workspace { padding:30px; }.growth-heading,.growth-section>header { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; }.growth-heading p { color:var(--muted); margin-top:9px; }.growth-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; padding:20px; background:var(--surface); border:1px solid var(--line); border-radius:7px; }label { display:grid; gap:7px; font-size:12px; color:var(--muted); }input { width:100%; min-height:34px; padding:5px 10px; border:1px solid var(--line); border-radius:4px; color:var(--ink); background:var(--surface); }.filter-switches { display:flex; gap:16px; flex-wrap:wrap; grid-column:1/-1; }.kind-summary { display:flex; flex-wrap:wrap; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }.kind-summary button { flex:1 1 180px; display:grid; gap:7px; text-align:left; padding:15px 12px; }.kind-summary strong { font-size:20px; }.kind-summary small { color:var(--muted); }.growth-tabs,.row-actions { display:flex; gap:8px; flex-wrap:wrap; }.growth-tabs { padding-bottom:16px; border-bottom:1px solid var(--line); }.compact-filters { display:flex; gap:10px; flex-wrap:wrap; }.compact-filters>* { width:190px; }.growth-section h2 { font-size:21px; }.evidence-row { display:flex; gap:18px; justify-content:space-between; align-items:start; padding:18px 0; border-bottom:1px solid var(--line); }.evidence-row>div:first-child { min-width:0; display:grid; gap:7px; }.evidence-row>.row-actions { flex:none; }.requirement-row { display:grid; gap:12px; padding:18px 0; border-bottom:1px solid var(--line); }.requirement-row>button { justify-self:start; }.coverage-counts { display:flex; gap:10px 20px; flex-wrap:wrap; font-size:12px; }.table-scroll { overflow:auto; border:1px solid var(--line); border-radius:6px; background:var(--surface); }table { width:100%; border-collapse:collapse; font-size:13px; text-align:left; }caption { text-align:left; padding:15px; font-weight:600; }th,td { border-top:1px solid var(--line); padding:11px 14px; }th { font-weight:550; }thead { background:var(--surface-soft); }td { font-variant-numeric:tabular-nums; }.small-select { width:110px; }.medium-select,.metric-picker { width:min(100%,340px); }details { font-size:12px; }summary { cursor:pointer; color:var(--muted); }pre { max-height:260px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; background:var(--surface-soft); padding:12px; }.identity { overflow-wrap:anywhere; font-family:Consolas,monospace; font-size:12px; }.field-help { overflow-wrap:anywhere; }@media(max-width:900px) { .growth-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }.growth-workspace { padding:22px; }.evidence-row { flex-direction:column; } }@media(max-width:560px) { .growth-filters { grid-template-columns:1fr; }.growth-workspace { padding:16px; }.compact-filters>* { width:100%; }.kind-summary button { flex-basis:140px; } }
+</style>
+
+<style scoped>
+.growth-workspace { padding: 0; gap: 18px; }.growth-heading { margin: 0; }.growth-filter-details > summary { font-size: 16px; }.growth-filter-details[open] .growth-filters { margin-top: 15px; border-radius: 18px; }.growth-filters label { font-size: 16px; }
+.growth-layout { display: grid; grid-template-columns: 225px minmax(0,1fr) 350px; gap: 16px; align-items: start; }
+.growth-directions { min-height: 615px; padding: 25px 11px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.growth-directions h2 { padding: 0 10px; font-size: 23px; margin: 0 0 19px; }.growth-directions button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 12px; border-radius: 13px; font-size: 19px; text-align: left; }.growth-directions button > svg:last-child { margin-left: auto; }.growth-directions button.selected { background: var(--brand-soft); color: var(--brand-strong); }.growth-directions hr { border: 0; height: 1px; background: var(--line); margin: 25px 10px; }
+.growth-primary { display: grid; gap: 18px; min-width: 0; }.growth-overview { display: block; border: 1px solid var(--line); border-radius: 13px; padding: 13px 18px; background: var(--surface); }.growth-overview > summary { font-size: 16px; }.growth-overview[open] > :not(summary) { margin-top: 15px; }.growth-tabs { padding: 0; gap: 7px; border: 0; }.growth-tabs :deep(.n-button) { font-size: 15px; border-radius: 22px; padding-inline: 13px; }.growth-section { gap: 18px; }.growth-evidence-directory { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); padding: 18px; }.growth-evidence-directory > summary { font-size: 18px; }.growth-evidence-directory[open] > :not(summary) { margin-top: 18px; }.growth-section > h2 { font-size: 25px; }
+.growth-suggestions { min-width: 0; padding: 25px 15px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-height: 615px; }.growth-suggestions :deep(.growth-next-steps) { gap: 15px; }.growth-suggestions :deep(.growth-next-steps > header) { padding: 0 4px 18px; border-bottom: 1px solid var(--line); }.growth-suggestions :deep(h2) { font-size: 25px; }.growth-suggestions :deep(.next-row) { display: grid; padding: 19px 14px; gap: 12px; border: 1px solid var(--line); border-radius: 16px; }.growth-suggestions :deep(.next-row h3) { font-size: 21px; line-height: 1.6; }.growth-suggestions :deep(.next-row p) { font-size: 16px; line-height: 1.7; }.growth-suggestions :deep(.next-row .row-actions) { justify-content: end; }.growth-suggestions :deep(.next-row .n-button) { border-radius: 24px; }.growth-suggestions :deep(.preference-directory) { font-size: 15px; }
+.evidence-row h3 { font-size: 21px; }.growth-section table { font-size: 17px; }.growth-section .table-scroll { border-radius: 15px; }
+@media(max-width:1350px) { .growth-layout { grid-template-columns: 210px minmax(0,1fr); }.growth-suggestions { grid-column: 2; min-height: auto; } }
+@media(max-width:900px) { .growth-layout { grid-template-columns: minmax(0,1fr); }.growth-directions { min-height: auto; }.growth-directions button { display: inline-flex; width: auto; }.growth-suggestions { grid-column: 1; }.growth-workspace { padding: 0; } }
 </style>

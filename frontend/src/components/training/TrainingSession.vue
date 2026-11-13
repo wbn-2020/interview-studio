@@ -352,6 +352,9 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
     <template v-if="current">
       <header class="session-heading"><p class="section-label">{{ trainingModeLabels[current.mode] }} · {{ trainingStatusLabels[current.status] }}</p><h2>{{ current.title }}</h2><p class="field-help">创建于 {{ date(current.createdAt) }}{{ current.startedAt ? ` · 开始于 ${date(current.startedAt)}` : '' }}{{ current.endedAt ? ` · 结束于 ${date(current.endedAt)}` : '' }}</p></header>
       <p class="field-help" role="status">{{ aiUpdates.message }}</p>
+      <div class="session-workbench">
+      <aside class="session-control-sidebar" aria-label="本场训练条件与操作">
+      <h3 class="session-sidebar-title">条件</h3>
       <div class="session-conditions"><span>{{ current.mode === 'LEARNING' ? '学习条件' : current.materialAccess ? '已确认辅助条件' : '尚未确认站内辅助' }}</span><span><template v-if="mainQuestions.length > replayQuestions.length">{{ mainQuestions.length - replayQuestions.length }} 道主问 · </template><template v-if="replayQuestions.length">{{ replayQuestions.length }} 道同题复练 · </template>{{ current.questions.length - mainQuestions.length }} 道追问</span><span>{{ current.config.timeBudgetMinutes ? `时间预算 ${current.config.timeBudgetMinutes} 分钟` : '未设时间预算' }}</span></div>
       <p class="field-help">资料条件用于记录训练背景。系统只能记录站内操作，不能判断你此前记住、复制或在站外看过的内容。</p>
       <p v-if="message" class="notice" role="status">{{ message }}</p><p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :loading="writer.busy.value" :disabled="!store.sessionActive || questionsLocked" @click="retry">用原请求重试</NButton><NButton v-else text :disabled="!store.sessionActive" @click="refreshSession">刷新训练状态</NButton></p><p v-if="deferredReceipt" class="notice" role="status">服务器已确认的结果在会话变化后到达。<NButton text :disabled="!store.sessionActive" @click="receiveDeferred">接收已确认结果</NButton></p>
@@ -382,6 +385,8 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
         </div>
       </section>
 
+      </aside>
+      <div class="session-answer-stage">
       <section v-if="current.status === 'ENDED'" class="evaluation-coverage" aria-label="最新提交评价覆盖">
         <header class="panel-heading"><h3>本场评价覆盖</h3><NButton size="small" :disabled="!store.sessionActive" @click="evaluationCoverage.refetch()">刷新</NButton></header>
         <p class="field-help">逐题统计最新提交，旧修订报告保留在该题任务记录中。成功表示报告已生成，不能据此判断技术正确或能力。</p>
@@ -412,6 +417,8 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
       </section>
 
       <section class="events-panel"><header class="panel-heading"><h3>训练过程记录</h3><NButton size="small" @click="eventsOpen = !eventsOpen">{{ eventsOpen ? '收起记录' : '查看记录' }}</NButton></header><template v-if="eventsOpen"><p v-if="events.isPending.value" class="field-help" role="status">正在读取过程记录…</p><p v-if="events.error.value" class="notice error" role="alert">{{ errorText(events.error.value) }}<NButton text @click="events.refetch()">重试</NButton></p><ol class="events-list"><li v-for="event in events.data.value?.items" :key="event.id"><div><strong>{{ eventLabels[event.kind] }}</strong><time>{{ date(event.createdAt) }}</time></div><p>{{ event.detail }}{{ event.durationSeconds !== null ? ` · ${formatTrainingDuration(event.durationSeconds)}` : '' }}</p><span v-if="event.questionId" class="field-help">{{ current.questions.find(question => question.id === event.questionId)?.title || '题目记录' }}</span></li></ol><div v-if="eventCursors.length || events.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!eventCursors.length" @click="eventBefore = eventCursors.pop()">上一页</NButton><NButton size="small" :disabled="events.data.value?.nextCursor == null" @click="nextEvents">下一页</NButton></div></template></section>
+      </div>
+      </div>
     </template>
   </section>
 </template>
@@ -445,4 +452,9 @@ h3 { margin: 0; font-size: 16px; } h4 { font-size: 14px; margin: 0; }
 .question-buttons button.followup { margin-left: 15px; border-left-width: 3px; }
 .events-list { display: grid; gap: 15px; list-style: none; margin: 0; padding: 0; } .events-list li { border-bottom: 1px solid var(--line); padding-bottom: 13px; } .events-list li > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; } .events-list time { color: var(--muted); font-size: 12px; } .events-list p { margin: 8px 0; font-size: 13px; overflow-wrap: anywhere; }
 @media (max-width: 800px) { .training-session { padding: 18px 17px 26px; } .session-heading h2 { font-size: 22px; } .question-buttons { grid-template-columns: 1fr; } .timing-grid { grid-template-columns: 1fr; gap: 11px; } .timing-grid > div { display: flex; justify-content: space-between; } .checklist { grid-template-columns: repeat(2, 1fr); } .events-list li > div { flex-wrap: wrap; } }
+</style>
+
+<style scoped>
+.training-session { padding: 0; gap: 16px; }.session-heading { gap: 6px; }.session-heading h2 { font-size: 29px; }.session-workbench { display: grid; grid-template-columns: minmax(0,1fr) 302px; gap: 20px; align-items: start; }.session-control-sidebar { grid-column: 2; grid-row: 1; display: grid; gap: 20px; padding: 25px 23px; border: 1px solid var(--line); border-radius: 21px; background: linear-gradient(115deg,#ffffff04,transparent),var(--surface); min-width: 0; }.session-answer-stage { grid-column: 1; grid-row: 1; min-width: 0; display: grid; gap: 20px; }.session-sidebar-title { font-size: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }.session-control-sidebar .session-conditions { display: grid; gap: 13px; }.session-control-sidebar .session-conditions span { font-size: 17px; padding: 9px 12px; border-radius: 11px; }.session-control-sidebar > .row-actions { display: grid; gap: 12px; }.timing-grid { grid-template-columns: 1fr; }.timing-grid > div { display: flex; align-items: center; justify-content: space-between; }.timing-grid strong { font-size: 23px; }.timing-grid span { font-size: 15px; }.context-panel .panel-heading { flex-wrap: wrap; }.context-panel h3 { font-size: 20px; }.session-control-sidebar :is(.assistance-panel,.end-panel,.ended-panel,.preview-confirm) { padding: 18px 12px; }.checklist { grid-template-columns: repeat(2,1fr); }.questions-panel { border: 0; padding: 0; gap: 20px; }.question-navigation { padding: 15px 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }.question-buttons { display: flex; overflow-x: auto; padding-bottom: 3px; }.question-buttons button { min-width: 190px; max-width: 350px; flex: 1; border-radius: 12px; padding: 12px 15px; }.question-buttons strong { font-size: 16px; }.question-buttons span { font-size: 13px; }.knowledge-panel,.events-panel { border: 1px solid var(--line); border-radius: 18px; padding: 20px; background: var(--surface); }.knowledge-panel h3,.events-panel h3 { font-size: 21px; }
+@media(max-width:1150px) { .session-workbench { grid-template-columns: minmax(0,1fr) 260px; }.session-control-sidebar { padding: 20px 16px; } }@media(max-width:800px) { .session-workbench { display: flex; flex-direction: column; }.session-answer-stage,.session-control-sidebar { width: 100%; }.session-control-sidebar { order: 2; }.session-control-sidebar .row-actions { display: flex; } }
 </style>

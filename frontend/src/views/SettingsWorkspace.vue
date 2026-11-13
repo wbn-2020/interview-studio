@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
-import { NButton, NCheckbox, NInput, NInputNumber, NSelect } from 'naive-ui'
+import { NButton, NCheckbox, NInput, NInputNumber } from 'naive-ui'
 import { ApiError, currentTrainingAccessEpoch, errorText } from '../api/client'
 import { defaultPreferences, formatPreferenceBytes, preferenceMotions, preferenceReceiptValid, preferenceThemes,
   readPreferences, readPreferenceUsage, samePreferences, savePreferencesProblem } from '../api/preferences'
@@ -9,6 +9,7 @@ import { useCommand } from '../composables/useCommand'
 import { usePreferencesStore } from '../state/preferences'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
+import RIcon from '../replica/RIcon.vue'
 
 type Draft = Omit<SavePreferences, 'expectedRevision' | 'fontSize' | 'contentWidth'> & { fontSize: number | null; contentWidth: number | null }
 const workspace = useWorkspaceStore(), access = useTrainingAccessStore(), preferences = usePreferencesStore(), writer = useCommand()
@@ -163,13 +164,14 @@ function displayTime(value: string) { return preferences.formatDate(value) }
 <template>
   <section class="preferences-workspace" aria-labelledby="preferences-title">
     <header class="page-heading">
-      <div><h1 id="preferences-title">个人设置</h1><p class="muted">调整阅读与工作习惯，查看个人工作区用量。</p></div>
+      <div><h1 id="preferences-title">设置</h1></div>
       <span v-if="baseline && readable" class="status-pill">设置修订 {{ baseline.revision }}{{ dirty ? ' · 有未保存修改' : '' }}</span>
     </header>
     <p v-if="!readable" class="notice" role="status">设置暂不可读取。恢复会话或训练访问条件后继续；当前输入与未决请求保留。</p>
     <div v-show="readable" :inert="!readable || undefined" class="preferences-content">
-      <section class="preference-section" aria-labelledby="appearance-title">
-        <header><div><h2 id="appearance-title">显示与阅读</h2><p class="field-help">保存后应用到当前工作台。系统主题变化会自动跟随。</p></div><NButton text :disabled="blocked" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></header>
+      <nav class="settings-directory" aria-label="设置分类"><a class="selected" href="#appearance-title"><RIcon name="sun" :size="28" />外观与数据</a><a href="#preference-reading"><RIcon name="book-open" :size="28" />阅读与写作</a><a href="#preference-motion"><RIcon name="zap" :size="28" />动效</a><a href="#preference-timezone"><RIcon name="clock" :size="28" />时区</a><a href="#preference-recovery"><RIcon name="refresh-cw" :size="28" />保存与恢复</a><RouterLink to="/settings/data"><RIcon name="upload" :size="28" />导入 / 导出</RouterLink><a href="#usage-title"><RIcon name="chart-no-axes-combined" :size="28" />数据用量</a><RouterLink to="/ai/authorizations"><RIcon name="shield-check" :size="28" />安全与授权</RouterLink></nav>
+      <section class="preference-section preference-appearance" aria-labelledby="appearance-title">
+        <header><div><h2 id="appearance-title"><RIcon name="sun" :size="30" />外观</h2></div><NButton text :disabled="blocked" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></header>
         <p v-if="!baseline && reading" class="notice" role="status">正在读取个人设置…</p>
         <p v-if="settingsError" class="notice error" role="alert">{{ settingsError }}</p>
         <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }} <NButton v-if="writer.pending.value" text :disabled="!readable || writer.busy.value" :loading="writer.busy.value" @click="retry">用原请求重试</NButton></p>
@@ -177,10 +179,11 @@ function displayTime(value: string) { return preferences.formatDate(value) }
         <p v-if="needsReview || stale" class="notice" role="status">设置修订或访问条件已变化，输入已保留。请读取服务器设置后，选择保留输入或采用服务器值。</p>
         <template v-if="baseline">
           <div class="preference-fields">
-            <label><span>主题</span><NSelect :value="draft.theme" :options="preferenceThemes" :disabled="!editable" aria-label="工作台主题" @update:value="updateTheme" /></label>
-            <label><span>动态效果</span><NSelect :value="draft.motion" :options="preferenceMotions" :disabled="!editable" aria-label="动态效果偏好" @update:value="updateMotion" /><small class="field-help">系统要求减少动态效果时，始终尊重系统设置。</small></label>
-            <label><span>阅读字号（像素）</span><NInputNumber :value="draft.fontSize" :min="12" :max="24" :step="1" :precision="0" :disabled="!editable" aria-label="阅读字号" @update:value="updateNumber('fontSize', $event)" /></label>
-            <label><span>工作区最大宽度（像素）</span><NInputNumber :value="draft.contentWidth" :min="720" :max="1600" :step="40" :precision="0" :disabled="!editable" aria-label="工作区最大宽度" @update:value="updateNumber('contentWidth', $event)" /><small class="field-help">小屏幕始终按可用空间缩小，不强制横向撑开。</small></label>
+            <div class="preference-control"><span>主题外观</span><div class="settings-segment" role="group" aria-label="工作台主题"><button v-for="option in [{ value: 'SYSTEM', label: '跟随系统', icon: 'monitor' }, { value: 'DARK', label: '深色', icon: 'moon' }, { value: 'LIGHT', label: '浅色', icon: 'sun' }]" :key="option.value" :class="{ selected: draft.theme === option.value }" :aria-pressed="draft.theme === option.value" :disabled="!editable" @click="updateTheme(option.value)"><RIcon :name="option.icon" :size="23" />{{ option.label }}</button></div></div>
+            <div class="preference-control"><span>内容宽度</span><div class="settings-segment" role="group" aria-label="工作区宽度"><button v-for="option in [{ value: 960, label: '舒适' }, { value: 1280, label: '宽' }, { value: 1600, label: '全宽' }]" :key="option.value" :class="{ selected: draft.contentWidth === option.value }" :aria-pressed="draft.contentWidth === option.value" :disabled="!editable" @click="updateNumber('contentWidth', option.value)">{{ option.label }}</button></div></div>
+            <div id="preference-reading" class="preference-control"><span>正文字号</span><div class="settings-segment" role="group" aria-label="阅读字号"><button v-for="size in [15,16,17]" :key="size" :class="{ selected: draft.fontSize === size }" :aria-pressed="draft.fontSize === size" :disabled="!editable" @click="updateNumber('fontSize',size)">{{ size }}</button></div></div>
+            <div id="preference-motion" class="preference-control"><span>动效</span><div><div class="settings-segment" role="group" aria-label="动态效果偏好"><button v-for="option in preferenceMotions" :key="option.value" :class="{ selected: draft.motion === option.value }" :aria-pressed="draft.motion === option.value" :disabled="!editable" @click="updateMotion(option.value)">{{ option.label }}</button></div><p class="field-help">系统要求减少动态效果时，始终尊重系统设置。</p></div></div>
+            <details class="settings-exact-values"><summary>精确字号与宽度</summary><label>阅读字号（12–24）<NInputNumber :value="draft.fontSize" :min="12" :max="24" :step="1" :precision="0" :disabled="!editable" @update:value="updateNumber('fontSize',$event)" /></label><label>最大宽度（720–1600）<NInputNumber :value="draft.contentWidth" :min="720" :max="1600" :step="40" :precision="0" :disabled="!editable" @update:value="updateNumber('contentWidth',$event)" /></label></details>
           </div>
           <div class="preference-reading-sample" :style="{ fontSize: `${draft.fontSize ?? 14}px` }"><strong>阅读预览</strong><p>把面试中的问题整理为自己的知识，在下一次回答中验证理解。</p></div>
           <div class="preference-timezone">
@@ -188,7 +191,7 @@ function displayTime(value: string) { return preferences.formatDate(value) }
             <NButton :disabled="!editable" @click="chooseBrowserZone">使用浏览器时区</NButton>
             <p class="field-help">用于设置与用量记录的时间显示；不会移动历史 UTC 时刻。回忆排程的复习日时区请在回忆设置中单独维护。</p>
           </div>
-          <div class="preference-recovery">
+          <div id="preference-recovery" class="preference-recovery">
             <h3>保存与恢复提醒</h3>
             <NCheckbox :checked="draft.saveRecoveryNotice" :disabled="!editable" @update:checked="updateNotice">显示全局待保存与未决请求提醒</NCheckbox>
             <p class="field-help">各编辑器仍需按原流程明确保存。开启提醒不代表自动保存或刷新恢复；关闭提醒也不关闭离开页面时的草稿与未决请求保护。</p>
@@ -203,8 +206,8 @@ function displayTime(value: string) { return preferences.formatDate(value) }
           <div class="row-actions"><NButton :disabled="blocked || !readReady" @click="adoptServer(true)">保留输入，采用服务器修订</NButton><NButton :disabled="blocked || !readReady || (dirty && !replaceConfirmed)" @click="adoptServer(false)">采用服务器设置</NButton></div>
         </section>
       </section>
-      <section class="preference-section" aria-labelledby="usage-title">
-        <header><div><h2 id="usage-title">工作区用量</h2><p class="field-help">只读取数量与配额信息，包含归档对象和历史记录。</p></div><NButton text :loading="usageLoading" :disabled="!readable || usageLoading" @click="loadUsage">刷新用量</NButton></header>
+      <section class="preference-section preference-usage" aria-labelledby="usage-title">
+        <header><div><h2 id="usage-title"><RIcon name="database" :size="28" />数据概览</h2></div><NButton text :loading="usageLoading" :disabled="!readable || usageLoading" @click="loadUsage">刷新</NButton></header>
         <p v-if="!usage && usageLoading" class="notice" role="status">正在统计工作区用量…</p>
         <p v-if="usageError" class="notice error" role="alert">{{ usageError }}</p>
         <template v-if="usage">
@@ -212,7 +215,13 @@ function displayTime(value: string) { return preferences.formatDate(value) }
           <div class="preference-storage"><h3>附件与解析配额</h3><p><strong>{{ formatPreferenceBytes(usage.materialReservedBytes) }}</strong> 已计入配额，共 {{ formatPreferenceBytes(usage.materialQuotaBytes) }}</p><p class="field-help">上传与解析任务预留的字节数之和，可能包含失败任务，不等同于实际磁盘占用或数据库大小。附件功能{{ usage.materialsEnabled ? '已启用' : '当前未启用' }}。</p></div>
           <p class="field-help">统计时间：{{ displayTime(usage.checkedAt) }}</p>
         </template>
+        <div class="settings-export"><h3>导出数据</h3><p class="field-help">导出你的知识与学习数据</p><RouterLink class="settings-export-primary" to="/settings/data"><RIcon name="download" :size="23" />完整导出</RouterLink><RouterLink to="/knowledge?view=list"><RIcon name="file-text" :size="23" />Markdown 导出</RouterLink><RouterLink to="/knowledge/boards"><RIcon name="braces" :size="23" />JSON Canvas 导出</RouterLink><p class="field-help">笔记凭据不会导出</p></div>
       </section>
     </div>
   </section>
 </template>
+
+<style scoped>
+.preferences-workspace { max-width: none; }.preferences-content { display: grid; grid-template-columns: 230px minmax(0,1fr) 350px; gap: 14px; align-items: start; }.settings-directory { display: grid; align-content: start; padding: 14px 10px; min-height: 667px; border: 1px solid var(--line); border-radius: 25px; background: linear-gradient(120deg,#76513520,transparent),var(--surface); }.settings-directory a { display: flex; gap: 17px; align-items: center; min-height: 60px; font-size: 20px; padding: 14px 18px; border: 1px solid transparent; border-radius: 20px; }.settings-directory a.selected { border-color: #9b6d455e; background: linear-gradient(120deg,#9e6c415f,#51372266); color: #fff3e1; }.preference-section { padding: 26px 27px; border: 1px solid var(--line); border-radius: 25px; background: linear-gradient(115deg,#ffffff03,transparent),var(--surface); min-width: 0; display: grid; gap: 25px; }.preference-section > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }.preference-section h2 { display: flex; align-items: center; gap: 16px; font-size: 28px; }.preference-section h2 svg { color: var(--brand); }.preference-section h3 { font-size: 21px; }.preference-fields { display: grid; gap: 31px; }.preference-control { display: grid; grid-template-columns: 116px minmax(0,1fr); align-items: center; gap: 16px; font-size: 20px; }.settings-segment { display: flex; padding: 0; border: 1px solid var(--line); border-radius: 24px; background: #ffffff03; min-height: 52px; }.settings-segment > button { display: flex; flex: 1; gap: 9px; align-items: center; justify-content: center; padding: 8px; border-radius: 24px; border: 1px solid transparent; font-size: 18px; white-space: nowrap; }.settings-segment > button.selected { color: #fff4e4; border-color: #e9b382; background: linear-gradient(120deg,#c29466,#8a5838); box-shadow: inset 0 0 12px #f3c59328; }.settings-segment > button:disabled { opacity: .55; cursor: not-allowed; }.settings-exact-values { font-size: 15px; }.settings-exact-values label { display: grid; gap: 8px; margin-top: 12px; }.preference-timezone { display: grid; gap: 13px; padding-top: 20px; border-top: 1px solid var(--line); }.preference-timezone > label { display: grid; grid-template-columns: 116px minmax(0,1fr); gap: 16px; align-items: center; font-size: 20px; }.preference-recovery,.preference-reading-sample { display: grid; gap: 12px; }.preference-reading-sample { padding: 18px; background: #ffffff03; border: 1px solid var(--line); border-radius: 14px; }.preference-usage-grid { margin: 0; }.preference-usage-grid > div { display: flex; justify-content: space-between; gap: 14px; align-items: center; min-height: 49px; border-bottom: 1px solid #ffffff06; font-size: 18px; }.preference-usage-grid dt { color: var(--muted); }.preference-usage-grid dd { margin: 0; font-size: 22px; }.preference-storage { display: grid; gap: 12px; }.settings-export { padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 14px; }.settings-export a { display: flex; align-items: center; justify-content: center; gap: 13px; min-height: 52px; border: 1px solid #82776a; border-radius: 21px; font-size: 19px; background: #ffffff04; }.settings-export a.settings-export-primary { border-color: #d4a77a; background: linear-gradient(115deg,#c59568,#754f35); color: #fff5e6; }
+@media(max-width:1350px) { .preferences-content { grid-template-columns: 200px minmax(0,1fr); }.preference-usage { grid-column: 2; }.preference-control { grid-template-columns: 100px minmax(0,1fr); }.settings-directory a { font-size: 18px; padding: 12px; } }@media(max-width:800px) { .preferences-content { grid-template-columns: 1fr; }.preference-usage { grid-column: 1; }.settings-directory { min-height: 0; grid-template-columns: repeat(2,minmax(0,1fr)); }.preference-section { padding: 22px; } }@media(max-width:600px) { .preference-control,.preference-timezone > label { grid-template-columns: 1fr; gap: 10px; }.settings-segment > button { font-size: 15px; }.settings-directory a { font-size: 16px; } }
+</style>

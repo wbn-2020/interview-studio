@@ -23,7 +23,7 @@ const writer = useCommand()
 const initial = emptyCollection()
 const current = ref<Collection>()
 const content = ref(cloneCollectionContent(initial))
-const tab = ref<'edit' | 'read' | 'history'>('edit')
+const tab = ref<'edit' | 'read' | 'history'>(props.id ? 'read' : 'edit')
 const pickerOpen = ref(false)
 const replacingStepId = ref<string>()
 const choiceNames = reactive<Record<string, { title: string; number: number }>>({})
@@ -237,7 +237,7 @@ function adoptServer(keepLocal: boolean) {
         <div class="row-actions"><NButton type="primary" :loading="writer.busy.value" :disabled="!editable || !!problem || (!creating && !dirty)" @click="save">{{ creating ? '保存首个版本' : '保存新版本' }}</NButton><NButton v-if="current" :disabled="dirty || locked || !store.sessionActive" @click="organize(current.status === 'ARCHIVED' ? 'restore' : 'archive')">{{ current.status === 'ARCHIVED' ? '恢复集合' : '归档集合' }}</NButton></div>
         <p class="field-help">未提交输入只保留在当前页面，刷新会丢失。归档／恢复只改变整理状态；检查点是学习目标，完成情况由后续训练与复练记录提供。</p>
       </div>
-      <CollectionReadout v-if="current && tab === 'read'" :kind="kind" :content="current.currentVersion.content" :references="latestReferences" />
+      <div v-if="current && tab === 'read'" class="collection-saved-layout"><CollectionReadout :kind="kind" :content="current.currentVersion.content" :references="latestReferences" /><aside class="collection-route-detail"><h3>{{ kind === 'ROUTE' ? '路线详情' : '题单详情' }}</h3><h2>{{ current.currentVersion.content.title }}</h2><p class="field-help">已保存 v{{ current.currentVersion.number }} · {{ current.currentVersion.content.steps.length }} 个步骤</p><p class="collection-detail-purpose">{{ current.currentVersion.content.purpose || '未填写整体用途' }}</p><h3>关联题目</h3><button v-for="step in current.currentVersion.content.steps" :key="step.id" class="collection-related-question" @click="openQuestion(step)">{{ stepTitle(step) }}<span>›</span></button><NButton :disabled="!editable" @click="changeTab('edit')">调整顺序与检查点</NButton></aside></div>
       <CollectionHistory v-if="current && tab === 'history'" :id="current.id" :kind="kind" :current-version="current.currentVersion" />
     </template>
   </section>
@@ -270,4 +270,9 @@ function adoptServer(keepLocal: boolean) {
 .empty-steps { padding: 26px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 @media (max-width: 800px) { .collection-steps > li > header { flex-wrap: wrap; } .collection-steps > li > header > .row-actions { margin-left: 33px; } .step-title { flex-basis: calc(100% - 40px); } }
 @media (max-width: 500px) { .steps-heading { align-items: start; } .step-fields { margin-left: 0; } }
+</style>
+
+<style scoped>
+.collection-saved-layout { display: grid; grid-template-columns: minmax(0, 1fr) 265px; gap: 25px; min-width: 0; }.collection-route-detail { padding-left: 22px; border-left: 1px solid var(--line); display: grid; align-content: start; gap: 22px; min-width: 0; }.collection-route-detail h3 { font-size: 22px; }.collection-route-detail h2 { font-size: 25px; overflow-wrap: anywhere; }.collection-detail-purpose { color: var(--muted); white-space: pre-wrap; line-height: 1.8; }.collection-related-question { display: flex; justify-content: space-between; gap: 14px; text-align: left; font-size: 18px; }.collection-related-question span { color: var(--muted); }.collection-saved-layout :deep(.collection-readout-steps) { padding-left: 10px; }.collection-saved-layout :deep(.collection-readout-steps > li) { position: relative; margin-left: 18px; border: 0; border-left: 3px solid #8baba7; padding: 0 0 32px 24px; }.collection-saved-layout :deep(.step-heading) { border: 1px solid var(--line); border-radius: 35px; background: var(--surface-soft); padding: 15px; }.collection-saved-layout :deep(.step-number) { position: absolute; top: 18px; left: -20px; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #bf9464; background: #765337; color: #f5e1c7; border-radius: 50%; font-size: 17px; }.collection-saved-layout :deep(.step-heading button) { font-size: 21px; color: var(--ink); }.collection-saved-layout :deep(.step-meta) { font-size: 15px; }.collection-saved-layout :deep(dl) { margin-left: 15px; font-size: 17px; grid-template-columns: 86px minmax(0,1fr); }.collection-saved-layout :deep(.collection-readout > header) { border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+@media(max-width:1350px) { .collection-saved-layout { grid-template-columns: 1fr; }.collection-route-detail { border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; } }
 </style>
