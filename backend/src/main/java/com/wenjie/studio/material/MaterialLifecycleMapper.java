@@ -14,7 +14,11 @@ public interface MaterialLifecycleMapper {
 
     Row source(@Param("owner") String owner, @Param("id") String id);
     boolean hasReferences(@Param("owner") String owner, @Param("id") String id);
-    boolean hasUnsupportedReferences(@Param("owner") String owner, @Param("id") String id);
+    boolean hasUnsupportedReferences(@Param("owner") String owner, @Param("id") String id,
+                                     @Param("allowKnowledgeAdoptions") boolean allowKnowledgeAdoptions,
+                                     @Param("allowDirectBindings") boolean allowDirectBindings);
+    boolean hasUnsupportedKnowledgeUses(@Param("owner") String owner, @Param("itemId") String itemId);
+    boolean hasUnsupportedKnowledgeCorrectionUses(@Param("owner") String owner, @Param("itemId") String itemId);
     boolean missingBaseline(@Param("owner") String owner, @Param("attachmentId") String attachmentId);
     void initialize(@Param("owner") String owner, @Param("id") String id,
                     @Param("attachmentId") String attachmentId, @Param("now") Instant now);

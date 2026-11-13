@@ -73,6 +73,12 @@ management:
       show-components: never
 
 studio:
+  dataarchive:
+    enabled: ${STUDIO_DATA_ARCHIVE_ENABLED:false}
+    directory: ${STUDIO_DATA_ARCHIVE_DIRECTORY:}
+    maximum-bytes: ${STUDIO_DATA_ARCHIVE_MAXIMUM_BYTES:1073741824}
+    maximum-rows: ${STUDIO_DATA_ARCHIVE_MAXIMUM_ROWS:1000000}
+    expiry-hours: ${STUDIO_DATA_ARCHIVE_EXPIRY_HOURS:24}
   ai:
     enabled: ${STUDIO_AI_ENABLED:false}
     protocol: ${STUDIO_AI_PROTOCOL:CHAT_COMPLETIONS}

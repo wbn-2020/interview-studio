@@ -10,6 +10,10 @@ import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.material.MaterialDtos;
 import com.wenjie.studio.material.MaterialLifecycleDtos;
 import com.wenjie.studio.prepare.PreparationDtos;
+import com.wenjie.studio.review.RecollectionDtos;
+import com.wenjie.studio.review.RepracticeDtos;
+import com.wenjie.studio.review.RepracticeRows;
+import com.wenjie.studio.review.RepracticeRules;
 import com.wenjie.studio.training.TrainingDtos;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,9 +28,11 @@ import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -81,16 +87,102 @@ public class KnowledgeMaterialLineage {
         return traversal.collect();
     }
 
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
+    public List<String> manifestExcerptIds(String owner, AiDtos.Manifest manifest) {
+        uuid(owner);
+        if (manifest == null || manifest.sources() == null) throw integrity();
+        var traversal = new Traversal(owner);
+        traversal.manifestSources(manifest);
+        return traversal.collect();
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
+    public List<String> bankExcerptIds(String owner, String questionId, String versionId) {
+        uuid(owner);
+        var traversal = new Traversal(owner);
+        traversal.bankVersion(new AiDtos.SourceLink(questionId, versionId));
+        return traversal.collect();
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
+    public List<String> preparationExcerptIds(String owner, PreparationDtos.SourceCheck source) {
+        uuid(owner);
+        var traversal = new Traversal(owner);
+        traversal.preparationSource(source, null);
+        return traversal.collect();
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
+    public QuestionSources questionSources(String owner, String sessionId, String questionId) {
+        uuid(owner); uuid(sessionId); uuid(questionId);
+        var traversal = new Traversal(owner);
+        var question = traversal.loadTrainingQuestion(questionId);
+        if (!sessionId.equals(question.row().sessionId()) || question.row().sourceQuestionId() != null) throw integrity();
+        // 必须完成原生成／复制证明；空题库投影不等于没有知识或材料祖先。
+        var materials = traversal.collect();
+        var banks = traversal.trainingQuestions.values().stream().map(SavedQuestion::row)
+                .filter(row -> row.sourceQuestionId() != null)
+                .map(row -> new AiDtos.SourceLink(row.sourceQuestionId(), row.sourceVersionId())).distinct()
+                .sorted(Comparator.comparing(AiDtos.SourceLink::itemId).thenComparing(AiDtos.SourceLink::versionId))
+                .toList();
+        var answerKnowledge = new ArrayList<AnswerKnowledgeSource>();
+        for (var answer : traversal.answers.values()) {
+            if (answer.row().createdAt() == null) throw integrity();
+            // 仅原生成输入真正展开的答案整图；REPLAY的基线身份见证不会进入答案缓存。
+            for (var node : answer.content().diagram().nodes()) {
+                var reference = node.reference();
+                if (reference != null && reference.kind() == TrainingDtos.LinkKind.KNOWLEDGE) {
+                    answerKnowledge.add(new AnswerKnowledgeSource(answer.row().answerId(),
+                            new AiDtos.SourceLink(reference.itemId(), reference.versionId()), answer.row().createdAt()));
+                }
+            }
+        }
+        if (traversal.adoptedKnowledge.stream().anyMatch(source -> source.frozenAt() == null)) throw integrity();
+        var adoptedKnowledge = traversal.adoptedKnowledge.stream().distinct()
+                .sorted(Comparator.comparing(AdoptedKnowledgeSource::taskId)
+                        .thenComparing(source -> source.source().itemId()).thenComparing(source -> source.source().versionId()))
+                .toList();
+        var adoptedPreparation = traversal.adoptedPreparation.stream().distinct()
+                .sorted(Comparator.comparing(AdoptedPreparationSource::taskId)
+                        .thenComparing(source -> source.check().kind().name())
+                        .thenComparing(source -> source.check().itemId()).thenComparing(source -> source.check().versionId()))
+                .toList();
+        var followUpPreparation = traversal.followUpPreparation.stream().distinct()
+                .sorted(Comparator.comparing(FollowUpPreparationSource::taskId)
+                        .thenComparing(source -> source.check().kind().name())
+                        .thenComparing(source -> source.check().itemId()).thenComparing(source -> source.check().versionId()))
+                .toList();
+        return new QuestionSources(banks, answerKnowledge.stream().distinct()
+                .sorted(Comparator.comparing(AnswerKnowledgeSource::answerId)
+                        .thenComparing(source -> source.source().itemId()).thenComparing(source -> source.source().versionId()))
+                .toList(), adoptedKnowledge, adoptedPreparation, followUpPreparation, materials);
+    }
+
+    public record AnswerKnowledgeSource(String answerId, AiDtos.SourceLink source, Instant frozenAt) {}
+    public record AdoptedKnowledgeSource(String taskId, AiDtos.SourceLink source, Instant frozenAt) {}
+    public record AdoptedPreparationSource(String taskId, PreparationDtos.SourceCheck check,
+                                           PreparationDtos.ExpressionCheck expressionCheck) {}
+    public record FollowUpPreparationSource(String taskId, PreparationDtos.SourceCheck check) {}
+    public record QuestionSources(List<AiDtos.SourceLink> bankSources, List<AnswerKnowledgeSource> answerKnowledgeSources,
+                                  List<AdoptedKnowledgeSource> adoptedKnowledgeSources,
+                                  List<AdoptedPreparationSource> adoptedPreparationSources,
+                                  List<FollowUpPreparationSource> followUpPreparationSources,
+                                  List<String> materialExcerptIds) {}
+
     private final class Traversal {
         private final String owner;
         private final Map<AiDtos.SourceLink, VersionRow> versions = new HashMap<>();
         private final Map<AiDtos.SourceLink, PreparedVersion> preparationVersions = new HashMap<>();
+        private final Map<String, ProjectGenerationRow> projectGenerations = new HashMap<>();
+        private final Set<ProjectGenerationKey> projectWitnesses = new HashSet<>();
         private final Map<String, SavedAnswer> answers = new HashMap<>();
         private final Map<String, SavedQuestion> trainingQuestions = new HashMap<>();
         private final Map<AiDtos.SourceLink, SavedBankVersion> bankVersions = new HashMap<>();
         private final Map<AiDtos.SourceLink, AiDtos.EvaluationStandard> bankStandards = new HashMap<>();
         private final Map<String, SavedEvaluation> evaluations = new HashMap<>();
         private final Map<String, String> followUpQuestions = new HashMap<>();
+        private final Map<String, String> replayParents = new HashMap<>();
+        private final Map<AiDtos.SourceLink, SavedRecollection> recollectionQuestions = new HashMap<>();
         private final ArrayDeque<AiDtos.SourceLink> pending = new ArrayDeque<>();
         private final ArrayDeque<AiDtos.SourceLink> preparationPending = new ArrayDeque<>();
         private final ArrayDeque<String> answerPending = new ArrayDeque<>();
@@ -98,10 +190,186 @@ public class KnowledgeMaterialLineage {
         private final ArrayDeque<AiDtos.SourceLink> bankPending = new ArrayDeque<>();
         private final Map<AiDtos.Purpose, TreeSet<String>> taskIds = new EnumMap<>(AiDtos.Purpose.class);
         private final Map<String, AiDtos.Purpose> taskPurposes = new HashMap<>();
+        private final List<AdoptedKnowledgeSource> adoptedKnowledge = new ArrayList<>();
+        private final List<AdoptedPreparationSource> adoptedPreparation = new ArrayList<>();
+        private final List<FollowUpPreparationSource> followUpPreparation = new ArrayList<>();
+        private final List<MaterialLifecycleDtos.Check> historicalChecks = new ArrayList<>();
         private final TreeSet<String> excerptIds = new TreeSet<>();
         private int bindingCount;
 
         private Traversal(String owner) { this.owner = owner; }
+
+        private void manifestSources(AiDtos.Manifest manifest) {
+            int preparationIndex = 0, expressionIndex = 0;
+            for (var source : manifest.sources()) {
+                if (source == null) throw integrity();
+                var link = new AiDtos.SourceLink(source.itemId(), source.versionId());
+                if (AiSources.knowledgeKind(source.kind())) version(link);
+                else {
+                    if (manifest.preparationChecks() == null || preparationIndex >= manifest.preparationChecks().size()) throw integrity();
+                    var check = manifest.preparationChecks().get(preparationIndex++);
+                    PreparationDtos.ExpressionCheck expression = null;
+                    if ("EXPRESSION".equals(source.kind())) {
+                        if (manifest.expressionChecks() == null || expressionIndex >= manifest.expressionChecks().size()) throw integrity();
+                        expression = manifest.expressionChecks().get(expressionIndex++);
+                    }
+                    if (check == null || check.kind() == null || !source.kind().equals(check.kind().name())
+                            || !source.itemId().equals(check.itemId()) || !source.versionId().equals(check.versionId())) throw integrity();
+                    preparationSource(check, expression);
+                }
+            }
+            var followUp = manifest.training();
+            if (followUp != null) {
+                trainingProjection(followUp.sessionId(), followUp.questionId(), followUp.answerId(), followUp.answerNumber(),
+                        followUp.answerCondition(), followUp.question(), followUp.answer());
+                if (followUp.context() == null || manifest.contextChecks() == null) throw integrity();
+                for (var context : followUp.context()) {
+                    if (context == null) throw integrity();
+                    var matches = manifest.contextChecks().stream().filter(check -> check != null && check.kind() != null
+                            && check.kind().name().equals(context.kind()) && context.itemId().equals(check.itemId())
+                            && context.versionId().equals(check.versionId())).toList();
+                    if (matches.size() != 1) throw integrity();
+                    var fixed = matches.getFirst();
+                    var check = new PreparationDtos.SourceCheck(PreparationDtos.Kind.valueOf(context.kind()),
+                            context.itemId(), context.versionId(), fixed.state(), fixed.sourceGeneration(), fixed.projectGeneration());
+                    var prepared = preparationSource(check, null);
+                    if (context.number() != prepared.row().versionNumber() || !context.title().equals(prepared.row().title())
+                            || !context.body().equals(prepared.content().body())) throw integrity();
+                }
+            }
+            var evaluation = manifest.evaluation();
+            if (evaluation != null) {
+                var question = trainingProjection(evaluation.sessionId(), evaluation.questionId(), evaluation.answerId(),
+                        evaluation.answerNumber(), evaluation.answerCondition(), evaluation.question(), evaluation.answer());
+                var row = question.row();
+                var standard = row.sourceQuestionId() == null ? null
+                        : bankStandard(new AiDtos.SourceLink(row.sourceQuestionId(), row.sourceVersionId()));
+                if (!Objects.equals(standard, evaluation.standard())) throw integrity();
+            }
+            var training = manifest.trainingDraft();
+            if (training != null) {
+                trainingAnswer(new AnswerSelection(training.sessionId(), training.questionId(), training.answerId(),
+                        training.answerNumber(), training.answerCondition(), training.fragments()));
+                trainingQuestion(training);
+                if (training.feedbackTaskId() != null) trainingEvaluation(training);
+            }
+            factSource(manifest.factDraft());
+            factSource(manifest.relationEvidence());
+            if (manifest.comparisonInput() != null) {
+                comparisonSide(manifest.comparisonInput().baseline());
+                comparisonSide(manifest.comparisonInput().current());
+            }
+            if (manifest.relationAiFeedback() != null) {
+                var feedback = manifest.relationAiFeedback();
+                var input = evaluation(feedback.taskId()).input();
+                answerIdentity(feedback.answer(), input.sessionId(), input.questionId(), input.answerId());
+            }
+            if (manifest.sourceQa() != null) sourceQa(manifest.sourceQa());
+            // 人工复盘／回忆只外发独立撰写的选区及限定，元数据中关联原答不等于复制了原答正文。
+        }
+
+        private PreparedVersion preparationSource(PreparationDtos.SourceCheck check, PreparationDtos.ExpressionCheck expression) {
+            if (check == null || check.kind() == null) throw integrity();
+            var prepared = loadPreparationVersion(new AiDtos.SourceLink(check.itemId(), check.versionId()), check.kind().name());
+            if (check.kind() == PreparationDtos.Kind.FACT) factProjectReference(prepared, check.projectGeneration());
+            if (check.kind() == PreparationDtos.Kind.EXPRESSION) {
+                if (expression == null || !check.equals(expression.expression()) || expression.factChecks() == null
+                        || expression.factChecks().size() != prepared.facts().size()) throw integrity();
+                for (int index = 0; index < prepared.facts().size(); index++) {
+                    var fact = prepared.facts().get(index);
+                    var fixed = expression.factChecks().get(index);
+                    if (fixed == null || fixed.kind() != PreparationDtos.Kind.FACT
+                            || !fact.itemId().equals(fixed.itemId()) || !fact.versionId().equals(fixed.versionId())) throw integrity();
+                    preparationSource(fixed, null);
+                }
+            } else if (expression != null) throw integrity();
+            return prepared;
+        }
+
+        private SavedQuestion trainingProjection(String sessionId, String questionId, String answerId, int number,
+                                                   String condition, AiDtos.FollowUpQuestion question,
+                                                   AiDtos.FollowUpAnswer answer) {
+            uuid(sessionId); uuid(questionId); uuid(answerId);
+            var submitted = loadTrainingAnswer(answerId);
+            var saved = loadTrainingQuestion(questionId);
+            if (!sessionId.equals(submitted.row().sessionId()) || !questionId.equals(submitted.row().questionId())
+                    || !sessionId.equals(saved.row().sessionId()) || number != submitted.row().answerNumber()
+                    || !Objects.equals(condition, submitted.row().answerCondition())
+                    || !questionProjection(saved).equals(question) || !answerProjection(submitted).equals(answer)) throw integrity();
+            return saved;
+        }
+
+        private void factSource(FactDraftDtos.Input input) {
+            if (input == null || input.kind() == FactDraftDtos.Kind.MATERIAL) return;
+            if (input.kind() != FactDraftDtos.Kind.TRAINING || input.training() == null) throw integrity();
+            var fixed = input.training();
+            // 事实／关系训练依据没有外发题面；只继承确切提交整图，不把问答身份链接扩成另一份正文。
+            trainingAnswer(new AnswerSelection(fixed.sessionId(), fixed.questionId(), fixed.answerId(),
+                    fixed.answerNumber(), fixed.answerCondition(), fixed.fragments()));
+        }
+
+        private void comparisonSide(com.wenjie.studio.ai.ComparisonDtos.Side side) {
+            if (side == null || side.identity() == null || side.answerCondition() == null) throw integrity();
+            var answer = side.identity();
+            trainingProjection(answer.sessionId(), answer.questionId(), answer.answerId(), side.answerNumber(),
+                    side.answerCondition().name(), side.question(), side.answer());
+        }
+
+        private void sourceQa(com.wenjie.studio.ai.SourceQaDtos.Input input) {
+            if (input.sources() == null || input.checks() == null || input.sources().size() != input.checks().size()) throw integrity();
+            for (int index = 0; index < input.sources().size(); index++) {
+                var source = input.sources().get(index);
+                if (source == null || source.ref() == null || source.ref().domain() == null) throw integrity();
+                var ref = source.ref();
+                var check = input.checks().get(index);
+                if (check == null || !Objects.equals(source.sourceKey(), check.sourceKey())) throw integrity();
+                if (source.training() != null) {
+                    var context = source.training();
+                    if (context.answer() == null || context.conditions() == null) throw integrity();
+                    var question = loadTrainingQuestion(context.answer().questionId());
+                    var prompt = question.snapshot().content();
+                    // 来源问答的必要限定会外发题目条件；只承接该题来源，不借反馈关联读取原答正文。
+                    if (!context.answer().sessionId().equals(question.row().sessionId())
+                            || !Objects.equals(context.conditions().technology(), prompt.technology())
+                            || !Objects.equals(context.conditions().scenario(), prompt.scenario())
+                            || !Objects.equals(context.conditions().questionConditions(), prompt.conditions())) throw integrity();
+                }
+                switch (ref.domain()) {
+                    case KNOWLEDGE -> version(new AiDtos.SourceLink(ref.id(), ref.versionId()));
+                    case QUESTION -> bankVersion(new AiDtos.SourceLink(ref.id(), ref.versionId()));
+                    case PREPARATION -> {
+                        var captured = check.expression() == null ? check.preparation() : check.expression().expression();
+                        if (captured == null || !ref.id().equals(captured.itemId()) || !ref.versionId().equals(captured.versionId())) throw integrity();
+                        preparationSource(captured, check.expression());
+                    }
+                    case TRAINING_ANSWER -> {
+                        if (source.training() == null || source.training().answer() == null) throw integrity();
+                        var identity = source.training().answer();
+                        var answer = loadTrainingAnswer(ref.id());
+                        answerIdentity(identity, answer.row().sessionId(), answer.row().questionId(), answer.row().answerId());
+                    }
+                    case AI_FEEDBACK -> {
+                        if (source.training() == null) throw integrity();
+                        var original = evaluation(ref.id()).input();
+                        answerIdentity(source.training().answer(), original.sessionId(), original.questionId(), original.answerId());
+                    }
+                    case MATERIAL_EXCERPT, REVIEW_FEEDBACK, RECOLLECTION -> { }
+                }
+            }
+        }
+
+        private void rememberChecks(AiDtos.Manifest manifest) {
+            checks(manifest.materialChecks(), 1, MAX_EXCERPTS);
+            checks(manifest.knowledgeMaterialChecks(), 0, MAX_EXCERPTS);
+            if (manifest.materialChecks() != null) {
+                countBindings(manifest.materialChecks());
+                historicalChecks.addAll(manifest.materialChecks());
+            }
+            if (manifest.knowledgeMaterialChecks() != null) {
+                countBindings(manifest.knowledgeMaterialChecks());
+                historicalChecks.addAll(manifest.knowledgeMaterialChecks());
+            }
+        }
 
         private VersionRow version(AiDtos.SourceLink link) {
             if (link == null) throw integrity();
@@ -146,6 +414,7 @@ public class KnowledgeMaterialLineage {
                     adoptions(link, saved.row().versionNumber(), AiDtos.Purpose.QUESTION_DRAFT);
                 }
             }
+            if (historicalChecks.stream().anyMatch(check -> !excerptIds.contains(check.excerptId()))) throw integrity();
             return List.copyOf(excerptIds);
         }
 
@@ -166,6 +435,7 @@ public class KnowledgeMaterialLineage {
                 adoption(row, link, through, purpose);
                 if (taskPurposes.putIfAbsent(row.taskId(), purpose) != null || !knownTasks.add(row.taskId())) throw integrity();
                 var manifest = manifest(row, purpose);
+                rememberChecks(manifest);
                 var target = new AiDtos.SourceLink(row.targetItemId(), row.targetVersionId());
                 if (purpose == AiDtos.Purpose.KNOWLEDGE_DRAFT) {
                     if (!Objects.equals(version(target).versionNumber(), row.targetVersionNumber())) throw integrity();
@@ -193,6 +463,22 @@ public class KnowledgeMaterialLineage {
                 knowledgeBindings(row.taskId(), manifest);
                 preparationBindings(row.taskId(), manifest);
                 materialBindings(row.taskId(), manifest);
+                // 仅记录已核清单与台账的实际输入；当前资格在完整证明后另核，不影响旧历史读取。
+                for (var source : manifest.sources()) {
+                    if (AiSources.knowledgeKind(source.kind())) {
+                        adoptedKnowledge.add(new AdoptedKnowledgeSource(row.taskId(),
+                                new AiDtos.SourceLink(source.itemId(), source.versionId()), row.taskCreatedAt()));
+                    }
+                }
+                if (manifest.preparationChecks() != null) {
+                    int expressionIndex = 0;
+                    for (var check : manifest.preparationChecks()) {
+                        // 原表达检查须连同全部事实依据保留；后续目标版本不能刷新生成任务的代次。
+                        var expression = check.kind() == PreparationDtos.Kind.EXPRESSION
+                                ? manifest.expressionChecks().get(expressionIndex++) : null;
+                        adoptedPreparation.add(new AdoptedPreparationSource(row.taskId(), check, expression));
+                    }
+                }
             }
         }
 
@@ -275,6 +561,9 @@ public class KnowledgeMaterialLineage {
                 var actual = preparationVersion(new AiDtos.SourceLink(row.itemId(), row.versionId()), row.kind());
                 if (fixed.number() != actual.row().versionNumber() || !fixed.title().equals(actual.row().title())
                         || !fixed.body().equals(actual.content().body())) throw integrity();
+                if ("FACT".equals(fixed.kind())) {
+                    factProjectReference(actual, manifest.preparationChecks().get(bindingIndex - 1).projectGeneration());
+                }
                 if ("EXPRESSION".equals(fixed.kind())) {
                     if (manifest.expressionChecks() == null || expressionIndex >= manifest.expressionChecks().size()) {
                         throw integrity();
@@ -288,6 +577,7 @@ public class KnowledgeMaterialLineage {
                         if (!fact.itemId().equals(check.itemId()) || !fact.versionId().equals(check.versionId())) {
                             throw integrity();
                         }
+                        factProjectReference(preparationVersion(fact, "FACT"), check.projectGeneration());
                     }
                 }
             }
@@ -309,6 +599,98 @@ public class KnowledgeMaterialLineage {
             var prepared = loadPreparationVersion(link, "FACT");
             if (prepared.content().fact().responsibility() != PreparationDtos.Responsibility.UNVERIFIED) throw integrity();
             return prepared;
+        }
+
+        private void factProjectReference(PreparedVersion fact, Long generation) {
+            if (!"FACT".equals(fact.row().itemKind()) || generation == null || !historicalGeneration(generation)) {
+                throw integrity();
+            }
+            String projectId = fact.row().projectId();
+            var key = new ProjectGenerationKey(projectId, generation);
+            if (projectWitnesses.contains(key)) return;
+            var state = projectGenerations.get(projectId);
+            if (state == null) {
+                var rows = mapper.projectGeneration(owner, projectId, Math.min(2, MAX_BINDINGS - bindingCount + 1));
+                countBindings(rows);
+                if (rows.size() != 1) throw integrity();
+                state = rows.getFirst();
+                if (state == null || !owner.equals(state.ownerId()) || !projectId.equals(state.itemId())
+                        || !"PROJECT".equals(state.kind()) || state.projectId() != null || state.verification() != null
+                        || !knowledgeStatus(state.status()) || state.sourceGeneration() == null || state.revision() == null
+                        || !historicalGeneration(state.sourceGeneration()) || !historicalGeneration(state.revision())
+                        || state.sourceGeneration() > state.revision() || state.versionNumber() == null
+                        || state.versionNumber() < 1 || !owner.equals(state.versionOwnerId())
+                        || !projectId.equals(state.versionItemId())
+                        || !Objects.equals(state.currentVersionId(), state.actualVersionId())
+                        || !state.versionNumber().equals(state.actualVersionNumber())) throw integrity();
+                uuid(state.currentVersionId());
+                projectGenerations.put(projectId, state);
+            }
+            if (generation > state.sourceGeneration()) throw integrity();
+            AiDtos.SourceLink witness = null;
+            Integer number = null;
+            // 只有代次完全相等才证明正文及资格未变；0代次也不意味着项目一定是首版。
+            if (generation.equals(state.sourceGeneration())) {
+                if (!"ACTIVE".equals(state.status())) throw integrity();
+                witness = new AiDtos.SourceLink(projectId, state.currentVersionId());
+                number = state.versionNumber();
+            }
+            var events = mapper.projectGenerationEvents(owner, projectId, generation,
+                    Math.min(3, MAX_BINDINGS - bindingCount + 1));
+            countBindings(events);
+            if (events.size() > 2) throw integrity();
+            var sides = new HashSet<Boolean>();
+            Long enteredRevision = null, exitedRevision = null;
+            for (var row : events) {
+                var root = projectEvent(row, projectId, state);
+                boolean previous = row.previousGeneration().equals(generation);
+                if (!previous && !row.currentGeneration().equals(generation) || !sides.add(previous)) throw integrity();
+                var endpoint = previous ? root.before() : root.after();
+                var candidate = new AiDtos.SourceLink(projectId, endpoint.versionId());
+                if (endpoint.status() != PreparationDtos.Status.ACTIVE
+                        || witness != null && (!witness.equals(candidate) || number != endpoint.versionNumber())) {
+                    throw integrity();
+                }
+                witness = candidate;
+                number = endpoint.versionNumber();
+                if (previous) exitedRevision = endpoint.revision();
+                else enteredRevision = endpoint.revision();
+            }
+            // 收藏可在同代次内推进元数据修订，两个合法事件端点的revision无需相等。
+            if (enteredRevision != null && exitedRevision != null && enteredRevision > exitedRevision) throw integrity();
+            if (witness == null) throw historyUnavailable();
+            var project = preparationVersion(witness, "PROJECT");
+            if (!number.equals(project.row().versionNumber())) throw integrity();
+            projectWitnesses.add(key);
+        }
+
+        private PreparationKnowledgeDtos.Root projectEvent(ProjectGenerationEventRow row, String projectId,
+                                                            ProjectGenerationRow state) {
+            try {
+                if (row == null || !owner.equals(row.ownerId()) || !projectId.equals(row.rootItemId())
+                        || !"PROJECT".equals(row.rootKind()) || row.previousVersionNumber() == null
+                        || row.currentVersionNumber() == null || row.previousGeneration() == null
+                        || row.currentGeneration() == null || row.previousRevision() == null || row.currentRevision() == null
+                        || row.previousGeneration() > row.previousRevision()
+                        || row.currentGeneration() > row.currentRevision()
+                        || row.currentGeneration() > state.sourceGeneration() || row.currentRevision() > state.revision()
+                        || !owner.equals(row.previousOwnerId()) || !projectId.equals(row.previousItemId())
+                        || !Objects.equals(row.previousVersionId(), row.actualPreviousId())
+                        || !row.previousVersionNumber().equals(row.actualPreviousNumber())
+                        || !Objects.equals(row.rootTitle(), row.previousTitle())
+                        || !owner.equals(row.currentOwnerId()) || !projectId.equals(row.currentItemId())
+                        || !Objects.equals(row.currentVersionId(), row.actualCurrentId())
+                        || !row.currentVersionNumber().equals(row.actualCurrentNumber())) throw integrity();
+                var event = new PreparationKnowledgeRows.EventRow(row.id(), row.rootItemId(), row.rootKind(),
+                        row.rootTitle(), row.rootProjectId(), row.changeKind(), row.previousVersionId(),
+                        row.previousVersionNumber(), row.previousGeneration(), row.previousRevision(), row.previousStatus(),
+                        row.previousVerification(), row.currentVersionId(), row.currentVersionNumber(),
+                        row.currentGeneration(), row.currentRevision(), row.currentStatus(), row.currentVerification(),
+                        row.createdAt());
+                return PreparationKnowledgeRules.root(event);
+            } catch (RuntimeException exception) {
+                throw new IllegalStateException("事实父项目的历史代次事件或确切版本见证不一致", exception);
+            }
         }
 
         private PreparedVersion loadPreparationVersion(AiDtos.SourceLink link, String kind) {
@@ -375,7 +757,8 @@ public class KnowledgeMaterialLineage {
                         || !version.versionId().equals(row.targetVersionId())) throw integrity();
                 if ("EXPRESSION".equals(version.itemKind())) {
                     if (!"FACT".equals(row.sourceKind()) || !"FACT_BASIS".equals(row.useType())
-                            || row.knowledgeItemId() != null || row.knowledgeVersionId() != null) throw integrity();
+                            || row.knowledgeItemId() != null || row.knowledgeVersionId() != null
+                            || row.collectionItemId() != null || row.collectionVersionId() != null) throw integrity();
                     uuid(row.preparationItemId()); uuid(row.preparationVersionId());
                     if (byVersion.put(row.preparationVersionId(),
                             new AiDtos.SourceLink(row.preparationItemId(), row.preparationVersionId())) != null) throw integrity();
@@ -386,10 +769,16 @@ public class KnowledgeMaterialLineage {
                     catch (RuntimeException exception) { throw integrity(); }
                     String itemId, versionId;
                     if (kind == PreparationDtos.LinkKind.KNOWLEDGE) {
-                        if (row.preparationItemId() != null || row.preparationVersionId() != null) throw integrity();
+                        if (row.preparationItemId() != null || row.preparationVersionId() != null
+                                || row.collectionItemId() != null || row.collectionVersionId() != null) throw integrity();
                         itemId = row.knowledgeItemId(); versionId = row.knowledgeVersionId();
+                    } else if (kind == PreparationDtos.LinkKind.COLLECTION) {
+                        if (row.preparationItemId() != null || row.preparationVersionId() != null
+                                || row.knowledgeItemId() != null || row.knowledgeVersionId() != null) throw integrity();
+                        itemId = row.collectionItemId(); versionId = row.collectionVersionId();
                     } else {
-                        if (row.knowledgeItemId() != null || row.knowledgeVersionId() != null) throw integrity();
+                        if (row.knowledgeItemId() != null || row.knowledgeVersionId() != null
+                                || row.collectionItemId() != null || row.collectionVersionId() != null) throw integrity();
                         itemId = row.preparationItemId(); versionId = row.preparationVersionId();
                     }
                     uuid(itemId); uuid(versionId);
@@ -419,7 +808,8 @@ public class KnowledgeMaterialLineage {
 
         private int remainingVersions() {
             return MAX_VERSIONS - versions.size() - preparationVersions.size() - answers.size()
-                    - trainingQuestions.size() - bankVersions.size() - evaluations.size() - followUpQuestions.size();
+                    - trainingQuestions.size() - bankVersions.size() - evaluations.size() - followUpQuestions.size()
+                    - recollectionQuestions.size();
         }
 
         private void factBindings(String taskId, FactDraftDtos.Input input) {
@@ -470,39 +860,7 @@ public class KnowledgeMaterialLineage {
 
         private void trainingEvaluation(AiDtos.TrainingDraftInput fixed) {
             String taskId = fixed.feedbackTaskId();
-            uuid(taskId);
-            var saved = evaluations.get(taskId);
-            if (saved == null) {
-                int remaining = remainingVersions();
-                if (remaining == 0) throw limit();
-                var rows = mapper.evaluationSource(owner, taskId, remaining + 1);
-                countBindings(rows);
-                if (rows.size() != 1) throw integrity();
-                var row = rows.getFirst();
-                if (row == null || !owner.equals(row.ownerId()) || !taskId.equals(row.taskId())
-                        || !AiDtos.Purpose.ANSWER_EVALUATION.name().equals(row.purpose())
-                        || !AiDtos.Status.SUCCEEDED.name().equals(row.taskStatus())
-                        || !owner.equals(row.bindingOwnerId()) || !taskId.equals(row.bindingTaskId())
-                        || !fixed.sessionId().equals(row.sessionId()) || !fixed.questionId().equals(row.questionId())
-                        || !fixed.answerId().equals(row.answerId()) || row.attemptCount() == null
-                        || row.attemptCount() < 1 || row.attemptCount() > 3
-                        || !owner.equals(row.attemptOwnerId()) || !taskId.equals(row.attemptTaskId())
-                        || !Objects.equals(row.currentAttemptId(), row.attemptId()) || row.attemptNumber() == null
-                        || !row.attemptNumber().equals(row.attemptCount())
-                        || !AiDtos.Status.SUCCEEDED.name().equals(row.attemptStatus())
-                        || !owner.equals(row.sessionOwnerId()) || !row.sessionId().equals(row.actualSessionId())) throw integrity();
-                uuid(row.currentAttemptId());
-                var manifest = evaluationManifest(row);
-                var input = originalEvaluationInput(fixed, row);
-                if (!input.equals(manifest.evaluation())) throw integrity();
-                var report = evaluationReport(row.candidateJson(), input);
-                // 整份报告都已参与来源核验，未选观察的引用也计入共享原始绑定预算。
-                for (var observation : report.observations()) countBindings(observation.citations());
-                // 确切个人参考可能刚加载了题库节点，写入评价缓存前再次核剩余额度。
-                if (remainingVersions() == 0) throw limit();
-                saved = new SavedEvaluation(input, report);
-                evaluations.put(taskId, saved);
-            }
+            var saved = evaluation(taskId);
             var input = saved.input();
             var report = saved.report();
             // 同报告可被不同整理任务选用；每次仍核其完整选择，且保持用户选择顺序。
@@ -518,7 +876,44 @@ public class KnowledgeMaterialLineage {
             }
         }
 
-        private AiDtos.EvaluationInput originalEvaluationInput(AiDtos.TrainingDraftInput fixed, EvaluationSourceRow row) {
+        private SavedEvaluation evaluation(String taskId) {
+            uuid(taskId);
+            var saved = evaluations.get(taskId);
+            if (saved == null) {
+                int remaining = remainingVersions();
+                if (remaining == 0) throw limit();
+                var rows = mapper.evaluationSource(owner, taskId, remaining + 1);
+                countBindings(rows);
+                if (rows.size() != 1) throw integrity();
+                var row = rows.getFirst();
+                if (row == null || !owner.equals(row.ownerId()) || !taskId.equals(row.taskId())
+                        || !AiDtos.Purpose.ANSWER_EVALUATION.name().equals(row.purpose())
+                        || !AiDtos.Status.SUCCEEDED.name().equals(row.taskStatus())
+                        || !owner.equals(row.bindingOwnerId()) || !taskId.equals(row.bindingTaskId())
+                        || row.attemptCount() == null
+                        || row.attemptCount() < 1 || row.attemptCount() > 3
+                        || !owner.equals(row.attemptOwnerId()) || !taskId.equals(row.attemptTaskId())
+                        || !Objects.equals(row.currentAttemptId(), row.attemptId()) || row.attemptNumber() == null
+                        || !row.attemptNumber().equals(row.attemptCount())
+                        || !AiDtos.Status.SUCCEEDED.name().equals(row.attemptStatus())
+                        || !owner.equals(row.sessionOwnerId()) || !row.sessionId().equals(row.actualSessionId())) throw integrity();
+                uuid(row.currentAttemptId());
+                var manifest = evaluationManifest(row);
+                rememberChecks(manifest);
+                var input = originalEvaluationInput(row);
+                if (!input.equals(manifest.evaluation())) throw integrity();
+                var report = evaluationReport(row.candidateJson(), input);
+                // 整份报告都已参与来源核验，未选观察的引用也计入共享原始绑定预算。
+                for (var observation : report.observations()) countBindings(observation.citations());
+                // 确切个人参考可能刚加载了题库节点，写入评价缓存前再次核剩余额度。
+                if (remainingVersions() == 0) throw limit();
+                saved = new SavedEvaluation(input, report);
+                evaluations.put(taskId, saved);
+            }
+            return saved;
+        }
+
+        private AiDtos.EvaluationInput originalEvaluationInput(EvaluationSourceRow row) {
             String feedbackTiming;
             try {
                 TrainingDtos.Mode.valueOf(row.sessionMode());
@@ -529,9 +924,10 @@ public class KnowledgeMaterialLineage {
             } catch (RuntimeException exception) {
                 throw new IllegalStateException("知识整理原评价的固定会话条件不一致", exception);
             }
-            var savedAnswer = answers.get(fixed.answerId());
-            var savedQuestion = trainingQuestions.get(fixed.questionId());
-            if (savedAnswer == null || savedQuestion == null) throw integrity();
+            var savedAnswer = loadTrainingAnswer(row.answerId());
+            var savedQuestion = loadTrainingQuestion(row.questionId());
+            if (!row.sessionId().equals(savedAnswer.row().sessionId()) || !row.questionId().equals(savedAnswer.row().questionId())
+                    || !row.sessionId().equals(savedQuestion.row().sessionId())) throw integrity();
             var answer = savedAnswer.content();
             var question = savedQuestion.snapshot().content();
             var originalAnswer = new AiDtos.FollowUpAnswer(answer.text(), answer.diagram().nodes().stream()
@@ -679,15 +1075,97 @@ public class KnowledgeMaterialLineage {
                 if (!registered.add(new AiDtos.SourceLink(binding.itemId(), binding.versionId()))) throw integrity();
             }
             if (!expected.equals(registered)) throw integrity();
+            if ("REPLAY".equals(row.questionKind())) replayReferences(saved);
             if (row.sourceQuestionId() == null) {
                 if ("FOLLOW_UP".equals(row.questionKind())) followUpReferences(saved);
-                // 个人回忆或历史题面 REPLAY 的生成来源另行核验，不据空登记推断为空。
                 return;
             }
             var actual = bankVersion(new AiDtos.SourceLink(row.sourceQuestionId(), row.sourceVersionId()));
             if (saved.snapshot().number() != actual.row().versionNumber()
                     || !row.title().equals(actual.row().title())
                     || !saved.snapshot().content().equals(actual.content())) throw integrity();
+        }
+
+        private void replayReferences(SavedQuestion saved) {
+            var question = saved.row();
+            var rows = mapper.replaySource(owner, question.sessionId(), 2);
+            countBindings(rows);
+            if (rows.size() != 1) throw integrity();
+            var row = rows.getFirst();
+            if (row == null || !owner.equals(row.ownerId()) || !owner.equals(row.sessionOwnerId())
+                    || !question.sessionId().equals(row.sessionId()) || !row.sessionId().equals(row.actualSessionId())
+                    || !question.questionId().equals(row.questionId()) || !row.questionId().equals(row.actualQuestionId())
+                    || !"SAME".equals(row.questionMode()) || !"FOCUSED".equals(row.sessionMode())
+                    || row.questionCount() == null || row.questionCount() != 1 || question.positionIndex() != 0) throw integrity();
+            uuid(row.id());
+            replayConfig(row.sessionConfigJson());
+            var binding = new RepracticeRows.RepracticeRow(row.id(), row.ownerId(), row.baselineSessionId(),
+                    row.baselineQuestionId(), row.baselineAnswerId(), row.sessionId(), row.questionId(),
+                    row.questionMode(), null, row.baselineKind(), row.recollectionId(), row.recollectionVersionId(),
+                    row.recollectionRevision());
+            var kind = RepracticeRules.baselineKind(binding);
+            TrainingDtos.QuestionSnapshot expected;
+            if (kind == RepracticeDtos.BaselineKind.ANSWER) {
+                if (row.sessionId().equals(row.baselineSessionId()) || row.questionId().equals(row.baselineQuestionId())) {
+                    throw integrity();
+                }
+                var baselines = mapper.replayAnswer(owner, row.baselineAnswerId(), 2);
+                countBindings(baselines);
+                if (baselines.size() != 1) throw integrity();
+                var baseline = baselines.getFirst();
+                if (baseline == null || !owner.equals(baseline.ownerId()) || !owner.equals(baseline.sessionOwnerId())
+                        || !row.baselineAnswerId().equals(baseline.answerId())
+                        || !row.baselineSessionId().equals(baseline.sessionId())
+                        || !row.baselineSessionId().equals(baseline.actualSessionId())
+                        || !row.baselineQuestionId().equals(baseline.questionId())
+                        || !"ENDED".equals(baseline.sessionStatus())) throw integrity();
+                // 复制链可以跨会话多次复练；缓存只负责去重，来源环必须独立拒绝。
+                replayParents.put(question.questionId(), row.baselineQuestionId());
+                var seen = new HashSet<String>();
+                for (String cursor = question.questionId(); cursor != null; cursor = replayParents.get(cursor)) {
+                    if (!seen.add(cursor)) throw integrity();
+                }
+                var original = loadTrainingQuestion(row.baselineQuestionId());
+                if (!row.baselineSessionId().equals(original.row().sessionId())) throw integrity();
+                var snapshot = original.snapshot();
+                var warnings = List.of("同题独立复练：此题已有历史提交，曝光计数不代表首次见题。",
+                        snapshot.sourceQuestionId() == null
+                                ? "沿用历史正式提交的固定题面；本题没有题库参考，题面来源与技术质量仍需人工判断。"
+                                : "沿用原训练的确切题库版本及未审个人参考；题库改版或停用不替换本次题面。");
+                if (snapshot.sourceQuestionId() == null && saved.snapshot().warnings().equals(List.of(warnings.getFirst(),
+                        "沿用历史 AI 追问题面；本题没有题库参考，题意与技术质量仍需人工判断。"))) {
+                    warnings = saved.snapshot().warnings();
+                }
+                expected = new TrainingDtos.QuestionSnapshot(snapshot.sourceQuestionId(), snapshot.sourceVersionId(),
+                        snapshot.title(), snapshot.number(), "独立复练", snapshot.content(), warnings);
+                // 基线答案只核身份；同题复制不继承未进入题面的原答图、动作理由或会话背景。
+            } else {
+                var original = recollectionQuestion(row);
+                if (!kind.name().equals(original.baselineKind())
+                        || original.number() > row.recollectionRevision() + 1) throw integrity();
+                expected = original.snapshot();
+            }
+            if (!expected.equals(saved.snapshot())) throw integrity();
+        }
+
+        private SavedRecollection recollectionQuestion(ReplaySourceRow source) {
+            var link = new AiDtos.SourceLink(source.recollectionId(), source.recollectionVersionId());
+            var saved = recollectionQuestions.get(link);
+            if (saved != null) return saved;
+            int remaining = remainingVersions();
+            if (remaining == 0) throw limit();
+            var rows = mapper.recollectionVersion(owner, link.itemId(), link.versionId(), 2);
+            countBindings(rows);
+            if (rows.size() != 1) throw integrity();
+            var row = rows.getFirst();
+            if (row == null || !owner.equals(row.ownerId()) || !owner.equals(row.itemOwnerId())
+                    || !link.itemId().equals(row.recollectionId()) || !link.itemId().equals(row.actualItemId())
+                    || !link.versionId().equals(row.versionId()) || !knowledgeStatus(row.itemStatus())
+                    || row.versionNumber() == null || row.versionNumber() < 1 || row.versionNumber() > 1000) throw integrity();
+            var snapshot = recollectionSnapshot(row);
+            saved = new SavedRecollection(row.baselineKind(), row.versionNumber(), snapshot);
+            recollectionQuestions.put(link, saved);
+            return saved;
         }
 
         private void followUpReferences(SavedQuestion saved) {
@@ -720,6 +1198,7 @@ public class KnowledgeMaterialLineage {
                     || !owner.equals(row.sessionOwnerId()) || !row.sessionId().equals(row.actualSessionId())) throw integrity();
             uuid(row.currentAttemptId());
             var manifest = followUpManifest(row);
+            rememberChecks(manifest);
             var input = manifest.training();
             var candidate = followUpCandidate(row.candidateJson(), input);
             // 先占原成功任务节点，父题与答案只排队；循环不能借同步递归绕过共享额度。
@@ -768,7 +1247,7 @@ public class KnowledgeMaterialLineage {
             var checks = manifest.contextChecks();
             if (checks.size() != snapshots.size()) throw integrity();
             var expected = new ArrayList<AiDtos.FollowUpContext>();
-            var used = new ArrayList<SavedContext>();
+            var used = new ArrayList<Integer>();
             for (int index = 0; index < snapshots.size(); index++) {
                 var stored = snapshots.get(index);
                 var snapshot = stored.projected();
@@ -798,17 +1277,24 @@ public class KnowledgeMaterialLineage {
                     if (check.sourceGeneration() == null
                             || check.kind() == TrainingDtos.ContextKind.FACT && check.projectGeneration() == null) throw integrity();
                     expected.add(snapshot);
-                    used.add(stored);
+                    used.add(index);
                 }
             }
             if (!expected.equals(manifest.training().context())) throw integrity();
             // 仅原清单真正外发的背景进入祖先；排除项的保存镜像不扩大材料集合。
-            for (var stored : used) {
+            for (int index : used) {
+                var stored = snapshots.get(index);
                 var context = stored.projected();
                 var prepared = preparationVersion(new AiDtos.SourceLink(context.itemId(), context.versionId()), context.kind());
                 if (context.number() != prepared.row().versionNumber() || !context.title().equals(prepared.row().title())
                         || !context.body().equals(prepared.content().body())
                         || !stored.snapshot().content().equals(json.readTree(prepared.row().contentJson()))) throw integrity();
+                if ("FACT".equals(context.kind())) factProjectReference(prepared, checks.get(index).projectGeneration());
+                // 只保留原清单实际使用的背景检查；排除项和新复练时间不能改写原任务依据。
+                var check = checks.get(index);
+                followUpPreparation.add(new FollowUpPreparationSource(row.taskId(),
+                        new PreparationDtos.SourceCheck(PreparationDtos.Kind.valueOf(check.kind().name()),
+                                check.itemId(), check.versionId(), check.state(), check.sourceGeneration(), check.projectGeneration())));
             }
         }
 
@@ -1005,6 +1491,26 @@ public class KnowledgeMaterialLineage {
         }
     }
 
+    private static AiDtos.FollowUpQuestion questionProjection(SavedQuestion saved) {
+        var content = saved.snapshot().content();
+        return new AiDtos.FollowUpQuestion(content.title(), content.prompt(), content.conditions(), content.technology(),
+                content.scenario(), content.type());
+    }
+
+    private static AiDtos.FollowUpAnswer answerProjection(SavedAnswer saved) {
+        var content = saved.content();
+        return new AiDtos.FollowUpAnswer(content.text(), content.diagram().nodes().stream()
+                .map(node -> new AiDtos.FollowUpNode(node.id(), node.label(), node.description())).toList(),
+                content.diagram().edges().stream()
+                        .map(edge -> new AiDtos.FollowUpEdge(edge.id(), edge.source(), edge.target(), edge.label())).toList());
+    }
+
+    private static void answerIdentity(com.wenjie.studio.review.ReviewDtos.AnswerLink fixed,
+                                       String sessionId, String questionId, String answerId) {
+        if (fixed == null || !Objects.equals(sessionId, fixed.sessionId()) || !Objects.equals(questionId, fixed.questionId())
+                || !Objects.equals(answerId, fixed.answerId())) throw integrity();
+    }
+
     private static String answerText(TrainingDtos.AnswerContent content, AiDtos.TrainingDraftFragment fragment) {
         return switch (fragment.field()) {
             case ANSWER_TEXT -> content.text();
@@ -1167,11 +1673,13 @@ public class KnowledgeMaterialLineage {
                                    List<PreparationDtos.VersionLink> links, PreparationDtos.FactContent fact,
                                    PreparationDtos.ExpressionType expressionType) {}
     private record PreparedVersion(PreparationVersionRow row, PreparedContent content, List<AiDtos.SourceLink> facts) {}
+    private record ProjectGenerationKey(String projectId, long generation) {}
     private record SavedAnswer(TrainingAnswerRow row, TrainingDtos.AnswerContent content) {}
     private record SavedQuestion(TrainingQuestionRow row, TrainingDtos.QuestionSnapshot snapshot) {}
     private record SavedBankVersion(BankVersionRow row, QuestionDtos.QuestionPrompt content) {}
     private record SavedEvaluation(AiDtos.EvaluationInput input, AiDtos.EvaluationReport report) {}
     private record SavedContext(TrainingDtos.ContextSnapshot snapshot, AiDtos.FollowUpContext projected) {}
+    private record SavedRecollection(String baselineKind, int number, TrainingDtos.QuestionSnapshot snapshot) {}
     private record AnswerSelection(String sessionId, String questionId, String answerId, int answerNumber,
                                    String answerCondition, List<AiDtos.TrainingDraftFragment> fragments) {}
     private record StoredTargetContent(String title, String company, String jd, String sourceUrl,
@@ -1228,12 +1736,13 @@ public class KnowledgeMaterialLineage {
                     || manifest.comparisonChecks() != null || manifest.reviewDraft() != null
                     || manifest.cardDraftType() != null || manifest.factDraft() != null
                     || manifest.relationEvidence() != null || manifest.relationAiFeedback() != null
-                    || manifest.sourceQa() != null || manifest.materialChecks() != null
-                    || manifest.knowledgeMaterialChecks() != null
+                    || manifest.sourceQa() != null
                     || manifest.training().answer() == null || manifest.training().answer().text() == null
                     || manifest.training().context().stream().anyMatch(Objects::isNull)
                     || manifest.contextChecks().stream().anyMatch(Objects::isNull)
                     || !row.manifestHash().equals(digest.hash(manifest))) throw integrity();
+            checks(manifest.materialChecks(), 1, MAX_EXCERPTS);
+            checks(manifest.knowledgeMaterialChecks(), 0, MAX_EXCERPTS);
             return manifest;
         } catch (RuntimeException exception) {
             throw new IllegalStateException("知识整理原追问的固定清单或摘要不一致", exception);
@@ -1316,6 +1825,58 @@ public class KnowledgeMaterialLineage {
         return value == null || value >= 0 && value <= MAX_REVISION;
     }
 
+    private void replayConfig(String value) {
+        try {
+            if (value == null || value.getBytes(StandardCharsets.UTF_8).length > MAX_CONTEXT_BYTES) throw integrity();
+            var tree = json.readTree(value);
+            fields(tree, Set.of("feedbackTiming", "timeBudgetMinutes", "followUpLimit", "stages",
+                    "collectionId", "collectionVersionId"));
+            var config = json.treeToValue(tree, TrainingDtos.SessionConfig.class);
+            if (config.feedbackTiming() != TrainingDtos.FeedbackTiming.AFTER_SESSION || config.followUpLimit() != 0
+                    || !List.of("独立复练").equals(config.stages()) || config.collectionId() != null
+                    || config.collectionVersionId() != null
+                    || config.timeBudgetMinutes() != null && (config.timeBudgetMinutes() < 1 || config.timeBudgetMinutes() > 180)) {
+                throw integrity();
+            }
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("知识整理原复练的固定配置不一致", exception);
+        }
+    }
+
+    private TrainingDtos.QuestionSnapshot recollectionSnapshot(RecollectionVersionRow row) {
+        try {
+            if (row.contentJson() == null
+                    || row.contentJson().getBytes(StandardCharsets.UTF_8).length > MAX_ANSWER_BYTES) throw integrity();
+            var tree = json.readTree(row.contentJson());
+            fields(tree, Set.of("title", "question", "type", "conditions", "baselineKind",
+                    "answerFragment", "feedback", "uncertainty", "gap"));
+            var content = json.treeToValue(tree, RecollectionDtos.Content.class);
+            if (content.type() == null || content.baselineKind() == null
+                    || !Objects.equals(row.title(), content.title())
+                    || !Objects.equals(row.baselineKind(), content.baselineKind().name())) throw integrity();
+            recollectionText(content.title(), 200, true); recollectionText(content.question(), 10000, true);
+            recollectionText(content.conditions(), 5000, false);
+            recollectionText(content.answerFragment(), 20000, content.baselineKind() == RecollectionDtos.BaselineKind.RECOLLECTION);
+            if (content.baselineKind() == RecollectionDtos.BaselineKind.NONE && !content.answerFragment().isEmpty()) throw integrity();
+            recollectionText(content.feedback(), 5000, false); recollectionText(content.uncertainty(), 2000, true);
+            recollectionText(content.gap(), 2000, false);
+            var prompt = new QuestionDtos.QuestionPrompt(content.title(), content.question(), content.conditions(),
+                    "", "", content.type(), null, List.of(QuestionDtos.Dimension.OTHER), List.of(), List.of(), List.of(),
+                    new QuestionDtos.Source("", "", ""));
+            // 个人回忆只生成题面投影，不把原回答、反馈、面试安排或缺口当作模型已用材料。
+            return new TrainingDtos.QuestionSnapshot(null, null, content.title(), 0, "独立复练", prompt,
+                    List.of("同题补练：题面来自个人回忆，已接触过题面；题库曝光计数不能表示首次见题。",
+                            "题面可能存在回忆偏差；本次独立作答，原回忆片段与反馈在训练结束后查看。"));
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("知识整理原复练的个人回忆版本不一致", exception);
+        }
+    }
+
+    private static void recollectionText(String value, int maximum, boolean required) {
+        reportText(value, maximum, required);
+        if (value.indexOf('\0') >= 0) throw integrity();
+    }
+
     private AiDtos.Manifest evaluationManifest(EvaluationSourceRow row) {
         try {
             if (row.manifestJson() == null || row.manifestHash() == null
@@ -1333,9 +1894,10 @@ public class KnowledgeMaterialLineage {
                     || manifest.comparisonChecks() != null || manifest.reviewDraft() != null
                     || manifest.cardDraftType() != null || manifest.factDraft() != null
                     || manifest.relationEvidence() != null || manifest.relationAiFeedback() != null
-                    || manifest.sourceQa() != null || manifest.materialChecks() != null
-                    || manifest.knowledgeMaterialChecks() != null
+                    || manifest.sourceQa() != null
                     || !row.manifestHash().equals(digest.hash(manifest))) throw integrity();
+            checks(manifest.materialChecks(), 1, MAX_EXCERPTS);
+            checks(manifest.knowledgeMaterialChecks(), 0, MAX_EXCERPTS);
             return manifest;
         } catch (RuntimeException exception) {
             throw new IllegalStateException("知识整理原评价的固定清单或摘要不一致", exception);
@@ -1456,19 +2018,17 @@ public class KnowledgeMaterialLineage {
             if (manifest == null || manifest.purpose() != purpose || !valid || !row.manifestHash().equals(digest.hash(manifest))) {
                 throw integrity();
             }
-            checks(manifest.materialChecks(), 1, 5);
+            checks(manifest.materialChecks(), 1, MAX_EXCERPTS);
             if (manifest.materialChecks() != null) {
                 var directSources = purpose == AiDtos.Purpose.FACT_DRAFT ? manifest.factDraft().materials()
                         : manifest.materialDraftSources();
                 var directIds = directSources == null ? List.<String>of()
                         : directSources.stream().map(MaterialDtos.AiExcerpt::excerptId).sorted().toList();
-                if (!manifest.materialChecks().stream().map(MaterialLifecycleDtos.Check::excerptId).toList().equals(directIds)) {
+                if (!manifest.materialChecks().stream().map(MaterialLifecycleDtos.Check::excerptId).toList().containsAll(directIds)) {
                     throw integrity();
                 }
             }
             checks(manifest.knowledgeMaterialChecks(), 0, MAX_EXCERPTS);
-            if (manifest.knowledgeMaterialChecks() != null
-                    && manifest.sources().stream().noneMatch(source -> AiSources.knowledgeKind(source.kind()))) throw integrity();
             return manifest;
         } catch (RuntimeException exception) {
             throw new IllegalStateException("知识采用材料用途祖先的固定清单或摘要不一致", exception);
@@ -1507,5 +2067,10 @@ public class KnowledgeMaterialLineage {
 
     private static ApiException limit() {
         return new ApiException(409, "KNOWLEDGE_MATERIAL_LINEAGE_LIMIT", "知识采用材料用途祖先超过本次核对上限，请缩小知识来源范围后重试。");
+    }
+
+    private static ApiException historyUnavailable() {
+        return new ApiException(409, "KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE",
+                "知识来源中事实父项目的历史代次缺少确切版本见证，无法核对材料用途。请改选来源；系统不会用当前项目版本替代历史。");
     }
 }

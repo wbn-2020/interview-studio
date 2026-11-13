@@ -36,7 +36,9 @@ const locked = computed(() => writer.locked.value || Boolean(deferred.value))
 const dirty = computed(() => Object.values(drafts).some(draft => Boolean(draft.reason || draft.confirmed)))
 const changeState = reactive({ dirty: false, locked: false })
 const sameCommandRoot = computed(() => !locked.value || commandRoot.value === root.value)
-const otherCommand = computed(() => Boolean(store.changes.get('material-editor-command')?.locked || store.changes.get('material-upload')?.locked))
+const otherCommand = computed(() => Boolean(store.changes.get('material-editor-command')?.locked
+  || store.changes.get('material-upload')?.locked || store.changes.get('material-correction')?.locked)
+  || [...store.changes].some(([key, value]) => key.startsWith('material-dependency-impact:') && value.locked))
 const canWrite = computed(() => readable.value && opened.value && Boolean(state.value) && !locked.value && !stateLoading.value
   && !otherCommand.value && state.value?.revision !== Number.MAX_SAFE_INTEGER)
 const historyRetryReady = computed(() => lastHistory.value?.root === root.value)
@@ -170,8 +172,8 @@ function showReferences() { if (readable.value && opened.value && !locked.value)
     <p v-else-if="opened && !readable" class="notice" role="status">查看条件变化，旧状态与历史已清除；理由和未决原请求继续保留。</p>
     <div v-if="opened" v-show="readable" :id="panelId" class="lifecycle-content" :inert="!readable || undefined">
       <p class="field-help">没有已登记引用，或只有合法 AI 输入登记且尚无正式采用内容及其他本地绑定的摘录，可按当前状态执行四类动作。失败、取消、未发送、进行中或成功未采用的任务，以及合法的忽略决定，不会单独阻止四类动作。</p>
-      <p class="field-help">准备任一历史版本、正式关系直接材料证据、标准审阅原始绑定，或相关任务任一已采用的知识／题目／事实／关系仍会阻止变更，关系补充也属于采用；归档、改版、关系移除或审阅撤回不会解除限制。四类动作均遵守此边界，包含“重新允许 AI 用途”。此处不提供删除或已采用内容的更正传播。</p>
-      <p class="field-help">归档或撤回生效后，后续资格核对会拒绝旧任务的发送许可、暂态正文读取、结果接纳、候选采用与重试。已获发送许可的网络请求可能继续到达供应商并产生费用，已发送正文及已收到的片段无法收回；不保证立即取消供应商请求或费用归零。恢复摘录或重新允许 AI 用途不会恢复旧清单、预览或授权，须按当前代次重新预览与授权。</p>
+      <p class="field-help">已有正式采用的摘录仍不能归档或恢复。仅有受支持的知识采用且没有未支持出口时，撤回／重新允许 AI 用途才可由服务器在本人数据锁内重建真实知识闭包后核验放行。准备任一历史版本、题目／事实／关系／审阅的直接采用或原始材料绑定，以及知识下游题目、卡片等原始出口仍保守阻塞；归档、改版、关系移除或审阅撤回不解除限制。普通主题或结构关联不单独视为内容派生。</p>
+      <p class="field-help">AI 用途变化不代表正文更正，不触发知识内容复核或暂停复习。归档或撤回生效后，后续资格核对会拒绝旧任务的发送许可、暂态正文读取、结果接纳、候选采用与重试。已获发送许可的网络请求可能继续到达供应商并产生费用，已发送正文及已收到的片段无法收回；不保证立即取消供应商请求或费用归零。恢复摘录或重新允许 AI 用途不会恢复旧清单、预览或授权，新修订仍须重新预览与授权。</p>
       <p v-if="!sameCommandRoot" class="notice error" role="alert">原摘录的变更结果尚未接收。请返回原摘录核对原请求，不可用当前摘录覆盖。</p>
       <p v-if="locked" class="notice" role="status">原变更请求尚未完成确认或回执接收；摘录、动作及理由保持锁定。</p>
       <p v-if="paused" class="notice" role="status">查看条件已变化，请主动重新读取当前状态；确认勾选已取消，理由继续保留。</p>
@@ -182,8 +184,8 @@ function showReferences() { if (readable.value && opened.value && !locked.value)
       <p v-if="stateProblem" class="notice error" role="alert">{{ stateProblem }}</p><p v-if="stateLoading" class="field-help" role="status">正在读取生命周期及已登记引用存在性…</p>
       <template v-else-if="state">
         <dl class="lifecycle-state"><div><dt>当前状态</dt><dd>{{ materialLifecycleStatusLabels[state.status] }}</dd></div><div><dt>AI 用途</dt><dd>{{ materialAiUseLabels[state.aiUse] }}</dd></div><div><dt>当前修订</dt><dd>{{ state.revision }}</dd></div><div><dt>更新时间</dt><dd>{{ new Date(state.updatedAt).toLocaleString('zh-CN') }}</dd></div></dl>
-        <p v-if="state.hasReferences" class="notice" role="status">已发现登记引用；此存在性提示不代表四类变更被禁止，也不代表已获执行资格。提交时由服务器原子核对正式采用及其他不支持的绑定，可能返回 409 MATERIAL_HAS_REFERENCES。直接引用目录可帮助核对，但不是完整删除清单。</p>
-        <p v-else class="field-help">本次读取未发现已登记引用，仅用于当前提示。提交仍须核对最新修订、实际状态、正式采用及其他不支持的绑定。</p>
+        <p v-if="state.hasReferences" class="notice" role="status">已发现登记引用；此标记只说明存在性，不判断四类动作能否执行。提交时服务器在本人数据锁内按动作核对最新采用闭包与原始出口，不支持的绑定或出口仍可能返回 409 MATERIAL_HAS_REFERENCES。预览和直接引用目录都不是放行凭据，也不是完整删除清单。</p>
+        <p v-else class="field-help">本次读取未发现已登记引用，不能据此放行。提交仍须核对最新修订、实际状态、正式采用与原始出口。</p>
         <p v-if="state.revision === Number.MAX_SAFE_INTEGER" class="notice error">修订已达到安全整数上限，不能继续变更，请保留当前记录并联系维护者。</p>
         <div class="lifecycle-actions">
           <form v-for="action in materialLifecycleActions" :key="action" class="lifecycle-action" @submit.prevent="submit(action)">

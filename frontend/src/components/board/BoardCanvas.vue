@@ -3,7 +3,7 @@ import { computed, shallowRef, watch } from 'vue'
 import { Handle, Position, VueFlow, type Connection, type Edge, type Node, type NodeChange, type ViewportTransform, type VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
-import type { BoardEdge, BoardNode, BoardReference, BoardViewport } from '../../api/boards'
+import { boardReferenceKey, boardReferenceLabels, type BoardEdge, type BoardNode, type BoardReference, type BoardViewport } from '../../api/boards'
 
 const props = defineProps<{ nodes: BoardNode[]; edges: BoardEdge[]; references: BoardReference[]; viewport: BoardViewport; selectedId: string; disabled: boolean }>()
 const emit = defineEmits<{
@@ -14,7 +14,7 @@ const flowNodes = shallowRef<Node[]>([])
 const flowEdges = shallowRef<Edge[]>([])
 const flow = shallowRef<VueFlowStore>()
 const index = computed(() => new Map(props.nodes.map(node => [node.id, node])))
-const refs = computed(() => new Map(props.references.map(item => [item.itemId, item])))
+const refs = computed(() => new Map(props.references.map(item => [boardReferenceKey(item.itemId, item.referenceKind), item])))
 function hidden(node: BoardNode): boolean {
   let parent = node.parentId
   const seen = new Set<string>()
@@ -30,9 +30,10 @@ function hidden(node: BoardNode): boolean {
 }
 watch(() => [props.nodes, props.references, props.selectedId], () => {
   flowNodes.value = props.nodes.map(node => {
-    const source = node.itemId ? refs.value.get(node.itemId) : undefined
+    const source = node.itemId ? refs.value.get(boardReferenceKey(node.itemId, node.referenceKind)) : undefined
     return { id: node.id, type: 'knowledge', position: { x: node.x, y: node.y }, hidden: hidden(node), selected: node.id === props.selectedId,
-      data: { title: source?.title ?? '临时文本', text: source?.body ?? node.text, group: node.group,
+      data: { title: source?.title ?? (node.type === 'TEXT' ? '临时文本' : '来源不可用'), text: source?.body ?? node.text, group: node.group,
+        referenceLabel: node.type === 'REFERENCE' ? boardReferenceLabels[node.referenceKind ?? 'KNOWLEDGE'] : '临时文本',
         status: source?.status, reference: node.type === 'REFERENCE', collapsed: node.collapsed } }
   })
 }, { deep: true, immediate: true })
@@ -82,7 +83,7 @@ watch(() => props.viewport, value => {
       <template #node-knowledge="{ data }">
         <Handle type="target" :position="Position.Top" />
         <article class="board-card" :class="{ reference: data.reference }">
-          <small>{{ data.reference ? '知识引用' : '临时文本' }}<span v-if="data.group"> · {{ data.group }}</span></small>
+          <small>{{ data.referenceLabel }}<span v-if="data.group"> · {{ data.group }}</span></small>
           <strong>{{ data.title }}</strong>
           <p>{{ data.text || '选择此卡片，开始记录想法。' }}</p>
           <small v-if="data.status === 'ARCHIVED'">来源已归档</small>
@@ -91,7 +92,7 @@ watch(() => props.viewport, value => {
         <Handle type="source" :position="Position.Bottom" />
       </template>
     </VueFlow>
-    <div v-if="!nodes.length" class="board-canvas-empty"><strong>从一个想法开始</strong><p>添加临时文本，或引用已有笔记与概念。卡片连线只属于这张画布。</p></div>
+    <div v-if="!nodes.length" class="board-canvas-empty"><strong>从一个想法开始</strong><p>添加临时文本，或引用已有知识、题目与附件。卡片连线只属于这张画布。</p></div>
   </div>
 </template>
 

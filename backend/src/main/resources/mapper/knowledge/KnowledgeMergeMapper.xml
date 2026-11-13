@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.KnowledgeMergeMapper">
+  <resultMap id="mergeRecord" type="com.wenjie.studio.knowledge.KnowledgeMergeDtos$MergeRecord">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="source_item_id" javaType="java.lang.String"/>
+      <arg column="target_item_id" javaType="java.lang.String"/>
+      <arg column="source_version_id" javaType="java.lang.String"/>
+      <arg column="target_version_id" javaType="java.lang.String"/>
+      <arg column="target_revision_after" javaType="_long"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="position" type="com.wenjie.studio.knowledge.KnowledgeDtos$Position">
+    <constructor>
+      <idArg column="item_id" javaType="java.lang.String"/>
+      <arg column="x" javaType="java.lang.Double"/>
+      <arg column="y" javaType="java.lang.Double"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="binding" type="com.wenjie.studio.knowledge.KnowledgeMergeMapper$Binding">
+    <constructor>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+      <arg column="revision" javaType="_long"/>
+    </constructor>
+  </resultMap>
+
+  <select id="bySource" resultMap="mergeRecord" timeout="5">
+    SELECT id,source_item_id,target_item_id,source_version_id,target_version_id,target_revision_after,created_at
+    FROM knowledge_concept_merge WHERE owner_id=#{owner} AND source_item_id=#{sourceId}
+  </select>
+  <select id="position" resultMap="position" timeout="5">
+    SELECT item_id,x,y FROM knowledge_position WHERE owner_id=#{owner} AND item_id=#{id}
+  </select>
+  <select id="activeConceptIds" resultType="java.lang.String" timeout="5">
+    SELECT id FROM knowledge_item WHERE owner_id=#{owner} AND kind='CONCEPT' AND status='ACTIVE' AND id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY id
+  </select>
+
+  <!-- 摘要记录具体绑定身份而非只有数量；历史证据全部保留原目标与版本，不被合并命令改写。 -->
+  <select id="bindings" resultMap="binding" timeout="5">
+    SELECT CONCAT(CASE WHEN b.item_id=#{ids[0]} THEN 'SOURCE_' ELSE 'TARGET_' END,b.kind) AS kind,
+      CONCAT(b.item_id,'/',b.binding_id) AS id,b.version_id,b.revision
+    FROM (
+      SELECT r.item_id,'BOARD_VERSIONS' AS kind,CONCAT(r.board_id,'/',r.board_revision) AS binding_id,
+        r.version_id,r.board_revision AS revision
+      FROM knowledge_board_reference r WHERE r.owner_id=#{owner} AND r.item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'MEMORY_SOURCES',CONCAT(r.card_id,'/',r.version_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM memory_card_source r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.concept_id,'MEMORY_CONCEPTS',CONCAT(r.card_id,'/',r.version_id),r.version_id,0
+      FROM memory_card_concept r WHERE r.owner_id=#{owner} AND r.concept_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'QUESTION_VERSIONS',CONCAT(r.question_id,'/',r.version_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM question_knowledge_reference r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_source_item_id,'PREPARATION_VERSIONS',CAST(r.id AS CHAR),r.knowledge_source_version_id,0
+      FROM preparation_reference r WHERE r.owner_id=#{owner} AND r.source_kind='KNOWLEDGE' AND r.knowledge_source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.target_item_id,'BACKLINKS',r.id,r.source_version_id,0
+      FROM knowledge_reference r WHERE r.owner_id=#{owner} AND r.target_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'OUTGOING_REFERENCES',r.id,r.source_version_id,0
+      FROM knowledge_reference r WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'TRAINING_QUESTIONS',CONCAT(r.question_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM training_question_knowledge_snapshot r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'TRAINING_DRAFTS',CONCAT(r.question_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM training_draft_knowledge_reference r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'TRAINING_ANSWERS',CONCAT(r.answer_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM training_answer_knowledge_reference r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'MEMORY_ATTEMPTS',CONCAT(r.attempt_id,'/',r.knowledge_version_id),
+        r.knowledge_version_id,0
+      FROM memory_attempt_knowledge_source r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_source_item_id,'INTERVIEW_MATERIALS',CONCAT(r.event_id,'/',r.event_revision,'/',r.ordinal),
+        r.knowledge_source_version_id,r.event_revision
+      FROM interview_event_material r WHERE r.owner_id=#{owner} AND r.source_kind='KNOWLEDGE' AND r.knowledge_source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'AI_DRAFT_INPUTS',CONCAT(r.task_id,'/',r.ordinal),r.knowledge_version_id,0
+      FROM ai_draft_knowledge_input r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'RELATION_SUPPLEMENT_SOURCES',CONCAT(r.supplement_id,'/',r.ordinal),r.source_version_id,0
+      FROM knowledge_relation_supplement_source r WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'AI_KNOWLEDGE_ADOPTIONS',
+        CONCAT(r.task_id,'/',r.ordinal,'/',d.target_item_id,'/',d.target_version_id),r.source_version_id,0
+      FROM ai_knowledge_source r JOIN ai_candidate_decision d
+        ON d.owner_id=r.owner_id AND d.task_id=r.task_id AND d.status='ADOPTED'
+      WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'AI_QUESTION_ADOPTIONS',
+        CONCAT(r.task_id,'/',r.ordinal,'/',d.target_question_id,'/',d.target_version_id),r.source_version_id,0
+      FROM ai_question_source r JOIN ai_question_decision d
+        ON d.owner_id=r.owner_id AND d.task_id=r.task_id AND d.status='ADOPTED'
+      WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'AI_RELATION_INPUTS',CONCAT(r.task_id,'/',r.ordinal),r.source_version_id,0
+      FROM ai_relation_source r WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_item_id,'AI_CARD_INPUTS',CONCAT(r.task_id,'/',r.ordinal),r.source_version_id,0
+      FROM ai_card_draft_source r WHERE r.owner_id=#{owner} AND r.source_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'AI_SOURCE_QA_INPUTS',CONCAT(r.task_id,'/',r.ordinal),r.knowledge_version_id,0
+      FROM ai_source_qa_source r WHERE r.owner_id=#{owner} AND r.domain='KNOWLEDGE' AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,'STANDARD_REVIEW_EVIDENCE',
+        CONCAT(r.review_id,'/',r.revision,'/',r.evidence_id),r.knowledge_version_id,r.revision
+      FROM standard_review_evidence r WHERE r.owner_id=#{owner} AND r.basis_kind='KNOWLEDGE' AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.source_id,'TODAY_PLACEMENTS',r.id,NULL,r.revision
+      FROM today_placement r WHERE r.owner_id=#{owner} AND r.source_kind='KNOWLEDGE_DRAFT' AND r.source_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT p.source_id,'TODAY_PLACEMENT_HISTORY',CONCAT(r.placement_id,'/',r.revision),NULL,r.revision
+      FROM today_placement_history r JOIN today_placement p ON p.owner_id=r.owner_id AND p.id=r.placement_id
+      WHERE r.owner_id=#{owner} AND p.source_kind='KNOWLEDGE_DRAFT' AND p.source_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      UNION ALL
+      SELECT r.knowledge_item_id,
+        CASE r.role
+          WHEN 'REVIEW_DEPENDENCY' THEN 'MEMORY_REVIEW_DEPENDENCIES'
+          WHEN 'REVIEW_OBSERVED_CURRENT' THEN 'MEMORY_REVIEW_OBSERVATIONS'
+          WHEN 'IMPACT_DEPENDENCY' THEN 'MEMORY_IMPACT_DEPENDENCIES'
+          WHEN 'IMPACT_PREVIOUS' THEN 'MEMORY_IMPACT_PREVIOUS'
+          WHEN 'IMPACT_CURRENT' THEN 'MEMORY_IMPACT_CURRENT'
+        END,
+        CONCAT(r.history_id,'/',r.role,'/',r.source_ordinal),r.knowledge_version_id,0
+      FROM memory_source_history_knowledge_reference r WHERE r.owner_id=#{owner} AND r.knowledge_item_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ) b
+    ORDER BY kind,id,version_id,revision LIMIT #{limit}
+  </select>
+
+  <insert id="insert">
+    INSERT INTO knowledge_concept_merge
+      (owner_id,id,source_item_id,target_item_id,source_version_id,target_version_id,source_title,target_title,
+       source_revision_before,target_revision_before,target_revision_after,
+       source_organization_revision,target_organization_revision,layout_revision_before,layout_revision_after,
+       choices_json,created_at)
+    VALUES (#{owner},#{merge.record.id},#{merge.record.sourceId},#{merge.record.targetId},#{merge.record.sourceVersionId},
+      #{merge.record.targetVersionId},#{merge.sourceTitle},#{merge.targetTitle},#{merge.sourceRevisionBefore},
+      #{merge.targetRevisionBefore},#{merge.record.targetRevisionAfter},#{merge.sourceOrganizationRevision},
+      #{merge.targetOrganizationRevision},#{merge.layoutRevisionBefore},#{merge.layoutRevisionAfter},#{merge.choicesJson},
+      #{merge.record.createdAt})
+  </insert>
+  <insert id="insertRelationMapping">
+    INSERT INTO knowledge_concept_merge_relation
+      (owner_id,merge_id,old_relation_id,source_id,target_id,relation_type,target_relation_id,outcome,created_at)
+    VALUES (#{owner},#{mergeId},#{original.id},#{original.sourceId},#{original.targetId},#{original.type},
+      #{targetRelationId},#{outcome},#{now})
+  </insert>
+</mapper>

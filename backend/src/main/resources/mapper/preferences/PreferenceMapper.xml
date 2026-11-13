@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.preferences.PreferenceMapper">
+  <select id="find" resultType="com.wenjie.studio.preferences.PreferenceDtos$Preferences" timeout="5">
+    SELECT revision,theme,font_size,content_width,motion,time_zone,save_recovery_notice,updated_at
+    FROM user_preference WHERE owner_id=#{owner}
+  </select>
+  <insert id="insert" timeout="5">
+    INSERT INTO user_preference (owner_id,revision,theme,font_size,content_width,motion,time_zone,save_recovery_notice,updated_at)
+    VALUES (#{owner},#{value.revision},#{value.theme},#{value.fontSize},#{value.contentWidth},
+      #{value.motion},#{value.timeZone},#{value.saveRecoveryNotice},#{value.updatedAt})
+  </insert>
+  <update id="update" timeout="5">
+    UPDATE user_preference SET revision=#{value.revision},theme=#{value.theme},font_size=#{value.fontSize},
+      content_width=#{value.contentWidth},motion=#{value.motion},time_zone=#{value.timeZone},
+      save_recovery_notice=#{value.saveRecoveryNotice},updated_at=#{value.updatedAt}
+    WHERE owner_id=#{owner} AND revision=#{expected} AND revision &lt; 9007199254740991
+  </update>
+  <select id="usage" resultType="com.wenjie.studio.preferences.PreferenceDtos$UsageCounts" timeout="5">
+    SELECT
+      (SELECT COUNT(*) FROM knowledge_item WHERE owner_id=#{owner} AND kind='NOTE') AS notes,
+      (SELECT COUNT(*) FROM knowledge_item WHERE owner_id=#{owner} AND kind='CONCEPT') AS concepts,
+      (SELECT COUNT(*) FROM knowledge_version WHERE owner_id=#{owner}) AS knowledge_versions,
+      (SELECT COUNT(*) FROM knowledge_board WHERE owner_id=#{owner}) AS boards,
+      (SELECT COUNT(*) FROM preparation_item WHERE owner_id=#{owner}) AS preparation_items,
+      (SELECT COUNT(*) FROM question WHERE owner_id=#{owner}) AS questions,
+      (SELECT COUNT(*) FROM training_session WHERE owner_id=#{owner}) AS training_sessions,
+      (SELECT COUNT(*) FROM training_answer WHERE owner_id=#{owner}) AS submitted_answers,
+      (SELECT COUNT(*) FROM memory_card WHERE owner_id=#{owner}) AS memory_cards,
+      (SELECT COUNT(*) FROM material_attachment WHERE owner_id=#{owner}) AS attachments,
+      (SELECT COUNT(*) FROM ai_task WHERE owner_id=#{owner}) AS ai_tasks,
+      COALESCE((SELECT SUM(reserved_bytes) FROM material_upload WHERE owner_id=#{owner}),0)
+        +COALESCE((SELECT SUM(reserved_bytes) FROM material_parse_run WHERE owner_id=#{owner}),0) AS material_reserved_bytes
+  </select>
+</mapper>

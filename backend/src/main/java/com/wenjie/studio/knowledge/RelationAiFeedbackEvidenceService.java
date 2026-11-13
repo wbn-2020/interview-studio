@@ -115,6 +115,9 @@ public class RelationAiFeedbackEvidenceService {
         AiDtos.OriginState state = sources.state(owner, source);
         if (state == null || !Set.of(AiDtos.OriginState.CURRENT, AiDtos.OriginState.REVIEW_REQUIRED,
                 AiDtos.OriginState.UNAVAILABLE).contains(state)) throw broken();
+        if (state == AiDtos.OriginState.CURRENT && relations.materialReviewRequired(owner, relationId, row.createdAt())) {
+            state = AiDtos.OriginState.REVIEW_REQUIRED;
+        }
         return new Detail(entry, live != null, source, state);
     }
 

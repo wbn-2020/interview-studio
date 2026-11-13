@@ -3,6 +3,7 @@ package com.wenjie.studio.schedule;
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyService;
 import com.wenjie.studio.knowledge.KnowledgeMapper;
+import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
 import com.wenjie.studio.prepare.PreparationMapper;
 import com.wenjie.studio.prepare.PreparationRows;
 import com.wenjie.studio.schedule.ScheduleDtos.*;
@@ -48,14 +49,16 @@ public class ScheduleService {
     private final ScheduleMapper mapper;
     private final PreparationMapper preparation;
     private final KnowledgeMapper knowledge;
+    private final KnowledgeRevalidationQuery knowledgeRevalidation;
     private final IdempotencyService commands;
     private final JsonMapper json;
 
     public ScheduleService(ScheduleMapper mapper, PreparationMapper preparation, KnowledgeMapper knowledge,
-                           IdempotencyService commands, JsonMapper json) {
+                           IdempotencyService commands, JsonMapper json, KnowledgeRevalidationQuery knowledgeRevalidation) {
         this.mapper = mapper;
         this.preparation = preparation;
         this.knowledge = knowledge;
+        this.knowledgeRevalidation = knowledgeRevalidation;
         this.commands = commands;
         this.json = json.rebuild().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
@@ -357,7 +360,7 @@ public class ScheduleService {
                 throw new ApiException(409, "FACT_NOT_CONFIRMED", "新增材料中的事实尚未确认或已撤回。");
             }
             if (state == ReferenceState.REVIEW_REQUIRED) {
-                throw new ApiException(409, "SOURCE_REVIEW_REQUIRED", "表达素材的事实依据已变化，请先复核后再关联。");
+                throw new ApiException(409, "SOURCE_REVIEW_REQUIRED", "新增材料的知识来源或事实依据待复核，请先处理后再关联。");
             }
             throw new ApiException(409, "SOURCE_CHANGED", "新增材料已改版或归档，请重新选择当前有效版本。");
         }
@@ -369,7 +372,9 @@ public class ScheduleService {
             var version = knowledge.findVersion(owner, link.itemId(), link.versionId());
             if (item == null || version == null || (!item.kind().equals("NOTE") && !item.kind().equals("CONCEPT"))) throw sourceUnavailable();
             ReferenceState state = !item.status().equals("ACTIVE") ? ReferenceState.ARCHIVED
-                    : !Objects.equals(item.currentVersionId(), version.id()) ? ReferenceState.SUPERSEDED : ReferenceState.CURRENT;
+                    : !Objects.equals(item.currentVersionId(), version.id()) ? ReferenceState.SUPERSEDED
+                    : knowledgeRevalidation.pending(owner, item.id(), version.id()) ? ReferenceState.REVIEW_REQUIRED
+                    : ReferenceState.CURRENT;
             return new MaterialReference(link.kind(), link.itemId(), version.id(), version.title(), version.number(), state);
         }
         var item = preparation.item(owner, link.itemId());

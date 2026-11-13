@@ -20,6 +20,7 @@ import PreparationContentForm from './PreparationContentForm.vue'
 import PreparationHistory from './PreparationHistory.vue'
 import PreparationPicker from './PreparationPicker.vue'
 import PreparationReadout from './PreparationReadout.vue'
+import PreparationCollectionReference from './PreparationCollectionReference.vue'
 
 const props = defineProps<{ id?: string; kind: PreparationKind }>()
 const emit = defineEmits<{ changed: []; created: [item: PreparationItem]; close: []; open: [id: string, kind: PreparationKind, versionId?: string] }>()
@@ -157,6 +158,7 @@ function generateJdRequirements() {
 }
 function openReference(reference: PreparationReference) {
   if (reference.kind === 'KNOWLEDGE') void router.push({ name: 'knowledge', query: { item: reference.itemId, version: reference.versionId } })
+  else if (reference.kind === 'COLLECTION') return
   else emit('open', reference.itemId, reference.kind, reference.versionId)
 }
 function olderDecisions() { if (decisions.data.value?.nextCursor) { decisionsCursors.value.push(decisionsBefore.value); decisionsBefore.value = decisions.data.value.nextCursor } }
@@ -196,7 +198,7 @@ function nextImpacts() { if (impacts.data.value?.nextCursor) { impactsCursors.va
           @state="basisReviewState = $event" @changed="refresh" />
         <PreparationKnowledgeImpacts :item-id="current.id" context="PREPARATION" :visible="tab === 'sources'"
           :disabled="editorLocked" />
-        <h3>当前保存版本的确切依据</h3><p class="field-help">标题与版本号取被引用的原版本，状态说明它现在是否仍可用于新材料。</p><p v-if="!latestSources?.references.length" class="field-help">这个版本没有引用其他对象；手工来源备注见阅读页。</p><div v-for="reference in latestSources?.references" :key="reference.versionId" class="prepare-source-row"><button class="text-link" @click="openReference(reference)">{{ reference.title }} · v{{ reference.number }}</button><span class="status-pill">{{ referenceLabels[reference.state] }}</span></div>
+        <h3>当前保存版本的确切依据</h3><p class="field-help">标题与版本号取被引用的原版本，状态说明它现在是否仍可用于新材料。</p><p v-if="!latestSources?.references.length" class="field-help">这个版本没有引用其他对象；手工来源备注见阅读页。</p><div v-for="reference in latestSources?.references" :key="`${reference.kind}:${reference.itemId}:${reference.versionId}`" class="prepare-source-row"><template v-if="reference.kind === 'COLLECTION'"><div><strong>{{ reference.title }} · v{{ reference.number }}</strong><PreparationCollectionReference :item-id="reference.itemId" :version-id="reference.versionId" /></div></template><button v-else class="text-link" @click="openReference(reference)">{{ reference.title }} · v{{ reference.number }}</button><span class="status-pill">{{ referenceLabels[reference.state] }}</span></div>
         <h3>直接引用影响</h3><p v-if="impacts.error.value" class="notice error">{{ errorText(impacts.error.value) }}<NButton text @click="impacts.refetch()">重试</NButton></p><p v-if="impacts.isPending.value" class="field-help">正在查询引用…</p><p v-if="impacts.data.value && !impacts.data.value.items.length" class="field-help">没有当前表达或目标引用本材料的版本。训练等来源将在对应阶段接入。</p><div v-for="impact in impacts.data.value?.items" :key="`${impact.id}-${impact.versionId}`" class="prepare-source-row"><button class="text-link" @click="emit('open', impact.id, impact.kind, impact.versionId)">{{ impact.title }} · {{ kindLabels[impact.kind] }}</button><span v-if="impact.reviewRequired" class="status-pill">待复核</span></div><div v-if="impactsCursors.length || impacts.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!impactsCursors.length" @click="impactsCursor = impactsCursors.pop()">上一页</NButton><NButton size="small" :disabled="!impacts.data.value?.nextCursor" @click="nextImpacts">下一页</NButton></div>
         <template v-if="kind === 'FACT'"><h3>核实决定历史</h3><p v-if="decisions.error.value" class="notice error">{{ errorText(decisions.error.value) }}<NButton text @click="decisions.refetch()">重试</NButton></p><p v-if="decisions.isPending.value" class="field-help">正在读取决定…</p><p v-if="decisions.data.value && !decisions.data.value.items.length" class="field-help">尚未对本事实作出核实或撤回决定。</p><article v-for="decision in decisions.data.value?.items" :key="decision.id" class="prepare-decision"><p><strong>{{ verificationLabels[decision.decision] }}</strong> · {{ new Date(decision.createdAt).toLocaleString('zh-CN') }}</p><button class="text-link" @click="emit('open', current.id, current.kind, decision.versionId)">查看所依据的版本 {{ decision.versionId.slice(0, 8) }}</button><p>{{ decision.reason || '未填写补充备注' }}</p></article><div v-if="decisionsCursors.length || decisions.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!decisionsCursors.length" @click="decisionsBefore = decisionsCursors.pop()">较新</NButton><NButton size="small" :disabled="!decisions.data.value?.nextCursor" @click="olderDecisions">更早</NButton></div></template>
       </section>

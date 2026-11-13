@@ -3,6 +3,8 @@ package com.wenjie.studio.review;
 import com.wenjie.studio.bank.QuestionDtos.Checkpoint;
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
+import com.wenjie.studio.material.MaterialDependencyImpactDtos;
+import com.wenjie.studio.material.MaterialDependencyImpactService;
 import com.wenjie.studio.material.MaterialDtos.AiExcerpt;
 import com.wenjie.studio.material.MaterialSources;
 import org.springframework.stereotype.Service;
@@ -34,14 +36,17 @@ public class StandardReviewSources {
     private final MaterialSources materials;
     private final ReviewedBasisInvalidation generations;
     private final KnowledgeRevalidationQuery revalidation;
+    private final MaterialDependencyImpactService materialDependencies;
     private final JsonMapper json;
 
     public StandardReviewSources(StandardReviewSourceMapper mapper, MaterialSources materials,
-                                 ReviewedBasisInvalidation generations, KnowledgeRevalidationQuery revalidation, JsonMapper json) {
+                                 ReviewedBasisInvalidation generations, KnowledgeRevalidationQuery revalidation,
+                                 MaterialDependencyImpactService materialDependencies, JsonMapper json) {
         this.mapper = mapper;
         this.materials = materials;
         this.generations = generations;
         this.revalidation = revalidation;
+        this.materialDependencies = materialDependencies;
         this.json = json;
     }
 
@@ -50,6 +55,10 @@ public class StandardReviewSources {
         StandardReviewRules.draft(draft, now);
         if (!mapper.referenceExposure(owner, draft.referenceExposureId(), draft.question().questionId(), draft.question().versionId())) {
             throw missing();
+        }
+        if (materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.QUESTION,
+                draft.question().questionId(), draft.question().versionId(), null)) {
+            throw new ApiException(409, "STANDARD_REVIEW_SOURCE_CHANGED", "题目的材料采用依据待复核，请先处理材料影响后再建立新的审阅依据。");
         }
         Sources sources = read(owner, draft.question(), draft.content(), null);
         var stamps = sources.current().values().stream().sorted(Comparator
@@ -87,8 +96,24 @@ public class StandardReviewSources {
             checks.add(new BasisCheck(recorded.source(), recorded, current, state(current), firstChange, upstreamCount));
         }
         boolean revisionCurrent = snapshot.revision() == currentRevision;
+        var checkpointEligibility = checkpoints(snapshot.content(), sources, checks, revisionCurrent, currentStatus);
+        if (materialReviewRequired(owner, snapshot)) {
+            checkpointEligibility = checkpointEligibility.stream().map(value -> {
+                var reasons = EnumSet.noneOf(EligibilityReason.class);
+                reasons.addAll(value.reasons()); reasons.add(EligibilityReason.DIRECT_BASIS_CHANGED);
+                return new CheckpointEligibility(value.checkpointId(), false, List.copyOf(reasons));
+            }).toList();
+        }
         return new StandardEligibility(currentRevision, currentStatus, revisionCurrent, List.copyOf(checks), sources.evidenceChecks(),
-                checkpoints(snapshot.content(), sources, checks, revisionCurrent, currentStatus), LineageCheck.PARTIAL, limitations(snapshot.content()));
+                checkpointEligibility, LineageCheck.PARTIAL, limitations(snapshot.content()));
+    }
+
+    public boolean materialReviewRequired(String owner, StandardReviewSnapshot snapshot) {
+        // 详情与窄投影共用冻结时刻；处理影响不会使处理前保存的原审阅重新成为当前证据。
+        return materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.STANDARD_REVIEW,
+                snapshot.id(), null, snapshot.revisedAt())
+                || materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.QUESTION,
+                snapshot.question().questionId(), snapshot.question().versionId(), snapshot.revisedAt());
     }
 
     public void requireQuestion(String owner, QuestionVersionRef question) {
@@ -215,7 +240,10 @@ public class StandardReviewSources {
             // 历史缺失只影响使用该摘录的检查项；停用与读取故障仍向外传播。
             for (String id : ids) {
                 try { excerpts.put(id, materials.read(owner, List.of(id)).getFirst()); }
-                catch (ApiException exception) { if (!missingMaterial(exception)) throw exception; }
+                catch (ApiException exception) {
+                    if (!missingMaterial(exception) && !"MATERIAL_NOT_ACTIVE".equals(exception.code())
+                            && !"MATERIAL_CONTENT_CORRECTED".equals(exception.code())) throw exception;
+                }
             }
         }
         return excerpts;

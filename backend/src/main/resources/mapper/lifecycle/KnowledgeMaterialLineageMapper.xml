@@ -15,7 +15,7 @@
       t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
       i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
       v.id AS actual_version_id,v.version_number AS target_version_number,
-      NULL AS target_project_id,NULL AS actual_project_id
+      NULL AS target_project_id,NULL AS actual_project_id,t.created_at AS task_created_at
     FROM ai_candidate_decision d
     LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
     LEFT JOIN knowledge_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
@@ -35,7 +35,7 @@
       t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
       i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
       v.id AS actual_version_id,v.version_number AS target_version_number,
-      NULL AS target_project_id,i.project_id AS actual_project_id
+      NULL AS target_project_id,i.project_id AS actual_project_id,t.created_at AS task_created_at
     FROM ai_expression_decision d
     LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
     LEFT JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
@@ -54,7 +54,7 @@
       t.manifest_json,t.manifest_hash,i.owner_id AS item_owner_id,i.id AS actual_item_id,
       i.kind AS item_kind,i.status AS item_status,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
       v.id AS actual_version_id,v.version_number AS target_version_number,
-      d.target_project_id,i.project_id AS actual_project_id
+      d.target_project_id,i.project_id AS actual_project_id,t.created_at AS task_created_at
     FROM ai_fact_draft_decision d
     LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
     LEFT JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id
@@ -80,7 +80,7 @@
       t.manifest_json,t.manifest_hash,q.owner_id AS item_owner_id,q.id AS actual_item_id,
       'QUESTION' AS item_kind,q.status AS item_status,v.owner_id AS version_owner_id,v.question_id AS version_item_id,
       v.id AS actual_version_id,v.version_number AS target_version_number,
-      NULL AS target_project_id,NULL AS actual_project_id
+      NULL AS target_project_id,NULL AS actual_project_id,t.created_at AS task_created_at
     FROM ai_question_decision d
     LEFT JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
     LEFT JOIN question q ON q.owner_id=d.owner_id AND q.id=d.target_question_id
@@ -128,6 +128,34 @@
     WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
     LIMIT #{limit}
   </select>
+  <select id="projectGeneration" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$ProjectGenerationRow" timeout="5">
+    SELECT i.owner_id,i.id AS item_id,i.kind,i.status,i.project_id,i.verification,i.source_generation,i.revision,
+      i.current_version_id,i.version_number,v.owner_id AS version_owner_id,v.item_id AS version_item_id,
+      v.id AS actual_version_id,v.version_number AS actual_version_number
+    FROM preparation_item i
+    LEFT JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId}
+    LIMIT #{limit}
+  </select>
+  <select id="projectGenerationEvents" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$ProjectGenerationEventRow" timeout="5">
+    SELECT e.owner_id,e.id,e.root_item_id,e.root_kind,e.root_title,e.root_project_id,e.change_kind,
+      e.previous_version_id,e.previous_version_number,e.previous_generation,e.previous_revision,e.previous_status,
+      e.previous_verification,e.current_version_id,e.current_version_number,e.current_generation,e.current_revision,
+      e.current_status,e.current_verification,e.created_at,
+      previous_version.owner_id AS previous_owner_id,previous_version.item_id AS previous_item_id,
+      previous_version.id AS actual_previous_id,previous_version.version_number AS actual_previous_number,
+      previous_version.title AS previous_title,current_version.owner_id AS current_owner_id,
+      current_version.item_id AS current_item_id,current_version.id AS actual_current_id,
+      current_version.version_number AS actual_current_number
+    FROM preparation_knowledge_event e
+    LEFT JOIN preparation_version previous_version ON previous_version.owner_id=e.owner_id
+      AND previous_version.item_id=e.root_item_id AND previous_version.id=e.previous_version_id
+    LEFT JOIN preparation_version current_version ON current_version.owner_id=e.owner_id
+      AND current_version.item_id=e.root_item_id AND current_version.id=e.current_version_id
+    WHERE e.owner_id=#{owner} AND e.root_item_id=#{itemId}
+      AND (e.previous_generation=#{generation} OR e.current_generation=#{generation})
+    ORDER BY e.id LIMIT #{limit}
+  </select>
   <select id="preparationMaterials" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationMaterialBinding" timeout="5">
     SELECT r.owner_id,r.item_id,r.version_id,r.excerpt_id,e.owner_id AS excerpt_owner_id,
       e.id AS actual_excerpt_id,e.attachment_id,e.attachment_sha256,a.owner_id AS attachment_owner_id,
@@ -142,7 +170,8 @@
   <select id="preparationReferences" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$PreparationReferenceBinding" timeout="5">
     SELECT owner_id,target_item_id,target_version_id,source_kind,
       preparation_source_item_id AS preparation_item_id,preparation_source_version_id AS preparation_version_id,
-      knowledge_source_item_id AS knowledge_item_id,knowledge_source_version_id AS knowledge_version_id,use_type
+      knowledge_source_item_id AS knowledge_item_id,knowledge_source_version_id AS knowledge_version_id,
+      collection_source_item_id AS collection_item_id,collection_source_version_id AS collection_version_id,use_type
     FROM preparation_reference
     <!-- 不筛关系用途或目标对象，异常 FACT_BASIS 也不能成为“无依据”。 -->
     WHERE owner_id=#{owner} AND target_version_id=#{versionId}
@@ -164,7 +193,7 @@
     SELECT a.owner_id,a.session_id,a.question_id,a.id AS answer_id,a.version_number AS answer_number,
       a.answer_condition,a.content_json AS answer_content_json,q.owner_id AS question_owner_id,
       q.id AS actual_question_id,q.session_id AS question_session_id,
-      s.owner_id AS session_owner_id,s.id AS actual_session_id
+      s.owner_id AS session_owner_id,s.id AS actual_session_id,a.created_at
     FROM training_answer a
     LEFT JOIN training_question q ON q.owner_id=a.owner_id AND q.id=a.question_id
     LEFT JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
@@ -245,6 +274,36 @@
     LEFT JOIN training_session s ON s.owner_id=f.owner_id AND s.id=f.session_id
     <!-- 固定背景与原绑定共同核验；不读取今天的训练状态或来源资格。 -->
     WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+    LIMIT #{limit}
+  </select>
+  <select id="replaySource" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$ReplaySourceRow" timeout="5">
+    SELECT r.id,r.owner_id,r.session_id,r.question_id,r.question_mode,r.baseline_kind,
+      r.baseline_session_id,r.baseline_question_id,r.baseline_answer_id,r.recollection_id,
+      r.recollection_version_id,r.recollection_revision,s.owner_id AS session_owner_id,
+      s.id AS actual_session_id,s.mode AS session_mode,s.config_json AS session_config_json,
+      s.question_count,q.id AS actual_question_id
+    FROM review_repractice r
+    LEFT JOIN training_session s ON s.owner_id=r.owner_id AND s.id=r.session_id
+    <!-- 全部题目参与核对，不能把错绑或多题筛成合法的单题复练。 -->
+    LEFT JOIN training_question q ON q.owner_id=r.owner_id AND q.session_id=r.session_id
+    WHERE r.owner_id=#{owner} AND r.session_id=#{sessionId}
+    ORDER BY r.id,q.position_index,q.id LIMIT #{limit}
+  </select>
+  <select id="replayAnswer" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$ReplayAnswerRow" timeout="5">
+    SELECT a.owner_id,a.id AS answer_id,a.session_id,a.question_id,s.owner_id AS session_owner_id,
+      s.id AS actual_session_id,s.status AS session_status
+    FROM training_answer a
+    LEFT JOIN training_session s ON s.owner_id=a.owner_id AND s.id=a.session_id
+    <!-- 基线只证明创建身份，未复制到题面的原答正文及答案图不参与祖先展开。 -->
+    WHERE a.owner_id=#{owner} AND a.id=#{answerId}
+    LIMIT #{limit}
+  </select>
+  <select id="recollectionVersion" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$RecollectionVersionRow" timeout="5">
+    SELECT v.owner_id,v.recollection_id,v.id AS version_id,v.version_number,v.title,v.baseline_kind,v.content_json,
+      r.owner_id AS item_owner_id,r.id AS actual_item_id,r.status AS item_status
+    FROM review_recollection_version v
+    LEFT JOIN review_recollection r ON r.owner_id=v.owner_id AND r.id=v.recollection_id
+    WHERE v.owner_id=#{owner} AND v.recollection_id=#{itemId} AND v.id=#{versionId}
     LIMIT #{limit}
   </select>
   <select id="factMaterials" resultType="com.wenjie.studio.lifecycle.KnowledgeMaterialLineageRows$MaterialBinding" timeout="5">

@@ -123,10 +123,18 @@
     ORDER BY version_number DESC LIMIT #{limit}
   </select>
   <select id="references" resultType="com.wenjie.studio.prepare.PreparationRows$ReferenceRow">
-    SELECT source_kind, COALESCE(preparation_source_item_id,knowledge_source_item_id) AS source_item_id,
-      COALESCE(preparation_source_version_id,knowledge_source_version_id) AS source_version_id
+    SELECT source_kind, COALESCE(preparation_source_item_id,knowledge_source_item_id,collection_source_item_id) AS source_item_id,
+      COALESCE(preparation_source_version_id,knowledge_source_version_id,collection_source_version_id) AS source_version_id
     FROM preparation_reference WHERE owner_id=#{owner} AND target_version_id=#{versionId}
     ORDER BY source_kind,source_item_id,source_version_id
+  </select>
+  <select id="collectionReference" resultType="com.wenjie.studio.prepare.PreparationDtos$Reference" timeout="5">
+    SELECT 'COLLECTION' AS kind,c.id AS item_id,v.id AS version_id,v.title,v.version_number AS number,
+      CASE WHEN c.status&lt;&gt;'ACTIVE' THEN 'ARCHIVED'
+        WHEN c.current_version_id&lt;&gt;v.id THEN 'SUPERSEDED' ELSE 'CURRENT' END AS state
+    FROM question_collection c JOIN question_collection_version v
+      ON v.owner_id=c.owner_id AND v.collection_id=c.id AND v.id=#{versionId}
+    WHERE c.owner_id=#{owner} AND c.id=#{itemId} AND c.kind IN ('LIST','ROUTE')
   </select>
   <select id="impacts" resultType="com.wenjie.studio.prepare.PreparationRows$ItemRow">
     SELECT <include refid="itemColumns"/> FROM preparation_item i
@@ -165,10 +173,13 @@
   <insert id="insertReference">
     INSERT INTO preparation_reference (owner_id,target_item_id,target_version_id,source_kind,
       preparation_source_item_id,preparation_source_version_id,knowledge_source_item_id,
-      knowledge_source_version_id,use_type)
+      knowledge_source_version_id,collection_source_item_id,collection_source_version_id,use_type)
     VALUES (#{owner},#{itemId},#{versionId},#{sourceKind},
-      <choose><when test="sourceKind != 'KNOWLEDGE'">#{sourceItemId},#{sourceVersionId},NULL,NULL,</when>
-        <otherwise>NULL,NULL,#{sourceItemId},#{sourceVersionId},</otherwise></choose>
+      <choose>
+        <when test="sourceKind == 'COLLECTION'">NULL,NULL,NULL,NULL,#{sourceItemId},#{sourceVersionId},</when>
+        <when test="sourceKind == 'KNOWLEDGE'">NULL,NULL,#{sourceItemId},#{sourceVersionId},NULL,NULL,</when>
+        <otherwise>#{sourceItemId},#{sourceVersionId},NULL,NULL,NULL,NULL,</otherwise>
+      </choose>
       #{useType})
   </insert>
   <update id="saveContent">

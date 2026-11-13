@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialCardDraftProofMapper">
+  <sql id="sourceColumns">
+    owner_id,task_id,source_item_id AS item_id,source_version_id AS version_id,
+    source_version_number AS number,source_title AS title,source_kind AS kind,ordinal
+  </sql>
+  <!-- 先读取原始登记，缺任务、无决定和旧来源均不得被状态或父表联查隐藏。 -->
+  <select id="bindings" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$Source" timeout="5">
+    SELECT <include refid="sourceColumns"/> FROM ai_card_draft_source
+    WHERE owner_id=#{owner} AND source_item_id=#{itemId}
+    ORDER BY task_id,ordinal LIMIT #{limit}
+  </select>
+  <select id="sources" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$Source" timeout="5">
+    SELECT <include refid="sourceColumns"/> FROM ai_card_draft_source
+    WHERE owner_id=#{owner} AND task_id=#{taskId}
+    ORDER BY ordinal LIMIT #{limit}
+  </select>
+  <select id="task" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$Task" timeout="5">
+    SELECT t.owner_id,t.id,t.purpose,t.status,t.revision,t.manifest_json,t.manifest_hash,t.candidate_json,
+      t.created_at,t.updated_at,
+      (EXISTS(SELECT 1 FROM ai_candidate_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_question_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_expression_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_preparation_plan_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_relation_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_jd_requirement_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_fact_draft_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_feedback_decision WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_follow_up WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_evaluation WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_comparison WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_answer_rewrite WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_material_qa_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_source_qa_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_knowledge_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_question_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_preparation_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_material_draft_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_training_draft_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_review_draft_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_relation_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_fact_draft_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_fact_draft_material WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_relation_evidence_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_relation_evidence_material WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_relation_feedback_draft_source WHERE owner_id=t.owner_id AND task_id=t.id)
+        OR EXISTS(SELECT 1 FROM ai_draft_knowledge_input WHERE owner_id=t.owner_id AND task_id=t.id)) AS other_purpose_uses
+    FROM ai_task t WHERE t.owner_id=#{owner} AND t.id=#{taskId}
+  </select>
+  <select id="decision" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$Decision" timeout="5">
+    SELECT owner_id,task_id,status,target_card_id,target_version_id,created_at
+    FROM ai_card_draft_decision WHERE owner_id=#{owner} AND task_id=#{taskId}
+  </select>
+  <select id="knowledgeVersion" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$KnowledgeVersion" timeout="5">
+    SELECT v.owner_id,v.item_id,v.id,v.version_number AS number,v.title,v.body,v.created_at,
+      i.owner_id AS item_owner_id,i.id AS actual_item_id,i.kind,i.status
+    FROM knowledge_version v
+    LEFT JOIN knowledge_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    WHERE v.owner_id=#{owner} AND v.id=#{versionId}
+  </select>
+  <select id="card" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$Card" timeout="5">
+    SELECT owner_id,id,status,revision,current_version_id,version_number,created_at,updated_at
+    FROM memory_card WHERE owner_id=#{owner} AND id=#{cardId}
+  </select>
+  <!-- 只读取题面投影和元数据，不读取参考正文或制造揭示记录。 -->
+  <select id="cardVersion" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$CardVersion" timeout="5">
+    SELECT owner_id,card_id,id,version_number AS number,card_kind AS kind,title,prompt_json,source_count,
+      related_concept_count,created_at
+    FROM memory_card_version WHERE owner_id=#{owner} AND id=#{versionId}
+  </select>
+  <select id="cardSources" resultType="com.wenjie.studio.material.MaterialCardDraftProofRows$CardSource" timeout="5">
+    SELECT owner_id,card_id,version_id,knowledge_item_id AS item_id,knowledge_version_id,position_index AS position
+    FROM memory_card_source WHERE owner_id=#{owner} AND version_id=#{versionId}
+    ORDER BY position_index LIMIT #{limit}
+  </select>
+</mapper>

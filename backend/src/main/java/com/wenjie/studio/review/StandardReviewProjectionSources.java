@@ -126,6 +126,7 @@ public class StandardReviewProjectionSources {
         var reasons = EnumSet.noneOf(EligibilityReason.class);
         if (snapshot.revision() != stored.currentRevision()) reasons.add(EligibilityReason.RECORD_REVISED);
         if (stored.currentStatus() != RecordStatus.ACTIVE) reasons.add(EligibilityReason.RECORD_WITHDRAWN);
+        if (stored.materialReviewRequired()) reasons.add(EligibilityReason.DIRECT_BASIS_CHANGED);
         if (checkpoint.decision() != CheckpointDecision.SUPPORTED_WITHIN_SCOPE) reasons.add(EligibilityReason.CHECKPOINT_NOT_SUPPORTED);
         if (questionRow == null || !questionRow.checkpointPresent()) reasons.add(EligibilityReason.BASIS_UNAVAILABLE);
         addReasons(bases.get(questionSource), true, reasons);

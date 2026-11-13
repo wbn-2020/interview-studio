@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialDependencyImpactMapper">
+  <sql id="dependencyRows">
+    SELECT 'PREPARATION_REFERENCE' AS binding,r.version_id AS binding_id,NULL AS task_id,'PREPARATION' AS domain,
+      r.item_id AS target_id,r.version_id AS target_version_id,v.version_number AS target_version_number,
+      NULL AS target_revision,v.title AS target_title
+    FROM preparation_material_reference r
+    LEFT JOIN preparation_version v ON v.owner_id=r.owner_id AND v.item_id=r.item_id AND v.id=r.version_id
+    WHERE r.owner_id=#{owner} AND r.excerpt_id=#{excerptId}
+    UNION ALL
+    SELECT 'QUESTION_ADOPTION',s.task_id,s.task_id,'QUESTION',d.target_question_id,d.target_version_id,v.version_number,NULL,v.title
+    FROM ai_material_draft_source s JOIN ai_question_decision d ON d.owner_id=s.owner_id AND d.task_id=s.task_id
+    LEFT JOIN question_version v ON v.owner_id=d.owner_id AND v.question_id=d.target_question_id AND v.id=d.target_version_id
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND d.status='ADOPTED'
+    UNION ALL
+    SELECT 'FACT_ADOPTION',s.task_id,s.task_id,'PREPARATION',d.target_item_id,d.target_version_id,v.version_number,NULL,v.title
+    FROM ai_fact_draft_material s JOIN ai_fact_draft_decision d ON d.owner_id=s.owner_id AND d.task_id=s.task_id
+    LEFT JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND d.status='ADOPTED'
+    UNION ALL
+    SELECT 'RELATION_ADOPTION',CONCAT(s.task_id,'~',d.candidate_id),s.task_id,'RELATION',d.relation_id,NULL,NULL,NULL,
+      JSON_UNQUOTE(JSON_EXTRACT(d.content_json,'$.type'))
+    FROM ai_relation_evidence_material s JOIN ai_relation_decision d ON d.owner_id=s.owner_id AND d.task_id=s.task_id
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId} AND d.status='ADOPTED'
+    UNION ALL
+    SELECT 'RELATION_EVIDENCE',s.evidence_id,NULL,'RELATION',e.relation_id,NULL,NULL,NULL,e.relation_type
+    FROM knowledge_relation_evidence_material s
+    LEFT JOIN knowledge_relation_evidence e ON e.owner_id=s.owner_id AND e.id=s.evidence_id AND e.source_kind='MATERIAL'
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}
+    UNION ALL
+    SELECT 'REVIEW_EVIDENCE',CONCAT(s.review_id,'~',s.revision,'~',s.evidence_id),NULL,'STANDARD_REVIEW',
+      s.review_id,NULL,NULL,s.revision,q.title
+    FROM standard_review_evidence s
+    LEFT JOIN standard_review_revision r ON r.owner_id=s.owner_id AND r.review_id=s.review_id AND r.revision=s.revision
+    LEFT JOIN question_version q ON q.owner_id=r.owner_id AND q.question_id=r.question_id AND q.id=r.question_version_id
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}
+  </sql>
+  <select id="dependencies" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$Dependency" timeout="5">
+    SELECT * FROM (<include refid="dependencyRows"/>) dependencies ORDER BY binding,binding_id LIMIT #{limit}
+  </select>
+  <select id="bindingExists" resultType="_boolean" timeout="5">
+    <!-- 始终从原始登记重新取证；当前对象被归档或正式关系移除不会筛掉历史绑定。 -->
+    SELECT EXISTS(SELECT 1 FROM (<include refid="dependencyRows"/>) original
+      WHERE original.binding=#{row.binding} AND original.binding_id=#{row.bindingId}
+        AND original.task_id &lt;=> #{row.taskId} AND original.domain=#{row.domain} AND original.target_id=#{row.targetId}
+        AND original.target_version_id &lt;=> #{row.targetVersionId}
+        AND original.target_version_number &lt;=> #{row.targetVersionNumber}
+        AND original.target_revision &lt;=> #{row.targetRevision}
+        AND BINARY original.target_title=BINARY #{row.targetTitle})
+  </select>
+  <select id="task" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$Task" timeout="5">
+    SELECT owner_id,id,purpose,status,manifest_json,manifest_hash FROM ai_task WHERE owner_id=#{owner} AND id=#{taskId}
+  </select>
+  <select id="taskMaterials" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$MaterialBinding" timeout="5">
+    <choose>
+      <when test="binding == 'QUESTION_ADOPTION'">
+        SELECT excerpt_id,ordinal FROM ai_material_draft_source WHERE owner_id=#{owner} AND task_id=#{taskId}
+      </when>
+      <when test="binding == 'FACT_ADOPTION'">
+        SELECT excerpt_id,ordinal FROM ai_fact_draft_material WHERE owner_id=#{owner} AND task_id=#{taskId}
+      </when>
+      <when test="binding == 'RELATION_ADOPTION'">
+        SELECT excerpt_id,ordinal FROM ai_relation_evidence_material WHERE owner_id=#{owner} AND task_id=#{taskId}
+      </when>
+      <otherwise>SELECT NULL AS excerpt_id,NULL AS ordinal WHERE 1=0</otherwise>
+    </choose>
+    ORDER BY ordinal LIMIT #{limit}
+  </select>
+  <select id="current" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$Current" timeout="5">
+    <choose>
+      <when test="domain == 'PREPARATION'">
+        SELECT 'PREPARATION' AS domain,i.id,v.id AS version_id,v.version_number,i.revision,i.status,v.title
+        FROM preparation_item i LEFT JOIN preparation_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+        WHERE i.owner_id=#{owner} AND i.id=#{targetId}
+      </when>
+      <when test="domain == 'QUESTION'">
+        SELECT 'QUESTION' AS domain,i.id,v.id AS version_id,v.version_number,i.revision,i.status,v.title
+        FROM question i LEFT JOIN question_version v ON v.owner_id=i.owner_id AND v.question_id=i.id AND v.id=i.current_version_id
+        WHERE i.owner_id=#{owner} AND i.id=#{targetId}
+      </when>
+      <when test="domain == 'KNOWLEDGE'">
+        SELECT 'KNOWLEDGE' AS domain,i.id,v.id AS version_id,v.version_number,i.metadata_revision AS revision,i.status,v.title
+        FROM knowledge_item i LEFT JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+        WHERE i.owner_id=#{owner} AND i.id=#{targetId}
+      </when>
+      <when test="domain == 'RELATION'">
+        SELECT 'RELATION' AS domain,id,NULL AS version_id,NULL AS version_number,NULL AS revision,'ACTIVE' AS status,relation_type AS title
+        FROM knowledge_relation WHERE owner_id=#{owner} AND id=#{targetId}
+      </when>
+      <when test="domain == 'STANDARD_REVIEW'">
+        SELECT 'STANDARD_REVIEW' AS domain,r.id,NULL AS version_id,NULL AS version_number,r.revision,r.status,v.title
+        FROM standard_review r LEFT JOIN question_version v
+          ON v.owner_id=r.owner_id AND v.question_id=r.question_id AND v.id=r.question_version_id
+        WHERE r.owner_id=#{owner} AND r.id=#{targetId}
+      </when>
+      <otherwise>
+        SELECT NULL AS domain,NULL AS id,NULL AS version_id,NULL AS version_number,NULL AS revision,NULL AS status,NULL AS title WHERE 1=0
+      </otherwise>
+    </choose>
+  </select>
+  <insert id="insert">
+    INSERT INTO material_dependency_impact
+      (owner_id,id,correction_id,excerpt_id,binding,binding_id,task_id,domain,target_id,target_version_id,
+       target_version_number,target_revision,target_title,revision,created_at)
+    VALUES (#{row.ownerId},#{row.id},#{row.correctionId},#{row.excerptId},#{row.binding},#{row.bindingId},#{row.taskId},
+      #{row.domain},#{row.targetId},#{row.targetVersionId},#{row.targetVersionNumber},#{row.targetRevision},#{row.targetTitle},0,#{row.createdAt})
+  </insert>
+  <select id="impact" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$Row" timeout="5">
+    SELECT * FROM material_dependency_impact WHERE owner_id=#{owner} AND id=#{impactId}
+  </select>
+  <select id="impacts" resultType="com.wenjie.studio.material.MaterialDependencyImpactMapper$Row" timeout="5">
+    SELECT * FROM material_dependency_impact WHERE owner_id=#{owner} AND excerpt_id=#{excerptId}
+    <if test="state == 'PENDING'">AND revision=0</if>
+    <if test="beforeTime != null">AND (created_at &lt; #{beforeTime} OR (created_at=#{beforeTime} AND id &lt; #{beforeId}))</if>
+    ORDER BY created_at DESC,id DESC LIMIT #{limit}
+  </select>
+  <update id="resolve">
+    UPDATE material_dependency_impact SET revision=1,choice=#{request.choice},reason=#{request.reason},
+      resolution_target_version_id=#{request.expectedTargetVersionId},resolution_target_revision=#{request.expectedTargetRevision},decided_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{impactId} AND revision=#{request.expectedRevision} AND revision=0
+  </update>
+  <select id="reviewRequired" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM material_dependency_impact i WHERE i.owner_id=#{owner} AND i.domain=#{domain} AND i.target_id=#{targetId}
+      AND (
+        <choose>
+          <when test="domain == 'PREPARATION'">
+            EXISTS(SELECT 1 FROM preparation_version v WHERE v.owner_id=i.owner_id AND v.item_id=i.target_id
+              AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+          </when>
+          <when test="domain == 'QUESTION'">
+            EXISTS(SELECT 1 FROM question_version v WHERE v.owner_id=i.owner_id AND v.question_id=i.target_id
+              AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+          </when>
+          <when test="domain == 'KNOWLEDGE'">
+            EXISTS(SELECT 1 FROM knowledge_version v WHERE v.owner_id=i.owner_id AND v.item_id=i.target_id
+              AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+          </when>
+          <otherwise>1=1</otherwise>
+        </choose>
+      )
+      AND (i.revision=0 <if test="baseline != null">OR i.created_at>=#{baseline} OR i.decided_at>=#{baseline}</if>))
+  </select>
+  <select id="preparationExcerpts" resultType="java.lang.String" timeout="5">
+    SELECT excerpt_id FROM (
+      SELECT r.excerpt_id FROM preparation_material_reference r
+      WHERE r.owner_id=#{owner} AND r.item_id=#{itemId} AND r.version_id=#{versionId}
+      UNION
+      SELECT m.excerpt_id FROM ai_fact_draft_decision d
+      JOIN preparation_version adopted ON adopted.owner_id=d.owner_id AND adopted.item_id=d.target_item_id AND adopted.id=d.target_version_id
+      JOIN preparation_version selected ON selected.owner_id=d.owner_id AND selected.item_id=d.target_item_id AND selected.id=#{versionId}
+      JOIN ai_fact_draft_material m ON m.owner_id=d.owner_id AND m.task_id=d.task_id
+      WHERE d.owner_id=#{owner} AND d.target_item_id=#{itemId} AND d.status='ADOPTED'
+        AND selected.version_number>=adopted.version_number
+    ) sources ORDER BY excerpt_id LIMIT #{limit}
+  </select>
+  <select id="bodyUpdated" resultType="_boolean" timeout="5">
+    <choose>
+      <when test="domain == 'PREPARATION'">
+        SELECT EXISTS(SELECT 1 FROM preparation_version old JOIN preparation_version latest
+          ON latest.owner_id=old.owner_id AND latest.item_id=old.item_id AND latest.id=#{currentVersionId}
+          WHERE old.owner_id=#{owner} AND old.item_id=#{targetId} AND old.id=#{previousVersionId}
+            AND latest.version_number>old.version_number
+            AND BINARY JSON_REMOVE(CAST(latest.content_json AS JSON),'$.title')
+              &lt;>BINARY JSON_REMOVE(CAST(old.content_json AS JSON),'$.title'))
+      </when>
+      <when test="domain == 'QUESTION'">
+        SELECT EXISTS(SELECT 1 FROM question_version old JOIN question_version latest
+          ON latest.owner_id=old.owner_id AND latest.question_id=old.question_id AND latest.id=#{currentVersionId}
+          WHERE old.owner_id=#{owner} AND old.question_id=#{targetId} AND old.id=#{previousVersionId}
+            AND latest.version_number>old.version_number
+            AND BINARY JSON_REMOVE(CAST(latest.prompt_json AS JSON),'$.title')
+              &lt;>BINARY JSON_REMOVE(CAST(old.prompt_json AS JSON),'$.title'))
+      </when>
+      <when test="domain == 'KNOWLEDGE'">
+        SELECT EXISTS(SELECT 1 FROM knowledge_version old JOIN knowledge_version latest
+          ON latest.owner_id=old.owner_id AND latest.item_id=old.item_id AND latest.id=#{currentVersionId}
+          WHERE old.owner_id=#{owner} AND old.item_id=#{targetId} AND old.id=#{previousVersionId}
+            AND latest.version_number>old.version_number AND BINARY latest.body&lt;>BINARY old.body)
+      </when>
+      <otherwise>SELECT FALSE</otherwise>
+    </choose>
+  </select>
+  <select id="knowledgeDraftClear" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM knowledge_item i
+      JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id
+      JOIN knowledge_draft d ON d.item_id=i.id
+      WHERE i.owner_id=#{owner} AND i.id=#{itemId} AND BINARY v.title=BINARY d.title AND BINARY v.body=BINARY d.body)
+  </select>
+  <select id="lifecycleReviewRequired" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM material_usage_status_event i
+      JOIN material_excerpt_lifecycle_event e ON e.owner_id=i.owner_id AND e.id=i.event_id
+        AND e.excerpt_id=i.excerpt_id AND e.created_at=i.created_at AND e.action IN ('ARCHIVE','RESTORE')
+      JOIN material_excerpt_lifecycle current ON current.owner_id=i.owner_id AND current.excerpt_id=i.excerpt_id
+      WHERE i.owner_id=#{owner} AND i.domain=#{domain} AND i.target_id=#{targetId}
+      AND
+      <choose>
+        <when test="domain == 'PREPARATION'">
+          EXISTS(SELECT 1 FROM preparation_version v WHERE v.owner_id=i.owner_id AND v.item_id=i.target_id
+            AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+        </when>
+        <when test="domain == 'QUESTION'">
+          EXISTS(SELECT 1 FROM question_version v WHERE v.owner_id=i.owner_id AND v.question_id=i.target_id
+            AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+        </when>
+        <when test="domain == 'KNOWLEDGE'">
+          EXISTS(SELECT 1 FROM knowledge_version v WHERE v.owner_id=i.owner_id AND v.item_id=i.target_id
+            AND v.id=#{versionId} AND v.version_number>=i.target_version_number)
+        </when>
+        <otherwise>1=1</otherwise>
+      </choose>
+      AND (current.status='ARCHIVED' <if test="baseline != null">OR i.created_at>=#{baseline}</if>))
+  </select>
+</mapper>

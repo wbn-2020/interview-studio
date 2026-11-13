@@ -35,9 +35,10 @@ public final class AiRows {
     public record RelationSourceRow(String taskId, String itemId, String versionId, int number, String title,
                                      String kind, int ordinal, String state) {}
     public record OriginRow(String taskId, String targetVersionId, int targetVersionNumber, Instant adoptedAt,
-                            String manifestJson) {}
+                            String manifestJson, Instant taskCreatedAt, String manifestHash, String taskPurpose,
+                            String taskStatus) {}
     public record OriginSourceRow(String taskId, String itemId, String versionId, int number, String title,
-                                  String state, String kind) {}
+                                  String state, String kind, int ordinal) {}
     public record PreparationOriginSourceRow(String taskId, String itemId, String versionId, int number, String title,
                                              String kind, int ordinal) {}
     public record MaterialDraftOriginRow(String taskId, String excerptId, int ordinal) {}

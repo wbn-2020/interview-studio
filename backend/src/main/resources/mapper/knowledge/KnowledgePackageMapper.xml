@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.KnowledgePackageMapper">
+  <resultMap id="package" type="com.wenjie.studio.knowledge.KnowledgePackageMapper$PackageRow">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="revision" javaType="_long"/>
+      <arg column="state" javaType="java.lang.String"/>
+      <arg column="package_key" javaType="java.lang.String"/>
+      <arg column="plan_sha256" javaType="java.lang.String"/>
+      <arg column="create_copy" javaType="_boolean"/>
+      <arg column="import_count" javaType="_int"/>
+      <arg column="skip_count" javaType="_int"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+      <arg column="committed_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="entry" type="com.wenjie.studio.knowledge.KnowledgePackageMapper$EntryRow">
+    <constructor>
+      <arg column="ordinal" javaType="_int"/>
+      <arg column="source_id" javaType="java.lang.String"/>
+      <arg column="source_sha256" javaType="java.lang.String"/>
+      <arg column="source_bytes" javaType="_int"/>
+      <arg column="source_characters" javaType="_int"/>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="decision" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="tags_json" javaType="java.lang.String"/>
+      <arg column="aliases_json" javaType="java.lang.String"/>
+      <arg column="topic_ids_json" javaType="java.lang.String"/>
+      <arg column="item_id" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <resultMap id="attachment" type="com.wenjie.studio.knowledge.KnowledgePackageMapper$AttachmentRow">
+    <constructor>
+      <arg column="ordinal" javaType="_int"/>
+      <arg column="source_id" javaType="java.lang.String"/>
+      <arg column="attachment_id" javaType="java.lang.String"/>
+      <arg column="source_sha256" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <select id="find" resultMap="package" timeout="5">
+    SELECT id, revision, state, package_key, plan_sha256, create_copy, import_count, skip_count, created_at, committed_at
+    FROM knowledge_package WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="original" resultMap="package" timeout="5">
+    SELECT id, revision, state, package_key, plan_sha256, create_copy, import_count, skip_count, created_at, committed_at
+    FROM knowledge_package WHERE owner_id=#{owner} AND package_key=#{packageKey} AND create_copy=FALSE
+  </select>
+  <select id="entries" resultMap="entry" timeout="5">
+    SELECT ordinal, source_id, source_sha256, source_bytes, source_characters, kind, decision, title,
+      tags_json, aliases_json, topic_ids_json, item_id, version_id
+    FROM knowledge_package_entry WHERE owner_id=#{owner} AND package_id=#{id} ORDER BY ordinal
+  </select>
+  <select id="attachments" resultMap="attachment" timeout="5">
+    SELECT ordinal, source_id, attachment_id, source_sha256 FROM knowledge_package_attachment
+    WHERE owner_id=#{owner} AND package_id=#{id} ORDER BY ordinal
+  </select>
+  <select id="list" resultMap="package" timeout="5">
+    SELECT id, revision, state, package_key, plan_sha256, create_copy, import_count, skip_count, created_at, committed_at
+    FROM knowledge_package WHERE owner_id=#{owner}
+    <if test="cursorId != null">
+      AND (created_at &lt; #{cursorTime} OR (created_at=#{cursorTime} AND id &lt; #{cursorId}))
+    </if>
+    ORDER BY created_at DESC, id DESC LIMIT #{limit}
+  </select>
+  <insert id="insert" timeout="5">
+    INSERT INTO knowledge_package
+      (id, owner_id, revision, state, package_key, original_key, plan_sha256, create_copy, import_count,
+       skip_count, created_at, committed_at)
+    VALUES (#{row.id}, #{owner}, #{row.revision}, #{row.state}, #{row.packageKey},
+      CASE WHEN #{row.createCopy}=FALSE THEN #{row.packageKey} ELSE NULL END,
+      #{row.planSha256}, #{row.createCopy}, #{row.importCount}, #{row.skipCount}, #{row.createdAt}, #{row.committedAt})
+  </insert>
+  <insert id="insertEntry" timeout="5">
+    INSERT INTO knowledge_package_entry
+      (owner_id, package_id, ordinal, source_id, source_sha256, source_bytes, source_characters,
+       kind, decision, title, tags_json, aliases_json, topic_ids_json, item_id, version_id)
+    VALUES (#{owner}, #{id}, #{row.ordinal}, #{row.sourceId}, #{row.sourceSha256}, #{row.sourceBytes},
+      #{row.sourceCharacters}, #{row.kind}, #{row.decision}, #{row.title}, #{row.tagsJson},
+      #{row.aliasesJson}, #{row.topicIdsJson}, #{row.itemId}, #{row.versionId})
+  </insert>
+  <insert id="insertAttachment" timeout="5">
+    INSERT INTO knowledge_package_attachment (owner_id, package_id, ordinal, source_id, attachment_id, source_sha256)
+    VALUES (#{owner}, #{id}, #{row.ordinal}, #{row.sourceId}, #{row.attachmentId}, #{row.sourceSha256})
+  </insert>
+  <update id="commit" timeout="5">
+    UPDATE knowledge_package SET revision=revision+1, state='COMMITTED', committed_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND state='REGISTERED' AND revision=#{revision}
+  </update>
+</mapper>

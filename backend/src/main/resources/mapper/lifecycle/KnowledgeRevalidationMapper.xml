@@ -16,6 +16,19 @@
       SELECT 1 FROM preparation_knowledge_impact i JOIN knowledge_version v
         ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
       WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number} AND i.revision=0)
+      OR EXISTS(
+      SELECT 1 FROM material_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number} AND i.revision=0)
+      OR EXISTS(SELECT 1 FROM material_dependency_impact i
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number} AND i.revision=0)
+      OR EXISTS(SELECT 1 FROM material_usage_status_event i
+        JOIN material_excerpt_lifecycle_event e ON e.owner_id=i.owner_id AND e.id=i.event_id
+          AND e.excerpt_id=i.excerpt_id AND e.created_at=i.created_at AND e.action IN ('ARCHIVE','RESTORE')
+        JOIN material_excerpt_lifecycle current ON current.owner_id=i.owner_id AND current.excerpt_id=i.excerpt_id
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number} AND current.status='ARCHIVED')
   </select>
   <select id="changedAfter" resultType="boolean">
     <!-- 处理影响不会恢复历史外发基线；已处理记录仍参加此查询。 -->
@@ -29,15 +42,64 @@
         ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
       WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId}
         AND v.version_number &lt;= #{number} AND i.created_at &gt; #{baseline})
+      OR EXISTS(
+      SELECT 1 FROM material_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId}
+        AND v.version_number &lt;= #{number} AND i.created_at &gt; #{baseline})
+      OR EXISTS(SELECT 1 FROM material_dependency_impact i
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number} AND i.created_at&gt;#{baseline})
+      OR EXISTS(SELECT 1 FROM material_usage_status_event i
+        JOIN material_excerpt_lifecycle_event e ON e.owner_id=i.owner_id AND e.id=i.event_id
+          AND e.excerpt_id=i.excerpt_id AND e.created_at=i.created_at AND e.action IN ('ARCHIVE','RESTORE')
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number} AND i.created_at&gt;#{baseline})
   </select>
-  <select id="latestFrozenAt" resultType="java.time.Instant">
+  <select id="reviewRequired" resultType="boolean" timeout="5">
+    SELECT EXISTS(
+      SELECT 1 FROM knowledge_revalidation_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number}
+        AND (i.revision=0 OR i.created_at &gt;= #{baseline} OR i.decided_at &gt;= #{baseline}))
+      OR EXISTS(
+      SELECT 1 FROM preparation_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number}
+        AND (i.revision=0 OR i.created_at &gt;= #{baseline} OR i.decided_at &gt;= #{baseline}))
+      OR EXISTS(
+      SELECT 1 FROM material_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND v.version_number &lt;= #{number}
+        AND (i.revision=0 OR i.created_at &gt;= #{baseline} OR i.decided_at &gt;= #{baseline}))
+      OR EXISTS(SELECT 1 FROM material_dependency_impact i
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number}
+          AND (i.revision=0 OR i.created_at&gt;=#{baseline} OR i.decided_at&gt;=#{baseline}))
+      OR EXISTS(SELECT 1 FROM material_usage_status_event i
+        JOIN material_excerpt_lifecycle_event e ON e.owner_id=i.owner_id AND e.id=i.event_id
+          AND e.excerpt_id=i.excerpt_id AND e.created_at=i.created_at AND e.action IN ('ARCHIVE','RESTORE')
+        JOIN material_excerpt_lifecycle current ON current.owner_id=i.owner_id AND current.excerpt_id=i.excerpt_id
+        WHERE i.owner_id=#{owner} AND i.domain='KNOWLEDGE' AND i.target_id=#{itemId}
+          AND i.target_version_number&lt;=#{number} AND (current.status='ARCHIVED' OR i.created_at&gt;=#{baseline}))
+  </select>
+  <select id="latestFrozenAt" resultType="java.time.Instant" timeout="5">
     <!-- owner 写锁覆盖这些冻结点；不读取本次来源变更刚写入的 INVALIDATE，避免与自身时间冲突。 -->
     SELECT MAX(frozen_at) FROM (
       SELECT MAX(created_at) AS frozen_at FROM ai_task WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM training_session WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM training_answer WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM question_version WHERE owner_id=#{owner}
       UNION ALL SELECT MAX(started_at) FROM memory_recall_attempt WHERE owner_id=#{owner}
       UNION ALL SELECT MAX(occurred_at) FROM memory_attempt_event WHERE owner_id=#{owner} AND event_kind='RATE'
       UNION ALL SELECT MAX(created_at) FROM knowledge_revalidation_event WHERE owner_id=#{owner}
       UNION ALL SELECT MAX(created_at) FROM preparation_knowledge_event WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM material_excerpt_correction WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(decided_at) FROM knowledge_revalidation_impact WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(decided_at) FROM preparation_knowledge_impact WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(decided_at) FROM material_knowledge_impact WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(decided_at) FROM material_dependency_impact WHERE owner_id=#{owner}
+      UNION ALL SELECT MAX(created_at) FROM material_excerpt_lifecycle_event WHERE owner_id=#{owner}
     ) frozen
   </select>
   <insert id="insertEvent">

@@ -8,3 +8,4 @@ export type SearchState = Schema['SearchState']
 export type SearchResponse = Schema['SearchResponse']
 export type SearchStatus = Schema['SearchStatus']
 export type OpenKnowledge = { id: string; versionId?: string; lineStart?: number; lineEnd?: number }
+export type TextImport = { fileName: string; source: string; sourceSha256: string; title: string; body: string; tags?: string[] }

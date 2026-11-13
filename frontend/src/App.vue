@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NButton, NConfigProvider, NInput, NMessageProvider, NModal, zhCN, dateZhCN } from 'naive-ui'
+import { NButton, NConfigProvider, NInput, NMessageProvider, NModal, zhCN, dateZhCN, darkTheme } from 'naive-ui'
 import { read, login, logout, errorText, clearCsrf } from './api/client'
 import type { Schema } from './api/client'
 import { queryClient } from './api/queryClient'
@@ -9,6 +9,7 @@ import { useWorkspaceStore } from './state/workspace'
 import { useTrainingAccessStore } from './state/trainingAccess'
 import { useAiUpdatesStore } from './state/aiUpdates'
 import { useRecentStore } from './state/recent'
+import { usePreferencesStore } from './state/preferences'
 import { recentIdValid } from './api/recent'
 import TrainingAccessNotice from './components/training/TrainingAccessNotice.vue'
 import GlobalCommandPalette from './components/GlobalCommandPalette.vue'
@@ -24,9 +25,13 @@ const workspace = useWorkspaceStore()
 const trainingAccess = useTrainingAccessStore()
 const aiUpdates = useAiUpdatesStore()
 const recent = useRecentStore()
+const preferences = usePreferencesStore()
+const unsavedCount = computed(() => [...workspace.changes.values()].filter(value => value.dirty).length)
+const unresolvedCount = computed(() => [...workspace.changes.values()].filter(value => value.locked).length)
 const route = useRoute()
 const authorizationManagement = computed(() => route.name === 'ai-authorizations')
-const trainingBlocked = computed(() => !authorizationManagement.value && (trainingAccess.checking || trainingAccess.challenge
+const safeManagementShell = computed(() => authorizationManagement.value || route.name === 'data-management')
+const trainingBlocked = computed(() => !safeManagementShell.value && (trainingAccess.checking || trainingAccess.challenge
   || workspace.changes.get('training-access-command')?.locked
   || (trainingAccess.restricted && trainingAccess.needsGuard(route.name, route.query.item, route.query.create))))
 let trainingChannel: BroadcastChannel | undefined
@@ -43,7 +48,7 @@ const practiceNavigation = [
   { path: '/practice/questions', label: '题库' }, { path: '/practice/collections', label: '题单与路线' },
   { path: '/practice/sessions', label: '文字训练' },
 ]
-const theme = { common: { primaryColor: '#246450', primaryColorHover: '#357b65', primaryColorPressed: '#194e3e', borderRadius: '7px', fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif', fontSize: '14px' } }
+const theme = computed(() => ({ common: { primaryColor: preferences.isDark ? '#8bcbb0' : '#246450', primaryColorHover: preferences.isDark ? '#a2ddc3' : '#357b65', primaryColorPressed: preferences.isDark ? '#74b298' : '#194e3e', borderRadius: '7px', fontFamily: '"Segoe UI", "Microsoft YaHei", sans-serif', fontSize: `${preferences.current.fontSize}px` } }))
 
 async function refreshSession() {
   loading.value = true
@@ -105,6 +110,7 @@ function pauseAiUpdates() { aiUpdates.setContext() }
 watch(() => workspace.sessionActive, value => { trainingAccess.invalidate(); if (value) void trainingAccess.refresh() })
 watch([() => workspace.sessionActive, () => workspace.sessionEpoch, () => route.name, () => route.query.item, () => route.query.create, () => route.query.comparison], syncAiUpdates, { immediate: true, flush: 'post' })
 onMounted(() => {
+  preferences.start()
   recent.start()
   if ('BroadcastChannel' in window) {
     trainingChannel = new BroadcastChannel('wenjie-training-condition')
@@ -123,6 +129,7 @@ onMounted(() => {
   void refreshSession()
 })
 onUnmounted(() => {
+  preferences.stop()
   recent.stop()
   pauseAiUpdates()
   trainingChannel?.close()
@@ -140,17 +147,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NConfigProvider :theme-overrides="theme" :locale="zhCN" :date-locale="dateZhCN">
+  <NConfigProvider :theme="preferences.isDark ? darkTheme : null" :theme-overrides="theme" :locale="zhCN" :date-locale="dateZhCN">
     <NMessageProvider>
       <div v-if="entered" class="app-shell" :inert="!session?.authenticated || undefined">
         <aside class="app-nav">
           <a class="brand" href="/knowledge" @click.prevent="$router.push('/knowledge')"><span class="brand-symbol">阶</span><span>问阶<small>Interview Studio</small></span></a>
           <nav aria-label="主导航">
-            <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" :class="{ 'router-link-active': ['/prepare', '/practice', '/knowledge'].includes(item.path) && $route.path.startsWith(item.path) }"><span aria-hidden="true">{{ item.mark }}</span>{{ item.label }}<small v-if="item.path === '/growth'">规划中</small></RouterLink>
+            <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" :class="{ 'router-link-active': ['/prepare', '/practice', '/knowledge'].includes(item.path) && $route.path.startsWith(item.path) }"><span aria-hidden="true">{{ item.mark }}</span>{{ item.label }}</RouterLink>
           </nav>
+          <nav aria-label="资料与个人设置"><RouterLink :to="{ name: 'knowledge-packages' }">知识包导入</RouterLink><RouterLink :to="{ name: 'knowledge-merge' }">概念合并</RouterLink><RouterLink :to="{ name: 'settings' }">个人设置</RouterLink><RouterLink :to="{ name: 'data-management' }">数据管理</RouterLink></nav>
           <div class="nav-footer"><GlobalCommandPalette :enabled="Boolean(session?.authenticated && workspace.sessionActive && !loading && !busy)" /><RouterLink :to="{ name: 'search' }">全局搜索</RouterLink><RouterLink :to="{ name: 'recent' }">最近访问<span v-if="recent.pendingCount"> · {{ recent.pendingCount }} 待确认</span></RouterLink><span v-if="recent.message" role="status">{{ recent.message }}</span><RouterLink to="/ai">AI 任务与用量</RouterLink><RouterLink :to="{ name: 'ai-authorizations' }">AI 授权管理</RouterLink><span>个人知识与面试工作台</span><span class="muted">{{ session?.username }}</span><NButton quaternary size="small" :loading="busy" @click="signOut">退出登录</NButton></div>
         </aside>
         <main id="main-content" class="app-main">
+          <div v-if="preferences.current.saveRecoveryNotice && (unsavedCount || unresolvedCount)" class="preference-save-notice" role="status">{{ unsavedCount }} 处未保存输入，{{ unresolvedCount }} 个保存中或结果待确认操作。请完成保存或用原请求恢复；关闭页面可能丢失尚未保存的内容。</div>
           <nav v-if="$route.path.startsWith('/prepare')" class="preparation-navigation" aria-label="准备工作区"><RouterLink v-for="item in preparationNavigation" :key="item.path" :to="item.path">{{ item.label }}</RouterLink></nav>
           <nav v-if="$route.path.startsWith('/practice')" class="preparation-navigation" aria-label="训练工作区"><RouterLink v-for="item in practiceNavigation" :key="item.path" :to="item.path">{{ item.label }}</RouterLink></nav>
           <TrainingAccessNotice v-show="!authorizationManagement" />

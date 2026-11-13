@@ -123,6 +123,16 @@
     <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
     <if test="collection == 'FAVORITES'">AND o.favorite = TRUE</if>
     <if test="collection == 'UNCATEGORIZED'">AND NOT EXISTS (SELECT 1 FROM knowledge_item_topic t WHERE t.item_id = i.id)</if>
+    <if test="collection == 'BROKEN_LINKS'">
+      AND (
+        EXISTS (SELECT 1 FROM knowledge_reference_scan s
+          WHERE s.owner_id=i.owner_id AND s.version_id=i.current_version_id AND s.unresolved_count&gt;0)
+        OR EXISTS (SELECT 1 FROM knowledge_reference r LEFT JOIN knowledge_item target
+          ON target.owner_id=r.owner_id AND target.id=r.target_item_id
+          WHERE r.owner_id=i.owner_id AND r.source_version_id=i.current_version_id
+            AND (target.id IS NULL OR target.status&lt;&gt;'ACTIVE'))
+      )
+    </if>
     <choose>
       <when test="collection == 'RECENT'">
         AND o.visited_at IS NOT NULL

@@ -6,6 +6,9 @@ import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 import com.wenjie.studio.training.TrainingAccessGuard;
+import com.wenjie.studio.dataprivacy.PrivacyAccess;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
+import com.wenjie.studio.dataprivacy.PrivacyPermissionMetadata;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -23,11 +26,16 @@ public class IdempotencyService {
     private final JsonMapper json;
     private final JsonMapper canonical;
     private final TrainingAccessGuard trainingAccess;
+    private final PrivacyLifecycle privacy;
+    private final PrivacyAccess privacyAccess;
 
-    public IdempotencyService(IdempotencyMapper receipts, JsonMapper json, TrainingAccessGuard trainingAccess) {
+    public IdempotencyService(IdempotencyMapper receipts, JsonMapper json, TrainingAccessGuard trainingAccess,
+                              PrivacyLifecycle privacy, PrivacyAccess privacyAccess) {
         this.receipts = receipts;
         this.json = json;
         this.trainingAccess = trainingAccess;
+        this.privacy = privacy;
+        this.privacyAccess = privacyAccess;
         this.canonical = json.rebuild()
                 .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
                 .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
@@ -55,7 +63,25 @@ public class IdempotencyService {
         if (receipts.lockWorkspace(ownerId) == null) {
             throw new IllegalStateException("未能锁定个人工作区");
         }
-        trainingAccess.checkCommand(ownerId, operation);
+        boolean pendingPrivacy = privacy.isMatchingPendingPrivacyCommand(ownerId, key, operation, request);
+        boolean pendingPermission = privacy.isMatchingPendingPermissionCommand(ownerId, key, operation, request);
+        boolean nestedPrivacy = privacy.isVerifiedPendingContinuation(ownerId);
+        if (!pendingPrivacy && !pendingPermission && !nestedPrivacy) trainingAccess.checkCommand(ownerId, operation);
+        boolean privacyCommand = operation.startsWith("POST /api/v1/data-privacy/");
+        boolean permissionMetadata = PrivacyPermissionMetadata.isSafePermissionMetadata(operation);
+        if (!privacyCommand) {
+            // HTTP 预检后仍可能有另一标签清除资料；命令和旧回执必须在同一 owner 锁内重验。
+            privacy.requireCommandSynchronized(ownerId, key, operation, request);
+            if (!permissionMetadata) {
+                var blocked = privacyAccess.identities(ownerId);
+                for (String segment : operation.substring(operation.indexOf(' ') + 1).split("/")) {
+                    if (blocked.contains(segment)) {
+                        throw new ApiException(410, "PRIVACY_OBJECT_UNAVAILABLE", "该内容已进入隐私保护状态，请刷新后在数据管理中处理。");
+                    }
+                }
+                privacyAccess.requireInput(ownerId, request);
+            }
+        }
         // 受保护回执也可能含原文，原键恢复前仍须核对该命令的当前来源访问权限。
         accessGuard.run();
         IdempotencyMapper.Receipt existing = receipts.findReceipt(ownerId, key);
@@ -63,6 +89,7 @@ public class IdempotencyService {
             if (!operation.equals(existing.operation()) || !digest.equals(existing.requestHash())) {
                 throw new ApiException(409, "IDEMPOTENCY_KEY_REUSED", "此操作标识已用于不同请求，请核对原请求结果。");
             }
+            if (!privacyCommand && !permissionMetadata) privacyAccess.requireInput(ownerId, existing.responseJson());
             return json.readValue(existing.responseJson(), responseType);
         }
 

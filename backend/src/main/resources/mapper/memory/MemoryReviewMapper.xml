@@ -15,7 +15,27 @@
       JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
         AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
       WHERE upstream.owner_id=s.owner_id AND upstream.target_item_id=s.knowledge_item_id
-        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0))
+        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0)
+      OR EXISTS (SELECT 1 FROM material_knowledge_impact upstream
+      JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+        AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+      WHERE upstream.owner_id=s.owner_id AND upstream.target_item_id=s.knowledge_item_id
+        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0)
+      OR EXISTS (SELECT 1 FROM material_dependency_impact upstream
+      JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id AND adopted.item_id=upstream.target_id
+        AND adopted.id=upstream.target_version_id AND adopted.version_number=upstream.target_version_number
+      JOIN material_excerpt_correction correction ON correction.owner_id=upstream.owner_id AND correction.id=upstream.correction_id
+        AND correction.excerpt_id=upstream.excerpt_id AND correction.created_at=upstream.created_at
+      WHERE upstream.owner_id=s.owner_id AND upstream.domain='KNOWLEDGE' AND upstream.target_id=s.knowledge_item_id
+        AND adopted.version_number &lt;= v.version_number AND upstream.revision=0)
+      OR EXISTS (SELECT 1 FROM material_usage_status_event upstream
+      JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id AND adopted.item_id=upstream.target_id
+        AND adopted.id=upstream.target_version_id AND adopted.version_number=upstream.target_version_number
+      JOIN material_excerpt_lifecycle_event lifecycle_event ON lifecycle_event.owner_id=upstream.owner_id AND lifecycle_event.id=upstream.event_id
+        AND lifecycle_event.excerpt_id=upstream.excerpt_id AND lifecycle_event.created_at=upstream.created_at AND lifecycle_event.action IN ('ARCHIVE','RESTORE')
+      JOIN material_excerpt_lifecycle current ON current.owner_id=upstream.owner_id AND current.excerpt_id=upstream.excerpt_id
+      WHERE upstream.owner_id=s.owner_id AND upstream.domain='KNOWLEDGE' AND upstream.target_id=s.knowledge_item_id
+        AND adopted.version_number &lt;= v.version_number AND current.status='ARCHIVED'))
   </sql>
   <!-- 按二进制比较正文，保留大小写、排版及末尾空格差异；正文不进入读取 DTO。 -->
   <select id="sources" resultType="com.wenjie.studio.memory.MemoryReviewRows$SourceRow">
@@ -30,20 +50,47 @@
     WHERE s.owner_id=#{owner} AND s.card_id=#{id} AND s.version_id=#{versionId} ORDER BY s.position_index
   </select>
   <select id="upstreamImpact" resultType="com.wenjie.studio.memory.MemoryReviewRows$UpstreamImpactRow">
-    <!-- 同一历史身份不能跨类重用；另一类即使已经处理也拒绝此身份，避免按状态筛选后误选。 -->
-    SELECT i.target_item_id AS item_id,i.target_version_id AS adopted_version_id,v.version_number AS adopted_version_number,i.created_at
-    FROM knowledge_revalidation_impact i JOIN knowledge_version v
-      ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
-    WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
-      AND NOT EXISTS (SELECT 1 FROM preparation_knowledge_impact other
-        WHERE other.owner_id=i.owner_id AND other.id=i.id)
-    UNION ALL
-    SELECT i.target_item_id AS item_id,i.target_version_id AS adopted_version_id,v.version_number AS adopted_version_number,i.created_at
-    FROM preparation_knowledge_impact i JOIN knowledge_version v
-      ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
-    WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
-      AND NOT EXISTS (SELECT 1 FROM knowledge_revalidation_impact other
-        WHERE other.owner_id=i.owner_id AND other.id=i.id)
+    <!-- 先跨五类原始登记排除身份重用；已处理或不同 domain 的同名记录也参与，不按状态掩盖歧义。 -->
+    SELECT candidate.item_id,candidate.adopted_version_id,candidate.adopted_version_number,candidate.created_at
+    FROM (
+      SELECT i.target_item_id AS item_id,i.target_version_id AS adopted_version_id,v.version_number AS adopted_version_number,i.created_at
+      FROM knowledge_revalidation_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
+      UNION ALL
+      SELECT i.target_item_id,i.target_version_id,v.version_number,i.created_at
+      FROM preparation_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
+      UNION ALL
+      SELECT i.target_item_id,i.target_version_id,v.version_number,i.created_at
+      FROM material_knowledge_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_item_id AND v.id=i.target_version_id
+      WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.revision=0
+      UNION ALL
+      SELECT i.target_id,i.target_version_id,v.version_number,i.created_at
+      FROM material_dependency_impact i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_id AND v.id=i.target_version_id
+          AND v.version_number=i.target_version_number
+      JOIN material_excerpt_correction correction ON correction.owner_id=i.owner_id AND correction.id=i.correction_id
+        AND correction.excerpt_id=i.excerpt_id AND correction.created_at=i.created_at
+      WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.domain='KNOWLEDGE' AND i.revision=0
+      UNION ALL
+      SELECT i.target_id,i.target_version_id,v.version_number,i.created_at
+      FROM material_usage_status_event i JOIN knowledge_version v
+        ON v.owner_id=i.owner_id AND v.item_id=i.target_id AND v.id=i.target_version_id
+          AND v.version_number=i.target_version_number
+      JOIN material_excerpt_lifecycle_event lifecycle_event ON lifecycle_event.owner_id=i.owner_id AND lifecycle_event.id=i.event_id
+        AND lifecycle_event.excerpt_id=i.excerpt_id AND lifecycle_event.created_at=i.created_at AND lifecycle_event.action IN ('ARCHIVE','RESTORE')
+      WHERE i.owner_id=#{owner} AND i.id=#{impactId} AND i.domain='KNOWLEDGE'
+    ) candidate
+    WHERE (SELECT COUNT(*) FROM (
+      SELECT id FROM knowledge_revalidation_impact WHERE owner_id=#{owner} AND id=#{impactId}
+      UNION ALL SELECT id FROM preparation_knowledge_impact WHERE owner_id=#{owner} AND id=#{impactId}
+      UNION ALL SELECT id FROM material_knowledge_impact WHERE owner_id=#{owner} AND id=#{impactId}
+      UNION ALL SELECT id FROM material_dependency_impact WHERE owner_id=#{owner} AND id=#{impactId}
+      UNION ALL SELECT id FROM material_usage_status_event WHERE owner_id=#{owner} AND id=#{impactId}
+    ) identities)=1
   </select>
   <select id="basis" resultType="com.wenjie.studio.memory.MemoryReviewRows$BasisRow">
     SELECT prompt_json,reference_text FROM memory_card_version WHERE owner_id=#{owner} AND card_id=#{id} AND id=#{versionId}

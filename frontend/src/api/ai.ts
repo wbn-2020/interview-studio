@@ -196,7 +196,7 @@ export function aiKnowledgeMaterialChecksMatch(manifest: AiManifest, requireChec
     const checks = manifest.knowledgeMaterialChecks
     if (!aiManifestHasKnowledgeRoots(manifest)) return checks == null
     if (checks == null) return !requireChecks
-    // 前端只核形状；实际采用、固定答案图、题面、选定评价及追问原实际外发来源由服务器重建。
+    // 前端只核形状；实际采用、答案图、题面、评价、追问、复练及父项目代次见证由服务器重建。
     return Array.isArray(checks) && checks.length <= 200
       && checks.every((check, index) => check != null && typeof check === 'object' && !Array.isArray(check)
         && Object.keys(check).length === 2 && Object.hasOwn(check, 'excerptId') && Object.hasOwn(check, 'revision')

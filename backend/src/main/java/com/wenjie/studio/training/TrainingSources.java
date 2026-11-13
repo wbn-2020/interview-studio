@@ -1,5 +1,6 @@
 package com.wenjie.studio.training;
 
+import com.wenjie.studio.ai.QuestionKnowledgeOrigins;
 import com.wenjie.studio.bank.CollectionDtos;
 import com.wenjie.studio.bank.CollectionService;
 import com.wenjie.studio.bank.QuestionDtos;
@@ -7,7 +8,12 @@ import com.wenjie.studio.bank.QuestionService;
 import com.wenjie.studio.board.BoardDtos;
 import com.wenjie.studio.board.BoardService;
 import com.wenjie.studio.common.ApiException;
+import com.wenjie.studio.knowledge.KnowledgeDtos;
 import com.wenjie.studio.knowledge.KnowledgeService;
+import com.wenjie.studio.lifecycle.KnowledgeMaterialLineage;
+import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
+import com.wenjie.studio.material.MaterialDependencyImpactService;
+import com.wenjie.studio.material.MaterialDependencyImpactDtos;
 import com.wenjie.studio.prepare.PreparationDtos;
 import com.wenjie.studio.prepare.PreparationService;
 import com.wenjie.studio.prepare.PreparationSources;
@@ -39,6 +45,10 @@ public class TrainingSources {
     private static final String REPLAY_EXPOSURE_WARNING = "同题独立复练：此题已有历史提交，曝光计数不代表首次见题。";
     private static final String LEGACY_REPLAY_WARNING = "沿用历史 AI 追问题面；本题没有题库参考，题意与技术质量仍需人工判断。";
     private final QuestionService questions;
+    private final QuestionKnowledgeOrigins questionOrigins;
+    private final KnowledgeMaterialLineage questionLineage;
+    private final KnowledgeRevalidationQuery knowledgeRevalidation;
+    private final MaterialDependencyImpactService materialDependencies;
     private final CollectionService collections;
     private final PreparationService preparation;
     private final PreparationSources preparationSources;
@@ -50,8 +60,14 @@ public class TrainingSources {
 
     public TrainingSources(QuestionService questions, CollectionService collections, PreparationService preparation,
                            KnowledgeService knowledge, BoardService boards, TrainingMapper training, JsonMapper json,
-                           PreparationSources preparationSources, RecollectionSources recollections) {
+                           PreparationSources preparationSources, RecollectionSources recollections,
+                           QuestionKnowledgeOrigins questionOrigins, KnowledgeMaterialLineage questionLineage,
+                           KnowledgeRevalidationQuery knowledgeRevalidation, MaterialDependencyImpactService materialDependencies) {
         this.questions = questions;
+        this.questionOrigins = questionOrigins;
+        this.questionLineage = questionLineage;
+        this.knowledgeRevalidation = knowledgeRevalidation;
+        this.materialDependencies = materialDependencies;
         this.collections = collections;
         this.preparation = preparation;
         this.preparationSources = preparationSources;
@@ -75,7 +91,8 @@ public class TrainingSources {
         writeTransaction(); uuid(owner);
         QuestionSnapshot baseline = baselineQuestion(owner, baselineSessionId, baselineQuestionId);
         List<ContextSnapshot> context = repracticeContexts(owner, contextLinks);
-        QuestionSnapshot question = variant == null ? replayQuestion(owner, baseline) : variantQuestion(owner, variant);
+        QuestionSnapshot question = variant == null ? replayQuestion(owner, baselineSessionId, baselineQuestionId, baseline)
+                : variantQuestion(owner, variant);
         return new SourceSnapshot(context, List.of(question));
     }
 
@@ -85,7 +102,7 @@ public class TrainingSources {
         writeTransaction(); uuid(owner); required(config); required(context); required(snapshot);
         QuestionSnapshot baseline = baselineQuestion(owner, baselineSessionId, baselineQuestionId);
         revalidateContext(owner, context);
-        QuestionSnapshot current = sameQuestion ? replayQuestion(owner, baseline)
+        QuestionSnapshot current = sameQuestion ? replayQuestion(owner, baselineSessionId, baselineQuestionId, baseline)
                 : variantQuestion(owner, new QuestionSelection(snapshot.sourceQuestionId(), snapshot.sourceVersionId(), snapshot.stage()));
         if (sameQuestion && snapshot.sourceQuestionId() == null
                 && List.of(REPLAY_EXPOSURE_WARNING, LEGACY_REPLAY_WARNING).equals(snapshot.warnings())) {
@@ -206,7 +223,7 @@ public class TrainingSources {
         return snapshot;
     }
 
-    private QuestionSnapshot replayQuestion(String owner, QuestionSnapshot baseline) {
+    private QuestionSnapshot replayQuestion(String owner, String sessionId, String questionId, QuestionSnapshot baseline) {
         boolean bankSource = baseline.sourceQuestionId() != null;
         if (bankSource) {
             uuid(baseline.sourceQuestionId()); uuid(baseline.sourceVersionId());
@@ -216,7 +233,54 @@ public class TrainingSources {
                 if (version.number() != baseline.number() || !version.content().equals(baseline.content())) {
                     throw changed("原训练题面与确切题库版本不一致。");
                 }
+                requireQuestionKnowledgeCurrent(owner, baseline.sourceQuestionId(), baseline.sourceVersionId(), version.number());
             } catch (ApiException exception) { throw sourceFailure(exception); }
+        } else {
+            var lineage = questionLineage.questionSources(owner, sessionId, questionId);
+            for (var source : lineage.bankSources()) {
+                try {
+                    var version = questions.version(owner, source.itemId(), source.versionId());
+                    // 追问和跨会话复制不能借空题库标识跳过原确切题库版的知识资格。
+                    requireQuestionKnowledgeCurrent(owner, source.itemId(), source.versionId(), version.number());
+                } catch (ApiException exception) { throw sourceFailure(exception); }
+            }
+            for (var reference : lineage.answerKnowledgeSources()) {
+                var source = reference.source();
+                try {
+                    var item = knowledge.detail(owner, source.itemId());
+                    // 原提交后的上游更正或处理仍使旧图引用失效；新复练时间不能清洗基线。
+                    if (item.status() != KnowledgeDtos.Status.ACTIVE || !source.versionId().equals(item.currentVersionId())
+                            || knowledgeRevalidation.reviewRequired(owner, source.itemId(), source.versionId(), reference.frozenAt())) {
+                        throw changed("原题面生成所用答案图的知识来源已变化，请选择来源适用的题目或另行生成。");
+                    }
+                } catch (ApiException exception) { throw sourceFailure(exception); }
+            }
+            for (var reference : lineage.adoptedKnowledgeSources()) {
+                var source = reference.source();
+                try {
+                    var item = knowledge.detail(owner, source.itemId());
+                    // 采用目标的后来版本不能刷新原生成任务的知识基线；每个任务分别检查。
+                    if (item.status() != KnowledgeDtos.Status.ACTIVE || !source.versionId().equals(item.currentVersionId())
+                            || knowledgeRevalidation.reviewRequired(owner, source.itemId(), source.versionId(), reference.frozenAt())) {
+                        throw changed("原题面来源的实际采用任务所用知识已变化，请选择来源适用的题目或另行生成。");
+                    }
+                } catch (ApiException exception) { throw sourceFailure(exception); }
+            }
+            for (var reference : lineage.adoptedPreparationSources()) {
+                var check = reference.check();
+                // 只核原版本状态与代次；表达还须核完整依据，恢复为可用也不能清洗旧任务基线。
+                boolean current = check.kind() == PreparationDtos.Kind.EXPRESSION
+                        ? reference.expressionCheck().equals(preparationSources.checkExpression(owner, check.itemId(), check.versionId()))
+                        : check.equals(preparationSources.check(owner, check.kind(), check.itemId(), check.versionId()));
+                if (!current) throw changed("原题面来源的实际采用任务所用准备资料已变化，请选择来源适用的题目或另行生成。");
+            }
+            for (var reference : lineage.followUpPreparationSources()) {
+                var check = reference.check();
+                // 题面继承原追问真正使用的背景代次，不能借跨会话复制恢复已失效的依据。
+                if (!check.equals(preparationSources.check(owner, check.kind(), check.itemId(), check.versionId()))) {
+                    throw changed("原追问题面实际使用的准备背景已变化，请选择来源适用的题目或另行生成。");
+                }
+            }
         }
         List<String> warnings = List.of(REPLAY_EXPOSURE_WARNING,
                 bankSource ? "沿用原训练的确切题库版本及未审个人参考；题库改版或停用不替换本次题面。"
@@ -287,6 +351,14 @@ public class TrainingSources {
         if (history.items().isEmpty()) throw unavailable("白板尚无可用的固定修订。");
         if (history.items().getFirst().revision() != expectedRevision) throw changed("白板已在其他页面修改，请重新读取后导入。");
         BoardDtos.Detail snapshot = boardSnapshot(owner, boardId, expectedRevision);
+        // 训练图解目前只接受知识引用，不能把题目或附件的标识当成知识标识继续解析。
+        if (snapshot.nodes().stream().anyMatch(node -> node.type() == BoardDtos.NodeType.REFERENCE
+                && node.referenceKind() != BoardDtos.ReferenceKind.KNOWLEDGE)
+                || snapshot.references().stream().anyMatch(reference ->
+                reference.referenceKind() != BoardDtos.ReferenceKind.KNOWLEDGE)) {
+            throw new ApiException(409, "BOARD_TRAINING_REFERENCE_UNSUPPORTED",
+                    "当前训练图解仅支持知识引用，请先移除白板中的题目或附件引用后再导入。");
+        }
         Map<String, BoardDtos.Reference> references = new HashMap<>();
         for (BoardDtos.Reference reference : snapshot.references()) references.put(reference.itemId(), reference);
         List<DiagramNodeInput> nodes = new ArrayList<>();
@@ -346,6 +418,7 @@ public class TrainingSources {
                 if (question.status() != QuestionDtos.Status.ACTIVE) throw changed("所选题目已停用，请重新选择。");
                 boolean historical = !question.currentVersion().id().equals(version.id());
                 if (historical && collectionId == null) throw changed("题目已改版，请重新选择当前版本。");
+                requireQuestionKnowledgeCurrent(owner, question.id(), version.id(), version.number());
                 List<String> warnings = historical ? List.of("题单固定引用 v" + version.number()
                         + "，当前题目已发布至 v" + question.currentVersion().number() + "；本次仍使用题单中的确切旧版本。") : List.of();
                 QuestionSnapshot snapshot = new QuestionSnapshot(question.id(), version.id(), version.content().title(),
@@ -357,6 +430,20 @@ public class TrainingSources {
         return List.copyOf(result);
     }
 
+    private void requireQuestionKnowledgeCurrent(String owner, String questionId, String versionId, int number) {
+        // 创建及开始新训练时核使用资格；历史题面和输入读取仍保留原固定内容。
+        // 完整证明实际材料祖先，但本地准入以目标复核结果为准；不把旧摘录的 AI 撤权当成本地禁用。
+        questionLineage.bankExcerptIds(owner, questionId, versionId);
+        if (materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.QUESTION, questionId, versionId, null)) {
+            throw changed("题目实际采用的材料已更正，请先复核材料影响再创建训练或复练。");
+        }
+        var references = questions.knowledgeReferences(owner, questionId, versionId).items();
+        if (references.stream().anyMatch(reference -> reference.state() != QuestionDtos.ReferenceState.CURRENT)) {
+            throw changed("请先复核关联知识并保存适用的题目版本，再创建训练或复练。");
+        }
+        questionOrigins.requireCurrent(owner, questionId, number);
+    }
+
     private ContextSnapshot context(String owner, ContextLink link) {
         try {
             PreparationDtos.Item item = preparation.detail(owner, link.itemId());
@@ -365,6 +452,11 @@ public class TrainingSources {
             if (item.status() != PreparationDtos.Status.ACTIVE || !item.currentVersion().id().equals(version.id())) {
                 throw changed("训练材料已改版或归档，请重新选择当前版本。");
             }
+            var checked = preparationSources.check(owner, PreparationDtos.Kind.valueOf(link.kind().name()), item.id(), version.id());
+            if (item.reviewRequired() || checked.state() != PreparationDtos.SourceState.CURRENT) {
+                throw changed("训练准备资料的事实或材料依据待复核，请先处理来源后重新选择。");
+            }
+            questionLineage.preparationExcerptIds(owner, checked);
             if (link.kind() == ContextKind.FACT) {
                 if (item.verification() != PreparationDtos.Verification.CONFIRMED) throw changed("训练事实尚未确认或已撤回，请重新核实来源。");
                 PreparationDtos.Item project = preparation.detail(owner, item.projectId());
@@ -424,4 +516,5 @@ public class TrainingSources {
 
     private ApiException unavailable(String message) { return new ApiException(422, "SOURCE_UNAVAILABLE", message); }
     private ApiException changed(String message) { return new ApiException(409, "SOURCE_CHANGED", message); }
+
 }

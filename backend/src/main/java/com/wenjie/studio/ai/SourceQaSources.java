@@ -120,8 +120,9 @@ public class SourceQaSources {
                 Source fixed = input.sources().get(index), latest = rebuilt.sources().get(index);
                 if (!fixed.equals(withFixedDecision(latest, fixed))) throw broken();
                 requireForward(input.checks().get(index), rebuilt.checks().get(index));
+                // 处理来源影响不能刷新原问答基线；创建或处理与冻结点等时也须拒绝旧任务。
                 if (fixed.ref().domain() == Domain.KNOWLEDGE && frozenAt != null
-                        && revalidation.changedAfter(owner, fixed.ref().id(), fixed.ref().versionId(), frozenAt)) return false;
+                        && revalidation.reviewRequired(owner, fixed.ref().id(), fixed.ref().versionId(), frozenAt)) return false;
             }
             return input.equals(rebuilt);
         } catch (ApiException exception) {

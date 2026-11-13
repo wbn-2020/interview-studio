@@ -93,7 +93,8 @@ public class RelationEvidenceService {
         Snapshot snapshot = snapshot(saved.snapshotJson());
         verifyBindings(owner, row, snapshot);
         // 原文不可用与台账损坏分开处理；数据库、JSON 或绑定错误不能降级为不可用提示。
-        return new Detail(entry, live != null, snapshot, sources.current(owner, snapshot));
+        return new Detail(entry, live != null, snapshot, sources.current(owner, snapshot)
+                && !relations.materialReviewRequired(owner, relationId, row.createdAt()));
     }
 
     public Entry create(String owner, String relationId, String key, Create request) {

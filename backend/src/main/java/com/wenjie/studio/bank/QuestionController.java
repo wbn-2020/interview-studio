@@ -3,6 +3,9 @@ package com.wenjie.studio.bank;
 import com.wenjie.studio.bank.QuestionDtos.*;
 import com.wenjie.studio.common.CurrentOwner;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -94,6 +97,14 @@ public class QuestionController {
     @GetMapping("/questions/{id}/versions/{versionId}")
     public QuestionVersion version(@PathVariable("id") String id, @PathVariable("versionId") String versionId) {
         return service.version(owner.id(), id, versionId);
+    }
+
+    @GetMapping("/questions/{id}/versions/{versionId}/knowledge-references")
+    public ResponseEntity<KnowledgeReferencePage> knowledgeReferences(@PathVariable("id") String id,
+            @PathVariable("versionId") String versionId, @RequestParam MultiValueMap<String, String> query) {
+        if (!query.isEmpty()) throw QuestionGuards.invalid("题目知识来源核对不接受查询参数。");
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(service.knowledgeReferences(owner.id(), id, versionId));
     }
 
     @PostMapping("/questions/{id}/versions/{versionId}/reference")

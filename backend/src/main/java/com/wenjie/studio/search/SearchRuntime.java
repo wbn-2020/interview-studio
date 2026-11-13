@@ -1,6 +1,7 @@
 package com.wenjie.studio.search;
 
 import com.wenjie.studio.security.OwnerProperties;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,13 +20,15 @@ public final class SearchRuntime {
     private final SearchStore store;
     private final String owner;
     private final GenerationIndex index;
+    private final PrivacyLifecycle privacy;
     private volatile String localError;
     private volatile String verifiedGeneration;
 
-    public SearchRuntime(SearchProperties properties, SearchStore store, OwnerProperties owner) {
+    public SearchRuntime(SearchProperties properties, SearchStore store, OwnerProperties owner, PrivacyLifecycle privacy) {
         this.properties = properties;
         this.store = store;
         this.owner = owner.ownerId();
+        this.privacy = privacy;
         this.index = new GenerationIndex(properties, owner.ownerId());
     }
 
@@ -33,6 +36,8 @@ public final class SearchRuntime {
     public synchronized void tick() {
         if (!properties.enabled()) return;
         try {
+            // 清除意图已持久化而业务事务尚未对齐时，不得从旧正文重建索引副本。
+            privacy.requireSynchronized(owner);
             SearchRows.Projection state = store.projection(owner);
             if (state == null) state = queueIfNeeded();
             if (localError != null && state.buildGeneration() == null) state = queueIfNeeded();

@@ -55,7 +55,15 @@
     <if test="cursor != null">AND id &gt; #{cursor}</if> ORDER BY id LIMIT #{limit}
   </select>
   <select id="contents" resultMap="content">
-    SELECT i.id,i.owner_id,i.kind,i.status,i.metadata_revision,v.id version_id,v.version_number,v.title,v.body,v.source_type,
+    SELECT i.id,i.owner_id,i.kind,i.status,i.metadata_revision,v.id version_id,v.version_number,v.title,v.body,
+      CASE
+        WHEN EXISTS (SELECT 1 FROM ai_candidate_decision a WHERE a.owner_id=i.owner_id AND a.target_item_id=i.id AND a.status='ADOPTED')
+          THEN 'AI_ADOPTED'
+        WHEN EXISTS (SELECT 1 FROM knowledge_package_entry p WHERE p.owner_id=i.owner_id AND p.item_id=i.id AND p.decision='IMPORT')
+          THEN 'PACKAGE_IMPORT'
+        WHEN EXISTS (SELECT 1 FROM knowledge_text_import t WHERE t.owner_id=i.owner_id AND t.item_id=i.id)
+          THEN 'TEXT_IMPORT'
+        ELSE 'USER' END source_type,
       COALESCE(o.revision,0) organization_revision,COALESCE(o.aliases_json,JSON_ARRAY()) aliases_json,
       COALESCE(o.tags_json,JSON_ARRAY()) tags_json
     FROM knowledge_item i JOIN knowledge_version v ON v.id=i.current_version_id AND v.item_id=i.id AND v.owner_id=i.owner_id

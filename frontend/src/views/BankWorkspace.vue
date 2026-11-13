@@ -8,15 +8,22 @@ import type { ItemSummary, Schema } from '../api/client'
 import type { Question, QuestionDimension, QuestionPage, QuestionType } from '../api/bank'
 import { questionDifficultyOptions, questionDimensionOptions, questionTypeLabels, questionTypeOptions } from '../api/bank'
 import { queryClient } from '../api/queryClient'
+import { useTrainingAccessStore } from '../state/trainingAccess'
 import { useWorkspaceStore } from '../state/workspace'
 import KnowledgePicker from '../components/KnowledgePicker.vue'
 
 const QuestionEditor = defineAsyncComponent(() => import('../components/bank/QuestionEditor.vue'))
+const QuestionFileImport = defineAsyncComponent(() => import('../components/bank/QuestionFileImport.vue'))
 const route = useRoute()
 const router = useRouter()
 const store = useWorkspaceStore()
+const trainingAccess = useTrainingAccessStore()
+const fileImportOpen = ref(false)
+const fileImportReadable = computed(() => route.name === 'bank' && store.sessionActive && !trainingAccess.checking
+  && !trainingAccess.restricted && !trainingAccess.challenge && !store.changes.get('training-access-command')?.locked)
 const selectedId = computed(() => typeof route.query.item === 'string' ? route.query.item : undefined)
 const creating = computed(() => route.query.create === '1')
+const editorIdentity = computed(() => creating.value ? 'new' : selectedId.value)
 const status = ref<'ACTIVE' | 'ARCHIVED'>('ACTIVE')
 const favorite = ref(false)
 const type = ref<QuestionType | null>(null)
@@ -52,14 +59,31 @@ const list = useQuery({
 })
 watch([status, favorite, type, difficulty, dimension, topicId, knowledge, search, scene], resetPage, { flush: 'sync' })
 watch(() => store.sessionEpoch, resetPage)
+// 更换当前题目由全局原键守卫放行后关闭；同题历史参数变化不卸载本地导入候选。
+watch(editorIdentity, () => { fileImportOpen.value = false })
 function resetPage() { cursor.value = undefined; cursors.value = [] }
 function submitTitle() { search.value = titleInput.value.trim(); resetPage() }
 function submitScene() { scene.value = sceneInput.value.trim(); resetPage() }
 function clearFilters() { status.value = 'ACTIVE'; favorite.value = false; type.value = null; difficulty.value = null; dimension.value = null; topicId.value = null; knowledge.value = undefined; titleInput.value = ''; search.value = ''; sceneInput.value = ''; scene.value = ''; resetPage() }
 function selectKnowledge(value: ItemSummary) { knowledge.value = { id: value.id, title: value.title }; knowledgePicker.value = false }
-function open(id: string) { void router.push({ name: 'bank', query: { item: id } }) }
-function close() { void router.push({ name: 'bank' }) }
-function create() { void router.push({ name: 'bank', query: { create: '1' } }) }
+function navigateBank(query: Record<string, string> = {}) {
+  const destination = { name: 'bank', query }
+  const nextEditor = query.create === '1' ? 'new' : query.item
+  if (fileImportOpen.value && nextEditor === editorIdentity.value) {
+    if (!store.canLeave(['question-file-import'])) return
+    fileImportOpen.value = false
+  }
+  if (router.resolve(destination).fullPath !== route.fullPath) void router.push(destination)
+}
+function open(id: string) { navigateBank({ item: id }) }
+function close() { navigateBank() }
+function create() { navigateBank({ create: '1' }) }
+function openFileImport() {
+  if (!fileImportReadable.value || fileImportOpen.value) return
+  const reviewKeys = [...store.changes.keys()].filter(key => key.startsWith('standard-review:'))
+  if (!store.canLeave(['bank-editor', 'bank-command', ...reviewKeys])) return
+  fileImportOpen.value = true
+}
 function generate() { if (store.sessionActive) void router.push({ name: 'ai', query: { create: '1', purpose: 'QUESTION_DRAFT' } }) }
 function created(value: Question) { open(value.id) }
 function refresh() { void queryClient.invalidateQueries({ queryKey: ['bank'] }) }
@@ -67,7 +91,7 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 </script>
 
 <template>
-  <header class="page-heading"><div><p class="section-label">为独立回答准备问题</p><h1>题库</h1><p class="muted">按场景组织题目，保留适用条件、知识依据和每次修订。</p></div><div class="row-actions"><NButton :disabled="!store.sessionActive" @click="generate">AI 出题</NButton><NButton type="primary" :disabled="!store.sessionActive" @click="create">＋ 新建题目</NButton></div></header>
+  <header class="page-heading"><div><p class="section-label">为独立回答准备问题</p><h1>题库</h1><p class="muted">按场景组织题目，保留适用条件、知识依据和每次修订。</p></div><div class="row-actions"><NButton :disabled="!fileImportReadable || fileImportOpen" @click="openFileImport">从文件导入候选</NButton><NButton :disabled="!store.sessionActive" @click="generate">AI 出题</NButton><NButton type="primary" :disabled="!store.sessionActive" @click="create">＋ 新建题目</NButton></div></header>
   <div class="bank-workspace">
     <aside class="bank-catalog" aria-label="题库目录与筛选">
       <div class="bank-primary-filters"><NSelect v-model:value="status" :options="statusOptions" aria-label="题目状态" /><label class="bank-checkbox"><input v-model="favorite" type="checkbox" /> 仅看收藏</label></div>
@@ -80,7 +104,8 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
       <div class="bank-item-list"><button v-for="item in list.data.value?.items" :key="item.id" :class="{ selected: selectedId === item.id && !creating }" :aria-current="selectedId === item.id && !creating ? 'true' : undefined" @click="open(item.id)"><strong><span v-if="item.favorite" aria-label="已收藏">★ </span>{{ item.title }}</strong><span>{{ questionTypeLabels[item.type] }} · v{{ item.versionNumber }}{{ item.status === 'ARCHIVED' ? ' · 已停用' : '' }}</span><small>{{ item.difficulty === null ? '未标个人难度' : `个人难度 ${item.difficulty}` }} · 个人参考／未审</small></button></div>
       <div v-if="cursors.length || list.data.value?.nextCursor" class="pagination"><NButton size="small" :disabled="!cursors.length" @click="cursor = cursors.pop()">上一页</NButton><NButton size="small" :disabled="!list.data.value?.nextCursor" @click="next">下一页</NButton></div>
     </aside>
-    <QuestionEditor v-if="selectedId || creating" :key="creating ? 'new' : selectedId" :id="creating ? undefined : selectedId" @changed="refresh" @created="created" @close="close" />
+    <div v-if="fileImportOpen" class="bank-import-panel"><QuestionFileImport :enabled="fileImportReadable" @created="refresh" @cancel="fileImportOpen = false" /></div>
+    <QuestionEditor v-else-if="selectedId || creating" :key="creating ? 'new' : selectedId" :id="creating ? undefined : selectedId" @changed="refresh" @created="created" @close="close" />
     <section v-else class="bank-welcome"><h2>把值得练习的问题留下来</h2><p>记录题干、适用条件与考察目的，再关联知识库里的笔记或概念。每次修改保留独立版本，题单继续引用它选定的那一版。</p><div class="row-actions"><NButton type="primary" :disabled="!store.sessionActive" @click="create">新建题目</NButton><NButton :disabled="!store.sessionActive" @click="generate">从知识生成候选题</NButton></div><div class="bank-welcome-notes"><p>先读题干，再决定是否打开个人参考。显式查看会留下接触记录，方便以后区分独立回答的条件。</p><p>可以在“题单与路线”组织练习顺序，在 <RouterLink class="text-link" :to="{ name: 'training' }">文字训练</RouterLink> 中选择已保存的题目。AI 候选需审阅并采用后才进入题库。</p></div></section>
   </div>
   <p class="workspace-footnote">题目、个人参考与知识引用按版本保存。难度是个人标记，接触记录不代表已掌握。</p>
@@ -88,6 +113,7 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 
 <style scoped>
 .bank-workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 650px; max-width: 1280px; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.bank-import-panel { min-width: 0; } .bank-import-panel :deep(.question-file-import) { border: 0; border-radius: 0; }
 .bank-catalog { min-width: 0; padding: 18px 14px; border-right: 1px solid var(--line); border-radius: 8px 0 0 8px; background: var(--surface-soft); }
 .bank-primary-filters { display: grid; gap: 12px; }
 .bank-checkbox { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }

@@ -35,15 +35,19 @@ public class KnowledgeReferenceService {
     private final Parser parser = Parser.builder().includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES).build();
     private final OrganizationMapper mapper;
     private final IdempotencyService commands;
+    private final KnowledgeAttachmentService attachments;
 
-    public KnowledgeReferenceService(OrganizationMapper mapper, IdempotencyService commands) {
+    public KnowledgeReferenceService(OrganizationMapper mapper, IdempotencyService commands,
+                                     KnowledgeAttachmentService attachments) {
         this.mapper = mapper;
         this.commands = commands;
+        this.attachments = attachments;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void indexPublishedVersion(String owner, String itemId, String versionId, int number, String body) {
         index(owner, itemId, versionId, number, body, true);
+        attachments.indexVersion(owner, itemId, versionId, number, body, true);
     }
 
     public ReferencesRebuildResult rebuild(String owner, String key, EmptyRequest request) {
@@ -55,8 +59,17 @@ public class KnowledgeReferenceService {
                     int unresolved = 0;
                     for (var version : versions.subList(0, count)) {
                         unresolved += index(owner, version.itemId(), version.id(), version.number(), version.body(), false);
+                        unresolved += attachments.indexVersion(owner, version.itemId(), version.id(), version.number(), version.body(), false);
                     }
-                    return new ReferencesRebuildResult(count, versions.size() > 100, unresolved);
+                    // 旧知识链接已扫描的版本仍可能缺少附件扫描；两类索引共用每批 100 个版本的上限。
+                    int remaining = 100 - count;
+                    var attachmentVersions = attachments.unscannedVersions(owner, remaining + 1);
+                    int attachmentCount = Math.min(attachmentVersions.size(), remaining);
+                    for (var version : attachmentVersions.subList(0, attachmentCount)) {
+                        unresolved += attachments.indexVersion(owner, version.itemId(), version.id(), version.number(), version.body(), false);
+                    }
+                    return new ReferencesRebuildResult(count + attachmentCount,
+                            versions.size() > 100 || attachmentVersions.size() > remaining, unresolved);
                 });
     }
 

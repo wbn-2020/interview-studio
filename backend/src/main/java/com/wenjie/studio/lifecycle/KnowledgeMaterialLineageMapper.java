@@ -33,6 +33,10 @@ public interface KnowledgeMaterialLineageMapper {
                                                  @Param("limit") int limit);
     List<PreparationVersionRow> preparationVersion(@Param("owner") String owner, @Param("itemId") String itemId,
                                                    @Param("versionId") String versionId, @Param("limit") int limit);
+    List<ProjectGenerationRow> projectGeneration(@Param("owner") String owner, @Param("itemId") String itemId,
+                                                 @Param("limit") int limit);
+    List<ProjectGenerationEventRow> projectGenerationEvents(@Param("owner") String owner, @Param("itemId") String itemId,
+                                                            @Param("generation") long generation, @Param("limit") int limit);
     List<PreparationMaterialBinding> preparationMaterials(@Param("owner") String owner,
                                                          @Param("versionId") String versionId,
                                                          @Param("limit") int limit);
@@ -62,6 +66,12 @@ public interface KnowledgeMaterialLineageMapper {
                                        @Param("versionId") String versionId, @Param("limit") int limit);
     List<FollowUpSourceRow> followUpSource(@Param("owner") String owner, @Param("taskId") String taskId,
                                           @Param("limit") int limit);
+    List<ReplaySourceRow> replaySource(@Param("owner") String owner, @Param("sessionId") String sessionId,
+                                      @Param("limit") int limit);
+    List<ReplayAnswerRow> replayAnswer(@Param("owner") String owner, @Param("answerId") String answerId,
+                                      @Param("limit") int limit);
+    List<RecollectionVersionRow> recollectionVersion(@Param("owner") String owner, @Param("itemId") String itemId,
+                                                    @Param("versionId") String versionId, @Param("limit") int limit);
     List<MaterialBinding> factMaterials(@Param("owner") String owner, @Param("taskId") String taskId,
                                         @Param("limit") int limit);
 }

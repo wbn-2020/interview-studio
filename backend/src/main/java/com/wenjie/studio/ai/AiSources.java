@@ -276,8 +276,8 @@ public class AiSources {
         // 表达只读取显式事实；父项目代次参与授权，不展开项目概况、附件或旧表达正文。
         int sourceBytes = canonical.writeValueAsBytes(new ExpressionDraftContent(
                 Purpose.EXPRESSION_DRAFT, instruction, request.type(), sources)).length;
-        return manifest(Purpose.EXPRESSION_DRAFT, instruction, List.copyOf(sources), null, null, null, null,
-                checks, null, request.type(), null, null, null, sourceBytes);
+        return withMaterialChecks(owner, manifest(Purpose.EXPRESSION_DRAFT, instruction, List.copyOf(sources), null, null, null, null,
+                checks, null, request.type(), null, null, null, sourceBytes));
     }
 
     public Manifest preparationPlanManifest(String owner, PreparationPlanPreviewRequest request) {
@@ -292,8 +292,8 @@ public class AiSources {
         // 仅发送所选目标和本次时间、缺口；来源代次参与本地摘要，不展开日历或其他准备材料。
         int sourceBytes = canonical.writeValueAsBytes(new PreparationPlanContentProjection(
                 Purpose.PREPARATION_PLAN, request.instruction(), sources, request.plan())).length;
-        return manifest(Purpose.PREPARATION_PLAN, request.instruction(), List.copyOf(sources), null, null, null, null,
-                checks, null, null, request.plan(), null, null, sourceBytes);
+        return withMaterialChecks(owner, manifest(Purpose.PREPARATION_PLAN, request.instruction(), List.copyOf(sources), null, null, null, null,
+                checks, null, null, request.plan(), null, null, sourceBytes));
     }
 
     public Manifest trainingDraftManifest(String owner, TrainingDraftPreviewRequest request) {
@@ -305,8 +305,8 @@ public class AiSources {
         // 费用仅按确切题面、所选片段和反馈投影计算，不扩展为完整原答或其他训练资料。
         int sourceBytes = canonical.writeValueAsBytes(new TrainingDraftContentProjection(
                 Purpose.KNOWLEDGE_DRAFT, request.instruction(), input)).length;
-        return manifest(Purpose.KNOWLEDGE_DRAFT, request.instruction(), List.of(), null, null, null, null,
-                null, null, null, null, input, null, sourceBytes);
+        return withMaterialChecks(owner, manifest(Purpose.KNOWLEDGE_DRAFT, request.instruction(), List.of(), null, null, null, null,
+                null, null, null, null, input, null, sourceBytes));
     }
 
     public Manifest reviewDraftManifest(String owner, ReviewDraftDtos.PreviewRequest request) {
@@ -317,8 +317,8 @@ public class AiSources {
         ReviewDraftDtos.Input input = reviewDrafts.input(owner, request.source());
         // 额度和网关共用明确外发投影；反馈原引文、决定原因与其他未选资料不会随来源展开。
         int sourceBytes = canonical.writeValueAsBytes(reviewDraftContent(request.instruction(), input)).length;
-        return manifest(Purpose.KNOWLEDGE_DRAFT, request.instruction(), List.of(), null, null, null, null,
-                null, null, null, null, null, null, null, null, input, sourceBytes);
+        return withMaterialChecks(owner, manifest(Purpose.KNOWLEDGE_DRAFT, request.instruction(), List.of(), null, null, null, null,
+                null, null, null, null, null, null, null, null, input, sourceBytes));
     }
 
     public Manifest cardDraftManifest(String owner, CardDraftDtos.PreviewRequest request) {
@@ -356,8 +356,8 @@ public class AiSources {
         var sources = List.of(source);
         // 原始 JD 是唯一外发正文；公司、已有要求和关联资料不由通用 TARGET 投影展开。
         int sourceBytes = canonical.writeValueAsBytes(jdRequirementsContent(request.instruction(), sources)).length;
-        return manifest(Purpose.JD_REQUIREMENT_DRAFT, request.instruction(), sources, null, null, null, null,
-                List.of(version.check()), null, null, null, null, null, sourceBytes);
+        return withMaterialChecks(owner, manifest(Purpose.JD_REQUIREMENT_DRAFT, request.instruction(), sources, null, null, null, null,
+                List.of(version.check()), null, null, null, null, null, sourceBytes));
     }
 
     public Manifest factDraftManifest(String owner, FactDraftDtos.PreviewRequest request) {
@@ -426,15 +426,16 @@ public class AiSources {
         training.requireAvailable(owner, input, null);
         if (!trainingMaterialsAllowed(owner, input)) throw materialUseChanged();
         // 核对元数据参与本地授权摘要，费用和外发大小仅按实际发送投影计算。
-        return manifest(Purpose.FOLLOW_UP, "", List.of(), input, null, checked.contextChecks(), null, null, null, null, null, null, null,
-                canonical.writeValueAsBytes(input).length);
+        return withMaterialChecks(owner, manifest(Purpose.FOLLOW_UP, "", List.of(), input, null, checked.contextChecks(), null, null, null, null, null, null, null,
+                canonical.writeValueAsBytes(input).length));
     }
 
     public Manifest evaluationManifest(String owner, String sessionId, String questionId, String answerId) {
         properties.requireReady();
         EvaluationInput input = evaluations.input(owner, sessionId, questionId, answerId);
         evaluations.requireAvailable(owner, input, null);
-        return manifest(Purpose.ANSWER_EVALUATION, "", List.of(), null, input, null, null, null, null, null, null, null, null, canonical.writeValueAsBytes(input).length);
+        return withMaterialChecks(owner, manifest(Purpose.ANSWER_EVALUATION, "", List.of(), null, input, null, null,
+                null, null, null, null, null, null, canonical.writeValueAsBytes(input).length));
     }
 
     public Manifest rewriteManifest(String owner, String sessionId, String questionId, String answerId) {
@@ -442,8 +443,8 @@ public class AiSources {
         EvaluationInput input = rewrites.input(owner, sessionId, questionId, answerId);
         rewrites.requireAvailable(owner, input, null);
         // 费用和网关使用同一封闭投影，个人参考与原答必须全部在预览内，不展开关联背景。
-        return manifest(Purpose.ANSWER_REWRITE, "", List.of(), null, input, null, null, null, null, null, null, null, null,
-                canonical.writeValueAsBytes(rewriteContent(input)).length);
+        return withMaterialChecks(owner, manifest(Purpose.ANSWER_REWRITE, "", List.of(), null, input, null, null,
+                null, null, null, null, null, null, canonical.writeValueAsBytes(rewriteContent(input)).length));
     }
 
     public Manifest comparisonManifest(String owner, String id, List<String> sourceIds) {
@@ -451,9 +452,9 @@ public class AiSources {
         var selection = comparisons.selection(owner, id, sourceIds);
         comparisons.requireAvailable(owner, id, null);
         // 训练代次与动作修订只参与本地授权摘要，费用额度仅覆盖外发白名单投影。
-        return manifest(Purpose.ANSWER_COMPARISON, "", List.of(), null, null, null, null,
+        return withMaterialChecks(owner, manifest(Purpose.ANSWER_COMPARISON, "", List.of(), null, null, null, null,
                 null, null, null, null, null, null, selection.input(), selection.checks(),
-                canonical.writeValueAsBytes(selection.input()).length);
+                canonical.writeValueAsBytes(selection.input()).length));
     }
 
     public Manifest materialQaManifest(String owner, MaterialQaPreviewRequest request) {
@@ -501,25 +502,16 @@ public class AiSources {
     }
 
     private Manifest withMaterialChecks(String owner, Manifest manifest) {
-        List<String> ids = directMaterialIds(manifest);
-        if (ids == null) throw new IllegalStateException("AI 清单的材料固定身份无效");
-        if (ids.isEmpty()) return withKnowledgeMaterialChecks(owner, manifest);
-        var checks = materialLifecycle.captureAiChecks(owner, ids);
-        return withKnowledgeMaterialChecks(owner, new Manifest(manifest.purpose(), manifest.instruction(), manifest.sources(), manifest.configuration(),
-                manifest.inputTokenAllowance(), manifest.reservedMicros(), manifest.promptVersion(), manifest.training(),
-                manifest.evaluation(), manifest.contextChecks(), manifest.materialQa(), manifest.preparationChecks(),
-                manifest.materialDraftSources(), manifest.expressionType(), manifest.preparationPlan(), manifest.trainingDraft(),
-                manifest.expressionChecks(), manifest.comparisonInput(), manifest.comparisonChecks(), manifest.reviewDraft(),
-                manifest.cardDraftType(), manifest.factDraft(), manifest.relationEvidence(), manifest.relationAiFeedback(),
-                manifest.sourceQa(), checks, manifest.knowledgeMaterialChecks()));
+        return withKnowledgeMaterialChecks(owner, manifest);
     }
 
     private Manifest withKnowledgeMaterialChecks(String owner, Manifest manifest) {
-        List<SourceLink> roots = knowledgeRoots(manifest);
-        if (roots == null) throw new IllegalStateException("AI 清单的知识固定身份无效");
-        if (roots.isEmpty()) return manifest;
-        List<String> ids = knowledgeMaterialLineage.excerptIds(owner, roots);
-        // 祖先采用历史只确定材料身份；新外发许可固定当前代次，不复用当时的历史代次。
+        List<String> directIds = directAndPreparationMaterialIds(owner, manifest);
+        if (directIds == null) throw new IllegalStateException("AI 清单的材料固定身份无效");
+        var directChecks = directIds.isEmpty() ? null : materialLifecycle.captureAiChecks(owner, directIds);
+        List<String> ids = knowledgeMaterialLineage.manifestExcerptIds(owner, manifest);
+        // 尾字段沿用旧名称，但覆盖实际外发的知识、准备、题面及答案来源；不把祖先正文追加给模型。
+        // 完整历史证明只确定材料身份；新外发固定当前代次，不复用原任务当时的许可。
         List<MaterialLifecycleDtos.Check> checks = ids.isEmpty() ? List.of() : materialLifecycle.captureAiChecks(owner, ids);
         return new Manifest(manifest.purpose(), manifest.instruction(), manifest.sources(), manifest.configuration(),
                 manifest.inputTokenAllowance(), manifest.reservedMicros(), manifest.promptVersion(), manifest.training(),
@@ -527,43 +519,21 @@ public class AiSources {
                 manifest.materialDraftSources(), manifest.expressionType(), manifest.preparationPlan(), manifest.trainingDraft(),
                 manifest.expressionChecks(), manifest.comparisonInput(), manifest.comparisonChecks(), manifest.reviewDraft(),
                 manifest.cardDraftType(), manifest.factDraft(), manifest.relationEvidence(), manifest.relationAiFeedback(),
-                manifest.sourceQa(), manifest.materialChecks(), checks);
+                manifest.sourceQa(), directChecks, checks);
     }
 
     private boolean currentKnowledgeMaterialChecks(String owner, Manifest manifest) {
-        List<SourceLink> roots = knowledgeRoots(manifest);
-        if (roots == null) return false;
-        if (roots.isEmpty()) return manifest.knowledgeMaterialChecks() == null;
-        List<String> ids = knowledgeMaterialLineage.excerptIds(owner, roots);
-        // 空祖先集合的新清单显式为 []；旧 null 沿材料守卫仅兼容未变更的 0 代次。
+        List<String> ids;
+        try {
+            ids = knowledgeMaterialLineage.manifestExcerptIds(owner, manifest);
+        } catch (ApiException exception) {
+            // 缺历史见证只使新动作不可用；普通任务历史仍可读，数据库与完整性错误不能伪装成失效。
+            if ("KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE".equals(exception.code())) return false;
+            throw exception;
+        }
+        // 新清单即使没有材料祖先也显式保存 []；旧 null 仅兼容当前仍为原始 0 代次的完整已证明集合。
         if (ids.isEmpty()) return manifest.knowledgeMaterialChecks() == null || manifest.knowledgeMaterialChecks().isEmpty();
         return materialLifecycle.currentAiChecks(owner, ids, manifest.knowledgeMaterialChecks());
-    }
-
-    private static List<SourceLink> knowledgeRoots(Manifest manifest) {
-        if (manifest.sources() == null) return null;
-        var roots = new ArrayList<SourceLink>();
-        var seen = new HashSet<SourceLink>();
-        for (Source source : manifest.sources()) {
-            if (source == null) return null;
-            if (knowledgeKind(source.kind())) {
-                if (!uuid(source.itemId()) || !uuid(source.versionId())) return null;
-                SourceLink root = new SourceLink(source.itemId(), source.versionId());
-                if (seen.add(root)) roots.add(root);
-            }
-        }
-        if (manifest.sourceQa() != null) {
-            if (manifest.sourceQa().sources() == null) return null;
-            for (var source : manifest.sourceQa().sources()) {
-                if (source == null || source.ref() == null) return null;
-                if (source.ref().domain() == com.wenjie.studio.search.UnifiedSearchDtos.Domain.KNOWLEDGE) {
-                    if (!uuid(source.ref().id()) || !uuid(source.ref().versionId())) return null;
-                    SourceLink root = new SourceLink(source.ref().id(), source.ref().versionId());
-                    if (seen.add(root)) roots.add(root);
-                }
-            }
-        }
-        return List.copyOf(roots);
     }
 
     private static List<String> directMaterialIds(Manifest manifest) {
@@ -590,6 +560,37 @@ public class AiSources {
                 }
             }
         }
+        return List.copyOf(ids);
+    }
+
+    private List<String> directAndPreparationMaterialIds(String owner, Manifest manifest) {
+        List<String> direct = directMaterialIds(manifest);
+        if (direct == null || manifest.sources() == null) return null;
+        var ids = new TreeSet<>(direct);
+        for (var source : manifest.sources()) {
+            if (source == null) return null;
+            if (preparationKind(source.kind())) {
+                ids.addAll(preparation.materialIds(owner, PreparationDtos.Kind.valueOf(source.kind()), source.itemId(), source.versionId()));
+            }
+        }
+        if (manifest.training() != null) {
+            if (manifest.training().context() == null) return null;
+            for (var context : manifest.training().context()) {
+                if (context == null || !List.of("TARGET", "PROJECT", "FACT").contains(context.kind())) return null;
+                ids.addAll(preparation.materialIds(owner, PreparationDtos.Kind.valueOf(context.kind()), context.itemId(), context.versionId()));
+            }
+        }
+        if (manifest.sourceQa() != null) {
+            if (manifest.sourceQa().sources() == null) return null;
+            for (var source : manifest.sourceQa().sources()) {
+                if (source == null || source.ref() == null) return null;
+                if (source.ref().domain() == com.wenjie.studio.search.UnifiedSearchDtos.Domain.PREPARATION) {
+                    if (!preparationKind(source.kind())) return null;
+                    ids.addAll(preparation.materialIds(owner, PreparationDtos.Kind.valueOf(source.kind()), source.ref().id(), source.ref().versionId()));
+                }
+            }
+        }
+        if (ids.size() > 200) throw new ApiException(422, "AI_MATERIAL_SOURCE_LIMIT", "材料许可依赖超过本次完整核对上限，请减少所选来源。");
         return List.copyOf(ids);
     }
 
@@ -1145,7 +1146,7 @@ public class AiSources {
 
     public boolean current(String owner, Manifest manifest, Instant frozenAt) {
         if (manifest == null || manifest.purpose() == null) return false;
-        List<String> materialIds = directMaterialIds(manifest);
+        List<String> materialIds = directAndPreparationMaterialIds(owner, manifest);
         // 所有专用分支共用完整材料代次守卫，避免早返回放过旧许可或多余 checks。
         if (materialIds == null || !materialLifecycle.currentAiChecks(owner, materialIds, manifest.materialChecks())) return false;
         if (!currentKnowledgeMaterialChecks(owner, manifest)) return false;
@@ -1300,9 +1301,10 @@ public class AiSources {
     }
 
     private boolean knowledgeReady(String owner, Source source, Instant frozenAt) {
-        // 待复核阻断新输入；冻结后发生的影响即使已处理，也不能重新放行旧任务或授权。
-        return !revalidation.pending(owner, source.itemId(), source.versionId())
-                && (frozenAt == null || !revalidation.changedAfter(owner, source.itemId(), source.versionId(), frozenAt));
+        // 旧任务保留原冻结点；影响创建或处理与其等时、晚于它，都不能恢复旧资格。
+        return frozenAt == null
+                ? !revalidation.pending(owner, source.itemId(), source.versionId())
+                : !revalidation.reviewRequired(owner, source.itemId(), source.versionId(), frozenAt);
     }
 
     public static long price(long tokens, long microsPerMillion) {

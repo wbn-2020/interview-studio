@@ -6,6 +6,7 @@ import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyService;
 import com.wenjie.studio.knowledge.KnowledgeDtos;
 import com.wenjie.studio.knowledge.KnowledgeService;
+import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
 import com.wenjie.studio.review.ReviewedBasisInvalidation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -32,14 +33,16 @@ public class QuestionService {
     private final QuestionMapper mapper;
     private final IdempotencyService commands;
     private final KnowledgeService knowledge;
+    private final KnowledgeRevalidationQuery revalidation;
     private final ReviewedBasisInvalidation reviewedBasis;
     private final JsonMapper json;
 
     public QuestionService(QuestionMapper mapper, IdempotencyService commands, KnowledgeService knowledge,
-                           ReviewedBasisInvalidation reviewedBasis, JsonMapper json) {
+                           ReviewedBasisInvalidation reviewedBasis, KnowledgeRevalidationQuery revalidation, JsonMapper json) {
         this.mapper = mapper;
         this.commands = commands;
         this.knowledge = knowledge;
+        this.revalidation = revalidation;
         this.reviewedBasis = reviewedBasis;
         this.json = json;
     }
@@ -67,8 +70,7 @@ public class QuestionService {
     public Question detail(String owner, String id) {
         QuestionRow row = requireQuestion(owner, id);
         QuestionVersion version = readVersion(owner, id, row.currentVersionId());
-        List<KnowledgeReference> references = mapper.knowledgeLinks(owner, version.id()).stream()
-                .map(link -> resolveKnowledge(owner, link)).toList();
+        List<KnowledgeReference> references = knowledgeReferences(owner, version);
         return new Question(row.id(), Status.valueOf(row.status()), row.revision(), row.favorite(),
                 row.createdAt(), row.updatedAt(), version, references);
     }
@@ -161,6 +163,13 @@ public class QuestionService {
         return readVersion(owner, id, versionId);
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public KnowledgeReferencePage knowledgeReferences(String owner, String id, String versionId) {
+        requireQuestion(owner, id); uuid(versionId);
+        QuestionVersion version = readVersion(owner, id, versionId);
+        return new KnowledgeReferencePage(id, versionId, knowledgeReferences(owner, version));
+    }
+
     public Reference reference(String owner, String id, String versionId, String key, EmptyRequest request) {
         uuid(id); uuid(versionId); required(request);
         String operation = "POST /api/v1/bank/questions/" + id + "/versions/" + versionId + "/reference";
@@ -223,9 +232,9 @@ public class QuestionService {
         distinct(links);
         for (KnowledgeLink link : links) {
             uuid(link.itemId()); uuid(link.versionId());
-            KnowledgeReference reference = resolveKnowledge(owner, link);
+            KnowledgeReference reference = resolveKnowledge(owner, link, null);
             if (!previousLinks.contains(link) && reference.state() != ReferenceState.CURRENT) {
-                throw new ApiException(409, "SOURCE_CHANGED", "新增知识引用须为当前有效版本，请重新选择来源。");
+                throw new ApiException(409, "SOURCE_CHANGED", "新增知识引用须为当前有效且无待复核影响的版本，请核对来源后重新选择。");
             }
         }
         List<String> tags = QuestionGuards.list(input.tags(), 20);
@@ -245,11 +254,23 @@ public class QuestionService {
                 dimensions, topics, links, tags, source, referenceAnswer, checkpoints);
     }
 
-    private KnowledgeReference resolveKnowledge(String owner, KnowledgeLink link) {
+    private List<KnowledgeReference> knowledgeReferences(String owner, QuestionVersion version) {
+        List<KnowledgeLink> links = mapper.knowledgeLinks(owner, version.id());
+        if (version.createdAt() == null || version.content() == null || links.size() > 20
+                || new HashSet<>(links).size() != links.size() || !links.equals(version.content().knowledgeLinks())) {
+            throw new IllegalStateException("题目固定知识引用与版本题面不一致");
+        }
+        return links.stream().map(link -> resolveKnowledge(owner, link, version.createdAt())).toList();
+    }
+
+    private KnowledgeReference resolveKnowledge(String owner, KnowledgeLink link, Instant frozenAt) {
         try {
             KnowledgeDtos.ItemDetail item = knowledge.detail(owner, link.itemId());
             KnowledgeDtos.Version version = knowledge.version(owner, link.itemId(), link.versionId());
+            boolean reviewRequired = frozenAt == null ? revalidation.pending(owner, link.itemId(), link.versionId())
+                    : revalidation.reviewRequired(owner, link.itemId(), link.versionId(), frozenAt);
             ReferenceState state = item.status() == KnowledgeDtos.Status.ARCHIVED ? ReferenceState.ARCHIVED
+                    : reviewRequired ? ReferenceState.REVIEW_REQUIRED
                     : version.id().equals(item.currentVersionId()) ? ReferenceState.CURRENT : ReferenceState.SUPERSEDED;
             return new KnowledgeReference(item.id(), version.id(), version.title(), version.number(), state);
         } catch (ApiException exception) {

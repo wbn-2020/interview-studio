@@ -61,6 +61,10 @@
         AND l.attachment_id=material_excerpt.attachment_id
         <if test="status != 'ALL'">AND l.status=#{status}</if>
         <if test="aiUse != 'ALL'">AND l.ai_use=#{aiUse}</if>)
+    <if test="status == 'ACTIVE'">
+      AND NOT EXISTS(SELECT 1 FROM material_excerpt_correction c
+        WHERE c.owner_id=material_excerpt.owner_id AND c.excerpt_id=material_excerpt.id)
+    </if>
     <if test="cursor != null">AND id&gt;#{cursor}</if>
     <if test="pattern != null">AND (text LIKE #{pattern} ESCAPE '!' OR locator LIKE #{pattern} ESCAPE '!')</if>
     ORDER BY id LIMIT #{limit}

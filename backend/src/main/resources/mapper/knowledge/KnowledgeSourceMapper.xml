@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.KnowledgeSourceMapper">
+  <resultMap id="row" type="com.wenjie.studio.knowledge.KnowledgeSourceDtos$Row">
+    <constructor>
+      <arg column="revision" javaType="_long"/>
+      <arg column="sources_json" javaType="java.lang.String"/>
+      <arg column="saved_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <select id="find" resultMap="row">
+    SELECT revision,sources_json,saved_at FROM knowledge_source_revision
+    WHERE owner_id=#{owner} AND version_id=#{versionId}
+    <if test="revision != null">AND revision=#{revision}</if>
+    ORDER BY revision DESC LIMIT 1
+  </select>
+  <insert id="insert">
+    INSERT INTO knowledge_source_revision(owner_id,item_id,version_id,revision,sources_json,saved_at)
+    VALUES(#{owner},#{itemId},#{versionId},#{revision},#{sourcesJson},#{now})
+  </insert>
+</mapper>

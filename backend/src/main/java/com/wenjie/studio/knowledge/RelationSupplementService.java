@@ -2,6 +2,9 @@ package com.wenjie.studio.knowledge;
 
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyService;
+import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
+import com.wenjie.studio.material.MaterialDependencyImpactDtos;
+import com.wenjie.studio.material.MaterialDependencyImpactService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,10 +27,15 @@ import static com.wenjie.studio.knowledge.RelationSupplementRows.*;
 public class RelationSupplementService {
     private final RelationSupplementMapper mapper;
     private final IdempotencyService commands;
+    private final KnowledgeRevalidationQuery revalidation;
+    private final MaterialDependencyImpactService materialDependencies;
 
-    public RelationSupplementService(RelationSupplementMapper mapper, IdempotencyService commands) {
+    public RelationSupplementService(RelationSupplementMapper mapper, IdempotencyService commands,
+                                     KnowledgeRevalidationQuery revalidation, MaterialDependencyImpactService materialDependencies) {
         this.mapper = mapper;
         this.commands = commands;
+        this.revalidation = revalidation;
+        this.materialDependencies = materialDependencies;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -77,6 +85,17 @@ public class RelationSupplementService {
         return currentRelation(owner, relationId);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY, readOnly = true, noRollbackFor = RuntimeException.class)
+    public boolean sourceReviewRequired(String owner, String itemId, String versionId, Instant frozenAt) {
+        return frozenAt == null ? revalidation.pending(owner, itemId, versionId)
+                : revalidation.reviewRequired(owner, itemId, versionId, frozenAt);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY, readOnly = true, noRollbackFor = RuntimeException.class)
+    public boolean materialReviewRequired(String owner, String relationId, Instant frozenAt) {
+        return materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.RELATION, relationId, null, frozenAt);
+    }
+
     @Transactional(propagation = Propagation.MANDATORY)
     public Supplement supplementAiWithinCommand(String owner, Relation relation, String reason,
             List<SourceLink> sources, String taskId, String candidateId) {
@@ -116,6 +135,7 @@ public class RelationSupplementService {
             }
             if (!owner.equals(version.ownerId()) || !link.itemId().equals(version.itemId()) || !link.versionId().equals(version.versionId())
                     || version.number() < 1 || version.title() == null || !Set.of("NOTE", "CONCEPT").contains(version.kind())) throw broken();
+            revalidation.requireClear(owner, link.itemId(), link.versionId());
             sources.add(new Source(version.itemId(), version.versionId(), version.number(), version.title(), Kind.valueOf(version.kind()), SourceState.CURRENT));
         }
         EntryRow row = new EntryRow(owner, UUID.randomUUID().toString(), relation.id(), relation.sourceId(), relation.targetId(),
@@ -153,7 +173,9 @@ public class RelationSupplementService {
                     // 存储元数据必须对应当时确切版本；只允许当前性变化，不能用最新标题修补历史。
                     if (source.number() != source.actualNumber() || !source.title().equals(source.actualTitle())
                             || !source.kind().equals(source.actualKind()) || !Set.of("ACTIVE", "ARCHIVED").contains(source.actualStatus())) throw broken();
+                    // 以追加记录的冻结时刻核对；事后确认保留不能自动恢复这份历史依据。
                     state = "ARCHIVED".equals(source.actualStatus()) ? SourceState.ARCHIVED
+                            : sourceReviewRequired(owner, source.itemId(), source.versionId(), row.createdAt()) ? SourceState.UNAVAILABLE
                             : source.versionId().equals(source.currentVersionId()) ? SourceState.CURRENT : SourceState.SUPERSEDED;
                 }
                 sources.add(new Source(source.itemId(), source.versionId(), source.number(), source.title(), kind, state));

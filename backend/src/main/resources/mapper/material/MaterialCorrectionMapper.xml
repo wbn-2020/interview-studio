@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialCorrectionMapper">
+  <select id="statement" resultType="com.wenjie.studio.material.MaterialCorrectionMapper$Row" timeout="5">
+    <!-- 先取原始声明，再逐项核对两端；不能靠联查把缺失或错误的固定身份隐藏为未声明。 -->
+    SELECT owner_id,id,excerpt_id,replacement_excerpt_id,source_revision,replacement_revision,reason,created_at
+    FROM material_excerpt_correction WHERE owner_id=#{owner} AND excerpt_id=#{excerptId}
+  </select>
+  <select id="corrected" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM material_excerpt_correction WHERE owner_id=#{owner} AND excerpt_id=#{excerptId})
+  </select>
+  <insert id="insert">
+    INSERT INTO material_excerpt_correction
+      (owner_id,id,excerpt_id,replacement_excerpt_id,source_revision,replacement_revision,reason,created_at)
+    VALUES(#{owner},#{statement.id},#{statement.excerptId},#{statement.replacementExcerptId},
+      #{statement.sourceRevision},#{statement.replacementRevision},#{statement.reason},#{statement.createdAt})
+  </insert>
+</mapper>

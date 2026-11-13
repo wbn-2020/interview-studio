@@ -230,7 +230,23 @@ public class TrainingGrowthQuery {
                     .filter(value -> "KNOWLEDGE".equals(value.kind())).map(value -> new KnowledgeRef(value.itemId(), value.versionId())))
                     .distinct().sorted(KNOWLEDGE_ORDER).toList();
             List<KnowledgeRow> knowledge = knowledge(owner, knowledgeRefs, cache);
+            Set<KnowledgeRef> questionKnowledge = new HashSet<>(question.knowledge());
+            Set<KnowledgeRef> answerKnowledge = new HashSet<>(answerSources.stream()
+                    .filter(value -> "KNOWLEDGE".equals(value.kind()))
+                    .map(value -> new KnowledgeRef(value.itemId(), value.versionId())).toList());
+            var upstream = new ArrayList<UpstreamCheck>();
             for (KnowledgeRow source : knowledge) {
+                Instant latest = latestUpstream(source);
+                // 题面在建会话时冻结；答案图在每次提交时冻结，同一知识出现在两处须采用更早基线。
+                var identity = new KnowledgeRef(source.itemId(), source.versionId());
+                Instant baseline = questionKnowledge.contains(identity) ? question.sessionCreatedAt() : row.createdAt();
+                if (answerKnowledge.contains(identity) && row.createdAt().isBefore(baseline)) baseline = row.createdAt();
+                boolean upstreamChanged = source.upstreamPending() || latest != null && !latest.isBefore(baseline);
+                if (upstreamChanged) {
+                    upstream.add(new UpstreamCheck(source.itemId(), source.versionId(), source.upstreamPending(), latest));
+                    direct = combine(direct, DirectState.REVIEW_REQUIRED);
+                    flags.add(ReviewFlag.REVIEW_REQUIRED);
+                }
                 if (source.kind() == null || source.status() == null || source.fixedVersionId() == null
                         || source.currentVersionId() == null || source.currentVersionExistsId() == null) direct = combine(direct, DirectState.UNAVAILABLE);
                 else if (source.bodyChanged() == null) direct = combine(direct, DirectState.UNKNOWN);
@@ -250,6 +266,9 @@ public class TrainingGrowthQuery {
             String current = hash("TRAINING_GROWTH_CURRENT_V1", new Current(row.sessionId(), question.generation(),
                     question.head(), List.copyOf(preparationChecks), knowledge.stream().map(value ->
                     new KnowledgeCheck(value.itemId(), value.versionId(), value.currentVersionId(), value.status(), value.bodyChanged())).toList(), state));
+            // 无有效上游影响时保留 V1 摘要；已待复核的证据再次更正也必须使预览过期。
+            if (!upstream.isEmpty()) current = hash("TRAINING_GROWTH_CURRENT_UPSTREAM_V1",
+                    new UpstreamCurrent(current, List.copyOf(upstream)));
             var stamp = new EvidenceStamp(ref, original, current);
             return summary(new EvidenceSummary(ref, row.createdAt(), question.title(), RecordKind.ANSWER,
                     AssessmentLevel.SELF_RECORDED, conditions, question.facets(), state, stamp,
@@ -262,6 +281,7 @@ public class TrainingGrowthQuery {
             if (!owner.equals(row.ownerId()) || !owner.equals(row.sessionOwnerId()) || !sessionId.equals(row.sessionId())
                     || !sessionId.equals(row.parentSessionId()) || !questionId.equals(row.id())) throw integrity();
             long generation = revision(row.generation());
+            time(row.sessionCreatedAt());
             TrainingDtos.Mode mode = required(enumValue(row.mode(), TrainingDtos.Mode.class));
             TrainingDtos.QuestionKind kind = required(enumValue(row.questionKind(), TrainingDtos.QuestionKind.class));
             JsonNode value = object(row.metadataJson());
@@ -299,6 +319,8 @@ public class TrainingGrowthQuery {
                 knowledge.add(reference);
             }
             knowledge.sort(KNOWLEDGE_ORDER);
+            // 无题库来源的追问／回忆题不会保存题面知识绑定，不能为损坏组合猜冻结时点。
+            if (source == null && !knowledge.isEmpty()) throw integrity();
             var fields = new RecordedFields(recorded(value, "technology"), recorded(value, "scenario"), recorded(value, "conditions"));
             JsonNode context = object(row.contextJson());
             if (!"ARRAY".equals(string(context, "rootType"))) throw integrity();
@@ -335,7 +357,7 @@ public class TrainingGrowthQuery {
             } else if (row.sourceHeadId() != null || row.sourceStatus() != null || row.sourceCurrentVersionId() != null
                     || row.sourceFixedVersionId() != null || row.sourceCurrentVersionExistsId() != null) throw integrity();
             return new QuestionMeta(title, source, mode, kind, generation, repractice, fields, facets,
-                    List.copyOf(contexts), List.copyOf(knowledge), head, direct);
+                    List.copyOf(contexts), List.copyOf(knowledge), head, direct, row.sessionCreatedAt());
         } catch (ApiException exception) { throw integrity(); }
     }
 
@@ -388,10 +410,22 @@ public class TrainingGrowthQuery {
                 if (row.currentVersionId() != null) uuid(row.currentVersionId());
                 if (row.fixedVersionId() != null && !row.versionId().equals(row.fixedVersionId())) throw integrity();
                 if (row.currentVersionExistsId() != null && !row.currentVersionExistsId().equals(row.currentVersionId())) throw integrity();
+                if (row.upstreamPending() == null || row.upstreamPending() && latestUpstream(row) == null) throw integrity();
+                for (Instant changedAt : new Instant[]{row.knowledgeChangedAt(), row.preparationChangedAt(), row.materialChangedAt()}) {
+                    if (changedAt != null) time(changedAt);
+                }
                 cache.knowledge.put(ref, row);
             }
         }
         return references.stream().map(cache.knowledge::get).toList();
+    }
+
+    private static Instant latestUpstream(KnowledgeRow row) {
+        Instant latest = null;
+        for (Instant changedAt : new Instant[]{row.knowledgeChangedAt(), row.preparationChangedAt(), row.materialChangedAt()}) {
+            if (changedAt != null && (latest == null || changedAt.isAfter(latest))) latest = changedAt;
+        }
+        return latest;
     }
 
     private static void validate(SourceIdentity source, PreparationDtos.SourceCheck check) {
@@ -461,9 +495,12 @@ public class TrainingGrowthQuery {
     private record SourceIdentity(String kind, String itemId, String versionId) {}
     private record QuestionHead(String questionId, String status, String currentVersionId) {}
     private record KnowledgeCheck(String itemId, String versionId, String currentVersionId, String status, Boolean bodyChanged) {}
+    private record UpstreamCheck(String itemId, String versionId, boolean pending, Instant latestAt) {}
+    private record UpstreamCurrent(String baseCurrent, List<UpstreamCheck> knowledge) {}
     private record QuestionMeta(String title, QuestionRef source, TrainingDtos.Mode mode, TrainingDtos.QuestionKind kind,
                                 long generation, RepracticeContext repractice, RecordedFields fields, Facets facets,
-                                List<SourceIdentity> context, List<KnowledgeRef> knowledge, QuestionHead head, DirectState direct) {}
+                                List<SourceIdentity> context, List<KnowledgeRef> knowledge, QuestionHead head, DirectState direct,
+                                Instant sessionCreatedAt) {}
     // V1 摘要固定旧条件字段，公开载荷扩展不能改变既有证据的原始摘要。
     private record LegacyConditions(EvidenceKind kind, AnswerMeta answer, ManualMeta manual, AiMeta ai,
                                     RecollectionMeta recollection, ReplayMeta replay, MemoryMeta memory) {}

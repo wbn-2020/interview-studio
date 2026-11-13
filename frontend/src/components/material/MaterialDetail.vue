@@ -10,7 +10,11 @@ import { queryClient } from '../../api/queryClient'
 import { useCommand } from '../../composables/useCommand'
 import { useRecentVisit } from '../../composables/useRecentVisit'
 import { useWorkspaceStore } from '../../state/workspace'
+import MaterialKnowledgeImpacts from '../MaterialKnowledgeImpacts.vue'
+import MaterialCorrection from './MaterialCorrection.vue'
+import MaterialDependencyImpacts from './MaterialDependencyImpacts.vue'
 import MaterialExcerptReadout from './MaterialExcerptReadout.vue'
+import MaterialKnowledgePreview from './MaterialKnowledgePreview.vue'
 import MaterialLifecycle from './MaterialLifecycle.vue'
 import MaterialSegments from './MaterialSegments.vue'
 import MaterialUpload from './MaterialUpload.vue'
@@ -33,7 +37,7 @@ const previewOpen = ref(false)
 const excerptCursor = ref<string>()
 const excerptCursors = ref<(string | undefined)[]>([])
 const excerptStatus = ref<'ACTIVE' | 'ARCHIVED' | 'ALL'>('ACTIVE')
-const excerptStatusOptions = [{ value: 'ACTIVE', label: '有效摘录' }, { value: 'ARCHIVED', label: '归档摘录' }, { value: 'ALL', label: '全部摘录' }]
+const excerptStatusOptions = [{ value: 'ACTIVE', label: '有效摘录' }, { value: 'ARCHIVED', label: '归档摘录' }, { value: 'ALL', label: '全部摘录（含更正历史）' }]
 const shownExcerptId = ref<string>()
 const readoutElement = ref<HTMLElement>()
 const excerptMode = ref<'PARSED' | 'MANUAL'>('MANUAL')
@@ -46,11 +50,20 @@ let alive = true
 const uploadLocked = computed(() => Boolean(store.changes.get('material-upload')?.locked))
 const lifecycleChange = computed(() => store.changes.get('material-lifecycle'))
 const lifecycleLocked = computed(() => Boolean(lifecycleChange.value?.locked))
+const correctionChange = computed(() => store.changes.get('material-correction'))
+const correctionLocked = computed(() => Boolean(correctionChange.value?.locked))
+const dependencyChanges = computed(() => [...store.changes].filter(([key]) => key.startsWith('material-dependency-impact:'))
+  .map(([, change]) => change))
+const dependencyDirty = computed(() => dependencyChanges.value.some(change => change.dirty))
+const dependencyLocked = computed(() => dependencyChanges.value.some(change => change.locked))
 const descriptionDirty = computed(() => description.value !== (current.value?.description ?? ''))
 const excerptDirty = computed(() => Boolean(manualLocator.value || manualText.value || selectedSegment.value))
 const dirty = computed(() => descriptionDirty.value || excerptDirty.value)
-const editable = computed(() => store.sessionActive && props.status?.enabled && !writer.locked.value && !uploadLocked.value && !lifecycleLocked.value)
+const editable = computed(() => store.sessionActive && props.status?.enabled && !writer.locked.value && !uploadLocked.value
+  && !lifecycleLocked.value && !correctionLocked.value && !dependencyLocked.value)
 const attachment = useQuery({ queryKey: computed(() => ['material', store.sessionEpoch, 'attachment', props.id]), enabled: computed(() => store.sessionActive), queryFn: () => read<Attachment>(`/materials/attachments/${props.id}`) })
+const knowledgePreviewEnabled = computed(() => Boolean(props.status?.enabled && current.value?.id === props.id
+  && current.value.status === 'READY' && attachment.data.value?.id === props.id && attachment.data.value.status === 'READY' && !attachment.error.value))
 const recordRecentVisit = useRecentVisit('MATERIAL', () => props.id, () => Boolean(props.status?.enabled))
 const runId = computed(() => typeof route.query.run === 'string' ? route.query.run : createdRunId.value ?? attachment.data.value?.latestRun?.id ?? current.value?.latestRun?.id)
 const runs = useQuery({ queryKey: computed(() => ['material', store.sessionEpoch, 'runs', props.id, runBefore.value]), enabled: computed(() => store.sessionActive && current.value?.status === 'READY'), queryFn: () => read<MaterialRunPage>(`/materials/attachments/${props.id}/runs?limit=20${runBefore.value ? `&before=${encodeURIComponent(runBefore.value)}` : ''}`) })
@@ -65,7 +78,7 @@ const excerptProblem = computed(() => {
 })
 function accept(value: Attachment) { current.value = value; description.value = value.description }
 watch([attachment.data, () => props.status?.enabled], ([value, enabled]) => {
-  if (value && value.id === props.id && (!current.value || (!descriptionDirty.value && !writer.locked.value && !uploadLocked.value))) {
+  if (value && value.id === props.id && (!current.value || (!descriptionDirty.value && !writer.locked.value && !uploadLocked.value && !correctionLocked.value))) {
     accept(value)
     if (enabled) recordRecentVisit(value.id)
   }
@@ -73,13 +86,18 @@ watch([attachment.data, () => props.status?.enabled], ([value, enabled]) => {
 watch(() => route.query.excerpt, value => { shownExcerptId.value = typeof value === 'string' ? value : undefined }, { immediate: true })
 watch(runId, () => { previewOpen.value = false })
 watch(run.data, (value, previous) => { if (value && value.status !== previous?.status && !['QUEUED', 'RUNNING'].includes(value.status)) refresh() })
-watch([dirty, writer.locked, () => lifecycleChange.value?.dirty, lifecycleLocked], ([changed, locked, lifecycleDirty, waiting]) => {
-  store.changes.set('material-editor', { dirty: changed || Boolean(lifecycleDirty), locked: locked || waiting })
+watch([dirty, writer.locked, () => lifecycleChange.value?.dirty, lifecycleLocked, () => correctionChange.value?.dirty, correctionLocked,
+  dependencyDirty, dependencyLocked],
+  ([changed, locked, lifecycleDirty, waiting, correctionDirty, correcting, dependencyUnsaved, dependencyWaiting]) => {
+  store.changes.set('material-editor', { dirty: changed || Boolean(lifecycleDirty || correctionDirty || dependencyUnsaved), locked: locked || waiting || correcting || dependencyWaiting })
   store.changes.set('material-editor-command', { dirty: false, locked })
 }, { immediate: true, flush: 'sync' })
 onBeforeRouteUpdate((to, from) => {
-  // 同附件内换摘录也要保护生命周期原请求；全局资料路由只按附件切换保稿。
-  if (to.query.attachment === from.query.attachment && to.query.excerpt !== from.query.excerpt) return store.canLeave(['material-lifecycle'])
+  // 同附件换摘录会更换命令根，生命周期与更正的输入和原请求都须先处理。
+  if (to.query.attachment === from.query.attachment && to.query.excerpt !== from.query.excerpt) {
+    return store.canLeave(['material-lifecycle', 'material-correction',
+      ...[...store.changes.keys()].filter(key => key.startsWith('material-dependency-impact:'))])
+  }
 })
 onUnmounted(() => { alive = false; store.changes.delete('material-editor'); store.changes.delete('material-editor-command') })
 function refresh() { void queryClient.invalidateQueries({ queryKey: ['material'] }); emit('changed') }
@@ -105,7 +123,8 @@ function startRun() {
     createdRunId.value = value.id
     savedMessage.value = '处理请求已保存。每次执行保留独立历史，不覆盖旧片段。'
     refresh()
-    store.changes.set('material-editor', { dirty: dirty.value || Boolean(lifecycleChange.value?.dirty), locked: lifecycleLocked.value })
+    store.changes.set('material-editor', { dirty: dirty.value || Boolean(lifecycleChange.value?.dirty || correctionChange.value?.dirty) || dependencyDirty.value,
+      locked: lifecycleLocked.value || correctionLocked.value || dependencyLocked.value })
     void router.replace({ name: 'materials', query: { ...route.query, attachment: props.id, run: value.id } })
   })
 }
@@ -129,7 +148,8 @@ function saveExcerpt() {
   void writer.run<MaterialExcerpt>(`/materials/attachments/${props.id}/excerpts`, 'POST', body, value => {
     clearExcerpt()
     savedMessage.value = '来源摘录已保存，可以在项目资料或项目事实中显式引用；事实不会自动核实。'
-    store.changes.set('material-editor', { dirty: descriptionDirty.value || Boolean(lifecycleChange.value?.dirty), locked: lifecycleLocked.value })
+    store.changes.set('material-editor', { dirty: descriptionDirty.value || Boolean(lifecycleChange.value?.dirty || correctionChange.value?.dirty) || dependencyDirty.value,
+      locked: lifecycleLocked.value || correctionLocked.value || dependencyLocked.value })
     refresh()
     void router.replace({ name: 'materials', query: { ...route.query, attachment: props.id, excerpt: value.id } })
   })
@@ -148,7 +168,9 @@ function showExcerpt(id: string) { void router.replace({ name: 'materials', quer
           <p v-if="run.error.value" class="notice error">{{ errorText(run.error.value) }}<NButton text @click="run.refetch()">重试执行状态</NButton></p><p v-if="run.data.value && run.data.value.attachmentId !== id" class="notice error">当前执行属于另一份附件，请从该附件的执行历史打开。</p><article v-if="run.data.value && run.data.value.attachmentId === id" class="run-result"><h4>{{ parseLabels[run.data.value.status] }} · 执行 {{ run.data.value.id.slice(0, 8) }}</h4><p class="field-help">{{ run.data.value.parserVersion || '解析器版本尚未记录' }} · {{ run.data.value.segmentCount }} 个片段</p><p v-if="run.data.value.truncated" class="notice">本次结果达到处理上限并已截断，不能视为完整文档。</p><p v-for="warning in run.data.value.warnings" :key="warning" class="notice">{{ warning }}</p><p v-if="run.data.value.errorCode" class="notice error">{{ run.data.value.errorCode }}。可查看历史；重试须显式新建执行。</p><p v-if="['QUEUED', 'RUNNING'].includes(run.data.value.status)" class="field-help" role="status">正在等待处理结果，页面会定时查询。关闭页面不会取消已保存任务。</p><template v-if="run.data.value.status === 'SUCCEEDED' && run.data.value.hasPreview"><NButton size="small" @click="previewOpen = !previewOpen">{{ previewOpen ? '收起 PNG 预览' : '展开私有 PNG 预览' }}</NButton><img v-if="previewOpen && store.sessionActive" class="private-preview" :src="materialPreviewUrl(run.data.value.id)" :alt="`${current.fileName} 的已生成 PNG 预览`" /></template><MaterialSegments v-if="run.data.value.status === 'SUCCEEDED' && !run.data.value.hasPreview" :key="run.data.value.id" :run-id="run.data.value.id" :disabled="!editable" @choose="chooseSegment" /></article>
         </section>
         <section class="material-section excerpt-composer"><div class="material-section-heading"><h3>{{ excerptMode === 'PARSED' ? '保存所选解析原文' : '手工保存来源摘录' }}</h3><NButton v-if="excerptDirty" text size="small" :disabled="writer.locked.value" @click="clearExcerpt">清空未保存摘录</NButton></div><template v-if="excerptMode === 'PARSED' && selectedSegment"><p class="field-help">{{ selectedSegment.locator }} · UTF-16 [{{ startOffset }}, {{ endOffset }}) · 执行 {{ selectedSegment.runId.slice(0, 8) }}</p><blockquote>{{ excerptText }}</blockquote><p class="field-help">原文不在此编辑。保存时只提交片段及范围，由服务器截取。</p></template><template v-else><p class="field-help">适合扫描件、图片或未支持的布局。定位说明和原文均由你提供，明确记录为手工摘录。</p><label>原文定位说明<NInput v-model:value="manualLocator" :disabled="!editable" :maxlength="500" placeholder="例如：第 2 页，项目介绍第二段；或图片左下角的职责说明" /></label><label>摘录原文<NInput v-model:value="manualText" type="textarea" :maxlength="10000" :autosize="{ minRows: 4, maxRows: 14 }" :disabled="!editable" /></label></template><p class="field-help">{{ excerptProblem }}</p><NButton type="primary" :disabled="!editable || !!excerptProblem" @click="saveExcerpt">保存不可变摘录</NButton></section>
-        <section class="material-section"><h3>已保存的来源摘录</h3><label class="excerpt-status-filter">显示范围<NSelect :value="excerptStatus" :options="excerptStatusOptions" :disabled="!store.sessionActive" @update:value="selectExcerptStatus" /></label><p class="field-help">默认列出有效摘录，切换范围可找回归档原文；此处不按 AI 用途过滤。</p><p v-if="excerpts.error.value" class="notice error">{{ errorText(excerpts.error.value) }}<NButton text @click="excerpts.refetch()">重试摘录列表</NButton></p><article v-for="item in excerpts.data.value?.items" :key="item.id" class="saved-excerpt"><p>{{ item.text.slice(0, 160) }}{{ item.text.length > 160 ? '…' : '' }}</p><small>{{ item.origin === 'MANUAL' ? '手工摘录' : '解析摘录' }} · {{ item.locator }}</small><button class="text-link" :disabled="lifecycleLocked" @click="showExcerpt(item.id)">查看确切原文与来源</button></article><p v-if="excerpts.data.value && !excerpts.data.value.items.length" class="field-help">{{ excerptStatus === 'ACTIVE' ? '当前没有有效摘录，可切换归档或全部范围核对历史。单纯上传和解析不会自动创建事实。' : '当前范围没有保存的摘录。' }}</p><div v-if="excerptCursors.length || excerpts.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!excerptCursors.length" @click="excerptCursor = excerptCursors.pop()">上一页</NButton><NButton size="small" :disabled="!excerpts.data.value?.nextCursor" @click="nextExcerpts">下一页</NButton></div><div v-if="shownExcerptId" ref="readoutElement" tabindex="-1" aria-label="确切摘录原文与直接引用入口"><MaterialExcerptReadout :id="shownExcerptId" /></div><MaterialLifecycle v-if="shownExcerptId" :excerpt-id="shownExcerptId" :attachment-id="id" :enabled="Boolean(status?.enabled)" @changed="refresh" @references="focusExcerptReferences" /></section>
+        <section class="material-section"><h3>已保存的来源摘录</h3><label class="excerpt-status-filter">显示范围<NSelect :value="excerptStatus" :options="excerptStatusOptions" :disabled="!store.sessionActive" @update:value="selectExcerptStatus" /></label><p class="field-help">有效范围排除已更正的旧摘录；“全部摘录”包含更正历史，原 ID 仍可读取旧原文。此处不按 AI 用途过滤。</p><p v-if="excerpts.error.value" class="notice error">{{ errorText(excerpts.error.value) }}<NButton text @click="excerpts.refetch()">重试摘录列表</NButton></p><article v-for="item in excerpts.data.value?.items" :key="item.id" class="saved-excerpt"><p>{{ item.text.slice(0, 160) }}{{ item.text.length > 160 ? '…' : '' }}</p><small>{{ item.origin === 'MANUAL' ? '手工摘录' : '解析摘录' }} · {{ item.locator }}</small><button class="text-link" :disabled="lifecycleLocked || correctionLocked" @click="showExcerpt(item.id)">查看确切原文与来源</button></article><p v-if="excerpts.data.value && !excerpts.data.value.items.length" class="field-help">{{ excerptStatus === 'ACTIVE' ? '当前没有可新引用的有效摘录，可切换全部范围核对更正历史。单纯上传和解析不会自动创建事实。' : '当前范围没有保存的摘录。' }}</p><div v-if="excerptCursors.length || excerpts.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!excerptCursors.length" @click="excerptCursor = excerptCursors.pop()">上一页</NButton><NButton size="small" :disabled="!excerpts.data.value?.nextCursor" @click="nextExcerpts">下一页</NButton></div><div v-if="shownExcerptId" ref="readoutElement" tabindex="-1" aria-label="确切摘录原文与直接引用入口"><MaterialExcerptReadout :id="shownExcerptId" /></div><MaterialKnowledgePreview v-if="shownExcerptId" :excerpt-id="shownExcerptId" :attachment-id="id" :enabled="knowledgePreviewEnabled" /><MaterialCorrection v-if="shownExcerptId" :excerpt-id="shownExcerptId" :attachment-id="id" :enabled="knowledgePreviewEnabled" @changed="refresh" /><MaterialKnowledgeImpacts v-if="shownExcerptId" :key="shownExcerptId" :item-id="shownExcerptId" context="MATERIAL_EXCERPT" :visible="knowledgePreviewEnabled" :disabled="writer.locked.value || uploadLocked || lifecycleLocked || correctionLocked" /><MaterialLifecycle v-if="shownExcerptId" :excerpt-id="shownExcerptId" :attachment-id="id" :enabled="Boolean(status?.enabled)" @changed="refresh" @references="focusExcerptReferences" /></section>
+        <MaterialDependencyImpacts v-if="shownExcerptId" :key="shownExcerptId" :excerpt-id="shownExcerptId"
+          :enabled="knowledgePreviewEnabled" @changed="refresh" />
       </template>
     </template>
   </section>

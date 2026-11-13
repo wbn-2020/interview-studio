@@ -79,7 +79,7 @@ export const useTrainingAccessStore = defineStore('training-access', () => {
   }
 
   function needsGuard(routeName: unknown, item: unknown, creating: unknown): boolean {
-    if (routeName === 'ai-authorizations') return false
+    if (routeName === 'ai-authorizations' || routeName === 'data-management') return false
     if (routeName !== 'training') return true
     if (!restricted.value) return false
     return creating === '1' || (typeof item === 'string' && item !== active.value?.id)

@@ -1,6 +1,9 @@
 package com.wenjie.studio.prepare;
 
 import com.wenjie.studio.material.MaterialLifecycleService;
+import com.wenjie.studio.material.MaterialDependencyImpactService;
+import com.wenjie.studio.material.MaterialDependencyImpactDtos;
+import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.prepare.PreparationDtos.AiVersion;
 import com.wenjie.studio.prepare.PreparationDtos.ExpressionCheck;
 import com.wenjie.studio.prepare.PreparationDtos.ExpressionRead;
@@ -19,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.TreeSet;
 
 @Service
 @Transactional(propagation = Propagation.MANDATORY)
@@ -26,14 +30,16 @@ public class PreparationSources {
     private final PreparationMapper mapper;
     private final PreparationMaterialEligibilityMapper materialEligibility;
     private final MaterialLifecycleService materialLifecycle;
+    private final MaterialDependencyImpactService materialDependencies;
     private final JsonMapper json;
 
     public PreparationSources(PreparationMapper mapper, JsonMapper json,
                               PreparationMaterialEligibilityMapper materialEligibility,
-                              MaterialLifecycleService materialLifecycle) {
+                              MaterialLifecycleService materialLifecycle, MaterialDependencyImpactService materialDependencies) {
         this.mapper = mapper;
         this.materialEligibility = materialEligibility;
         this.materialLifecycle = materialLifecycle;
+        this.materialDependencies = materialDependencies;
         this.json = json.rebuild().disable(SerializationFeature.INDENT_OUTPUT).build();
     }
 
@@ -44,7 +50,11 @@ public class PreparationSources {
         }
         // 独立训练只核对固定来源的状态与代次，不能顺带读取新版正文或扩展关联材料。
         SourceCheck checked = mapper.sourceCheck(owner, kind.name(), itemId, versionId);
-        return checked == null ? unavailable(kind, itemId, versionId) : checked;
+        if (checked == null) return unavailable(kind, itemId, versionId);
+        if (checked.state() == SourceState.CURRENT && !locallyUsable(owner, kind, itemId, versionId)) {
+            return new SourceCheck(kind, itemId, versionId, SourceState.UNVERIFIED, checked.sourceGeneration(), checked.projectGeneration());
+        }
+        return checked;
     }
 
     public AiVersion read(String owner, Kind kind, String itemId, String versionId) {
@@ -173,24 +183,68 @@ public class PreparationSources {
 
     public boolean aiAllowed(String owner, Kind kind, String itemId, String versionId) {
         if (!uuid(owner) || kind == null || !uuid(itemId) || !uuid(versionId)) return false;
+        if (materialEligibility.source(owner, kind.name(), itemId, versionId) == null) return false;
+        for (String excerptId : materialIds(owner, kind, itemId, versionId)) {
+            if (!materialLifecycle.aiAllowed(owner, excerptId)) return false;
+        }
+        return true;
+    }
+
+    public boolean locallyUsable(String owner, Kind kind, String itemId, String versionId) {
+        if (!uuid(owner) || kind == null || !uuid(itemId) || !uuid(versionId)) return false;
+        if (materialDependencies.reviewRequired(owner, MaterialDependencyImpactDtos.Domain.PREPARATION, itemId, versionId, null)) return false;
         var source = materialEligibility.source(owner, kind.name(), itemId, versionId);
-        if (source == null) return false;
+        if (source == null || !itemId.equals(source.itemId()) || !kind.name().equals(source.kind())
+                || !versionId.equals(source.versionId())) throw inconsistentMaterialBasis();
+        if (kind == Kind.EXPRESSION) {
+            for (var basis : expressionBasis(owner, itemId, versionId)) {
+                if (!locallyUsable(owner, Kind.FACT, basis.itemId(), basis.versionId())) return false;
+            }
+            return true;
+        }
+        var direct = materialEligibility.excerpts(owner, itemId, versionId);
+        if (direct == null || direct.size() > 20 || new HashSet<>(direct).size() != direct.size()
+                || direct.stream().anyMatch(id -> !uuid(id))) throw inconsistentMaterialBasis();
+        // 本地人工复核可以确认采用后的正文；原摘录直接链接仍须有效，AI 则始终核全部实际材料祖先。
+        for (String excerptId : direct) {
+            try { materialLifecycle.requireActive(owner, excerptId); }
+            catch (ApiException exception) {
+                if ("MATERIAL_NOT_ACTIVE".equals(exception.code()) || "MATERIAL_CONTENT_CORRECTED".equals(exception.code())) return false;
+                throw exception;
+            }
+        }
+        if (kind == Kind.FACT && (!uuid(source.projectId()) || !uuid(source.projectVersionId())
+                || !locallyUsable(owner, Kind.PROJECT, source.projectId(), source.projectVersionId()))) return false;
+        return true;
+    }
+
+    public List<String> materialIds(String owner, Kind kind, String itemId, String versionId) {
+        if (!uuid(owner) || kind == null || !uuid(itemId) || !uuid(versionId)) throw inconsistentMaterialBasis();
+        var source = materialEligibility.source(owner, kind.name(), itemId, versionId);
+        if (source == null) throw inconsistentMaterialBasis();
         if (!itemId.equals(source.itemId()) || !kind.name().equals(source.kind())
                 || !versionId.equals(source.versionId())) throw inconsistentMaterialBasis();
         if (kind == Kind.EXPRESSION) {
             // 仅核原保存的全部事实身份及材料许可，不把这些依据正文展开到外发清单。
+            var ids = new TreeSet<String>();
             for (var basis : expressionBasis(owner, itemId, versionId)) {
-                if (!aiAllowed(owner, Kind.FACT, basis.itemId(), basis.versionId())) return false;
+                ids.addAll(materialIds(owner, Kind.FACT, basis.itemId(), basis.versionId()));
+                if (ids.size() > 200) throw inconsistentMaterialBasis();
             }
-            return true;
+            return List.copyOf(ids);
         }
         var excerpts = materialEligibility.excerpts(owner, itemId, versionId);
         if (excerpts == null || excerpts.size() > 20 || new HashSet<>(excerpts).size() != excerpts.size()
                 || excerpts.stream().anyMatch(id -> !uuid(id))) throw inconsistentMaterialBasis();
-        for (String excerptId : excerpts) if (!materialLifecycle.aiAllowed(owner, excerptId)) return false;
-        if (kind != Kind.FACT) return true;
-        return uuid(source.projectId()) && uuid(source.projectVersionId())
-                && aiAllowed(owner, Kind.PROJECT, source.projectId(), source.projectVersionId());
+        var ids = new TreeSet<>(excerpts);
+        // AI 采用事实的原材料属于真实正文祖先，后续人工改版或移除显示链接不能抹去该历史。
+        ids.addAll(materialDependencies.preparationExcerpts(owner, itemId, versionId));
+        if (kind == Kind.FACT) {
+            if (!uuid(source.projectId()) || !uuid(source.projectVersionId())) throw inconsistentMaterialBasis();
+            ids.addAll(materialIds(owner, Kind.PROJECT, source.projectId(), source.projectVersionId()));
+        }
+        if (ids.size() > 200) throw inconsistentMaterialBasis();
+        return List.copyOf(ids);
     }
 
     private JsonNode expressionContent(PreparationRows.VersionRow version) {

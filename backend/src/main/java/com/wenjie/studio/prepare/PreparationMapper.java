@@ -25,6 +25,8 @@ public interface PreparationMapper {
     List<PreparationDtos.VersionSummary> versions(@Param("owner") String owner, @Param("id") String id,
                                                  @Param("before") Integer before, @Param("limit") int limit);
     List<PreparationRows.ReferenceRow> references(@Param("owner") String owner, @Param("versionId") String versionId);
+    PreparationDtos.Reference collectionReference(@Param("owner") String owner, @Param("itemId") String itemId,
+                                                   @Param("versionId") String versionId);
     List<PreparationRows.ItemRow> impacts(@Param("owner") String owner, @Param("id") String id,
                                          @Param("cursor") String cursor, @Param("limit") int limit);
     boolean hasInvalidFactBasis(@Param("owner") String owner, @Param("versionId") String versionId);

@@ -17,7 +17,9 @@ const kind = ref<string | null>(null)
 const topicId = ref<string | null>(null)
 const status = ref('ACTIVE')
 const tag = ref('')
-const submitted = ref<{ q: string; kind: string | null; topicId: string | null; status: string; tag: string }>()
+const source = ref('ALL')
+const sources = [{ label: '全部来源', value: 'ALL' }, { label: '手工记录', value: 'USER' }, { label: '有 AI 采用记录', value: 'AI_ADOPTED' }, { label: '文本导入', value: 'TEXT_IMPORT' }, { label: '知识包导入', value: 'PACKAGE_IMPORT' }]
+const submitted = ref<{ q: string; kind: string | null; topicId: string | null; status: string; tag: string; source: string }>()
 const offset = ref(0)
 const previousOffsets = ref<number[]>([])
 const message = ref('')
@@ -28,7 +30,7 @@ const topics = computed(() => props.topics.map(topic => ({ label: topic.name, va
 const statusQuery = useQuery({ queryKey: computed(() => ['knowledge', store.sessionEpoch, 'search-status']), enabled: computed(() => store.sessionActive), queryFn: () => read<SearchStatus>('/knowledge/search/status') })
 const results = useQuery({ queryKey: computed(() => ['knowledge', store.sessionEpoch, 'search', submitted.value, offset.value]), enabled: computed(() => store.sessionActive && Boolean(submitted.value?.q)), queryFn: () => {
   const filter = submitted.value!
-  const params = new URLSearchParams({ q: filter.q, status: filter.status, source: 'USER', limit: '20', offset: String(offset.value) })
+  const params = new URLSearchParams({ q: filter.q, status: filter.status, source: filter.source, limit: '20', offset: String(offset.value) })
   if (filter.kind) params.set('kind', filter.kind)
   if (filter.topicId) params.set('topicId', filter.topicId)
   if (filter.tag) params.set('tag', filter.tag)
@@ -36,7 +38,7 @@ const results = useQuery({ queryKey: computed(() => ['knowledge', store.sessionE
 } })
 watch(writer.locked, locked => store.changes.set('search', { dirty: false, locked }), { immediate: true })
 onUnmounted(() => store.changes.delete('search'))
-function search() { if (!input.value.trim()) return; offset.value = 0; previousOffsets.value = []; submitted.value = { q: input.value.trim(), kind: kind.value, topicId: topicId.value, status: status.value, tag: tag.value.trim() } }
+function search() { if (!input.value.trim()) return; offset.value = 0; previousOffsets.value = []; submitted.value = { q: input.value.trim(), kind: kind.value, topicId: topicId.value, status: status.value, tag: tag.value.trim(), source: source.value } }
 function next() {
   const count = results.data.value?.items.length ?? 0
   if (!count || offset.value + count > 1000) return
@@ -54,6 +56,8 @@ function rebuild() {
 <template>
   <section class="search-workspace"><div class="search-heading"><h2>搜索已发布知识</h2><span class="status-pill">{{ statusQuery.data.value ? labels[statusQuery.data.value.state] : '正在读取索引状态' }}</span></div><p class="field-help">搜索正文、标题、别名、标签与代码标识符；未发布草稿不进入全文检索。</p>
     <form class="search-form" @submit.prevent="search"><NInput v-model:value="input" :maxlength="100" placeholder="例如：缓存一致性、ConcurrentHashMap" aria-label="全文检索关键词" /><div class="search-filters"><NSelect v-model:value="kind" :options="kinds" clearable placeholder="全部类型" aria-label="知识类型" /><NSelect v-model:value="topicId" :options="topics" clearable placeholder="全部主题" aria-label="主题筛选" /><NSelect v-model:value="status" :options="states" aria-label="知识状态" /><NInput v-model:value="tag" :maxlength="40" placeholder="按标签筛选" aria-label="标签筛选" /></div><NButton type="primary" attr-type="submit" :disabled="!input.trim()" :loading="results.isFetching.value">搜索</NButton></form>
+    <label class="field-help">来源记录 <NSelect v-model:value="source" :options="sources" aria-label="知识来源筛选" /></label>
+    <p class="field-help">来源依据实际采用／导入登记分类；有 AI 采用记录不表示整篇正文由 AI 创作，之后的独立修改仍保留原版本。</p>
     <p v-if="results.error.value || statusQuery.error.value" class="notice error" role="alert">{{ errorText(results.error.value ?? statusQuery.error.value) }}</p><p v-if="results.data.value && results.data.value.syncStatus !== 'READY'" class="notice">{{ labels[results.data.value.syncStatus] }}。结果可能尚未包含刚刚发布或修改整理信息的内容。</p>
     <p v-if="results.data.value?.scanLimited" class="notice">本次检索已达到安全扫描上限，当前结果可能不完整。请缩小检索范围；如果索引正在同步，也可稍后刷新。本页结束不代表没有其他匹配内容。</p>
     <p v-if="submitted && !results.isFetching.value && results.data.value?.items.length === 0" class="empty-inline">没有找到匹配的已发布内容。可以调整关键词或筛选条件；索引不同步时可稍后刷新。</p>

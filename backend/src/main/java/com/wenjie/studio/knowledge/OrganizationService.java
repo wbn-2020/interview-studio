@@ -9,7 +9,9 @@ import com.wenjie.studio.knowledge.OrganizationRows.OrganizationRow;
 import com.wenjie.studio.recent.RecentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
@@ -50,52 +52,92 @@ public class OrganizationService {
         return current(owner, id);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Organization initializeImportedTagsWithinCommand(String owner, String id, List<String> tags) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+            throw new IllegalStateException("导入标签必须处于命令写事务中");
+        }
+        uuid(owner); uuid(id);
+        List<String> selected = labels(tags, 40, "标签");
+        if (selected.isEmpty()) throw invalid("明确采用的标签不能为空。");
+        var item = requireItem(owner, id);
+        // 仅供外层导入命令初始化刚创建的笔记，绝不能覆写已有整理信息或扩展概念别名资格。
+        if (!item.kind().equals("NOTE") || !item.status().equals("ACTIVE")
+                || item.versionNumber() != 1 || item.metadataRevision() != 0
+                || mapper.organization(owner, id) != null || !mapper.associations(owner, id).isEmpty()) {
+            throw new ApiException(409, "REVISION_CONFLICT", "导入标签仅能初始化新笔记，不能覆盖已有整理信息。");
+        }
+        Instant now = now();
+        mapper.ensureOrganization(owner, id, now);
+        int changed = mapper.saveOrganization(owner, id, 0, json.writeValueAsString(List.of()),
+                json.writeValueAsString(selected), false, null, now);
+        if (changed != 1) throw new ApiException(409, "REVISION_CONFLICT", "整理信息已变化，本次导入未提交。");
+        knowledge.insertOutbox(owner, id, item.currentVersionId(), "METADATA", now);
+        return current(owner, id);
+    }
+
     public Organization save(String owner, String id, String key, OrganizationRequest request) {
+        validateOrganizationRequest(id, request);
+        return commands.execute(owner, key, "PUT /api/v1/knowledge/items/" + id + "/organization", request,
+                Organization.class, () -> saveWithinCommand(owner, id, request));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Organization saveWithinCommand(String owner, String id, OrganizationRequest request) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+            throw new IllegalStateException("整理信息必须处于命令写事务中");
+        }
+        validateOrganizationRequest(id, request);
+        List<String> aliases = labels(request.aliases(), 100, "别名");
+        List<String> tags = labels(request.tags(), 40, "标签");
+        List<String> noteIds = ids(request.noteIds());
+        var item = requireItem(owner, id);
+        if (!item.status().equals("ACTIVE")) throw new ApiException(409, "KNOWLEDGE_ARCHIVED", "恢复内容后才能修改整理信息。");
+        if (item.kind().equals("NOTE") && (!aliases.isEmpty() || !noteIds.isEmpty() || request.mainNoteId() != null)) {
+            throw invalid("笔记不能设置概念别名、关联笔记或主笔记。");
+        }
+        Organization before = current(owner, id);
+        if (before.revision() != request.expectedRevision()) {
+            throw new ApiException(409, "REVISION_CONFLICT", "整理信息已变化，请保留输入后重新读取。", before.revision());
+        }
+        if (before.revision() == MAX_REVISION) throw new ApiException(422, "CAPACITY_LIMIT", "整理修订号已达上限。");
+        var associations = mapper.associations(owner, id);
+        Set<String> existingIds = new HashSet<>(before.noteIds());
+        for (String noteId : noteIds) {
+            var note = requireItem(owner, noteId);
+            if (!note.kind().equals("NOTE")) throw invalid("概念只能关联笔记。");
+            // 已归档关联可保留，新增关联必须指向当前活跃笔记，正文始终互不复制。
+            if (!note.status().equals("ACTIVE") && !existingIds.contains(noteId)) {
+                throw new ApiException(409, "NOTE_ARCHIVED", "不能新增关联已归档笔记。");
+            }
+        }
+        Instant now = now();
+        mapper.ensureOrganization(owner, id, now);
+        int changed = mapper.saveOrganization(owner, id, before.revision(), json.writeValueAsString(aliases),
+                json.writeValueAsString(tags), request.favorite(), request.mainNoteId(), now);
+        if (changed != 1) throw new ApiException(409, "REVISION_CONFLICT", "整理信息已变化，本次修改未提交。");
+        for (var link : associations) if (!noteIds.contains(link.noteId())) mapper.removeAssociation(owner, link.id());
+        for (String noteId : noteIds) {
+            if (!existingIds.contains(noteId)) mapper.insertAssociation(owner, UUID.randomUUID().toString(), id, noteId, now);
+        }
+        knowledge.insertOutbox(owner, id, item.currentVersionId(), "METADATA", now);
+        return current(owner, id);
+    }
+
+    private static void validateOrganizationRequest(String id, OrganizationRequest request) {
         uuid(id);
         required(request);
         revision(request.expectedRevision());
-        List<String> aliases = labels(request.aliases(), 100, "别名");
-        List<String> tags = labels(request.tags(), 40, "标签");
+        labels(request.aliases(), 100, "别名");
+        labels(request.tags(), 40, "标签");
         required(request.favorite());
         List<String> noteIds = ids(request.noteIds());
         if (request.mainNoteId() != null) {
             uuid(request.mainNoteId());
             if (!noteIds.contains(request.mainNoteId())) throw invalid("主笔记必须属于已关联笔记。");
         }
-        return commands.execute(owner, key, "PUT /api/v1/knowledge/items/" + id + "/organization", request,
-                Organization.class, () -> {
-                    var item = requireItem(owner, id);
-                    if (!item.status().equals("ACTIVE")) throw new ApiException(409, "KNOWLEDGE_ARCHIVED", "恢复内容后才能修改整理信息。");
-                    if (item.kind().equals("NOTE") && (!aliases.isEmpty() || !noteIds.isEmpty() || request.mainNoteId() != null)) {
-                        throw invalid("笔记不能设置概念别名、关联笔记或主笔记。");
-                    }
-                    Organization before = current(owner, id);
-                    if (before.revision() != request.expectedRevision()) {
-                        throw new ApiException(409, "REVISION_CONFLICT", "整理信息已变化，请保留输入后重新读取。", before.revision());
-                    }
-                    if (before.revision() == MAX_REVISION) throw new ApiException(422, "CAPACITY_LIMIT", "整理修订号已达上限。");
-                    var associations = mapper.associations(owner, id);
-                    Set<String> existingIds = new HashSet<>(before.noteIds());
-                    for (String noteId : noteIds) {
-                        var note = requireItem(owner, noteId);
-                        if (!note.kind().equals("NOTE")) throw invalid("概念只能关联笔记。");
-                        // 已归档关联可保留，新增关联必须指向当前活跃笔记，正文始终互不复制。
-                        if (!note.status().equals("ACTIVE") && !existingIds.contains(noteId)) {
-                            throw new ApiException(409, "NOTE_ARCHIVED", "不能新增关联已归档笔记。");
-                        }
-                    }
-                    Instant now = now();
-                    mapper.ensureOrganization(owner, id, now);
-                    int changed = mapper.saveOrganization(owner, id, before.revision(), json.writeValueAsString(aliases),
-                            json.writeValueAsString(tags), request.favorite(), request.mainNoteId(), now);
-                    if (changed != 1) throw new ApiException(409, "REVISION_CONFLICT", "整理信息已变化，本次修改未提交。");
-                    for (var link : associations) if (!noteIds.contains(link.noteId())) mapper.removeAssociation(owner, link.id());
-                    for (String noteId : noteIds) {
-                        if (!existingIds.contains(noteId)) mapper.insertAssociation(owner, UUID.randomUUID().toString(), id, noteId, now);
-                    }
-                    knowledge.insertOutbox(owner, id, item.currentVersionId(), "METADATA", now);
-                    return current(owner, id);
-                });
     }
 
     public VisitResult visit(String owner, String id, String key, EmptyRequest request) {

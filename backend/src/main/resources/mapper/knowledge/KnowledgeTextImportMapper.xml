@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.KnowledgeTextImportMapper">
+  <resultMap id="entry" type="com.wenjie.studio.knowledge.KnowledgeTextImportDtos$Entry">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="file_name" javaType="java.lang.String"/>
+      <arg column="source_sha256" javaType="java.lang.String"/>
+      <arg column="source_bytes" javaType="_int"/>
+      <arg column="source_characters" javaType="_int"/>
+      <arg column="item_id" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="item_status" javaType="java.lang.String"/>
+      <arg column="create_copy" javaType="_boolean"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+    </constructor>
+  </resultMap>
+  <sql id="columns">
+    r.id, r.file_name, r.source_sha256, r.source_bytes, r.source_characters,
+    r.item_id, r.version_id, v.title, k.status AS item_status, r.create_copy, r.created_at
+  </sql>
+  <sql id="joins">
+    knowledge_text_import r
+    JOIN knowledge_item k ON k.owner_id=r.owner_id AND k.id=r.item_id
+    JOIN knowledge_version v ON v.owner_id=r.owner_id AND v.item_id=r.item_id AND v.id=r.version_id
+  </sql>
+  <select id="exists" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM knowledge_text_import WHERE owner_id=#{owner} AND source_sha256=#{sha256})
+  </select>
+  <select id="find" resultMap="entry">
+    SELECT <include refid="columns"/> FROM <include refid="joins"/>
+    WHERE r.owner_id=#{owner} AND r.id=#{id}
+  </select>
+  <select id="list" resultMap="entry">
+    SELECT <include refid="columns"/> FROM <include refid="joins"/>
+    WHERE r.owner_id=#{owner}
+    <if test="sha256 != null">AND r.source_sha256=#{sha256}</if>
+    <if test="cursorId != null">
+      AND (r.created_at &lt; #{cursorTime} OR (r.created_at=#{cursorTime} AND r.id &lt; #{cursorId}))
+    </if>
+    ORDER BY r.created_at DESC, r.id DESC LIMIT #{limit}
+  </select>
+  <insert id="insert">
+    INSERT INTO knowledge_text_import
+      (id, owner_id, file_name, source_sha256, source_bytes, source_characters, item_id, version_id, create_copy, created_at)
+    VALUES (#{entry.id}, #{owner}, #{entry.fileName}, #{entry.sourceSha256}, #{entry.sourceBytes},
+      #{entry.sourceCharacters}, #{entry.itemId}, #{entry.versionId}, #{entry.createCopy}, #{entry.createdAt})
+  </insert>
+</mapper>

@@ -6,7 +6,7 @@ import { errorText, read } from '../../api/client'
 import type { AttachmentPage, AttachmentSummary, MaterialExcerpt, MaterialExcerptPage } from '../../api/material'
 import { useWorkspaceStore } from '../../state/workspace'
 import MaterialExcerptReadout from './MaterialExcerptReadout.vue'
-const props = defineProps<{ disabled?: boolean; excludeIds?: string[]; searchExcerpts?: boolean; forAi?: boolean }>()
+const props = defineProps<{ disabled?: boolean; excludeIds?: string[]; searchExcerpts?: boolean; forAi?: boolean; choiceLabel?: string }>()
 const emit = defineEmits<{ choose: [value: MaterialExcerpt] }>()
 const store = useWorkspaceStore()
 const input = ref('')
@@ -47,7 +47,7 @@ function nextExcerpt() { if (readable.value && !searchPending.value && excerpts.
       <template v-else>
         <p v-if="excerpts.error.value" class="notice error" role="alert">{{ errorText(excerpts.error.value) }}<NButton text :disabled="!readable" @click="excerpts.refetch()">重试</NButton></p>
         <p v-if="excerpts.isPending.value" class="field-help" role="status">正在读取已保存摘录…</p>
-        <div v-for="item in excerpts.data.value?.items" :key="item.id" class="excerpt-picker-row"><p>{{ item.text.slice(0, 160) }}{{ item.text.length > 160 ? '…' : '' }}</p><small>{{ item.origin === 'MANUAL' ? '手工摘录' : '解析摘录' }} · {{ item.locator }}</small><div class="row-actions"><NButton size="small" :disabled="!readable || excerpts.isFetching.value || excludeIds?.includes(item.id)" @click="choose(item)">{{ excludeIds?.includes(item.id) ? '已引用' : '引用此摘录' }}</NButton><NButton text size="small" :disabled="!readable" @click="readout = readout === item.id ? undefined : item.id">{{ readout === item.id ? '收起原文' : '查看原文' }}</NButton></div><MaterialExcerptReadout v-if="readable && readout === item.id" :id="item.id" /></div>
+        <div v-for="item in excerpts.data.value?.items" :key="item.id" class="excerpt-picker-row"><p>{{ item.text.slice(0, 160) }}{{ item.text.length > 160 ? '…' : '' }}</p><small>{{ item.origin === 'MANUAL' ? '手工摘录' : '解析摘录' }} · {{ item.locator }}</small><div class="row-actions"><NButton size="small" :disabled="!readable || excerpts.isFetching.value || excludeIds?.includes(item.id)" @click="choose(item)">{{ excludeIds?.includes(item.id) ? '已引用' : choiceLabel ?? '引用此摘录' }}</NButton><NButton text size="small" :disabled="!readable" @click="readout = readout === item.id ? undefined : item.id">{{ readout === item.id ? '收起原文' : '查看原文' }}</NButton></div><MaterialExcerptReadout v-if="readable && readout === item.id" :id="item.id" /></div>
         <p v-if="excerpts.data.value && !excerpts.data.value.items.length" class="field-help" role="status">{{ excerptSearch ? '当前附件的已保存摘录中没有命中。可以换关键词、清空关键词查看已有摘录，或选择其他附件。' : '这个附件还没有保存摘录。请在附件详情中从解析片段或手工原文创建，或选择其他附件。' }}</p>
         <div v-if="excerptCursors.length || excerpts.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="!readable || !excerptCursors.length" @click="excerptCursor = excerptCursors.pop()">上一页</NButton><NButton size="small" :disabled="!readable || !excerpts.data.value?.nextCursor" @click="nextExcerpt">下一页</NButton></div>
       </template>

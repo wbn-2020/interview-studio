@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.dataprivacy.PrivacyMapper">
+  <select id="checkpoint" resultType="com.wenjie.studio.dataprivacy.PrivacyMapper$Checkpoint">
+    SELECT ledger_sequence,ledger_hash FROM privacy_ledger_checkpoint WHERE owner_id=#{owner}
+  </select>
+  <insert id="insertCheckpoint">
+    INSERT INTO privacy_ledger_checkpoint(owner_id,ledger_sequence,ledger_hash,updated_at)
+    VALUES(#{owner},#{sequence},#{hash},#{now})
+  </insert>
+  <update id="advanceCheckpoint">
+    UPDATE privacy_ledger_checkpoint SET ledger_sequence=#{sequence},ledger_hash=#{hash},updated_at=#{now}
+    WHERE owner_id=#{owner} AND ledger_sequence=#{expectedSequence} AND ledger_hash=#{expectedHash}
+  </update>
+  <select id="objectState" resultType="com.wenjie.studio.dataprivacy.PrivacyMapper$ObjectState">
+    SELECT object_kind,object_id,state,revision,latest_event_id,ledger_sequence,previous_status,trashed_at,updated_at
+    FROM privacy_object_state WHERE owner_id=#{owner} AND object_kind=#{kind} AND object_id=#{id}
+  </select>
+  <select id="states" resultType="com.wenjie.studio.dataprivacy.PrivacyMapper$ObjectState">
+    SELECT object_kind,object_id,state,revision,latest_event_id,ledger_sequence,previous_status,trashed_at,updated_at
+    FROM privacy_object_state WHERE owner_id=#{owner} AND state=#{state}
+    <if test="afterKind != null">AND (object_kind&gt;#{afterKind} OR (object_kind=#{afterKind} AND object_id&gt;#{afterId}))</if>
+    ORDER BY object_kind,object_id LIMIT #{limit}
+  </select>
+  <insert id="insertState">
+    INSERT INTO privacy_object_state(owner_id,object_kind,object_id,state,revision,latest_event_id,ledger_sequence,
+      previous_status,trashed_at,updated_at)
+    VALUES(#{owner},#{kind},#{id},#{state},1,#{eventId},#{sequence},#{previousStatus},#{trashedAt},#{now})
+  </insert>
+  <update id="changeState">
+    UPDATE privacy_object_state SET state=#{state},revision=revision+1,latest_event_id=#{eventId},
+      ledger_sequence=#{sequence},previous_status=#{previousStatus},trashed_at=#{trashedAt},updated_at=#{now}
+    WHERE owner_id=#{owner} AND object_kind=#{kind} AND object_id=#{id}
+      AND revision=#{expectedRevision} AND revision&lt;9007199254740991
+  </update>
+  <select id="businessObjectCount" resultType="_long">
+    SELECT
+      (SELECT COUNT(*) FROM knowledge_item WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM preparation_item WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM question WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM memory_card WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM knowledge_board WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM material_attachment WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM ai_task WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM training_session WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM interview_event WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM review_recollection WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM review_feedback WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM preparation_task WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM review_action WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM question_collection WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM ai_scope_authorization WHERE owner_id=#{owner})+
+      (SELECT COUNT(*) FROM privacy_object_state WHERE owner_id=#{owner})
+  </select>
+  <select id="unavailableIdentities" resultType="java.lang.String">
+    SELECT object_id FROM privacy_object_state WHERE owner_id=#{owner} AND state IN ('TRASHED','PURGED')
+    UNION
+    SELECT v.id FROM knowledge_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='KNOWLEDGE' AND s.object_id=v.item_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM preparation_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='PREPARATION' AND s.object_id=v.item_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM question_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='QUESTION' AND s.object_id=v.question_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM memory_card_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM memory_recall_attempt v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM training_question v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='TRAINING' AND s.object_id=v.session_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM training_answer v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='TRAINING' AND s.object_id=v.session_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM material_upload v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM material_parse_run v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM material_excerpt v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM material_segment v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM question_collection_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='QUESTION_COLLECTION' AND s.object_id=v.collection_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+    UNION
+    SELECT v.id FROM review_recollection_version v JOIN privacy_object_state s
+      ON s.owner_id=v.owner_id AND s.object_kind='RECOLLECTION' AND s.object_id=v.recollection_id AND s.state IN ('TRASHED','PURGED')
+    WHERE v.owner_id=#{owner}
+  </select>
+</mapper>

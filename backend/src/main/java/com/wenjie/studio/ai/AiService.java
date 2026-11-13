@@ -6,6 +6,9 @@ import com.wenjie.studio.bank.QuestionService;
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyMapper;
 import com.wenjie.studio.common.IdempotencyService;
+import com.wenjie.studio.dataprivacy.PrivacyAccess;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
+import com.wenjie.studio.dataarchive.ArchiveServingGate;
 import com.wenjie.studio.knowledge.KnowledgeDtos.CreateItem;
 import com.wenjie.studio.knowledge.KnowledgeDtos.CreateRelation;
 import com.wenjie.studio.knowledge.KnowledgeDtos.Relation;
@@ -14,6 +17,7 @@ import com.wenjie.studio.knowledge.RelationAiFeedbackEvidenceDtos;
 import com.wenjie.studio.knowledge.KnowledgeService;
 import com.wenjie.studio.knowledge.RelationSupplementDtos;
 import com.wenjie.studio.knowledge.RelationSupplementService;
+
 import com.wenjie.studio.material.MaterialSources;
 import com.wenjie.studio.memory.MemoryDtos;
 import com.wenjie.studio.memory.MemoryService;
@@ -80,6 +84,7 @@ public class AiService {
     private final ComparisonMapper comparisonMapper;
     private final ModelGateway gateway;
     private final KnowledgeService knowledge;
+    private final QuestionKnowledgeOrigins questionOrigins;
     private final RelationSupplementService relationSupplements;
     private final QuestionService questions;
     private final PreparationSources preparation;
@@ -99,6 +104,9 @@ public class AiService {
     private final IdempotencyMapper workspaces;
     private final JsonMapper json;
     private final TransactionTemplate transaction;
+    private final PrivacyLifecycle privacy;
+    private final PrivacyAccess privacyAccess;
+    private final ArchiveServingGate recoveryGate;
 
     public AiService(AiMapper mapper, AiProperties properties, AiSources sources, IdempotencyService commands,
                       IdempotencyMapper workspaces, JsonMapper json, PlatformTransactionManager manager,
@@ -111,7 +119,9 @@ public class AiService {
                       FactDraftMapper factDrafts, RewriteSources rewrites, RewriteMapper rewriteMapper,
                       RelationSupplementService relationSupplements, RelationEvidenceSources relationEvidence,
                       RelationAiFeedbackDraftSources relationAiFeedback, AiAuthorizations authorizations,
-                      TrainingAccessGuard trainingAccess, SourceQaSources sourceQa) {
+                      TrainingAccessGuard trainingAccess, SourceQaSources sourceQa,
+                      QuestionKnowledgeOrigins questionOrigins, PrivacyLifecycle privacy,
+                      PrivacyAccess privacyAccess, ArchiveServingGate recoveryGate) {
         this.mapper = mapper;
         this.properties = properties;
         this.sources = sources;
@@ -126,6 +136,10 @@ public class AiService {
         this.comparisonMapper = comparisonMapper;
         this.gateway = gateway;
         this.knowledge = knowledge;
+        this.questionOrigins = questionOrigins;
+        this.privacy = privacy;
+        this.privacyAccess = privacyAccess;
+        this.recoveryGate = recoveryGate;
         this.relationSupplements = relationSupplements;
         this.questions = questions;
         this.preparation = preparation;
@@ -244,6 +258,7 @@ public class AiService {
                     runningStopRequested++;
                 }
             }
+            privacy.recordAuthorizationRevocation(owner, key, id, request.expectedRevision());
             return new AiAuthorizationDtos.Revocation(authorization, queuedStopped, runningStopRequested);
         });
     }
@@ -1760,11 +1775,13 @@ public class AiService {
         var reviewMap = new HashMap<String, ReviewDraftDtos.Origin>();
         if (!page.isEmpty()) {
             var taskIds = page.stream().map(OriginRow::taskId).toList();
-            var sourceRows = question ? mapper.questionOriginSources(owner, taskIds) : mapper.originSources(owner, taskIds);
-            for (var source : sourceRows) {
-                sourceMap.computeIfAbsent(source.taskId(), ignored -> new ArrayList<>()).add(
-                        new OriginSource(source.itemId(), source.versionId(), source.number(), source.title(),
-                                OriginState.valueOf(source.state()), source.kind()));
+            if (question) sourceMap.putAll(questionOrigins.read(owner, page));
+            else {
+                for (var source : mapper.originSources(owner, taskIds)) {
+                    sourceMap.computeIfAbsent(source.taskId(), ignored -> new ArrayList<>()).add(
+                            new OriginSource(source.itemId(), source.versionId(), source.number(), source.title(),
+                                    OriginState.valueOf(source.state()), source.kind()));
+                }
             }
             preparationOriginSources(owner, page, taskIds, question).forEach((taskId, values) ->
                     sourceMap.computeIfAbsent(taskId, ignored -> new ArrayList<>()).addAll(values));
@@ -2149,6 +2166,18 @@ public class AiService {
         });
     }
 
+    public void refuseBeforeSend(Claim claim) {
+        locked(claim.owner(), () -> {
+            TaskRow task = requireTask(claim.owner(), claim.taskId());
+            AttemptRow attempt = requireAttempt(claim.owner(), claim.taskId(), claim.attemptId());
+            if (validClaim(claim, attempt, now()) && task.currentAttemptId().equals(attempt.id())
+                    && Status.RUNNING.name().equals(task.status())) {
+                failKnownUnsent(task, attempt, "AI_PRIVACY_OR_RESTORE_BLOCKED", false);
+            }
+            return null;
+        });
+    }
+
     public void finish(Claim claim, ModelGateway.Result result) {
         locked(claim.owner(), () -> {
             recoverWithinTransaction(claim.owner());
@@ -2251,6 +2280,14 @@ public class AiService {
     }
 
     private String beforeSendError(String owner, TaskRow task, AttemptRow attempt, Manifest manifest) {
+        try {
+            recoveryGate.requireAiAllowed();
+            privacy.requireSynchronized(owner);
+            privacy.requireAvailable(owner, "AI_TASK", task.id());
+            privacyAccess.requireInput(owner, manifest);
+        } catch (ApiException exception) {
+            return "AI_PRIVACY_OR_RESTORE_BLOCKED";
+        }
         requireReviewDraftBinding(owner, task, manifest);
         if (!configurationMatches(task)) return "AI_CONFIG_CHANGED";
         if (!properties.runtimeEpoch().equals(task.authorizationEpoch())) return "AI_AUTHORIZATION_EXPIRED";
@@ -3289,6 +3326,10 @@ public class AiService {
             }
             if (!Set.of(OriginState.CURRENT, OriginState.SUPERSEDED, OriginState.ARCHIVED, OriginState.UNAVAILABLE).contains(state)) {
                 throw new IllegalStateException("知识关系来源状态无效");
+            }
+            if ((state == OriginState.CURRENT || state == OriginState.SUPERSEDED)
+                    && relationSupplements.sourceReviewRequired(owner, fixed.itemId(), fixed.versionId(), task.createdAt())) {
+                state = OriginState.REVIEW_REQUIRED;
             }
             result.add(new OriginSource(fixed.itemId(), fixed.versionId(), fixed.number(), fixed.title(), state, fixed.kind()));
         }

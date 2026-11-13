@@ -99,7 +99,8 @@ public class SearchService {
         return candidate.versionId().equals(content.versionId())
                 && candidate.metadataRevision() == content.metadataRevision()
                 && candidate.organizationRevision() == content.organizationRevision()
-                && criteria.status().equals(content.status()) && criteria.source().equals(content.source())
+                && criteria.status().equals(content.status())
+                && ("ALL".equals(criteria.source()) || criteria.source().equals(content.source()))
                 && (criteria.kind() == null || criteria.kind().equals(content.kind()))
                 && (criteria.topicId() == null || data.topicIds().contains(criteria.topicId()))
                 && (criteria.tag() == null || data.tags().stream().anyMatch(tag -> tag.equalsIgnoreCase(criteria.tag())));
@@ -136,7 +137,8 @@ public class SearchService {
         if (query == null || query.strip().isEmpty() || query.strip().length() > 100 || limit < 1 || limit > 50
                 || offset < 0 || offset > 1000) throw invalid();
         if (kind != null && !List.of("NOTE", "CONCEPT").contains(kind)) throw invalid();
-        if (!List.of("ACTIVE", "ARCHIVED").contains(status) || !"USER".equals(source)) throw invalid();
+        if (!List.of("ACTIVE", "ARCHIVED").contains(status)
+                || !List.of("ALL", "USER", "AI_ADOPTED", "TEXT_IMPORT", "PACKAGE_IMPORT").contains(source)) throw invalid();
         if (topicId != null) {
             try { if (!UUID.fromString(topicId).toString().equals(topicId)) throw invalid(); }
             catch (IllegalArgumentException exception) { throw invalid(); }

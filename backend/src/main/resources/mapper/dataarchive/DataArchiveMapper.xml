@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.dataarchive.DataArchiveMapper">
+  <resultMap id="row" type="com.wenjie.studio.dataarchive.DataArchiveMapper$Row">
+    <constructor>
+      <arg column="id" javaType="java.lang.String"/>
+      <arg column="owner_id" javaType="java.lang.String"/>
+      <arg column="state" javaType="java.lang.String"/>
+      <arg column="format_version" javaType="_int"/>
+      <arg column="created_at" javaType="java.time.Instant"/>
+      <arg column="started_at" javaType="java.time.Instant"/>
+      <arg column="completed_at" javaType="java.time.Instant"/>
+      <arg column="expires_at" javaType="java.time.Instant"/>
+      <arg column="byte_size" javaType="java.lang.Long"/>
+      <arg column="sha256" javaType="java.lang.String"/>
+      <arg column="row_count" javaType="java.lang.Long"/>
+      <arg column="file_count" javaType="java.lang.Integer"/>
+      <arg column="error_code" javaType="java.lang.String"/>
+      <arg column="ledger_sequence" javaType="java.lang.Long"/>
+      <arg column="ledger_sha256" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <sql id="columns">id,owner_id,state,format_version,created_at,started_at,completed_at,expires_at,byte_size,sha256,row_count,file_count,error_code,ledger_sequence,ledger_sha256</sql>
+  <select id="find" resultMap="row" timeout="5">
+    SELECT <include refid="columns"/> FROM data_archive_job WHERE owner_id=#{owner} AND id=#{id}
+  </select>
+  <select id="list" resultMap="row" timeout="5">
+    SELECT <include refid="columns"/> FROM data_archive_job WHERE owner_id=#{owner} ORDER BY created_at DESC,id DESC LIMIT 50
+  </select>
+  <select id="retained" resultType="_int" timeout="5">
+    SELECT COUNT(*) FROM data_archive_job WHERE owner_id=#{owner}
+  </select>
+  <select id="active" resultType="_int" timeout="5">
+    SELECT COUNT(*) FROM data_archive_job WHERE owner_id=#{owner} AND state IN ('QUEUED','RUNNING')
+  </select>
+  <insert id="insert" timeout="5">
+    INSERT INTO data_archive_job(id,owner_id,state,format_version,created_at,expires_at)
+    VALUES(#{id},#{owner},'QUEUED',1,#{now},#{expires})
+  </insert>
+  <select id="queued" resultMap="row" timeout="5">
+    SELECT <include refid="columns"/> FROM data_archive_job WHERE owner_id=#{owner} AND state='QUEUED'
+      AND expires_at&gt;UTC_TIMESTAMP(6) ORDER BY created_at,id LIMIT 1
+  </select>
+  <update id="claim" timeout="5">
+    UPDATE data_archive_job SET state='RUNNING',started_at=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND state='QUEUED' AND expires_at&gt;#{now}
+  </update>
+  <update id="ready" timeout="5">
+    UPDATE data_archive_job SET state='READY',completed_at=#{now},byte_size=#{bytes},sha256=#{sha},
+      row_count=#{rows},file_count=#{files},ledger_sequence=#{sequence},ledger_sha256=#{ledgerSha}
+    WHERE owner_id=#{owner} AND id=#{id} AND state='RUNNING' AND expires_at&gt;#{now}
+  </update>
+  <update id="failed" timeout="5">
+    UPDATE data_archive_job SET state='FAILED',completed_at=#{now},error_code=#{code}
+    WHERE owner_id=#{owner} AND id=#{id} AND state='RUNNING'
+  </update>
+  <update id="recover" timeout="5">
+    UPDATE data_archive_job SET state='FAILED',completed_at=#{now},error_code='ARCHIVE_INTERRUPTED'
+    WHERE owner_id=#{owner} AND state='RUNNING' AND started_at&lt;#{before}
+  </update>
+  <update id="expire" timeout="5">
+    UPDATE data_archive_job SET state='EXPIRED'
+    WHERE owner_id=#{owner} AND state IN ('QUEUED','READY') AND expires_at&lt;=#{now}
+  </update>
+</mapper>

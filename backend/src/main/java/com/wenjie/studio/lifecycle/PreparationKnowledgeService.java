@@ -92,6 +92,12 @@ public class PreparationKnowledgeService {
                 }
             }
             Instant now = now();
+            Instant frozenAt = knowledge.latestFrozenAt(owner);
+            if (frozenAt != null) {
+                time(frozenAt);
+                if (!now.isAfter(frozenAt)) throw new ApiException(409, "PREPARATION_KNOWLEDGE_CLOCK_CONFLICT",
+                        "服务器时间未晚于既有冻结证据或来源处理，处理未提交，请校正服务器时间后重试。");
+            }
             if (now.isBefore(before.createdAt())) throw new ApiException(409, "PREPARATION_KNOWLEDGE_CLOCK_CONFLICT",
                     "服务器时间早于本次来源影响，处理未提交，请校正服务器时间后重试。");
             inserted(mapper.resolve(owner, itemId, impactId, request.expectedRevision(), request.choice().name(),

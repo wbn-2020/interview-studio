@@ -1,31 +1,49 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQueries, useQuery } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { NButton } from 'naive-ui'
-import { errorText, read } from '../../api/client'
-import type { Schema, Version } from '../../api/client'
-import type { QuestionKnowledgeReference, QuestionPrompt } from '../../api/bank'
+import { ApiError, errorText, read } from '../../api/client'
+import type { Schema } from '../../api/client'
+import type { QuestionKnowledgeReference, QuestionKnowledgeReferencePage, QuestionPrompt } from '../../api/bank'
 import { knowledgeReferenceLabels, questionDimensionLabels, questionTypeLabels, safeQuestionSourceUrl } from '../../api/bank'
 import { useWorkspaceStore } from '../../state/workspace'
 import MarkdownPreview from '../MarkdownPreview.vue'
 
-const props = defineProps<{ content: QuestionPrompt; references?: QuestionKnowledgeReference[] }>()
+const props = defineProps<{ content: QuestionPrompt; references?: QuestionKnowledgeReference[]; questionId?: string; versionId?: string }>()
 const router = useRouter()
 const store = useWorkspaceStore()
 const topics = useQuery({ queryKey: computed(() => ['knowledge', store.sessionEpoch, 'topics']), enabled: computed(() => store.sessionActive && Boolean(props.content.topicIds.length)), queryFn: () => read<Schema['TopicList']>('/knowledge/topics') })
-const referencesByVersion = computed(() => new Map(props.references?.map(reference => [reference.versionId, reference])))
-// 历史题目只引用当时发布的知识版本，不能以当前草稿标题替换其来源。
-const knowledge = useQueries({ queries: computed(() => props.content.knowledgeLinks.map(link => ({
-  queryKey: ['knowledge', store.sessionEpoch, 'version', link.itemId, link.versionId],
-  enabled: store.sessionActive && !referencesByVersion.value.has(link.versionId),
-  queryFn: () => read<Version>(`/knowledge/items/${link.itemId}/versions/${link.versionId}`),
-}))) })
+// 两侧历史题目各用自己的冻结版核对，只取来源元数据，不顺带读取知识全文或个人参考。
+const knowledge = useQuery({
+  queryKey: computed(() => ['bank', store.sessionEpoch, 'knowledge-references', props.questionId, props.versionId]),
+  staleTime: 0,
+  enabled: computed(() => store.sessionActive && props.references === undefined && Boolean(props.questionId && props.versionId && props.content.knowledgeLinks.length)),
+  queryFn: async () => {
+    const questionId = props.questionId
+    const versionId = props.versionId
+    const links = props.content.knowledgeLinks.map(link => ({ ...link }))
+    const value = await read<QuestionKnowledgeReferencePage>(`/bank/questions/${questionId}/versions/${versionId}/knowledge-references`)
+    if (value.questionId !== questionId || value.versionId !== versionId || !Array.isArray(value.items)
+      || value.items.length !== links.length || value.items.some((item, index) =>
+        item.itemId !== links[index]?.itemId || item.versionId !== links[index]?.versionId
+        || !Object.hasOwn(knowledgeReferenceLabels, item.state))) {
+      throw new ApiError(502, 'QUESTION_KNOWLEDGE_MISMATCH', '知识来源核对与所选题目版本不一致，请重试。')
+    }
+    return value
+  },
+})
+const referencesByVersion = computed(() => {
+  const checked = !knowledge.error.value && !knowledge.isFetching.value
+    && knowledge.data.value?.questionId === props.questionId && knowledge.data.value?.versionId === props.versionId
+    ? knowledge.data.value?.items : undefined
+  return new Map((props.references ?? checked)?.map(reference => [`${reference.itemId}/${reference.versionId}`, reference]))
+})
 const sourceUrl = computed(() => safeQuestionSourceUrl(props.content.source.url))
 function topicName(id: string) { return topics.data.value?.items.find(topic => topic.id === id)?.name ?? `主题 ${id.slice(0, 8)}` }
-function referenceAt(index: number) { return referencesByVersion.value.get(props.content.knowledgeLinks[index]?.versionId ?? '') }
-function titleAt(index: number) { return referenceAt(index)?.title ?? knowledge.value[index]?.data?.title ?? `知识 ${props.content.knowledgeLinks[index]?.itemId.slice(0, 8)}` }
-function versionAt(index: number) { const number = referenceAt(index)?.number ?? knowledge.value[index]?.data?.number; return number ? `v${number}` : '确切历史版本' }
+function referenceAt(index: number) { const link = props.content.knowledgeLinks[index]; return link ? referencesByVersion.value.get(`${link.itemId}/${link.versionId}`) : undefined }
+function titleAt(index: number) { return referenceAt(index)?.title ?? `知识 ${props.content.knowledgeLinks[index]?.itemId.slice(0, 8)}` }
+function versionAt(index: number) { const number = referenceAt(index)?.number; return number ? `v${number}` : '确切历史版本' }
 function openKnowledge(index: number) { const link = props.content.knowledgeLinks[index]; if (link) void router.push({ name: 'knowledge', query: { item: link.itemId, version: link.versionId } }) }
 </script>
 
@@ -41,7 +59,18 @@ function openKnowledge(index: number) { const link = props.content.knowledgeLink
       <template v-if="content.topicIds.length"><dt>知识主题</dt><dd>{{ content.topicIds.map(topicName).join('、') }}<span v-if="topics.error.value" class="field-help">（主题名称读取失败，暂用标识）</span></dd></template>
       <template v-if="content.tags.length"><dt>标签</dt><dd>{{ content.tags.join(' · ') }}</dd></template>
     </dl>
-    <section v-if="content.knowledgeLinks.length" class="question-knowledge"><h4>关联知识</h4><div v-for="(link, index) in content.knowledgeLinks" :key="link.versionId" class="knowledge-row-detail"><button class="text-link" @click="openKnowledge(index)">{{ titleAt(index) }} · {{ versionAt(index) }}</button><span v-if="referenceAt(index)" :class="{ warning: referenceAt(index)?.state !== 'CURRENT' }">{{ knowledgeReferenceLabels[referenceAt(index)!.state] }}</span><p v-if="knowledge[index]?.isFetching" class="field-help" role="status">正在读取确切知识版本…</p><p v-if="knowledge[index]?.error" class="notice error" role="alert">{{ errorText(knowledge[index]?.error) }}<NButton text size="small" @click="knowledge[index]?.refetch()">重试</NButton></p></div><p class="field-help">知识链接固定到保存时的发布版本。打开知识将离开本页。</p></section>
+    <section v-if="content.knowledgeLinks.length" class="question-knowledge">
+      <h4>关联知识</h4>
+      <div v-if="references === undefined" class="row-actions"><NButton size="small" :disabled="!store.sessionActive || knowledge.isFetching.value || !questionId || !versionId" @click="knowledge.refetch()">重新核对来源</NButton><span class="field-help">状态为上次核对结果，可主动重新核对。</span></div>
+      <p v-if="references === undefined && knowledge.isFetching.value" class="field-help" role="status">正在核对本题目版本的知识来源…</p>
+      <p v-if="references === undefined && knowledge.error.value" class="notice error" role="alert">来源状态核对失败：{{ errorText(knowledge.error.value) }}<NButton text size="small" :disabled="!store.sessionActive" @click="knowledge.refetch()">重试核对</NButton></p>
+      <div v-for="(link, index) in content.knowledgeLinks" :key="link.versionId" class="knowledge-row-detail">
+        <button class="text-link" @click="openKnowledge(index)">{{ titleAt(index) }} · {{ versionAt(index) }}</button>
+        <span v-if="referenceAt(index)" :class="{ warning: referenceAt(index)?.state !== 'CURRENT' }">{{ knowledgeReferenceLabels[referenceAt(index)!.state] }}</span>
+        <span v-else>来源状态待核对</span>
+      </div>
+      <p class="field-help">知识链接固定到保存时的发布版本；来源状态按本题目版本的保存时间核对。待复核不会改写原题，也不代表已完成技术审阅。打开知识将离开本页。</p>
+    </section>
     <section v-if="content.source.title || content.source.url || content.source.note" class="question-source"><h4>来源记录</h4><p v-if="content.source.title">{{ content.source.title }}</p><a v-if="sourceUrl" :href="sourceUrl" target="_blank" rel="noopener noreferrer">{{ content.source.url }}</a><p v-else-if="content.source.url">{{ content.source.url }}</p><p v-if="content.source.note" class="source-note">{{ content.source.note }}</p><p class="field-help">来源由用户记录，系统不抓取网址或替其背书。</p></section>
   </article>
 </template>

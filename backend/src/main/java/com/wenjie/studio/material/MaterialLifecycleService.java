@@ -2,6 +2,7 @@ package com.wenjie.studio.material;
 
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyService;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,9 +22,18 @@ public class MaterialLifecycleService {
     private final MaterialLifecycleMapper mapper;
     private final MaterialProperties properties;
     private final IdempotencyService commands;
+    private final MaterialKnowledgeAdoptions knowledgeAdoptions;
+    private final MaterialCorrectionMapper corrections;
+    private final MaterialDependencyImpactService dependencies;
+    private final PrivacyLifecycle privacy;
 
-    public MaterialLifecycleService(MaterialLifecycleMapper mapper, MaterialProperties properties, IdempotencyService commands) {
+    public MaterialLifecycleService(MaterialLifecycleMapper mapper, MaterialProperties properties, IdempotencyService commands,
+                                    MaterialKnowledgeAdoptions knowledgeAdoptions, MaterialCorrectionMapper corrections,
+                                    MaterialDependencyImpactService dependencies, PrivacyLifecycle privacy) {
         this.mapper = mapper; this.properties = properties; this.commands = commands;
+        this.knowledgeAdoptions = knowledgeAdoptions; this.corrections = corrections;
+        this.dependencies = dependencies;
+        this.privacy = privacy;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, timeout = 20)
@@ -39,22 +49,31 @@ public class MaterialLifecycleService {
         String reason = reason(request.reason());
         return commands.execute(owner, key, "POST /api/v1/materials/excerpts/" + excerptId + "/lifecycle/changes",
                 request, State.class, () -> {
+                    uncorrected(owner, excerptId);
                     var before = required(owner, excerptId);
                     if (before.revision().longValue() != request.expectedRevision().longValue()) {
                         throw new ApiException(409, "MATERIAL_REVISION_CONFLICT", "摘录生命周期已变化，请保留原请求并读取最新状态。", before.revision());
                     }
                     var target = transition(request.action(), Status.valueOf(before.status()), AiUse.valueOf(before.aiUse()));
                     if (before.revision() == MAX_REVISION) throw conflict("摘录生命周期修订已达到上限。");
-                    // 与所有新增绑定共用 owner 写锁；仅无物化内容的合法 AI 输入登记可放行，历史绑定不随父对象状态消失。
-                    if (mapper.hasUnsupportedReferences(owner, excerptId)) throw new ApiException(409, "MATERIAL_HAS_REFERENCES", "摘录已有物化内容或本批尚不支持的登记绑定，不能变更其生命周期。");
+                    // 变更前在 owner 锁内完整证明实际使用路径；组织／白板仅结构关联，不伪造正文传播。
+                    dependencies.collect(owner, excerptId);
+                    var usageRoutes = dependencies.collectUsage(owner, excerptId);
+                    knowledgeAdoptions.collect(owner, excerptId, view(before, mapper.hasReferences(owner, excerptId)));
                     Instant now = now();
-                    if (now.isBefore(before.updatedAt())) now = before.updatedAt();
+                    if (now.isBefore(before.updatedAt())) throw conflict("服务器时间早于材料许可基线，本次变更未提交。");
+                    dependencies.checkClock(owner, now, usageRoutes);
                     if (mapper.change(owner, excerptId, before.revision(), target.status().name(), target.aiUse().name(), now) != 1) {
                         throw new ApiException(409, "MATERIAL_REVISION_CONFLICT", "摘录生命周期已变化，请读取最新状态。");
                     }
-                    mapper.insertEvent(owner, new Event(id(), excerptId, request.action(), Status.valueOf(before.status()),
+                    var event = new Event(id(), excerptId, request.action(), Status.valueOf(before.status()),
                             AiUse.valueOf(before.aiUse()), before.revision(), target.status(), target.aiUse(),
-                            before.revision() + 1, reason, now));
+                            before.revision() + 1, reason, now);
+                    mapper.insertEvent(owner, event);
+                    if (request.action() == Action.ARCHIVE || request.action() == Action.RESTORE) {
+                        dependencies.localStatusChanged(owner, before.attachmentId(), event, usageRoutes);
+                    }
+                    privacy.recordMaterialAiUse(owner, key, excerptId, request);
                     return view(required(owner, excerptId), mapper.hasReferences(owner, excerptId));
                 });
     }
@@ -90,13 +109,15 @@ public class MaterialLifecycleService {
     public void requireActive(String owner, String excerptId) {
         enabled(); uuid(owner); uuid(excerptId);
         active(required(owner, excerptId));
+        uncorrected(owner, excerptId);
     }
 
     @Transactional(propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
     public boolean aiAllowed(String owner, String excerptId) {
         if (!properties.enabled() || !storedUuid(owner) || !storedUuid(excerptId)) return false;
         var row = load(owner, excerptId);
-        return row != null && "ACTIVE".equals(row.status()) && "ALLOWED".equals(row.aiUse());
+        return row != null && "ACTIVE".equals(row.status()) && "ALLOWED".equals(row.aiUse())
+                && !corrections.corrected(owner, excerptId);
     }
 
     @Transactional(propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
@@ -108,6 +129,7 @@ public class MaterialLifecycleService {
         for (String excerptId : sorted) {
             var row = required(owner, excerptId);
             active(row);
+            uncorrected(owner, excerptId);
             if (!"ALLOWED".equals(row.aiUse())) throw new ApiException(409, "MATERIAL_AI_USE_REVOKED", "摘录已撤回 AI 用途。");
             result.add(new Check(excerptId, row.revision()));
         }
@@ -129,7 +151,8 @@ public class MaterialLifecycleService {
             var row = load(owner, excerptId);
             // 历史空尾只兼容从未改变的授权代次，恢复与重新允许不会让旧清单重新有效。
             if (row == null || !"ACTIVE".equals(row.status()) || !"ALLOWED".equals(row.aiUse())
-                    || row.revision() != (check == null ? 0 : check.revision())) return false;
+                    || row.revision() != (check == null ? 0 : check.revision())
+                    || corrections.corrected(owner, excerptId)) return false;
         }
         return true;
     }
@@ -177,6 +200,12 @@ public class MaterialLifecycleService {
     }
     private static void active(MaterialLifecycleMapper.Row row) {
         if (!"ACTIVE".equals(row.status())) throw new ApiException(409, "MATERIAL_NOT_ACTIVE", "摘录已归档，不能新建本地或 AI 选用。");
+    }
+    private void uncorrected(String owner, String excerptId) {
+        // 正文更正独立于许可代次；任何生命周期动作都不能恢复旧正文的新用途。
+        if (corrections.corrected(owner, excerptId)) {
+            throw new ApiException(409, "MATERIAL_CONTENT_CORRECTED", "摘录已声明正文更正，只保留历史读取，不能变更生命周期或新选用。");
+        }
     }
     private static Target transition(Action action, Status status, AiUse aiUse) {
         return switch (action) {

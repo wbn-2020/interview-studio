@@ -7,7 +7,7 @@ public final class OrganizationDtos {
     private OrganizationDtos() {}
 
     public enum ConnectionKind { ASSOCIATION, SEMANTIC, OUTGOING, BACKLINK }
-    public enum Collection { ALL, FAVORITES, RECENT, UNCATEGORIZED }
+    public enum Collection { ALL, FAVORITES, RECENT, UNCATEGORIZED, BROKEN_LINKS }
     public record Organization(long revision, List<String> aliases, List<String> tags, boolean favorite,
                                List<String> noteIds, String mainNoteId, Instant visitedAt) {}
     public record OrganizationRequest(Long expectedRevision, List<String> aliases, List<String> tags,

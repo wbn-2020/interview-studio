@@ -15,6 +15,8 @@ public interface KnowledgeRevalidationMapper {
     boolean pending(@Param("owner") String owner, @Param("itemId") String itemId, @Param("number") int number);
     boolean changedAfter(@Param("owner") String owner, @Param("itemId") String itemId,
                          @Param("number") int number, @Param("baseline") Instant baseline);
+    boolean reviewRequired(@Param("owner") String owner, @Param("itemId") String itemId,
+                           @Param("number") int number, @Param("baseline") Instant baseline);
     Instant latestFrozenAt(@Param("owner") String owner);
     int insertEvent(@Param("owner") String owner, @Param("id") String id, @Param("rootItemId") String rootItemId,
                     @Param("previousVersionId") String previousVersionId, @Param("currentVersionId") String currentVersionId,

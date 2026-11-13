@@ -7,6 +7,7 @@ import App from './App.vue'
 import { useWorkspaceStore } from './state/workspace'
 import { useTrainingAccessStore } from './state/trainingAccess'
 import './styles.css'
+import './preferences.css'
 
 const pinia = createPinia()
 const router = createRouter({
@@ -16,6 +17,10 @@ const router = createRouter({
     { path: '/search', name: 'search', component: () => import('./views/SearchWorkspace.vue') },
     { path: '/recent', name: 'recent', component: () => import('./views/RecentWorkspace.vue') },
     { path: '/knowledge', name: 'knowledge', component: () => import('./views/KnowledgeWorkspace.vue') },
+    { path: '/knowledge/packages', name: 'knowledge-packages', component: () => import('./views/KnowledgePackagesWorkspace.vue') },
+    { path: '/knowledge/merge', name: 'knowledge-merge', component: () => import('./views/KnowledgeMergeWorkspace.vue') },
+    { path: '/settings', name: 'settings', component: () => import('./views/SettingsWorkspace.vue') },
+    { path: '/settings/data', name: 'data-management', component: () => import('./views/DataManagementWorkspace.vue') },
     { path: '/knowledge/boards', name: 'boards', component: () => import('./views/BoardsWorkspace.vue') },
     { path: '/knowledge/cards', name: 'memory-cards', component: () => import('./views/MemoryWorkspace.vue') },
     { path: '/knowledge/recall', name: 'memory-recall', component: () => import('./views/MemoryRecallWorkspace.vue') },
@@ -120,7 +125,7 @@ router.beforeEach((to, from) => {
     const sameEditor = editorKey(to.query) === editorKey(from.query)
     const reviewKeys = sameEditor && to.query.version === from.query.version ? []
       : [...workspace.changes.keys()].filter(key => key.startsWith('standard-review:'))
-    return workspace.canLeave([...(!sameEditor ? ['bank-editor', 'bank-command'] : []), ...reviewKeys])
+    return workspace.canLeave([...(!sameEditor ? ['bank-editor', 'bank-command', 'question-file-import'] : []), ...reviewKeys])
   }
   if (to.name === 'collections' && from.name === 'collections') {
     const editorKey = (query: typeof to.query) => query.create === '1'
@@ -173,8 +178,8 @@ router.beforeEach((to, from) => {
 })
 router.beforeEach(async (to, from) => {
   const workspace = useWorkspaceStore(pinia)
-  // 撤回页仅展示授权元数据；保留前一层离开保护，训练状态不可用时仍可进入管理。
-  if (to.name === 'ai-authorizations') return true
+  // 管理外壳在训练状态不可用时仍可进入；敏感详情由各自守卫遮挡，前一层离开保护保持。
+  if (to.name === 'ai-authorizations' || to.name === 'data-management') return true
   if (!workspace.sessionActive || to.fullPath === from.fullPath) return true
   const access = useTrainingAccessStore(pinia)
   const ready = await access.refresh()

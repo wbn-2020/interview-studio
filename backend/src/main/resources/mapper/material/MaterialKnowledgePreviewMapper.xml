@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialKnowledgePreviewMapper">
+  <sql id="taskColumns">
+    t.owner_id AS task_owner_id,t.id AS actual_task_id,t.purpose,t.status AS task_status,
+    d.owner_id AS decision_owner_id,d.task_id AS decision_task_id,d.status AS decision_status,d.mode,
+    d.target_item_id,d.target_version_id,
+    q.owner_id AS question_decision_owner_id,q.task_id AS question_decision_task_id,q.status AS question_decision_status,
+    q.target_question_id AS question_target_item_id,q.target_version_id AS question_target_version_id,
+    target_item.owner_id AS target_item_owner_id,target.owner_id AS target_version_owner_id,
+    target.item_id AS actual_target_item_id,target.id AS actual_target_version_id,
+    target.version_number AS actual_target_version_number
+  </sql>
+  <sql id="taskJoins">
+    LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+    LEFT JOIN ai_candidate_decision d ON d.owner_id=s.owner_id AND d.task_id=s.task_id
+    LEFT JOIN ai_question_decision q ON q.owner_id=s.owner_id AND q.task_id=s.task_id
+    LEFT JOIN knowledge_item target_item ON target_item.owner_id=d.owner_id AND target_item.id=d.target_item_id
+    LEFT JOIN knowledge_version target
+      ON target.owner_id=d.owner_id AND target.item_id=d.target_item_id AND target.id=d.target_version_id
+  </sql>
+  <!-- 原始登记先入预算；缺任务、未知决定和缺版本不能被联查静默过滤。 -->
+  <select id="materialBindings" resultType="com.wenjie.studio.material.MaterialKnowledgePreviewMapper$Binding" timeout="5">
+    SELECT s.owner_id,s.task_id,s.excerpt_id,s.ordinal,
+      NULL AS source_item_id,NULL AS source_version_id,NULL AS source_version_number,NULL AS source_title,
+      NULL AS source_item_owner_id,NULL AS source_version_owner_id,NULL AS actual_source_item_id,
+      NULL AS actual_source_version_id,NULL AS actual_source_version_number,NULL AS actual_source_title,
+      <include refid="taskColumns"/>
+    FROM ai_material_draft_source s
+    <include refid="taskJoins"/>
+    WHERE s.owner_id=#{owner} AND s.excerpt_id=#{excerptId}
+    ORDER BY s.task_id LIMIT #{limit}
+  </select>
+  <select id="knowledgeBindings" resultType="com.wenjie.studio.material.MaterialKnowledgePreviewMapper$Binding" timeout="5">
+    SELECT s.owner_id,s.task_id,NULL AS excerpt_id,s.source_item_id,s.source_version_id,
+      s.source_version_number,s.source_title,s.ordinal,
+      source_item.owner_id AS source_item_owner_id,source.owner_id AS source_version_owner_id,
+      source.item_id AS actual_source_item_id,source.id AS actual_source_version_id,
+      source.version_number AS actual_source_version_number,source.title AS actual_source_title,
+      <include refid="taskColumns"/>
+    FROM ai_knowledge_source s
+    <include refid="taskJoins"/>
+    LEFT JOIN knowledge_item source_item ON source_item.owner_id=s.owner_id AND source_item.id=s.source_item_id
+    LEFT JOIN knowledge_version source
+      ON source.owner_id=s.owner_id AND source.item_id=s.source_item_id AND source.id=s.source_version_id
+    WHERE s.owner_id=#{owner} AND s.source_item_id=#{itemId}
+    ORDER BY s.task_id LIMIT #{limit}
+  </select>
+  <select id="node" resultType="com.wenjie.studio.material.MaterialKnowledgePreviewMapper$NodeRow" timeout="5">
+    SELECT v.owner_id,v.item_id,v.id AS version_id,v.version_number,v.title,
+      i.owner_id AS item_owner_id,i.kind AS item_kind,i.status AS item_status,
+      i.current_version_id,i.version_number AS current_version_number,
+      current_version.owner_id AS current_owner_id,current_version.item_id AS current_item_id,
+      current_version.id AS actual_current_version_id,current_version.version_number AS actual_current_version_number
+    FROM knowledge_version v
+    LEFT JOIN knowledge_item i ON i.owner_id=v.owner_id AND i.id=v.item_id
+    LEFT JOIN knowledge_version current_version
+      ON current_version.owner_id=i.owner_id AND current_version.item_id=i.id AND current_version.id=i.current_version_id
+    WHERE v.owner_id=#{owner} AND v.item_id=#{itemId} AND v.id=#{versionId}
+  </select>
+</mapper>

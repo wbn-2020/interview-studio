@@ -49,7 +49,7 @@ public class MaterialSources {
             // 完整快照参与比较；描述和新解析不改写原摘录，数据库故障则继续向调用方传播。
             try { if (!snapshot.equals(load(owner, snapshot.excerptId()))) return false; }
             catch (ApiException exception) {
-                if ("MATERIAL_NOT_ACTIVE".equals(exception.code())) return false;
+                if ("MATERIAL_NOT_ACTIVE".equals(exception.code()) || "MATERIAL_CONTENT_CORRECTED".equals(exception.code())) return false;
                 throw exception;
             }
         }
@@ -57,9 +57,23 @@ public class MaterialSources {
     }
 
     private AiExcerpt load(String owner, String id) {
+        return load(owner, id, true);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY, noRollbackFor = RuntimeException.class)
+    public AiExcerpt readCorrectionSource(String owner, String id) {
+        if (!properties.enabled()) throw new ApiException(503, "MATERIALS_DISABLED", "服务器尚未启用附件资料。");
+        MaterialGuards.uuid(owner); MaterialGuards.uuid(id);
+        // 仅供更正声明核对固定身份；历史端允许已更正或归档，不能把此方法用作新来源选用。
+        AiExcerpt source = load(owner, id, false);
+        if (source == null) throw MaterialGuards.missing();
+        return source;
+    }
+
+    private AiExcerpt load(String owner, String id, boolean selectable) {
         var excerpt = mapper.excerpt(owner, id);
         if (excerpt == null || !owner.equals(excerpt.ownerId()) || !id.equals(excerpt.id())) return null;
-        lifecycle.requireActive(owner, id);
+        if (selectable) lifecycle.requireActive(owner, id);
         var attachment = mapper.attachment(owner, excerpt.attachmentId());
         if (attachment == null || !owner.equals(attachment.ownerId()) || !excerpt.attachmentId().equals(attachment.id())
                 || !"READY".equals(attachment.status()) || !attachment.sha256().equals(excerpt.attachmentSha256())) return null;

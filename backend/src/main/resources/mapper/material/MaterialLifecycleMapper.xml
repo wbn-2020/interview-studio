@@ -49,26 +49,46 @@
       OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND excerpt_id=#{id})
   </select>
   <select id="hasUnsupportedReferences" resultType="_boolean" timeout="5">
-    SELECT EXISTS(SELECT 1 FROM preparation_material_reference WHERE owner_id=#{owner} AND excerpt_id=#{id})
-      OR EXISTS(SELECT 1 FROM knowledge_relation_evidence_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
-      OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND excerpt_id=#{id})
+    SELECT
+      <choose>
+        <when test="allowDirectBindings">
+          <!-- 本地直连已接通复核；材料经过准备正文继续派生时，尚未登记的传播出口不能被直连放行覆盖。 -->
+          EXISTS(SELECT 1 FROM preparation_material_reference r WHERE r.owner_id=#{owner} AND r.excerpt_id=#{id} AND (
+            EXISTS(SELECT 1 FROM preparation_item child WHERE child.owner_id=r.owner_id AND child.project_id=r.item_id)
+            OR EXISTS(SELECT 1 FROM preparation_reference ref WHERE ref.owner_id=r.owner_id AND ref.preparation_source_item_id=r.item_id)
+            OR EXISTS(SELECT 1 FROM ai_preparation_source source WHERE source.owner_id=r.owner_id AND source.source_item_id=r.item_id AND (
+              EXISTS(SELECT 1 FROM ai_candidate_decision d WHERE d.owner_id=source.owner_id AND d.task_id=source.task_id AND d.status&lt;>'IGNORED')
+              OR EXISTS(SELECT 1 FROM ai_question_decision d WHERE d.owner_id=source.owner_id AND d.task_id=source.task_id AND d.status&lt;>'IGNORED')
+              OR EXISTS(SELECT 1 FROM ai_expression_decision d WHERE d.owner_id=source.owner_id AND d.task_id=source.task_id AND d.status&lt;>'IGNORED')
+              OR EXISTS(SELECT 1 FROM ai_preparation_plan_decision d WHERE d.owner_id=source.owner_id AND d.task_id=source.task_id AND d.status&lt;>'IGNORED')
+              OR EXISTS(SELECT 1 FROM ai_jd_requirement_decision d WHERE d.owner_id=source.owner_id AND d.task_id=source.task_id AND d.status&lt;>'IGNORED')))))
+        </when>
+        <otherwise>
+          EXISTS(SELECT 1 FROM preparation_material_reference WHERE owner_id=#{owner} AND excerpt_id=#{id})
+          OR EXISTS(SELECT 1 FROM knowledge_relation_evidence_material WHERE owner_id=#{owner} AND excerpt_id=#{id})
+          OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND excerpt_id=#{id})
+        </otherwise>
+      </choose>
       OR EXISTS(
         SELECT 1 FROM (
           SELECT s.owner_id,s.task_id,
-            CASE WHEN t.id IS NOT NULL AND t.purpose IN ('KNOWLEDGE_DRAFT','QUESTION_DRAFT') THEN 1 ELSE 0 END AS supported
+            CASE WHEN t.id IS NOT NULL AND t.purpose IN ('KNOWLEDGE_DRAFT','QUESTION_DRAFT') THEN 1 ELSE 0 END AS supported,
+            CASE WHEN t.id IS NOT NULL AND t.purpose='KNOWLEDGE_DRAFT' THEN 1 ELSE 0 END AS knowledge_adoption_supported
           FROM ai_material_draft_source s
           LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
           WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
           UNION ALL
           SELECT s.owner_id,s.task_id,
-            CASE WHEN t.id IS NOT NULL AND t.purpose='MATERIAL_QA' THEN 1 ELSE 0 END AS supported
+            CASE WHEN t.id IS NOT NULL AND t.purpose='MATERIAL_QA' THEN 1 ELSE 0 END AS supported,
+            0 AS knowledge_adoption_supported
           FROM ai_material_qa_source s
           LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
           WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
           UNION ALL
           SELECT s.owner_id,s.task_id,
             CASE WHEN t.id IS NOT NULL AND t.purpose='FACT_DRAFT' AND s.kind='MATERIAL'
-              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported
+              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported,
+            0 AS knowledge_adoption_supported
           FROM ai_fact_draft_material s
           LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
           LEFT JOIN ai_fact_draft_source p ON p.owner_id=s.owner_id AND p.task_id=s.task_id AND p.kind=s.kind
@@ -76,22 +96,28 @@
           UNION ALL
           SELECT s.owner_id,s.task_id,
             CASE WHEN t.id IS NOT NULL AND t.purpose='RELATION_DRAFT' AND s.kind='MATERIAL'
-              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported
+              AND p.task_id IS NOT NULL THEN 1 ELSE 0 END AS supported,
+            0 AS knowledge_adoption_supported
           FROM ai_relation_evidence_material s
           LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
           LEFT JOIN ai_relation_evidence_source p ON p.owner_id=s.owner_id AND p.task_id=s.task_id AND p.kind=s.kind
           WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
           UNION ALL
           SELECT s.owner_id,s.task_id,
-            CASE WHEN t.id IS NOT NULL AND t.purpose='SOURCE_QA' AND s.domain='MATERIAL_EXCERPT' THEN 1 ELSE 0 END AS supported
+            CASE WHEN t.id IS NOT NULL AND t.purpose='SOURCE_QA' AND s.domain='MATERIAL_EXCERPT' THEN 1 ELSE 0 END AS supported,
+            0 AS knowledge_adoption_supported
           FROM ai_source_qa_source s
           LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
           WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
         ) registered
-        <!-- 只放行无决定或明确忽略；采用和未知决定均阻止，关系补充与已移除边仍按原决定检查。 -->
+        <!-- 开关只供锁内已校验的知识采用链使用；其余采用、NULL 和未知决定仍阻止。 -->
         WHERE registered.supported=0
           OR EXISTS(SELECT 1 FROM ai_candidate_decision d WHERE d.owner_id=registered.owner_id
-            AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
+            AND d.task_id=registered.task_id AND (d.status IS NULL OR (d.status&lt;&gt;'IGNORED'
+            <if test="allowKnowledgeAdoptions">
+              AND (d.status&lt;&gt;'ADOPTED' OR registered.knowledge_adoption_supported=0)
+            </if>
+            )))
           OR EXISTS(SELECT 1 FROM ai_question_decision d WHERE d.owner_id=registered.owner_id
             AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
           OR EXISTS(SELECT 1 FROM ai_fact_draft_decision d WHERE d.owner_id=registered.owner_id
@@ -99,6 +125,75 @@
           OR EXISTS(SELECT 1 FROM ai_relation_decision d WHERE d.owner_id=registered.owner_id
             AND d.task_id=registered.task_id AND (d.status IS NULL OR d.status&lt;&gt;'IGNORED'))
       )
+  </select>
+  <select id="hasUnsupportedKnowledgeUses" resultType="_boolean" timeout="5">
+    <!-- 本批按原始使用绑定保守阻塞，包含组织与显示用途；不是所有绑定都代表正文复制。 -->
+    SELECT EXISTS(SELECT 1 FROM ai_question_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM question_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM ai_card_draft_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM memory_card_source WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM memory_card_concept WHERE owner_id=#{owner} AND concept_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM ai_relation_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM knowledge_relation_supplement_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM preparation_reference WHERE owner_id=#{owner} AND knowledge_source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM knowledge_board_reference WHERE owner_id=#{owner} AND item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_question_knowledge_snapshot WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_draft_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_answer_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM standard_review_evidence WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM interview_event_material WHERE owner_id=#{owner} AND knowledge_source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM memory_attempt_knowledge_source WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM memory_source_history_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM ai_source_qa_source WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      <!-- 知识草稿输入可继续使用代次校验；错用途、缺父任务或采用后缺失正式来源登记均拒绝放行。 -->
+      OR EXISTS(
+        SELECT 1 FROM ai_draft_knowledge_input s
+        WHERE s.owner_id=#{owner} AND s.knowledge_item_id=#{itemId}
+          AND (
+            NOT EXISTS(SELECT 1 FROM ai_task t WHERE t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT')
+            OR EXISTS(SELECT 1 FROM ai_candidate_decision d WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id
+              AND (d.status IS NULL OR d.status NOT IN ('IGNORED','ADOPTED')
+                OR (d.status='ADOPTED' AND NOT EXISTS(
+                  SELECT 1 FROM ai_knowledge_source k WHERE k.owner_id=s.owner_id AND k.task_id=s.task_id
+                    AND k.source_item_id=s.knowledge_item_id AND k.source_version_id=s.knowledge_version_id))))
+          )
+      )
+      OR EXISTS(SELECT 1 FROM today_placement WHERE owner_id=#{owner} AND source_kind='KNOWLEDGE_DRAFT' AND source_id=#{itemId})
+      <!-- 历史来源在自身快照中取证，不借助父记录或当前指针过滤，缺失父记录也不能隐藏使用。 -->
+      OR EXISTS(SELECT 1 FROM today_placement_history WHERE owner_id=#{owner}
+        AND JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.snapshot.source.kind'))='KNOWLEDGE_DRAFT'
+        AND JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.snapshot.source.id'))=#{itemId})
+  </select>
+  <select id="hasUnsupportedKnowledgeCorrectionUses" resultType="_boolean" timeout="5">
+    <!-- 仅正文更正使用：制卡登记另经完整历史证明；四类记忆／审阅出口承接既有钩子，其余原始出口继续阻塞。 -->
+    SELECT EXISTS(SELECT 1 FROM ai_question_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM question_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM memory_card_concept WHERE owner_id=#{owner} AND concept_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM ai_relation_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM knowledge_relation_supplement_source WHERE owner_id=#{owner} AND source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM preparation_reference WHERE owner_id=#{owner} AND knowledge_source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM knowledge_board_reference WHERE owner_id=#{owner} AND item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_question_knowledge_snapshot WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_draft_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM training_answer_knowledge_reference WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM interview_event_material WHERE owner_id=#{owner} AND knowledge_source_item_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM ai_source_qa_source WHERE owner_id=#{owner} AND knowledge_item_id=#{itemId})
+      OR EXISTS(
+        SELECT 1 FROM ai_draft_knowledge_input s
+        WHERE s.owner_id=#{owner} AND s.knowledge_item_id=#{itemId}
+          AND (
+            NOT EXISTS(SELECT 1 FROM ai_task t WHERE t.owner_id=s.owner_id AND t.id=s.task_id AND t.purpose='KNOWLEDGE_DRAFT')
+            OR EXISTS(SELECT 1 FROM ai_candidate_decision d WHERE d.owner_id=s.owner_id AND d.task_id=s.task_id
+              AND (d.status IS NULL OR d.status NOT IN ('IGNORED','ADOPTED')
+                OR (d.status='ADOPTED' AND NOT EXISTS(
+                  SELECT 1 FROM ai_knowledge_source k WHERE k.owner_id=s.owner_id AND k.task_id=s.task_id
+                    AND k.source_item_id=s.knowledge_item_id AND k.source_version_id=s.knowledge_version_id))))
+          )
+      )
+      OR EXISTS(SELECT 1 FROM today_placement WHERE owner_id=#{owner} AND source_kind='KNOWLEDGE_DRAFT' AND source_id=#{itemId})
+      OR EXISTS(SELECT 1 FROM today_placement_history WHERE owner_id=#{owner}
+        AND JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.snapshot.source.kind'))='KNOWLEDGE_DRAFT'
+        AND JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.snapshot.source.id'))=#{itemId})
   </select>
   <select id="missingBaseline" resultType="_boolean" timeout="5">
     SELECT EXISTS(SELECT 1 FROM material_excerpt e LEFT JOIN material_excerpt_lifecycle l

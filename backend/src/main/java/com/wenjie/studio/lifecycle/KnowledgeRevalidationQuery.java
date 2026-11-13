@@ -32,6 +32,13 @@ public class KnowledgeRevalidationQuery {
         return mapper.changedAfter(owner, itemId, number(owner, itemId, versionId), baseline);
     }
 
+    public boolean reviewRequired(String owner, String itemId, String versionId, Instant baseline) {
+        try { time(baseline); }
+        catch (ApiException exception) { throw integrity(); }
+        // 冻结前尚待处理、冻结后才确认保留的来源，也不能自动恢复这份历史题目的当前性。
+        return mapper.reviewRequired(owner, itemId, number(owner, itemId, versionId), baseline);
+    }
+
     private int number(String owner, String itemId, String versionId) {
         uuid(owner); uuid(itemId); uuid(versionId);
         Integer number = mapper.versionNumber(owner, itemId, versionId);

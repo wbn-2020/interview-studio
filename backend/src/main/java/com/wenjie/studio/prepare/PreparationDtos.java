@@ -14,7 +14,7 @@ public final class PreparationDtos {
     public enum Verification { UNVERIFIED, CONFIRMED, WITHDRAWN }
     public enum Responsibility { OWNER, PARTICIPANT, FAMILIAR, UNVERIFIED }
     public enum ExpressionType { INTRO, PROJECT_SHORT, PROJECT_LONG, STAR, TRADEOFF }
-    public enum LinkKind { PROJECT, FACT, KNOWLEDGE }
+    public enum LinkKind { PROJECT, FACT, KNOWLEDGE, COLLECTION }
     public enum ReferenceState { CURRENT, SUPERSEDED, WITHDRAWN, ARCHIVED, UNVERIFIED }
     public enum SourceState { CURRENT, SUPERSEDED, WITHDRAWN, ARCHIVED, PROJECT_ARCHIVED, UNVERIFIED, UNAVAILABLE }
 

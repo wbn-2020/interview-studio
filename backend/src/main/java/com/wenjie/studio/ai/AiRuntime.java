@@ -1,6 +1,8 @@
 package com.wenjie.studio.ai;
 
 import com.wenjie.studio.security.OwnerProperties;
+import com.wenjie.studio.dataarchive.ArchiveServingGate;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,18 +15,25 @@ public class AiRuntime {
     private final ModelGateway gateway;
     private final AiDraftBuffer drafts;
     private final String owner;
+    private final ArchiveServingGate recovery;
+    private final PrivacyLifecycle privacy;
 
-    public AiRuntime(AiService service, ModelGateway gateway, OwnerProperties owner, AiDraftBuffer drafts) {
+    public AiRuntime(AiService service, ModelGateway gateway, OwnerProperties owner, AiDraftBuffer drafts,
+                     ArchiveServingGate recovery, PrivacyLifecycle privacy) {
         this.service = service;
         this.gateway = gateway;
         this.drafts = drafts;
         this.owner = owner.ownerId();
+        this.recovery = recovery;
+        this.privacy = privacy;
     }
 
     @Scheduled(scheduler = "aiScheduler", fixedDelay = 3000, initialDelay = 1000)
     public synchronized void tick() {
         AiService.Claim claim;
         try {
+            recovery.requireAiAllowed();
+            privacy.requireSynchronized(owner);
             // 即使关闭外发，也恢复旧进程的未决记录；claim 内部在恢复后检查启用状态。
             claim = service.claim(owner);
             if (claim == null || !service.maySend(claim)) return;
@@ -33,6 +42,14 @@ public class AiRuntime {
             return;
         }
         try {
+            // 尚未进入网络调用的拒绝可明确释放预留；发送后异常仍沿费用未知处理。
+            try {
+                recovery.requireAiAllowed();
+                privacy.requireSynchronized(owner);
+            } catch (RuntimeException exception) {
+                service.refuseBeforeSend(claim);
+                return;
+            }
             ModelGateway.Result result;
             try {
                 if (Boolean.TRUE.equals(claim.manifest().configuration().streaming())) {

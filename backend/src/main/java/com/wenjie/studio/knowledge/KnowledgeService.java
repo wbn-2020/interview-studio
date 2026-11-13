@@ -43,11 +43,12 @@ public class KnowledgeService {
     private final MemoryInvalidation memoryInvalidation;
     private final ReviewedBasisInvalidation reviewedBasis;
     private final KnowledgeRevalidationPropagation revalidation;
+    private final KnowledgeMergeMapper merges;
 
     public KnowledgeService(KnowledgeMapper mapper, IdempotencyService commands,
                             KnowledgeReferenceService references, GraphHistoryService graphHistory,
                             MemoryInvalidation memoryInvalidation, ReviewedBasisInvalidation reviewedBasis,
-                            KnowledgeRevalidationPropagation revalidation) {
+                            KnowledgeRevalidationPropagation revalidation, KnowledgeMergeMapper merges) {
         this.mapper = mapper;
         this.commands = commands;
         this.references = references;
@@ -55,6 +56,7 @@ public class KnowledgeService {
         this.memoryInvalidation = memoryInvalidation;
         this.reviewedBasis = reviewedBasis;
         this.revalidation = revalidation;
+        this.merges = merges;
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -114,6 +116,49 @@ public class KnowledgeService {
         }
         mapper.insertOutbox(owner, id, versionId, "CREATED", now);
         return detailWithinTransaction(owner, id);
+    }
+
+    public record PackageCreateItem(String id, String versionId, CreateItem content) {}
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void createPackageWithinCommand(String owner, List<PackageCreateItem> items) {
+        requireWriteTransaction();
+        uuid(owner);
+        if (items == null || items.isEmpty() || items.size() > 20) throw invalid("知识包须创建1至20项内容。");
+        Set<String> identities = new HashSet<>();
+        for (PackageCreateItem entry : items) {
+            required(entry); required(entry.content());
+            uuid(entry.id()); uuid(entry.versionId());
+            if (!identities.add(entry.id()) || !identities.add(entry.versionId()) || mapper.findItem(owner, entry.id()) != null) {
+                throw invalid("知识包预分配身份重复或已被使用。");
+            }
+            if (entry.content().kind() == null) throw invalid("请选择笔记或概念。");
+            title(entry.content().title()); body(entry.content().body());
+            requireTopics(owner, topicIds(entry.content().topicIds()));
+        }
+        Instant now = now();
+        // 先建立全部真实首版和草稿，再索引引用。互相引用和环不会指向空占位对象。
+        for (PackageCreateItem entry : items) {
+            CreateItem content = entry.content();
+            String title = title(content.title());
+            mapper.insertItem(owner, entry.id(), content.kind().name(), now);
+            mapper.insertVersion(owner, entry.id(), entry.versionId(), 1, title, content.body(), now);
+            mapper.insertDraft(entry.id(), title, content.body(), now);
+            changed(mapper.initializeVersion(owner, entry.id(), entry.versionId()));
+        }
+        for (PackageCreateItem entry : items) {
+            CreateItem content = entry.content();
+            references.indexPublishedVersion(owner, entry.id(), entry.versionId(), 1, content.body());
+            for (String topicId : topicIds(content.topicIds())) mapper.insertTopicLink(entry.id(), topicId);
+            if (content.kind() == Kind.CONCEPT) {
+                UUID seed = UUID.fromString(entry.id());
+                double x = ((seed.getMostSignificantBits() >>> 16) & 0xffffL) / 65535.0 * 1600 - 800;
+                double y = ((seed.getLeastSignificantBits() >>> 16) & 0xffffL) / 65535.0 * 1000 - 500;
+                mapper.insertPosition(owner, entry.id(), x, y);
+                advanceLayout(owner, layoutRevision(owner));
+            }
+            mapper.insertOutbox(owner, entry.id(), entry.versionId(), "CREATED", now);
+        }
     }
 
     public ItemDetail saveDraft(String owner, String id, String key, SaveDraft request) {
@@ -238,31 +283,49 @@ public class KnowledgeService {
         revision(request.expectedRevision());
         String command = target == Status.ARCHIVED ? "archive" : "restore";
         return commands.execute(owner, key, "POST /api/v1/knowledge/items/" + id + "/" + command, request,
-                ItemDetail.class, () -> {
-                    Item item = requireItem(owner, id);
-                    expectRevision(request.expectedRevision(), item.metadataRevision());
-                    if (target.name().equals(item.status())) return detailWithinTransaction(owner, id);
-                    canAdvance(item.metadataRevision());
-                    if (target == Status.ARCHIVED) {
-                        Draft draft = requireDraft(owner, id);
-                        Version published = requireVersion(owner, id, item.currentVersionId());
-                        if (!draft.title().equals(published.title()) || !draft.body().equals(published.body())) {
-                            throw new ApiException(409, "DRAFT_UNPUBLISHED", "存在未发布草稿，请先发布或处理草稿再归档。",
-                                    draft.revision());
-                        }
-                    }
-                    Instant now = now();
-                    changed(mapper.changeStatus(owner, id, target.name(), item.metadataRevision(), now));
-                    memoryInvalidation.knowledgeStatusChanged(owner, id, Kind.valueOf(item.kind()), item.currentVersionId(),
-                            Status.valueOf(item.status()), target, now);
-                    reviewedBasis.knowledgeStatusChanged(owner, id, Kind.valueOf(item.kind()), item.currentVersionId(),
-                            Status.valueOf(item.status()), target, now);
-                    if (target == Status.ARCHIVED) revalidation.knowledgeArchived(owner, id, item.currentVersionId(), now);
-                    if (Kind.CONCEPT.name().equals(item.kind())) advanceLayout(owner, layoutRevision(owner));
-                    mapper.insertOutbox(owner, id, item.currentVersionId(),
-                            target == Status.ARCHIVED ? "ARCHIVED" : "RESTORED", now);
-                    return detailWithinTransaction(owner, id);
-                });
+                ItemDetail.class, () -> changeStatusWithinCommand(owner, id, request.expectedRevision(), target));
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ItemDetail changeStatusWithinCommand(String owner, String id, Long expectedRevision, Status target) {
+        return changeStatusWithinCommand(owner, id, expectedRevision, target, false);
+    }
+
+    /** 隐私回收站保留未发布草稿，不能要求用户先公开待删除内容；其余失效传播与普通归档相同。 */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ItemDetail archiveForPrivacyWithinCommand(String owner, String id, Long expectedRevision) {
+        return changeStatusWithinCommand(owner, id, expectedRevision, Status.ARCHIVED, true);
+    }
+
+    private ItemDetail changeStatusWithinCommand(String owner, String id, Long expectedRevision, Status target,
+                                                 boolean preserveUnpublishedDraft) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isCurrentTransactionReadOnly())
+            throw new IllegalStateException("知识状态变更必须处于命令写事务中");
+        uuid(id); revision(expectedRevision); required(target);
+        Item item = requireItem(owner, id);
+        expectRevision(expectedRevision, item.metadataRevision());
+        // 已合并的旧身份保留解析和历史用途，不能通过普通恢复重新变成第二个活跃概念。
+        if (target == Status.ACTIVE && merges.bySource(owner, id) != null)
+            throw new ApiException(409, "KNOWLEDGE_MERGED", "该概念已合并，请打开目标概念；旧身份仅保留历史依据。");
+        if (target.name().equals(item.status())) return detailWithinTransaction(owner, id);
+        canAdvance(item.metadataRevision());
+        if (target == Status.ARCHIVED && !preserveUnpublishedDraft) {
+            Draft draft = requireDraft(owner, id);
+            Version published = requireVersion(owner, id, item.currentVersionId());
+            if (!draft.title().equals(published.title()) || !draft.body().equals(published.body()))
+                throw new ApiException(409, "DRAFT_UNPUBLISHED", "存在未发布草稿，请先发布或处理草稿再归档。", draft.revision());
+        }
+        Instant now = now();
+        changed(mapper.changeStatus(owner, id, target.name(), item.metadataRevision(), now));
+        memoryInvalidation.knowledgeStatusChanged(owner, id, Kind.valueOf(item.kind()), item.currentVersionId(),
+                Status.valueOf(item.status()), target, now);
+        reviewedBasis.knowledgeStatusChanged(owner, id, Kind.valueOf(item.kind()), item.currentVersionId(),
+                Status.valueOf(item.status()), target, now);
+        if (target == Status.ARCHIVED) revalidation.knowledgeArchived(owner, id, item.currentVersionId(), now);
+        if (Kind.CONCEPT.name().equals(item.kind())) advanceLayout(owner, layoutRevision(owner));
+        mapper.insertOutbox(owner, id, item.currentVersionId(), target == Status.ARCHIVED ? "ARCHIVED" : "RESTORED", now);
+        return detailWithinTransaction(owner, id);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialKnowledgeImpactMapper">
+  <select id="knowledgeExists" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM knowledge_item WHERE owner_id=#{owner} AND id=#{itemId})
+  </select>
+  <sql id="columns">
+    i.owner_id,i.id,i.revision,i.correction_id,c.excerpt_id AS root_excerpt_id,
+    c.created_at AS correction_created_at,i.source_domain,i.material_source_excerpt_id,
+    i.knowledge_source_item_id,i.knowledge_source_version_id,source.version_number AS source_version_number,
+    source.title AS source_title,i.task_id,t.purpose AS task_purpose,t.status AS task_status,
+    i.target_item_id,target.title AS target_title,i.target_version_id,
+    target.version_number AS target_version_number,i.depth,i.parent_impact_id,i.created_at,
+    i.choice,i.reason,i.resolution_target_version_id,i.resolution_target_revision,i.decided_at,
+    d.status AS adoption_status,material.task_id AS material_binding_task_id,knowledge.task_id AS knowledge_binding_task_id
+  </sql>
+  <sql id="joins">
+    FROM material_knowledge_impact i
+    LEFT JOIN material_excerpt_correction c ON c.owner_id=i.owner_id AND c.id=i.correction_id
+    LEFT JOIN ai_task t ON t.owner_id=i.owner_id AND t.id=i.task_id
+    LEFT JOIN ai_candidate_decision d ON d.owner_id=i.owner_id AND d.task_id=i.task_id
+      AND d.target_item_id=i.target_item_id AND d.target_version_id=i.target_version_id
+    LEFT JOIN ai_material_draft_source material ON material.owner_id=i.owner_id AND material.task_id=i.task_id
+      AND material.excerpt_id=i.material_source_excerpt_id
+    LEFT JOIN ai_knowledge_source knowledge ON knowledge.owner_id=i.owner_id AND knowledge.task_id=i.task_id
+      AND knowledge.source_item_id=i.knowledge_source_item_id AND knowledge.source_version_id=i.knowledge_source_version_id
+    LEFT JOIN knowledge_version source ON source.owner_id=i.owner_id AND source.item_id=i.knowledge_source_item_id
+      AND source.id=i.knowledge_source_version_id
+    LEFT JOIN knowledge_version target ON target.owner_id=i.owner_id AND target.item_id=i.target_item_id
+      AND target.id=i.target_version_id
+  </sql>
+  <select id="impacts" resultType="com.wenjie.studio.material.MaterialKnowledgeImpactRows$ImpactRow" timeout="5">
+    SELECT <include refid="columns"/> <include refid="joins"/>
+    WHERE i.owner_id=#{owner}
+    <choose>
+      <when test="context == 'MATERIAL_EXCERPT'">AND i.correction_id=#{correctionId}</when>
+      <when test="context == 'KNOWLEDGE'">AND i.target_item_id=#{itemId}</when>
+      <otherwise>AND 1=0</otherwise>
+    </choose>
+    <if test="state == 'PENDING'">AND i.revision=0</if>
+    <if test="beforeTime != null">
+      AND (i.created_at &lt; #{beforeTime} OR (i.created_at=#{beforeTime} AND i.id &lt; #{beforeId}))
+    </if>
+    ORDER BY i.created_at DESC,i.id DESC LIMIT #{limit}
+  </select>
+  <select id="impact" resultType="com.wenjie.studio.material.MaterialKnowledgeImpactRows$ImpactRow" timeout="5">
+    SELECT <include refid="columns"/> <include refid="joins"/>
+    WHERE i.owner_id=#{owner} AND i.id=#{impactId}
+  </select>
+  <insert id="insert">
+    INSERT INTO material_knowledge_impact
+      (id,owner_id,correction_id,source_domain,material_source_excerpt_id,knowledge_source_item_id,
+       knowledge_source_version_id,task_id,target_item_id,target_version_id,depth,parent_impact_id,revision,created_at)
+    VALUES(#{id},#{owner},#{correctionId},#{domain},#{materialSourceExcerptId},#{knowledgeSourceItemId},
+      #{knowledgeSourceVersionId},#{taskId},#{targetItemId},#{targetVersionId},#{depth},#{parentImpactId},0,#{now})
+  </insert>
+  <select id="target" resultType="com.wenjie.studio.lifecycle.KnowledgeRevalidationRows$Target" timeout="5">
+    <!-- 仅处理命令主动读取目标当前／原采用正文与草稿，目录和路径不读取正文。 -->
+    SELECT i.id,i.status,i.metadata_revision AS revision,i.current_version_id,v.version_number AS current_version_number,
+      v.title AS published_title,v.body AS published_body,d.title AS draft_title,d.body AS draft_body,
+      adopted.version_number AS adopted_version_number,adopted.body AS adopted_body
+    FROM knowledge_item i LEFT JOIN knowledge_version v
+      ON v.owner_id=i.owner_id AND v.item_id=i.id AND v.id=i.current_version_id AND v.version_number=i.version_number
+    LEFT JOIN knowledge_draft d ON d.item_id=i.id
+    LEFT JOIN knowledge_version adopted ON adopted.owner_id=i.owner_id AND adopted.item_id=i.id AND adopted.id=#{adoptedVersionId}
+    WHERE i.owner_id=#{owner} AND i.id=#{itemId}
+  </select>
+  <update id="resolve">
+    UPDATE material_knowledge_impact i
+    SET i.revision=1,i.choice=#{choice},i.reason=#{reason},i.resolution_target_version_id=#{targetVersionId},
+      i.resolution_target_revision=#{targetRevision},i.decided_at=#{now}
+    WHERE i.owner_id=#{owner} AND i.target_item_id=#{itemId} AND i.id=#{impactId} AND i.revision=#{expected} AND i.revision=0
+      AND EXISTS(SELECT 1 FROM knowledge_item k WHERE k.owner_id=i.owner_id AND k.id=i.target_item_id
+        AND k.metadata_revision=#{targetRevision} AND k.current_version_id=#{targetVersionId})
+  </update>
+</mapper>

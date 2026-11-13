@@ -3,6 +3,7 @@ package com.wenjie.studio.material;
 import com.wenjie.studio.material.parse.MaterialParserProcess;
 import com.wenjie.studio.material.parse.MaterialParserProcess.Result;
 import com.wenjie.studio.security.OwnerProperties;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,18 +31,21 @@ public class MaterialRuntime {
     private final MaterialParserProcess parser;
     private final JsonMapper json;
     private final String owner;
+    private final PrivacyLifecycle privacy;
 
     public MaterialRuntime(MaterialMapper mapper, MaterialService service, MaterialTransactions transactions,
                            MaterialStorage storage, MaterialProperties properties, MaterialParserProcess parser,
-                           JsonMapper json, OwnerProperties owner) {
+                           JsonMapper json, OwnerProperties owner, PrivacyLifecycle privacy) {
         this.mapper = mapper; this.service = service; this.transactions = transactions; this.storage = storage;
         this.properties = properties; this.parser = parser; this.json = json; this.owner = owner.ownerId();
+        this.privacy = privacy;
     }
 
     @Scheduled(scheduler = "materialScheduler", fixedDelay = 3000, initialDelay = 1000)
     public synchronized void tick() {
         MaterialRows.Run run;
         try {
+            privacy.requireSynchronized(owner);
             run = transactions.locked(owner, () -> {
                 service.recover(owner);
                 if (!properties.parserEnabled() || mapper.runningCount(owner) != 0) return null;

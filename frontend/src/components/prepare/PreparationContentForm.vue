@@ -8,6 +8,7 @@ import PreparationPicker from './PreparationPicker.vue'
 const MarkdownEditor = defineAsyncComponent(() => import('../MarkdownEditor.vue'))
 const MaterialExcerptPicker = defineAsyncComponent(() => import('../material/MaterialExcerptPicker.vue'))
 const MaterialExcerptReadout = defineAsyncComponent(() => import('../material/MaterialExcerptReadout.vue'))
+const PreparationCollectionPicker = defineAsyncComponent(() => import('./PreparationCollectionPicker.vue'))
 const props = defineProps<{ kind: PreparationKind; disabled?: boolean; references?: PreparationReference[] }>()
 const model = defineModel<PreparationContent>({ required: true })
 const target = computed(() => model.value as TargetContent)
@@ -18,6 +19,7 @@ const source = computed(() => (model.value as ProjectContent | FactContent).sour
 const tags = computed({ get: () => (model.value as FactContent | ExpressionContent).tags, set: value => { (model.value as FactContent | ExpressionContent).tags = value } })
 const labels = reactive<Record<string, string>>({})
 const picker = ref(false)
+const collectionPicker = ref(false)
 const excerptPicker = ref(false)
 const excerptReadout = ref<string>()
 // 旧版本未记录摘录字段时只按空列表展示，不因打开编辑器而改写历史 JSON。
@@ -28,13 +30,13 @@ const factFields = [{ key: 'scenario', title: '场景', hint: '事情发生在�
 function addRequirement() { if (target.value.requirements.length < 50) target.value.requirements.push({ id: crypto.randomUUID(), text: '', dimensions: ['OTHER'], priority: 3 }) }
 function choose(value: ChosenVersion) {
   if (props.disabled || (props.kind === 'TARGET' && target.value.links.length >= 100) || (props.kind === 'EXPRESSION' && expression.value.factVersionIds.length >= 50)) return
-  labels[value.versionId] = `${value.title} · v${value.number}`
-  if (props.kind === 'TARGET' && !target.value.links.some(link => link.versionId === value.versionId)) target.value.links.push({ kind: value.kind, itemId: value.itemId, versionId: value.versionId })
-  if (props.kind === 'EXPRESSION' && !expression.value.factVersionIds.includes(value.versionId)) expression.value.factVersionIds.push(value.versionId)
+  labels[`${value.kind}:${value.versionId}`] = `${value.title} · v${value.number}`
+  if (props.kind === 'TARGET' && !target.value.links.some(link => link.kind === value.kind && link.itemId === value.itemId && link.versionId === value.versionId)) target.value.links.push({ kind: value.kind, itemId: value.itemId, versionId: value.versionId })
+  if (props.kind === 'EXPRESSION' && value.kind === 'FACT' && !expression.value.factVersionIds.includes(value.versionId)) expression.value.factVersionIds.push(value.versionId)
 }
-function referenceName(versionId: string) {
-  const item = props.references?.find(reference => reference.versionId === versionId)
-  return labels[versionId] ?? (item ? `${item.title} · v${item.number} · ${referenceLabels[item.state]}` : `版本 ${versionId.slice(0, 8)}`)
+function referenceName(versionId: string, kind = 'FACT') {
+  const item = props.references?.find(reference => reference.kind === kind && reference.versionId === versionId)
+  return labels[`${kind}:${versionId}`] ?? (item ? `${item.title} · v${item.number} · ${referenceLabels[item.state]}` : `版本 ${versionId.slice(0, 8)}`)
 }
 function updateDate(value: string) { target.value.capturedOn = value || null }
 function chooseExcerpt(value: MaterialExcerpt) {
@@ -55,7 +57,13 @@ function chooseExcerpt(value: MaterialExcerpt) {
       <section class="prepare-form-section"><div class="prepare-section-heading"><h3>手工拆解要求</h3><NButton size="small" :disabled="disabled || target.requirements.length >= 50" @click="addRequirement">添加要求</NButton></div><p class="field-help">把 JD 中的期望写成可观察的考察项。要求随这个目标版本保存。</p>
         <fieldset v-for="(requirement, index) in target.requirements" :key="requirement.id" :disabled="disabled" class="requirement-fields"><legend>要求 {{ index + 1 }}</legend><label>要求内容<NInput v-model:value="requirement.text" type="textarea" :autosize="{ minRows: 2, maxRows: 6 }" :maxlength="2000" :disabled="disabled" /></label><div class="prepare-form-pair"><label>考察维度<NSelect v-model:value="requirement.dimensions" multiple :options="dimensionOptions" :disabled="disabled" /></label><label>优先级<NSelect v-model:value="requirement.priority" :options="priorityOptions" :disabled="disabled" /></label></div><NButton text size="small" :disabled="disabled" @click="target.requirements.splice(index, 1)">移除此要求</NButton></fieldset>
       </section>
-      <section class="prepare-form-section"><div class="prepare-section-heading"><h3>关联准备材料</h3><NButton size="small" :disabled="disabled || target.links.length >= 100" @click="picker = !picker">{{ picker ? '收起选择' : '选择版本' }}</NButton></div><ul class="prepare-chosen"><li v-for="(link, index) in target.links" :key="`${link.kind}-${link.versionId}`"><span>{{ referenceName(link.versionId) }}</span><NButton text size="small" :disabled="disabled" @click="target.links.splice(index, 1)">移出</NButton></li></ul><PreparationPicker v-if="picker" :kinds="['PROJECT', 'FACT', 'KNOWLEDGE']" :exclude-version-ids="target.links.map(link => link.versionId)" :disabled="disabled || target.links.length >= 100" @choose="choose" /><p class="field-help">复用确切版本，不复制正文。旧来源的变更会保留提示。</p></section>
+      <section class="prepare-form-section">
+        <div class="prepare-section-heading"><h3>关联准备内容</h3><div class="row-actions"><NButton size="small" :disabled="disabled || target.links.length >= 100" @click="picker = !picker">{{ picker ? '收起材料选择' : '选择材料版本' }}</NButton><NButton size="small" :disabled="disabled || target.links.length >= 100" @click="collectionPicker = !collectionPicker">{{ collectionPicker ? '收起题单选择' : '关联题单／路线' }}</NButton></div></div>
+        <ul class="prepare-chosen"><li v-for="(link, index) in target.links" :key="`${link.kind}:${link.itemId}:${link.versionId}`"><span>{{ link.kind === 'COLLECTION' ? '题单／路线 · ' : '' }}{{ referenceName(link.versionId, link.kind) }}</span><NButton text size="small" :disabled="disabled" @click="target.links.splice(index, 1)">移出</NButton></li></ul>
+        <PreparationPicker v-if="picker" :kinds="['PROJECT', 'FACT', 'KNOWLEDGE']" :exclude-version-ids="target.links.filter(link => link.kind !== 'COLLECTION').map(link => link.versionId)" :disabled="disabled || target.links.length >= 100" @choose="choose" />
+        <PreparationCollectionPicker v-if="collectionPicker" :exclude-version-ids="target.links.filter(link => link.kind === 'COLLECTION').map(link => link.versionId)" :disabled="disabled || target.links.length >= 100" @choose="choose" />
+        <p class="field-help">合计最多 100 个确切版本，不复制正文。题单和路线仅组织准备，不自动创建训练、展开参考答案或加入模型上下文；旧来源改版／归档会保留提示。</p>
+      </section>
     </template>
     <template v-if="kind === 'PROJECT'">
       <label>项目概述 <small>{{ project.overview.length }}/20000</small></label><MarkdownEditor v-model="project.overview" :disabled="disabled" />

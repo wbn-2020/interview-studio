@@ -13,7 +13,7 @@
     ORDER BY occurred_at DESC,id ASC LIMIT #{limit}
   </select>
 
-  <!-- 依据是评分时的固定卡版；两类已处理影响仍证明评分冻结后发生过上游变化。 -->
+  <!-- 依据是评分时的固定卡版；三类已处理影响仍证明评分冻结后发生过上游变化。 -->
   <select id="ratings" resultType="com.wenjie.studio.memory.MemoryGrowthRows$RatingRow">
     SELECT e.id,e.card_id,e.attempt_id,e.attempt_sequence,e.sequence_number AS event_sequence,
       e.attempt_revision,e.count_regular,e.rate_basis_kind AS basis_kind,e.occurred_at,e.snapshot_json AS event_json,
@@ -34,6 +34,15 @@
         JOIN knowledge_version referenced ON referenced.owner_id=fixed_source.owner_id
           AND referenced.item_id=fixed_source.knowledge_item_id AND referenced.id=fixed_source.knowledge_version_id
         JOIN preparation_knowledge_impact upstream ON upstream.owner_id=referenced.owner_id
+          AND upstream.target_item_id=referenced.item_id
+        JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
+          AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id
+        WHERE fixed_source.owner_id=a.owner_id AND fixed_source.card_id=a.card_id AND fixed_source.version_id=a.card_version_id
+          AND adopted.version_number &lt;= referenced.version_number AND upstream.created_at &gt; e.occurred_at)
+      OR EXISTS (SELECT 1 FROM memory_card_source fixed_source
+        JOIN knowledge_version referenced ON referenced.owner_id=fixed_source.owner_id
+          AND referenced.item_id=fixed_source.knowledge_item_id AND referenced.id=fixed_source.knowledge_version_id
+        JOIN material_knowledge_impact upstream ON upstream.owner_id=referenced.owner_id
           AND upstream.target_item_id=referenced.item_id
         JOIN knowledge_version adopted ON adopted.owner_id=upstream.owner_id
           AND adopted.item_id=upstream.target_item_id AND adopted.id=upstream.target_version_id

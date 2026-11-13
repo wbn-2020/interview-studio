@@ -212,10 +212,11 @@ public class StandardReviewService {
         StandardReviewSnapshot snapshot = ref.revision() == row.revision()
                 ? current.snapshot() : readRevision(owner, row, ref.revision()).snapshot();
         // 成长只取已核身份的确切历史；直接来源另走窄投影，不能回调加载正文的资格入口。
-        return new ProjectionBasis(snapshot, row.revision(), status(row.status()));
+        return new ProjectionBasis(snapshot, row.revision(), status(row.status()), sources.materialReviewRequired(owner, snapshot));
     }
 
-    public record ProjectionBasis(StandardReviewSnapshot snapshot, long currentRevision, RecordStatus currentStatus) {}
+    public record ProjectionBasis(StandardReviewSnapshot snapshot, long currentRevision, RecordStatus currentStatus,
+                                  boolean materialReviewRequired) {}
 
     private void sealQuestion(String owner, QuestionVersionRef question, List<DirectStamp> verifiedSources, Instant now) {
         // 指纹必须来自本事务已经读取并核验的实际题目，不能拿历史基线代替当前完整性证明。

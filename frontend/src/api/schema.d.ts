@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/materials/excerpts/{id}/knowledge-adoptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 预览确切材料摘录的实际知识采用链
+         * @description 本人、资料模块启用和原独立训练资料守卫；不接受任何查询参数。REPEATABLE_READ只读事务timeout20，原始材料/知识登记LEFT JOIN任务、决定和版本后完整核验，只有真实知识ADOPTED建边；归档/历史版不以当前许可过滤。循环/菱形按实际边去重，后续人工版采用下限保守继承；另复用既有知识材料祖先解析核Manifest/hash和全部原绑定，缺史或损坏不能当无影响。该内部证明可读取固定原文但不返回正文，不发模型请求、不写事件或改变生命周期守卫。
+         */
+        get: operations["getMaterialKnowledgeAdoptionPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/session": {
         parameters: {
             query?: never;
@@ -1354,7 +1374,7 @@ export interface paths {
         };
         /**
          * 读取附件的不可变摘录
-         * @description 限定当前owner与所选附件，检索已保存摘录的正文或定位说明，不读取原件、不自动解析或调用模型；关键词变更后重置游标。 S8第十三批默认仅ACTIVE，status可显式选择ACTIVE／ARCHIVED／ALL，aiUse默认ALL且可选ALLOWED／REVOKED／ALL；只接收id路径和cursor／limit／q／status／aiUse查询白名单，拒绝未知或重复查询参数。cursor、limit和枚举不接受显式空值，limit须为1–50规范十进制；q继续允许空字符串。关键词或筛选变化后重置游标；本地选取仅ACTIVE，AI选取另需ALLOWED，确切历史读取不受列表默认筛选替代。
+         * @description 限定当前owner与所选附件，检索已保存摘录的正文或定位说明，不读取原件、不自动解析或调用模型；关键词变更后重置游标。 S8第十三批默认仅ACTIVE，status可显式选择ACTIVE／ARCHIVED／ALL，aiUse默认ALL且可选ALLOWED／REVOKED／ALL；只接收id路径和cursor／limit／q／status／aiUse查询白名单，拒绝未知或重复查询参数。cursor、limit和枚举不接受显式空值，limit须为1–50规范十进制；q继续允许空字符串。关键词或筛选变化后重置游标；本地选取仅ACTIVE，AI选取另需ALLOWED，确切历史读取不受列表默认筛选替代。 S8第二十六批：ACTIVE范围排除已声明内容更正的旧摘录；ALL仍可核对旧原文，生命周期ACTIVE或aiUse=ALLOWED本身不覆盖更正资格，命令与AI仍独立核对。
          */
         get: operations["listMaterialExcerpts"];
         put?: never;
@@ -1608,7 +1628,7 @@ export interface paths {
         put?: never;
         /**
          * 创建题目、首版和自建曝光背景
-         * @description 题干、条件、参考成组写入首版，记录 AUTHORED；个人参考固定 PERSONAL_UNREVIEWED。
+         * @description 题干、条件、参考成组写入首版，记录 AUTHORED；个人参考固定 PERSONAL_UNREVIEWED。 新增知识引用必须当前ACTIVE且无三域待复核采用影响，否则SOURCE_CHANGED；同owner命令锁内校验，失败整笔回滚。
          */
         post: operations["createBankQuestion"];
         delete?: never;
@@ -1626,12 +1646,12 @@ export interface paths {
         };
         /**
          * 读取题目和当前知识引用状态
-         * @description 一致快照读取当前确切题目版本与知识引用状态；不含参考正文。
+         * @description 一致快照读取当前确切题目版本与知识引用状态；不含参考正文。 知识状态按当前题目版createdAt核三域pending及冻结后影响/处理，正文未变也可REVIEW_REQUIRED；归档优先。不改原版本或曝光。
          */
         get: operations["getBankQuestion"];
         /**
          * 保存新的题干与参考版本
-         * @description expectedRevision 进行 CAS；创建不可变新版本并记录 AUTHORED。新增／更换知识引用必须当前有效，既有旧引用仅按服务端上一版保留。
+         * @description expectedRevision 进行 CAS；创建不可变新版本并记录 AUTHORED。新增／更换知识引用必须当前有效，既有旧引用仅按服务端上一版保留。 新增引用还须无三域待复核采用影响，否则SOURCE_CHANGED；上一版原有确切引用允许保留并显示动态复核状态。
          */
         put: operations["saveBankQuestion"];
         post?: never;
@@ -1730,6 +1750,26 @@ export interface paths {
          * @description 历史题干与条件固定；参考须另行显式读取，不能通过历史接口绕过曝光记录。
          */
         get: operations["getBankQuestionVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank/questions/{id}/versions/{versionId}/knowledge-references": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 核对确切题目版本的知识来源
+         * @description 登录、本人、原独立训练资料守卫及GET返回前复核；拒绝任何查询参数。先核题目归属与确切版本，按固定题面和登记顺序一致的至多20项知识链接返回窄元数据。基线为该question_version.created_at；三类真实知识采用影响目标版号不晚于所引版时，revision=0或created_at/decided_at不早于基线均待复核。归档优先，再REVIEW_REQUIRED、SUPERSEDED、CURRENT；处理不自动恢复旧题，新题目版按自己的保存时间核对，不代表技术审阅。只输出题目ID、版本ID和来源列表，不返回知识全文、隐藏个人参考或检查点，不创建曝光或其他写入。no-store。不改变训练开始、AI题面来源资格或材料更正frontier；旧题目版本及幂等回执形状保持。真实SQL、HTTP、权限竞争和视觉待服务器验收。
+         */
+        get: operations["getBankQuestionKnowledgeReferences"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1915,7 +1955,7 @@ export interface paths {
         put?: never;
         /**
          * 创建固定条件的训练预览
-         * @description 生成 DRAFT，固定题库版本、阶段和显式选中上下文。无目标、资料、AI 均可开始。直接选题要求 ACTIVE 当前版本；当前有效题单可带确切旧题版本并显示提示。
+         * @description 生成 DRAFT，固定题库版本、阶段和显式选中上下文。无目标、资料、AI 均可开始。直接选题要求 ACTIVE 当前版本；当前有效题单可带确切旧题版本并显示提示。 新使用资格另核所选确切题库版本的显式knowledgeLinks及其完整台账：每项须为CURRENT，ARCHIVED/REVIEW_REQUIRED/SUPERSEDED均409 SOURCE_CHANGED；不存在来源沿422 SOURCE_UNAVAILABLE，固定身份或台账损坏沿完整性错误。复核按原question_version.created_at，不以新会话时间刷新旧题基线。AI实际采用来源及无显式链接的祖先资格不由此认证；原幂等键恢复既有回执不重新执行创建。 S8第三十三批另核截至所选题库版的全部实际AI出题采用中的直接NOTE/CONCEPT来源；复用来源面板的原QUESTION_DRAFT成功任务、Manifest/hash及完整知识台账核对，以各原任务createdAt判三域影响。全部CURRENT才可新用；不可用422 SOURCE_UNAVAILABLE，其余非CURRENT409 SOURCE_CHANGED；每题超过500份实际采用422 QUESTION_ORIGIN_LIMIT，不分页截断放行。合法无采用或无直接知识可通过本项，但不认证其他来源。
          */
         post: operations["createTrainingSession"];
         delete?: never;
@@ -1975,7 +2015,7 @@ export interface paths {
         put?: never;
         /**
          * 确认预览并开始训练
-         * @description 仅 DRAFT。开始事务重验来源、唯一活动会话，并固定既往题目曝光；来源变更则拒绝并重建预览。
+         * @description 仅 DRAFT。开始事务重验来源、唯一活动会话，并固定既往题目曝光；来源变更则拒绝并重建预览。 显式知识资格覆盖普通训练、题库SAME原确切题面及VARIANT题；回忆SAME仍沿原回忆规则。每个所引知识须CURRENT，归档/待复核/改版409 SOURCE_CHANGED，来源失踪422，台账损坏不降为无引用。复核基线为原题库版本created_at；题库SAME不要求原题恢复ACTIVE或改用当前题库版。重验全通过后才冻结曝光及写RUNNING，失败保留DRAFT；原键回执恢复、已开始训练及历史读取保持，AI实际来源/追问复制祖先及材料frontier未由此放行。 S8第三十三批在原DRAFT重验内另核确切题库版截至该版的AI实际直接知识来源，沿各原出题任务createdAt而非新会话/题目版时间；全部CURRENT才开始，不可用422、其他变化409，超过每题500份采用422 QUESTION_ORIGIN_LIMIT。固定清单/台账损坏仍完整性错误，后续手工改题不清除既往采用史；原回执、已开始训练、历史报告、无题库追问复制祖先及材料frontier边界保持。 S8第三十四批仅正式原答无题库SAME在DRAFT重验中，另沿真实FOLLOW_UP-v2及REPLAY复制证明核训练题面实际绑定的确切题库祖先；复用原完整闭包和共享额度，不以空题库标识放行。各确切祖先的显式知识及AI出题直接知识沿各自原冻结点全部CURRENT；不可用422 SOURCE_UNAVAILABLE，其他非CURRENT409 SOURCE_CHANGED，超限或缺少历史见证沿原来源证明错误故障关闭。只投影实际训练题面绑定，不把仅为核采用目标而加载的其他题库版加入本项。新个人回忆SAME、VARIANT、已开始训练和历史读取路径保持；其他直接知识祖先的完整动态资格及材料frontier仍未由本项认证。 S8第三十五批正式原答无题库SAME在DRAFT开始的同一完整历史证明后，另核实际展开的正式答案整图直接知识，按各原training_answer.created_at要求ACTIVE确切当前发布版且无知识/准备/材料三域上游影响；上游在原提交后创建或处理、或仍待处理，即使正文未变也返回409 SOURCE_CHANGED。相同答案内按知识身份去重，不同答案保留各原基线；REPLAY仅作基线身份见证的未复制答案图不进入本项。历史损坏、超限或缺少冻结时间仍故障关闭；不以新复练时间刷新基线。题库祖先条件、原键回执与资料守卫保持；其他知识祖先、后续AI新用途及材料frontier不由本项认证。 S8第三十六批在前述正式原答无题库SAME的完整来源证明后，另核可达实际采用任务清单内的直接知识，按各原ai_task.created_at要求ACTIVE确切当前发布版且无三域上游影响。保留taskId与原知识身份，同一任务去重、不同任务分别核，不用采用时间、后续人工版或新复练时间清洗基线；知识已处理但影响创建或处理不早于原任务时仍409 SOURCE_CHANGED。只增加内部元数据投影及既有任务时间列，不改历史Manifest/hash或HTTP形状；历史读取、VARIANT、新个人回忆SAME和已开始训练保持。其他来源角色、后续AI新用途及材料frontier不由本项认证。 S8第三十九批：正式原答无题库SAME在完整生成/复制证明后，另核实际采用任务原preparationChecks；TARGET/PROJECT/FACT比较原完整SourceCheck，EXPRESSION比较原完整ExpressionCheck及全部事实依据。沿各任务原确切版本和自身/父项目代次，恢复CURRENT但代次已变仍409 SOURCE_CHANGED；不以新复练或后续目标版刷新。仅投影已核实际输入，合法null为空，组织链接不扩为来源；不改历史Manifest/hash或HTTP形状。其他角色、VARIANT、新个人回忆SAME、历史及已开始训练保持，完整祖先及材料frontier不由本项认证。 S8第四十批：正式原答无题库SAME在完整生成/复制证明后，另核原成功FOLLOW_UP实际使用的TARGET/PROJECT/FACT背景。仅原contextChecks中CURRENT且与training.context严格同序匹配、经原正文和父项目见证的输入投影原taskId与完整SourceCheck；按各原版本/自身及父项目代次比较，恢复CURRENT但代次已变仍409 SOURCE_CHANGED。已排除背景、组织链接、REPLAY仅身份见证的会话背景不加入，不用今天原会话生命周期或新复练时间刷新。历史证明损坏仍先报原错误，无新SQL/迁移或HTTP字段；原其他来源条件及回执恢复保持，完整祖先与后续AI用途不由本项认证。
          */
         post: operations["startTrainingSession"];
         delete?: never;
@@ -2399,7 +2439,7 @@ export interface paths {
         put?: never;
         /**
          * 明确授权新尝试，保留旧未知费用
-         * @description 明确授权新尝试，保留旧未知费用 所有读取和写入均需登录及独立训练资料授权；不自动重发第三方请求。 FOLLOW_UP 在此入口拒绝，必须从其绑定训练的专用重试接口操作。
+         * @description 明确授权新尝试，保留旧未知费用 所有读取和写入均需登录及独立训练资料授权；不自动重发第三方请求。 FOLLOW_UP 在此入口拒绝，必须从其绑定训练的专用重试接口操作。 S8第三十七批：四类用途中经过共用直接知识检查的来源，重试仍以原ai_task.created_at复核三域未决影响、created_at及decided_at；时间相等或更晚均阻止继续，不能用新尝试时间刷新旧基线。其他专用用途规则保持，来源失配沿原409 AI_SOURCE_CHANGED；不抹去已发生费用。 S8第三十八批SOURCE_QA显式KNOWLEDGE来源亦沿原任务时间复核三域未决、created_at/decided_at及等时边界；不以本次重试或处理时间刷新原冻结点，费用和历史回执沿原流程。
          */
         post: operations["aiRetryTask"];
         delete?: never;
@@ -2497,7 +2537,7 @@ export interface paths {
         };
         /**
          * 查询题目版本的直接采用与历史采用来源
-         * @description 先按 owner 核对 questionId 和确切 versionId；仅返回该题所查版本及更早版本的采用记录，按目标版本号倒序分页。direct 只表示是否为所查版本直接采用，不证明后来改写逐句源于原材料。返回全部外发来源的当时标题/版本和当前状态，不含候选、参考或原文；接口仍受训练资料守卫。
+         * @description 先按 owner 核对 questionId 和确切 versionId；仅返回该题所查版本及更早版本的采用记录，按目标版本号倒序分页。direct 只表示是否为所查版本直接采用，不证明后来改写逐句源于原材料。返回全部外发来源的当时标题/版本和当前状态，不含候选、参考或原文；接口仍受训练资料守卫。 AI题目知识来源另按原QUESTION_DRAFT成功任务及Manifest/hash核确切知识台账的数量、身份、原ordinal和标题/版号/类型；缺失、额外或错序为完整性错误，不降为空来源。知识复核基线为原任务createdAt，与题目手工knowledgeLinks和题目版本保存时间分开；三域采用影响目标版号不晚于所引知识版时，pending或createdAt/decidedAt不早于基线均为REVIEW_REQUIRED。UNAVAILABLE、ARCHIVED优先，待复核优先于SUPERSEDED/CURRENT；处理不恢复旧历史当前性。只返回元数据，不改变原清单、采用内容、旧回执、训练开始、AI使用资格或材料frontier。
          */
         get: operations["aiQuestionOrigins"];
         put?: never;
@@ -3715,7 +3755,7 @@ export interface paths {
         put?: never;
         /**
          * 创建独立复练
-         * @description 从已结束且有确切提交的基线创建空白独立复练。SAME固定基线题面并创建REPLAY实例；VARIANT采用当前有效题库版本并创建MAIN实例。服务器固定FOCUSED、AFTER_SESSION、followUpLimit=0、空白DRAFT，最多选择10条当前OPEN/TRACKING来源；任何来源、背景或基线变化整次拒绝。写入使用Idempotency-Key、owner锁、来源版本核对与同事务回执。
+         * @description 从已结束且有确切提交的基线创建空白独立复练。SAME固定基线题面并创建REPLAY实例；VARIANT采用当前有效题库版本并创建MAIN实例。服务器固定FOCUSED、AFTER_SESSION、followUpLimit=0、空白DRAFT，最多选择10条当前OPEN/TRACKING来源；任何来源、背景或基线变化整次拒绝。写入使用Idempotency-Key、owner锁、来源版本核对与同事务回执。 新建及开始另核题面显式知识来源：题库SAME核原确切版且不要求题库自身ACTIVE或当前版，VARIANT核所选当前版；二者均按原题库版created_at核三域上游影响，全部知识须CURRENT。归档/待复核/改版409 SOURCE_CHANGED，来源失踪422，固定来源台账损坏沿完整性错误；失败整笔回滚。无题库SAME的AI追问/复制祖先不因空knowledgeLinks认证，AI实际采用来源也属独立边界；不影响旧回执、已开始训练或历史固定输入读取。 S8第三十三批题库SAME/VARIANT在创建及开始另核所选确切题库版截至该版的AI实际直接知识来源，原任务createdAt为基线，全部CURRENT；不可用422、其他非CURRENT409，每题超过500份采用422 QUESTION_ORIGIN_LIMIT。保留累计采用史，后续保存题目版不会洗掉旧实际来源；需另选来源适用的题目或用当前来源重新生成。无题库SAME/FOLLOW_UP/REPLAY复制祖先仍不由本项认证。 S8第三十四批正式原答无题库SAME在创建及DRAFT开始先完整核原追问生成和跨会话复制链，再核可达训练题面实际绑定的确切题库版本之显式知识和实际AI出题直接知识，沿原题库版或原出题任务冻结点要求全部CURRENT，不以新复练时间刷新基线。复用200节点/500实际采用/2500绑定/200摘录额度，完整核验后去重投影；损坏、超限或没有确切历史见证不得解释为空祖先。REPLAY仅复制题面，不继承未进入题面的基线原答图、动作理由或背景；个人回忆叶仅核原确切版安全题面投影。VARIANT不继承原题面本项资格，其他直接知识祖先的完整动态资格仍待后续，原键回执、保稿、历史读取和材料frontier保持。 S8第三十五批正式原答无题库SAME创建及开始，在完整生成/复制证明后核实际加载答案整图的直接知识，保存原answerId、确切知识身份及原提交冻结点，要求ACTIVE当前版且无三域影响；待处理或created_at/decided_at不早于原提交的影响均拒绝409 SOURCE_CHANGED，确认保留正文与新复练时间不清除旧基线。当前知识读取404沿原SOURCE_UNAVAILABLE处理，完整证明损坏、缺时间及超限保持原错误，不降为空来源。不同原答分别核，REPLAY未复制的基线答案图不加入；VARIANT、新个人回忆SAME、历史读取及已开始训练保持。其他直接知识祖先完整资格与材料frontier仍待后续。 S8第三十六批正式原答无题库SAME创建及开始，还须核完整闭包中实际采用任务的清单直接知识及原任务创建冻结点。只投影已核成功任务、真实采用、确切目标版、原清单/hash及逐项台账的知识输入，不把采用目标或所有知识节点当作直接输入。任务间保留各自taskId与时间；任一知识归档、非当前版或三域待处理/冻结后影响均409 SOURCE_CHANGED，当前读取404沿原422。缺原冻结点、原证明损坏或超限不返回部分许可，旧历史读取保持；题库及答案图条件仍独立满足，未覆盖角色、后续AI用途和材料frontier继续保留。 S8第三十九批：正式原答无题库SAME创建和DRAFT开始另核完整闭包的实际采用任务准备输入，保留各taskId和原SourceCheck；表达须连同完整ExpressionCheck及原顺序全部事实检查。状态、确切版本、自身或父项目代次任一失配均409 SOURCE_CHANGED；恢复为可用不清洗旧代次，存储/完整性异常不吞为普通失配。历史证明全部完成后才输出窄元数据，不扩目标/组织链接，不读取新版正文替换旧输入。原锁、事务、保稿、原键恢复和各知识条件保持；无新增SQL/迁移，其他来源角色及后续AI用途仍保留。 S8第四十批：正式原答无题库SAME创建及DRAFT开始另核真实追问生成链的实际背景原检查；各成功任务分别保留TARGET/PROJECT/FACT确切身份、原状态和自身/父项目代次，全部历史证明完成后才输出。原未外发背景不因今天状态变化扩大依赖，实际外发背景不以候选未引用为由跳过；版本/状态/代次失配409 SOURCE_CHANGED，完整性/存储异常不吞为空来源。保留原锁、事务、保稿、原键回执和各知识/采用条件；不改历史Manifest/hash、VARIANT、新个人回忆SAME、历史或已开始训练，不新增模型调用或材料许可。
          */
         post: operations["reviewCreateRepractice"];
         delete?: never;
@@ -4147,7 +4187,7 @@ export interface paths {
         put?: never;
         /**
          * 从确切回忆版本创建独立复练
-         * @description 要求ACTIVE、expectedRevision与当前versionId一致。SAME仅从回忆title/question/type/conditions生成REPLAY题；VARIANT选当前有效题库版本。服务器固定空白DRAFT、FOCUSED、AFTER_SESSION、followUpLimit=0；来源可选0–10条且只能属于同一回忆版本及基线类型。创建与DRAFT开始重新核对来源；开始后回忆变化不阻止本次继续保存/结束，后续新来源判断另行核对CURRENT。不调用模型，不把回忆片段或反馈投影到安全训练读取。 全部读取和写入校验登录、owner和独立训练资料守卫，入站、响应发出及幂等回执恢复沿用既有边界。写命令使用CSRF、固定Idempotency-Key、owner锁及版本检查，业务变化、不可变历史/快照和回执同事务；未知结果保留原路径、原正文、原键恢复，再GET当前状态，不自动换键重建。
+         * @description 要求ACTIVE、expectedRevision与当前versionId一致。SAME仅从回忆title/question/type/conditions生成REPLAY题；VARIANT选当前有效题库版本。服务器固定空白DRAFT、FOCUSED、AFTER_SESSION、followUpLimit=0；来源可选0–10条且只能属于同一回忆版本及基线类型。创建与DRAFT开始重新核对来源；开始后回忆变化不阻止本次继续保存/结束，后续新来源判断另行核对CURRENT。不调用模型，不把回忆片段或反馈投影到安全训练读取。 全部读取和写入校验登录、owner和独立训练资料守卫，入站、响应发出及幂等回执恢复沿用既有边界。写命令使用CSRF、固定Idempotency-Key、owner锁及版本检查，业务变化、不可变历史/快照和回执同事务；未知结果保留原路径、原正文、原键恢复，再GET当前状态，不自动换键重建。 VARIANT在创建及DRAFT开始沿所选确切题库版核显式知识及台账，原题库版created_at为基线，全部须CURRENT；归档/待复核/改版409 SOURCE_CHANGED，来源失踪422，损坏为完整性错误，失败不部分提交。SAME仍沿确切回忆版本规则，空knowledgeLinks不证明其没有其他祖先；不改变历史回执、已开始训练、AI实际来源/复制链资格或材料frontier。 S8第三十三批仅VARIANT在创建及开始另核所选题库版截至该版的AI实际直接知识来源，以各原任务createdAt核全部CURRENT；不可用422、其他非CURRENT409，超过每题500份采用422 QUESTION_ORIGIN_LIMIT，清单/台账损坏为完整性错误。回忆SAME、其他隐式来源、已开始训练和历史输入重建保持原边界。
          */
         post: operations["reviewCreateRecollectionRepractice"];
         delete?: never;
@@ -6167,7 +6207,7 @@ export interface paths {
         put?: never;
         /**
          * 重新确认确切任务清单并创建持续授权
-         * @description 此精确授权元数据入口仍需登录，作为独立训练资料守卫的窄例外；响应不含来源标题、正文、完整清单或候选。原任务正文、清单、候选与来源访问仍执行原守卫。 POST 需要 CSRF；原始 JSON 最多 262144 字节，拒绝未知字段、重复键、尾随 JSON 与标量类型强转。 Idempotency-Key 必填。重新核对本人已持久任务的完整 Manifest、expectedManifestHash、当前固定来源和完整配置；有效期为 1–90×24 小时，初始 ACTIVE/revision=0。每次使用仍须主动预览并提交，不后台续发；重启须新显式授权，不提供旧授权自动恢复。任务不存在或不可访问返回 404 AI_TASK_NOT_FOUND，原清单变化返回 409 AI_MANIFEST_CHANGED，配置变化返回 409 AI_CONFIG_CHANGED；配置未就绪沿原配置错误，来源当前性、原任务来源绑定和相应用途访问条件仍须核验，失配沿原来源错误（含 409 AI_SOURCE_CHANGED）。当前进程最多 50 条未到期持续授权，超限返回 422 AI_SCOPE_AUTHORIZATION_LIMIT。本操作从任务创建新授权，不读取待选择的旧授权。
+         * @description 此精确授权元数据入口仍需登录，作为独立训练资料守卫的窄例外；响应不含来源标题、正文、完整清单或候选。原任务正文、清单、候选与来源访问仍执行原守卫。 POST 需要 CSRF；原始 JSON 最多 262144 字节，拒绝未知字段、重复键、尾随 JSON 与标量类型强转。 Idempotency-Key 必填。重新核对本人已持久任务的完整 Manifest、expectedManifestHash、当前固定来源和完整配置；有效期为 1–90×24 小时，初始 ACTIVE/revision=0。每次使用仍须主动预览并提交，不后台续发；重启须新显式授权，不提供旧授权自动恢复。任务不存在或不可访问返回 404 AI_TASK_NOT_FOUND，原清单变化返回 409 AI_MANIFEST_CHANGED，配置变化返回 409 AI_CONFIG_CHANGED；配置未就绪沿原配置错误，来源当前性、原任务来源绑定和相应用途访问条件仍须核验，失配沿原来源错误（含 409 AI_SOURCE_CHANGED）。当前进程最多 50 条未到期持续授权，超限返回 422 AI_SCOPE_AUTHORIZATION_LIMIT。本操作从任务创建新授权，不读取待选择的旧授权。 S8第三十七批：知识整理/出题通用分支、MEMORY_CARD_DRAFT和RELATION_DRAFT的直接知识，沿原任务createdAt核知识/准备/材料三域未决影响，以及不早于原冻结点的影响创建或处理时间；已处理或正文不变不恢复旧任务，等时也拒绝。失配沿原409 AI_SOURCE_CHANGED，新预览仍只核未决；其他专用分支及完整间接祖先不由本项认证。 S8第三十八批另接SOURCE_QA显式知识，按原任务时间核三域影响创建/处理及等时边界；已处理不恢复旧问答，正常失配仍409 AI_SOURCE_CHANGED。其他问答来源域不扩大。
          */
         post: operations["aiCreateAuthorization"];
         delete?: never;
@@ -6265,7 +6305,7 @@ export interface paths {
         };
         /**
          * 按域统一检索本人可见来源
-         * @description 覆盖知识发布版本、准备资料、已保存附件摘录、题面、正式训练提交、获准人工反馈、面后回忆和获准 AI 评价观察。KNOWLEDGE 保留 Lucene 候选与数据库回验；既有其余六域仅按白名单正文 LITERAL 匹配，每批最多 100、累计最多 4096 个候选；AI_FEEDBACK 使用下述独立报告预算和 Java 字面匹配。TRAINING_ANSWER 搜索本人全部正式提交（含同题较早提交），仅匹配 text、diagram.nodes[].label/description、diagram.edges[].label；题目标题只作识别，不搜索草稿、题面、参考、结构 ID、reference 或 boardSource。REVIEW_FEEDBACK 只搜索当前修订的 observation/condition/basis/limitation/suggestion，不搜索或返回 citations，不以决定理由匹配。反馈在 SQL 正文匹配前限定精确 owner/session/question/answer 的评价访问记录、RUNNING/PAUSED/ENDED 状态、作答模式/条件及反馈时机；未结束且 AFTER_SESSION 必须已有 early_feedback=true。未获准反馈不进入候选、摘要、额外命中、分页或扫描上限计数，不报告隐藏数量；来源投影及序列化前复核原答访问。RECOLLECTION 仅匹配 title/question/conditions/answerFragment/feedback/uncertainty/gap，不读取 interview_json、安排正文或结构关联 ID，完整不确定性必须保留。默认 ACTIVE；MATERIAL_EXCERPT、TRAINING_ANSWER、REVIEW_FEEDBACK、AI_FEEDBACK 的 ARCHIVED 查询返回 applicable=false 空页，ENDED 不等于归档；除 KNOWLEDGE 外 indexStatus 均为 null。材料模块关闭返回 503 MATERIALS_DISABLED。offset 按最终可见匹配计算，额外有效命中才 hasMore，分页上限 1000，不返回精确总数；内容变化后翻页不保证快照一致。两个读取出口持续受普通训练资料守卫，不暴露题目参考、检查项或卡片答案，不调用模型、grantAccess 或其他写命令，不记录曝光、不自动授权或形成外发许可。指定身份或修订不存在、或权属不符返回 SEARCH_SOURCE_NOT_FOUND；已读取损坏来源返回 SEARCH_SOURCE_INVALID，不静默丢弃；原答访问不足沿原访问错误。 AI_FEEDBACK 的候选目录仅投影已获准成功 ANSWER_EVALUATION 的任务/成功尝试/原答身份及 OCTET_LENGTH(candidate_json)，不投影正文、不对完整 JSON 做 LIKE；按精确 owner/session/question/answer 许可、有效会话、模式/提交条件、反馈时机及提前确认过滤，未开放报告不进入扫描计数、额外命中、摘要或隐藏数量。授权后严格解析一次报告并在 Java 中只匹配 observation/condition/basis/limitation/suggestion，summary、citations、Manifest、题面/参考、结构 ID 和决定理由不匹配也不返回；解析为结构检查会读取完整报告，不重新认证引文对应或技术正确性。按 taskId 降序、报告内 f1…fN 数字顺序展开，offset 统计最终匹配观察。每批最多 16 项元数据、每次最多 64 份报告和累计 8 MiB 原文字节，单份最多 1 MiB；读取前按同一 RR 快照的字节长度检查预算，空/非法/超长报告显式失败，超出剩余预算则 scanLimited=true 且不读该报告。预算耗尽无下一页承诺，允许 offset 0–1000 不保证本次可达；报告上限不代表数据库实际扫描行数上限。编排为 20 秒只读 RR 事务，新增目录、复用 AI 来源四个 SELECT 及原答访问查询显式 5 秒。返回正文前在新的短只读事务复核任务成功尝试、原答绑定及评价访问，不重读完整报告、不写授权。每条结果必须带 training 和 aiFeedback，保留完整当时条件、报告限制、校验说明及观察限定；历史 AI 正文允许 NUL，按 Java isBlank 判必填且不裁剪，原 UTF-16 与换行规则不变。kind/status 分别为 AI_FEEDBACK/AI_UNREVIEWED；成功尝试当前性不表示同题最新报告或技术认证。
+         * @description 覆盖知识发布版本、准备资料、已保存附件摘录、题面、正式训练提交、获准人工反馈、面后回忆和获准 AI 评价观察。KNOWLEDGE 保留 Lucene 候选与数据库回验；既有其余六域仅按白名单正文 LITERAL 匹配，每批最多 100、累计最多 4096 个候选；AI_FEEDBACK 使用下述独立报告预算和 Java 字面匹配。TRAINING_ANSWER 搜索本人全部正式提交（含同题较早提交），仅匹配 text、diagram.nodes[].label/description、diagram.edges[].label；题目标题只作识别，不搜索草稿、题面、参考、结构 ID、reference 或 boardSource。REVIEW_FEEDBACK 只搜索当前修订的 observation/condition/basis/limitation/suggestion，不搜索或返回 citations，不以决定理由匹配。反馈在 SQL 正文匹配前限定精确 owner/session/question/answer 的评价访问记录、RUNNING/PAUSED/ENDED 状态、作答模式/条件及反馈时机；未结束且 AFTER_SESSION 必须已有 early_feedback=true。未获准反馈不进入候选、摘要、额外命中、分页或扫描上限计数，不报告隐藏数量；来源投影及序列化前复核原答访问。RECOLLECTION 仅匹配 title/question/conditions/answerFragment/feedback/uncertainty/gap，不读取 interview_json、安排正文或结构关联 ID，完整不确定性必须保留。默认 ACTIVE；MATERIAL_EXCERPT、TRAINING_ANSWER、REVIEW_FEEDBACK、AI_FEEDBACK 的 ARCHIVED 查询返回 applicable=false 空页，ENDED 不等于归档；除 KNOWLEDGE 外 indexStatus 均为 null。材料模块关闭返回 503 MATERIALS_DISABLED。offset 按最终可见匹配计算，额外有效命中才 hasMore，分页上限 1000，不返回精确总数；内容变化后翻页不保证快照一致。两个读取出口持续受普通训练资料守卫，不暴露题目参考、检查项或卡片答案，不调用模型、grantAccess 或其他写命令，不记录曝光、不自动授权或形成外发许可。指定身份或修订不存在、或权属不符返回 SEARCH_SOURCE_NOT_FOUND；已读取损坏来源返回 SEARCH_SOURCE_INVALID，不静默丢弃；原答访问不足沿原访问错误。 AI_FEEDBACK 的候选目录仅投影已获准成功 ANSWER_EVALUATION 的任务/成功尝试/原答身份及 OCTET_LENGTH(candidate_json)，不投影正文、不对完整 JSON 做 LIKE；按精确 owner/session/question/answer 许可、有效会话、模式/提交条件、反馈时机及提前确认过滤，未开放报告不进入扫描计数、额外命中、摘要或隐藏数量。授权后严格解析一次报告并在 Java 中只匹配 observation/condition/basis/limitation/suggestion，summary、citations、Manifest、题面/参考、结构 ID 和决定理由不匹配也不返回；解析为结构检查会读取完整报告，不重新认证引文对应或技术正确性。按 taskId 降序、报告内 f1…fN 数字顺序展开，offset 统计最终匹配观察。每批最多 16 项元数据、每次最多 64 份报告和累计 8 MiB 原文字节，单份最多 1 MiB；读取前按同一 RR 快照的字节长度检查预算，空/非法/超长报告显式失败，超出剩余预算则 scanLimited=true 且不读该报告。预算耗尽无下一页承诺，允许 offset 0–1000 不保证本次可达；报告上限不代表数据库实际扫描行数上限。编排为 20 秒只读 RR 事务，新增目录、复用 AI 来源四个 SELECT 及原答访问查询显式 5 秒。返回正文前在新的短只读事务复核任务成功尝试、原答绑定及评价访问，不重读完整报告、不写授权。每条结果必须带 training 和 aiFeedback，保留完整当时条件、报告限制、校验说明及观察限定；历史 AI 正文允许 NUL，按 Java isBlank 判必填且不裁剪，原 UTF-16 与换行规则不变。kind/status 分别为 AI_FEEDBACK/AI_UNREVIEWED；成功尝试当前性不表示同题最新报告或技术认证。 材料新搜索排除已声明内容更正的旧摘录；确切历史读取保持，绕过列表的新引用或AI仍须核当前更正资格。
          */
         get: operations["searchWorkspaceSources"];
         put?: never;
@@ -6307,7 +6347,7 @@ export interface paths {
         put?: never;
         /**
          * 预览明确选择的跨域来源问答完整外发范围
-         * @description 专用 SOURCE_QA 只读 RR 预览；登录、CSRF、普通训练资料守卫及精确原答评价许可共同生效。请求仅问题与1–5项固定身份/选区，合计1–8段、每段最多8000 UTF-16码元；拒绝重复键、额外字段、错误类型和数值强转。服务端按固定身份重读白名单原文及完整责任、条件、反馈限定、回忆不确定性和AI未审信息，校验新外发资格；搜索可读不表示可外发。实际输入仅 question/sources，含所有必要限定最多32768 UTF-8字节，不发送本地checks、未选全文或关联内容，不截断、不自动删失效项或改为GENERAL。合法历史AI原文含NUL时拒绝本次外发而不清洗旧报告。返回既有AiPreview，展示完整清单、配置/供应商和费用；预览不创建任务、模型调用、曝光或许可，返回正文前再次核来源读取权限。
+         * @description 专用 SOURCE_QA 只读 RR 预览；登录、CSRF、普通训练资料守卫及精确原答评价许可共同生效。请求仅问题与1–5项固定身份/选区，合计1–8段、每段最多8000 UTF-16码元；拒绝重复键、额外字段、错误类型和数值强转。服务端按固定身份重读白名单原文及完整责任、条件、反馈限定、回忆不确定性和AI未审信息，校验新外发资格；搜索可读不表示可外发。实际输入仅 question/sources，含所有必要限定最多32768 UTF-8字节，不发送本地checks、未选全文或关联内容，不截断、不自动删失效项或改为GENERAL。合法历史AI原文含NUL时拒绝本次外发而不清洗旧报告。返回既有AiPreview，展示完整清单、配置/供应商和费用；预览不创建任务、模型调用、曝光或许可，返回正文前再次核来源读取权限。 S8第三十八批：显式KNOWLEDGE选区仍以原pending规则拒绝三域适用未决影响；不外发影响账本或关联知识，不因正文相同绕过来源资格。预览无原任务冻结点，其他七域沿原规则。
          */
         post: operations["aiSourceQaPreview"];
         delete?: never;
@@ -6327,7 +6367,7 @@ export interface paths {
         put?: never;
         /**
          * 授权明确来源问答并创建持久 AI 任务
-         * @description 专用 SOURCE_QA 创建命令，沿登录、CSRF、普通资料守卫、精确原答评价许可及 Idempotency-Key。请求包含原问题/selections、预览 expectedManifestHash、consentConfirmed=true 和可选持续authorization；owner命令事务内重建完整清单、核摘要/当前资格/费用，原子保存任务、尝试、有序来源绑定、通知和回执。新尾sourceQa参与清单及scope固定范围，持续scope排除question但不排除来源原文/范围/限定/checks；每次仍主动预览提交。幂等读取前执行固定绑定与当前读取许可守卫；正常改版、归档或决定变化不重建旧任务/清单，重试或再次发送仍需原清单新发资格。未知结果保留原请求和原键，不自动换键；返回含sourceQaManifestHash的AiTask，成功结果从原任务读取。两协议、额度、取消/重试、未知费用、通知与暂态正文沿既有流程；不得自动采用、补检索、扩范围、改用通用解释或记录完成。返回新任务/旧回执正文前再次核权限。
+         * @description 专用 SOURCE_QA 创建命令，沿登录、CSRF、普通资料守卫、精确原答评价许可及 Idempotency-Key。请求包含原问题/selections、预览 expectedManifestHash、consentConfirmed=true 和可选持续authorization；owner命令事务内重建完整清单、核摘要/当前资格/费用，原子保存任务、尝试、有序来源绑定、通知和回执。新尾sourceQa参与清单及scope固定范围，持续scope排除question但不排除来源原文/范围/限定/checks；每次仍主动预览提交。幂等读取前执行固定绑定与当前读取许可守卫；正常改版、归档或决定变化不重建旧任务/清单，重试或再次发送仍需原清单新发资格。未知结果保留原请求和原键，不自动换键；返回含sourceQaManifestHash的AiTask，成功结果从原任务读取。两协议、额度、取消/重试、未知费用、通知与暂态正文沿既有流程；不得自动采用、补检索、扩范围、改用通用解释或记录完成。返回新任务/旧回执正文前再次核权限。 S8第三十八批：既有SOURCE_QA任务的显式KNOWLEDGE来源复用原ai_task.created_at，核三域未决影响、影响创建时间及处理时间，等时亦失效。再授权、重试、发送、接纳及sourcesCurrent均沿原时间，不由处理完成或新尝试刷新；新预览/创建仍沿原重建和pending规则。历史读取/原键回执保留原权限与固定绑定，不重新计算旧清单；不生成采用或完成记录。其他七域与完整间接祖先不由此认证。
          */
         post: operations["aiCreateSourceQa"];
         delete?: never;
@@ -6516,6 +6556,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lifecycle/material-excerpts/{itemId}/knowledge-impacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看固定材料更正根的知识影响
+         * @description 只接受单值state/limit/cursor，拒绝未知/重复/空参数，state必填PENDING或ALL，limit默认20且1–20。本人真实对象、资料启用和独立训练访问守卫；MATERIAL_EXCERPT上下文，游标owner~context~itemId~state~UTC微秒~id，createdAt DESC/id DESC。REPEATABLE_READ只读20秒、SELECT5秒、no-store；只读真实元数据，不重建影响，不返回正文或调用模型。
+         */
+        get: operations["listMaterialKnowledgeSourceImpacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/knowledge/{itemId}/material-impacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看知识目标的材料更正影响
+         * @description 只接受单值state/limit/cursor，拒绝未知/重复/空参数，state必填PENDING或ALL，limit默认20且1–20。本人真实对象、资料启用和独立训练访问守卫；KNOWLEDGE上下文，游标owner~context~itemId~state~UTC微秒~id，createdAt DESC/id DESC。REPEATABLE_READ只读20秒、SELECT5秒、no-store；只读真实元数据，不重建影响，不返回正文或调用模型。
+         */
+        get: operations["listKnowledgeMaterialImpacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/material-knowledge-impacts/{impactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取一跳材料更正知识影响
+         * @description 拒绝查询参数；登录、本人、资料启用及独立训练访问守卫，RR只读20秒、SELECT5秒、no-store。核真实V74声明、原始采用任务/决定/固定版本以及真实父影响；每次只读一跳，不自动追替代链或重建过去影响。替代后来归档/更正不抹原根。
+         */
+        get: operations["getMaterialKnowledgeImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/knowledge/{itemId}/material-impacts/{impactId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 显式处理知识目标的一条材料更正影响
+         * @description 最多16384bytes严格Resolve6，拒绝未知/重复字段、错误类型、查询参数及未确认。登录、本人、资料启用及独立训练守卫，CSRF与幂等键必填、no-store。owner锁内核影响revision0、目标metadata revision与确切发布版CAS，无未发布草稿；KEEP_CURRENT/PUBLISHED_UPDATE/ARCHIVED沿原规则，更新必须晚于采用且正文确实改变，归档须先完成。只处理该影响，不处理后代、不恢复旧授权/评分/审阅/卡排程；已更正材料祖先仍可能阻止新AI用途，本命令不重建依据。同键原回执恢复时仍核资料启用/训练访问，两端今日资格仅首次action内核；同键异请求冲突。错误MATERIAL_KNOWLEDGE_INVALID_REQUEST/NOT_FOUND/CONFLICT/TARGET_CONFLICT/CLOCK_CONFLICT，真实HTTP/并发/SQL/视觉待服务器。
+         */
+        post: operations["resolveMaterialKnowledgeImpact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lifecycle/preparation/{itemId}/knowledge-impacts": {
         parameters: {
             query?: never;
@@ -6616,6 +6736,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/materials/excerpts/{id}/correction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取固定摘录的内容更正声明
+         * @description 登录、本人确切摘录、资料模块及原独立训练资料访问守卫；拒绝查询参数。REPEATABLE_READ只读事务、no-store；核旧新身份、保存理由、两端修订与时间，不读取磁盘或模型。替代后来归档或再次更正不抹原声明，原ID和原文仍可按既有历史接口读取；不自动追替代链或创建内容影响。
+         */
+        get: operations["getMaterialExcerptCorrection"];
+        put?: never;
+        /**
+         * 显式声明旧摘录由新固定摘录更正
+         * @description 登录、本人、资料启用及原独立训练资料守卫；Idempotency-Key和CSRF必填。拒绝查询参数、未知/重复JSON字段、错误类型及缺少确认；原始JSON最多20000字节，reason沿原10000字符解析限制、Java strip后1–1000 UTF-16并拒绝NUL及不成对代理字符。原owner锁内核两端生命周期revision、真实固定来源、READY附件、ACTIVE且未被更正、不同ID及正文差异。允许跨附件，替代可为REVOKED，不授予AI许可。hasUnsupportedReferences(...true)仅豁免受支持的真实知识ADOPTED，原直接其他采用、准备/关系/审阅本地绑定及不支持身份仍阻塞。完整材料知识闭包200知识版/500边/2500原始登记后检查全部历史出口；既有卡片来源/回忆来源历史/标准审阅四类出口复用原机制，题目/训练/准备/关系等其他出口仍阻塞。S8第二十八批仅扩展ai_card_draft_source：独立核本人真实MEMORY_CARD_DRAFT任务、严格Manifest/hash、全部固定来源与原始登记、成功候选和真实决定；无决定/合法IGNORED不制造采用影响，ADOPTED须核真实首版卡及其原序来源。实际受影响的当前卡须保留全部原知识来源，可增加/重排来源或人工改写；移除或替换原来源仍MATERIAL_HAS_REFERENCES。制卡独立预算200任务/2500原始绑定，超限MATERIAL_CARD_PROOF_LIMIT，不保存截断证明或部分更正。全部证明在根插入和冻结时间检查之前完成；核严格前进时间后，V74根、V75实际知识影响、Memory/Reviewed失效及原键回执同事务，失败整体回滚。不修改原文、绑定、V73事件、生命周期revision、原Manifest或历史回执，不自动恢复评分/审阅/排程/旧材料祖先AI资格。旧端退出新引用、ACTIVE列表、统一新搜索及材料AI当前资格，也不能用四类生命周期命令恢复。声明不可撤销且旧端唯一；替代不得已是更正旧端，A→B后可B→C但A固定原指B。不同键重复更正MATERIAL_CONTENT_CORRECTED，两端修订冲突MATERIAL_REVISION_CONFLICT；同键同请求返回原State4，即使替代后来变化，未知结果沿原键原请求恢复，同键异请求409。no-store；不扩展材料归档/恢复或REVOKE_AI/ALLOW_AI门禁。真实SQL、并发、模型/费用及界面待服务器验收，已发请求及费用不被伪取消。
+         */
+        post: operations["declareMaterialExcerptCorrection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/excerpts/{id}/lifecycle": {
         parameters: {
             query?: never;
@@ -6646,8 +6790,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 显式变更无正式采用内容等阻塞绑定的摘录生命周期
-         * @description 登录、本人根摘录、资料模块启用和原独立训练资料访问守卫；拒绝查询参数、未知或重复JSON字段及错误字段类型。Idempotency-Key与CSRF必填，结果未知时仅以原键原请求恢复。owner锁内先核expectedRevision与实际状态转换，再核不支持绑定：准备、正式关系直接材料证据及标准审阅任一原始行阻止；五张直接AI输入表只允许用途与来源身份一致、没有任何ADOPTED知识／题目／事实／关系决定的任务，合法IGNORED可继续，不以任务成功／失败／取消代替采用判断。关系补充同样阻止，历史目标移除或归档不解除；缺父、错用途／来源或异常决定故障关闭。hasReferences保持八表原始存在性，不是可执行标志，成功回执可为true。动作只变更对应状态／用途且revision加一，事件与原键回执同事务；旧回执只代表原操作结果。旧材料代次在后续发送许可、暂态读取、结果接纳、采用及重试核对时拒绝，恢复不复活旧清单或范围授权；不立即取消供应商请求，已获发送许可或已写入网络的内容可能继续，实际或未知费用保留。全部响应no-store，不删除正文／历史，不开放已采用内容的材料传播；并发与回执运行待服务器验收。
+         * 显式变更摘录生命周期并核验知识链AI用途范围
+         * @description 登录、本人根摘录、资料模块启用及原独立训练资料守卫；拒绝查询参数、未知或重复JSON字段及错误类型，Idempotency-Key与CSRF必填，未知结果沿原键原请求恢复。owner锁内核expectedRevision、实际转换及不支持绑定；ARCHIVE/RESTORE保持原采用阻塞。只有REVOKE_AI/ALLOW_AI可例外支持完整证明的KNOWLEDGE_DRAFT/ADOPTED知识链：在更新前重建原实际采用闭包、核Manifest/hash/全部原绑定和原材料身份，并对每个不同可达知识对象检查所有历史版原始出口；题目、卡片、准备、关系依据、问答、白板、训练、审阅、面试、回忆历史及安排等未支持登记仍以MATERIAL_HAS_REFERENCES拒绝，不按当前版、采用下限、父对象存在性或状态过滤。普通主题/结构/正文链接不自动视为内容派生。直接材料的准备/正式关系证据/审阅及题目/事实/关系采用保持阻塞；合法未采用AI登记与IGNORED沿原规则。缺父、错用途/身份、未知决定、缺历史、损坏、超限及SQL故障不能伪装为空链，反向200知识版/500边/2500登记及正向祖先独立预算保持；旧GET预览不作命令依据。全部证明通过才CAS推进revision、追加V73真实用途/状态事件和原键回执；hasReferences仍是八表登记存在性，成功可为true。用途变化不改正文、不创建内容待复核影响或暂停本地复习；重新允许不复活旧Manifest/hash/scope/授权/任务资格，须按新代次重新预览。已获发送许可或写入网络的请求可能继续，实际或未知费用保留，不承诺供应商即时取消。no-store、载荷、幂等和历史读取保持；事务/并发/SQL与界面待服务器验收。 S8第二十六批：已声明内容更正的旧摘录四类生命周期动作均返回MATERIAL_CONTENT_CORRECTED，不能通过状态或用途恢复覆盖独立更正事实；历史读取及旧回执保持。
          */
         post: operations["changeMaterialExcerptLifecycle"];
         delete?: never;
@@ -6676,10 +6820,686 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/text-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 分页读取文本导入记录或精确原文匹配
+         * @description 登录本人及原资料守卫，GET输出前再核权限，REPEATABLE_READ且no-store。仅元数据；title及versionId对应创建首版，itemStatus为当前状态。sourceSha256只筛已登记的原始UTF-8指纹，不按标题匹配或证明全库无重复，归档记录仍保留。时间倒序、ID倒序分页；cursor为同owner且属于当前源筛选的记录ID，服务器恢复固定createdAt；刷新回首页。拒绝未知、重复和空值参数；不读源文件、正文或调用模型。
+         */
+        get: operations["listKnowledgeTextImports"];
+        put?: never;
+        /**
+         * 显式导入单份文本并原子登记首版
+         * @description 登录本人、CSRF、固定Idempotency-Key及原资料命令守卫，拒绝查询参数和未知/重复/缺失/错类型字段；JSON实际输入上限1MiB。source及body各最多100000 UTF-16单位，严格拒绝不配对代理项及不支持控制字符。服务端严格UTF-8编码source后核1至400000字节并计算SHA256，保留BOM和换行，不接受客户端摘要作为写入身份。原键回执先于action恢复；新请求在owner写锁内按原文摘要查全部历史登记，createCopy=false命中则409 TEXT_IMPORT_EXISTS，不能用改名/改标题/改最终正文绕过。createCopy=true明确允许独立新副本。沿原知识内部创建保存NOTE、首版、草稿、主题、正文引用及outbox，与仅元数据导入账本及回执同事务；任何失败整体回滚。不覆盖同名内容、不回填旧普通创建、不继承外部身份/审阅/模型许可，不认证前端转换过程。source仅参与校验/摘要，不额外持久化其正文副本。返回当时保存结果，未知结果只用原键同请求恢复；同键异请求409。
+         */
+        post: operations["createKnowledgeTextImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 分页读取本人文本导入批次元数据
+         * @description 登录本人及原资料守卫，无元数据豁免；GET输出前复核，命令在owner行锁内复核且回执恢复优先。no-store。不调用模型，不保存未提交source/body，不自动覆盖、猜标题映射或恢复外部身份。仅包含批次摘要及处理计数，时间与ID降序分页；cursor为本人既有批次ID，由服务器恢复固定创建时间，非跨页快照。拒绝未知、重复或非法参数。
+         */
+        get: operations["listKnowledgeTextImportBatches"];
+        put?: never;
+        /**
+         * 明确保存多文件导入元数据清单
+         * @description 登录本人及原资料守卫，无元数据豁免；GET输出前复核，命令在owner行锁内复核且回执恢复优先。no-store。不调用模型，不保存未提交source/body，不自动覆盖、猜标题映射或恢复外部身份。files必须1–20项，只接受精确四字段，拒绝exact重复文件名；摘要与字节/字符数为未认证声明，导入每项时才以严格服务器计算核对。按原顺序分配稳定entry ID，PENDING及revision=0，保存清单和回执同事务。相同源的不同名称允许，不能绕过去重。拒绝查询参数、重复/未知/缺失/错类型JSON、尾随内容及实际输入超过1MiB。未知结果原键恢复，刷新后可主动从历史找到批次。
+         */
+        post: operations["createKnowledgeTextImportBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 重读批次及逐项处理结果
+         * @description 登录本人及原资料守卫，无元数据豁免；GET输出前复核，命令在owner行锁内复核且回执恢复优先。no-store。不调用模型，不保存未提交source/body，不自动覆盖、猜标题映射或恢复外部身份。REPEATABLE_READ读取有序条目、当前已登记同源提示及成功导入元数据。COMPLETE仅表示所有项已导入或明确跳过，不证明审阅、知识当前资格或完整备份完成。刷新后原文件必须另行重选核对，不从摘要还原正文。拒绝查询参数。
+         */
+        get: operations["getKnowledgeTextImportBatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/{id}/entries/{entryId}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 逐份明确导入并原子更新批次进度
+         * @description 登录本人及原资料守卫，无元数据豁免；GET输出前复核，命令在owner行锁内复核且回执恢复优先。no-store。不调用模型，不保存未提交source/body，不自动覆盖、猜标题映射或恢复外部身份。原键同请求恢复在前；新命令核本人批次、条目及revision，否则409 BATCH_REVISION_CONFLICT或BATCH_ENTRY_RESOLVED。服务器严格UTF-8计算source摘要、字节及UTF-16数，三者须与清单完全一致，否则409 TEXT_IMPORT_SOURCE_MISMATCH且无部分写入。文件名使用固定清单，不接收新文件名。默认已登记同源409 TEXT_IMPORT_EXISTS，createCopy=true才另建。知识首版、原导入账本、条目IMPORTED、修订+1及回执必须同事务；失败仍PENDING。仅本份原文/最终正文在本次请求发送，无后台自动提交。拒绝查询参数及严格JSON边界。跨刷新后即使另用新键也不能再次处理已完成条目；应先重读批次确认状态。
+         */
+        post: operations["importKnowledgeTextImportBatchEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/{id}/entries/{entryId}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 明确跳过一份待处理文件
+         * @description 登录本人及原资料守卫，无元数据豁免；GET输出前复核，命令在owner行锁内复核且回执恢复优先。no-store。不调用模型，不保存未提交source/body，不自动覆盖、猜标题映射或恢复外部身份。仅接受revision；原键恢复在前，新命令核owner、PENDING及修订。条目SKIPPED与修订+1同事务，不删除文件或知识、不产生导入记录，不在本批次重新打开。冲突须重读，不能自动更换修订重放。所有非PENDING时推导COMPLETE。
+         */
+        post: operations["skipKnowledgeTextImportBatchEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/directories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 明确保存有界目录文本元数据清单
+         * @description 登录本人及原资料守卫，无元数据豁免；no-store。仅元数据路径，不访问文件系统、不继承外部ID/已审/证据或AI许可，不调用模型。与旧平面POST独立operation及请求摘要，旧DTO/路径/回执保持。仅接受files及每项精确五字段，1–20项；sourcePath不可变且exact唯一，不同目录同名允许。路径不用于自动解析或匹配链接。清单和DirectoryDetail回执在owner命令锁内同事务；原键恢复先于新建。客户端声明源身份在实际导入时才严格重算核对。拒绝查询、重复/未知/缺失/错类型字段、无效Unicode、尾随JSON及实际超过1MiB。未知写结果沿原键恢复。无ZIP、自动提交或前向/循环知识身份预分配。
+         */
+        post: operations["createKnowledgeTextImportDirectoryBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/{id}/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 主动读取批次与确切路径绑定
+         * @description 登录本人及原资料守卫，无元数据豁免；no-store。仅元数据路径，不访问文件系统、不继承外部ID/已审/证据或AI许可，不调用模型。支持目录及原平面批次。REPEATABLE_READ中同一次条目读取构造batch及paths，核数量、顺序、状态/修订和成功源身份；路径完整且唯一，末段匹配文件名。原平面项sourcePath=fileName且保留旧名称规则，不虚构历史目录；含冒号的旧文件名仍可读。拒绝查询。输出前原资料守卫复核。刷新后必须另行重选原文件，以路径/名称/源SHA256/字节/UTF-16数精确匹配；不能从元数据恢复正文。原单项命令Detail回执不带路径，丢失路径后须主动重读再继续，不解除未知写锁。
+         */
+        get: operations["getKnowledgeTextImportDirectoryBatch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-import-batches/{id}/entries/{entryId}/publish-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 从已导入批次项明确发布一次后续正文修订
+         * @description 登录本人及原资料守卫，无元数据豁免；owner命令锁内核权限且原键回执恢复优先，no-store。仅恰三个字段，拒重复、未知、缺失、类型强转、查询及原1MiB边界。正文沿导入严格UTF-8、控制符及100000 UTF-16/400000字节规则检查，临时摘要不写回源身份。新命令核本人完整批次及IMPORTED项，缺项404，非IMPORTED为409 TEXT_IMPORT_ENTRY_NOT_IMPORTED。由原ledger绑定真实知识，在当前发布标题不变的前提下，复用publishWithinCommand核ACTIVE、expectedVersionId、expectedDraftRevision和无未发布草稿，追加版本并完整索引/传播失效/outbox。正文逐字无变化400 INVALID_REQUEST，不新增版本。首版ledger、源指纹、批次决策/revision、路径和主题不变，不需batch revision字段。支持前端以当前发布正文人工补齐同批已导入其他笔记的前向/循环结构链接；服务器按普通正文发布和owner引用守卫，不认证客户端转换算法或全部引用来自同批，也不等同语义关系DAG。每份独立事务，无整包原子性、自动猜配或预分配ID。未知结果用原键恢复，确定冲突须主动重读并重新确认，不自动套用新修订。
+         */
+        post: operations["publishKnowledgeTextImportBatchEntryLinks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/text-imports/with-tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 明确导入单份文本并同事务初始化笔记标签
+         * @description 登录本人、CSRF、原资料守卫及固定Idempotency-Key；不是资料豁免出口。请求恰七字段，拒重复/未知/缺失/类型强转/查询及1MiB上限。原source/title/body/topicIds/createCopy遵守单份导入全部校验。tags须1–20个原始字符串，每项1–40 UTF-16、严格Unicode、无全部ASCII控制符且strip后非空；先核全部输入，再沿组织标签Java strip/Locale.ROOT忽略大小写去重、保留首项写法，不拆分逗号/空白/#。原键回执恢复优先；新命令在同一owner锁及事务创建NOTE、确切首版/草稿/引用/主题、原source指纹ledger、初始组织标签及outbox和回执。组织初始化只允许本人ACTIVE新笔记且没有既有组织行，修订0到1；别名/关联/收藏为空，不覆盖既有整理信息，不调用第二份幂等命令。任一失败整体回滚；source去重及明确副本沿旧规则。服务器接受明确确认的标签，不解析YAML或认证标签来自source，也不恢复外部身份/已审状态/AI许可。201回执包含当时保存的组织规范化标签；未知结果只用原键原请求恢复，之后标签已编辑也不将旧回执当当前组织状态。旧六字段入口及批次保持，非完整元数据/整包恢复。
+         */
+        post: operations["createKnowledgeTextImportWithTags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取个人显示与保存提醒偏好 */
+        get: operations["getPersonalPreferences"];
+        /** 按修订保存个人偏好 */
+        put: operations["savePersonalPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preferences/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取业务数量与材料预留配额用量 */
+        get: operations["getPersonalUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/items/{id}/versions/{versionId}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取确切知识版本的来源记录及历史修订
+         * @description 只接受单一revision查询参数，不得未知、重复或为空；省略读取最新来源修订。未登记时revision=0、sources=[]、savedAt=null；显式历史修订从1开始，缺失返回404。
+         */
+        get: operations["getKnowledgeSources"];
+        /**
+         * 向确切知识版本追加资料来源修订
+         * @description 不接受查询参数。JSON实际总量不超过1MiB，拒绝重复／未知／缺失字段、尾随内容与类型强制转换。正文仅含expectedRevision和sources；每项完整七字段，只有acquiredAt可为null。owner锁内核对来源CAS与当前活跃发布版；不改正文、草稿、证据或模型授权基线。
+         */
+        put: operations["saveKnowledgeSources"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/packages/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 预览知识包路径映射和缺失引用 */
+        post: operations["previewKnowledgePackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取知识包恢复目录 */
+        get: operations["listKnowledgePackages"];
+        put?: never;
+        /** 登记知识包与稳定的预分配身份 */
+        post: operations["registerKnowledgePackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/packages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取持久映射与提交状态 */
+        get: operations["getKnowledgePackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/packages/{id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 核对完整源计划并原子创建全部对象及引用 */
+        post: operations["commitKnowledgePackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/concept-merges/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 预览概念合并及全部已登记引用影响 */
+        post: operations["previewConceptMerge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/concept-merges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 确认保留身份、整理信息与布局后合并概念 */
+        post: operations["commitConceptMerge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/items/{id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取旧概念到保留概念的完整合并路径 */
+        get: operations["resolveMergedConcept"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/archives/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取完整导出配置与独立生命周期策略状态 */
+        get: operations["getDataArchiveStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/archives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取完整导出作业 */
+        get: operations["listDataArchives"];
+        put?: never;
+        /** 确认敏感范围后登记完整导出作业 */
+        post: operations["createDataArchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/archives/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取完整导出范围及状态 */
+        get: operations["getDataArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/archives/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 核对当前独立账本及文件摘要后下载完整包 */
+        get: operations["downloadDataArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取独立隐私账本与业务检查点状态 */
+        get: operations["getDataPrivacyStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/ledger/initialize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 明确现有基线后初始化独立隐私账本 */
+        post: operations["initializeDataPrivacyLedger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 读取个人工作区回收站 */
+        get: operations["listDataPrivacyTrash"];
+        put?: never;
+        /**
+         * 按影响摘要确认移入回收站
+         * @description 确认前须读取同动作预览；previewDigest绑定对象与派生影响。PURGE只处理已在回收站的内容，并须confirmWholeMixedDocuments=true，保留无正文身份记录；RESTORE只解除访问屏蔽，保留已有归档和暂停，不自动恢复模型授权或复习排程，回执state=RESTORED_WITHOUT_REACTIVATION。模型范围授权不能作为本组操作的根对象，应走原生撤权。
+         */
+        post: operations["commitDataPrivacyTrash"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/trash/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 预览移入回收站的确切范围 */
+        post: operations["previewDataPrivacyTrash"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/restore/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 预览恢复的确切范围 */
+        post: operations["previewDataPrivacyRestore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 按影响摘要确认恢复
+         * @description 确认前须读取同动作预览；previewDigest绑定对象与派生影响。PURGE只处理已在回收站的内容，并须confirmWholeMixedDocuments=true，保留无正文身份记录；RESTORE只解除访问屏蔽，保留已有归档和暂停，不自动恢复模型授权或复习排程，回执state=RESTORED_WITHOUT_REACTIVATION。模型范围授权不能作为本组操作的根对象，应走原生撤权。
+         */
+        post: operations["commitDataPrivacyRestore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/purge/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 预览彻底清除的确切范围 */
+        post: operations["previewDataPrivacyPurge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-privacy/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 按影响摘要确认彻底清除
+         * @description 确认前须读取同动作预览；previewDigest绑定对象与派生影响。PURGE只处理已在回收站的内容，并须confirmWholeMixedDocuments=true，保留无正文身份记录；RESTORE只解除访问屏蔽，保留已有归档和暂停，不自动恢复模型授权或复习排程，回执state=RESTORED_WITHOUT_REACTIVATION。模型范围授权不能作为本组操作的根对象，应走原生撤权。
+         */
+        post: operations["commitDataPrivacyPurge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/material-excerpts/{excerptId}/dependency-impacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取材料更正对准备材料、题目、知识、关系与标准审阅的依赖影响
+         * @description state必须明确为PENDING或ALL；查询参数不得未知、重复或为空。按创建时间与身份倒序游标分页，每页最多20项。
+         */
+        get: operations["listMaterialDependencyImpacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/material-dependency-impacts/{impactId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取依赖影响的原始目标、当前目标与处理决定
+         * @description 不接受查询参数；核对原始绑定、材料更正及当前目标身份。
+         */
+        get: operations["getMaterialDependencyImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lifecycle/material-dependency-impacts/{impactId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 确认当前目标基线后处理材料依赖影响
+         * @description 不接受查询参数。JSON须不超过16384字节，完整六字段，拒绝重复／未知字段与类型强制转换。owner锁内核对目标版本／修订、影响CAS并保存同键回执；失败不改目标。
+         */
+        post: operations["resolveMaterialDependencyImpact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Node7：实际采用目标或后续实际选用的确切知识版本；按versionId排序且唯一。current仅比较当前发布指针，不证明内容正确、已复核或可外发。后续人工版属于保守影响范围，不证明正文直接来自原材料。 */
+        MaterialKnowledgePreviewNode: {
+            itemId: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            versionNumber: number;
+            /** @enum {string} */
+            kind: "NOTE" | "CONCEPT";
+            title: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
+            current: boolean;
+        };
+        /** @description Edge9：真实KNOWLEDGE_DRAFT/ADOPTED边。id=domain~taskId~(sourceVersionId或excerptId)。材料根depth1、parentId/sourceVersionId均null且sourceItemId为根摘录；知识后代parentId引用前一深度边，源item为父目标，实际源版号不早于父目标采用版。全部源/目标知识版须在nodes中且item/version一致；按depth、id排序，循环/菱形同边去重保留最短发现路径。 */
+        MaterialKnowledgePreviewEdge: {
+            id: string;
+            parentId: string | null;
+            depth: number;
+            /** @enum {string} */
+            domain: "MATERIAL_EXCERPT" | "KNOWLEDGE";
+            sourceItemId: components["schemas"]["Id"];
+            sourceVersionId: components["schemas"]["Id"] | null;
+            taskId: components["schemas"]["Id"];
+            targetItemId: components["schemas"]["Id"];
+            targetVersionId: components["schemas"]["Id"];
+        };
+        /** @description Preview5：source与lifecycle须同摘录、同附件、同创建时间；nodes无孤立版，空图两数组均空。只读预览已登记实际知识采用链，不穷尽题目、准备、关系、审阅、训练等出口，不是完整更正或删除清单。反向最多200知识版/500边/2500原始登记行，超过任一上限409且不返回部分图；随后一次祖先历史证明另受其原独立预算约束。读取不创建事件/影响/复核、不暂停复习、不改变许可或放开已引用材料四动作；刷新为新快照，不能作为后续命令放行依据。响应不含正文、清单、引文、文件名或路径。 */
+        MaterialKnowledgePreview: {
+            /** @constant */
+            coverage: "REGISTERED_KNOWLEDGE_ADOPTIONS_ONLY";
+            source: components["schemas"]["MaterialReferenceSource"];
+            lifecycle: components["schemas"]["MaterialLifecycleState"];
+            nodes: components["schemas"]["MaterialKnowledgePreviewNode"][];
+            edges: components["schemas"]["MaterialKnowledgePreviewEdge"][];
+        };
         /**
          * Format: uuid
          * @description 标准小写 UUID；客户端不能指定 ownerId。
@@ -6942,7 +7762,7 @@ export interface components {
             unresolvedReferences: number;
         };
         /** @enum {string} */
-        LibraryCollection: "ALL" | "FAVORITES" | "RECENT" | "UNCATEGORIZED";
+        LibraryCollection: "ALL" | "FAVORITES" | "RECENT" | "UNCATEGORIZED" | "BROKEN_LINKS";
         /** @description RECENT游标为UTC访问时间~UUID；其他集合游标为UUID。title为已发布标题。 */
         LibraryPage: {
             items: components["schemas"]["ItemSummary"][];
@@ -7020,7 +7840,7 @@ export interface components {
         BoardKind: "MIND_MAP" | "BOARD";
         /** @enum {string} */
         BoardNodeType: "REFERENCE" | "TEXT";
-        /** @description REFERENCE必须指定itemId且text为空；TEXT的itemId为null。实例ID与知识ID不同。 */
+        /** @description REFERENCE必须指定itemId且text为空；TEXT的itemId为null。实例ID与被引用业务ID不同。referenceKind缺失时REFERENCE按早期KNOWLEDGE语义读取；TEXT不得填写引用域。 */
         BoardNode: {
             id: components["schemas"]["Id"];
             type: components["schemas"]["BoardNodeType"];
@@ -7033,6 +7853,7 @@ export interface components {
             parentId: string | null;
             collapsed: boolean;
             group: string | null;
+            referenceKind?: components["schemas"]["BoardReferenceKind"] | null;
         };
         BoardEdge: {
             id: components["schemas"]["Id"];
@@ -7040,15 +7861,19 @@ export interface components {
             target: components["schemas"]["Id"];
             label: string;
         };
-        /** @description body为最多2000字预览；完整原文通过对象版本接口获取。 */
+        /** @description referenceKind区分KNOWLEDGE、QUESTION、ATTACHMENT；知识与题目固定versionId／versionNumber，附件versionId=null、versionNumber=0并固定attachmentRevision。body为最多2000字预览，完整原文通过所属域接口读取。 */
         BoardReference: {
             itemId: components["schemas"]["Id"];
-            kind: components["schemas"]["ItemKind"];
+            /** @enum {string} */
+            kind: "NOTE" | "CONCEPT" | "QUESTION" | "ATTACHMENT";
             title: string;
-            status: components["schemas"]["ItemStatus"];
-            versionId: components["schemas"]["Id"];
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED" | "READY";
+            versionId: components["schemas"]["Id"] | null;
             versionNumber: number;
             body: string;
+            referenceKind: components["schemas"]["BoardReferenceKind"];
+            attachmentRevision: components["schemas"]["Revision"] | null;
         };
         BoardSummary: {
             id: components["schemas"]["Id"];
@@ -7162,10 +7987,10 @@ export interface components {
             dimensions: components["schemas"]["PrepareDimension"][];
             priority: number;
         };
-        /** @description 新增引用须属于本人、对象与版本匹配且当前活跃；事实还须当前确认且项目活跃。已有旧目标链接可以保留，但必须返回来源警告。KNOWLEDGE 只引用 NOTE／CONCEPT 发布版本。 */
+        /** @description 新增引用须属于本人、对象与版本匹配且当前活跃；事实还须当前确认且项目活跃。已有旧目标链接可以保留并返回来源警告。KNOWLEDGE只引用NOTE／CONCEPT发布版本；COLLECTION只组织引用确切题单／路线版本，新增时要求ACTIVE当前版本，不展开为训练、记忆或模型输入。 */
         PrepareVersionLink: {
             /** @enum {string} */
-            kind: "PROJECT" | "FACT" | "KNOWLEDGE";
+            kind: "PROJECT" | "FACT" | "KNOWLEDGE" | "COLLECTION";
             itemId: components["schemas"]["Id"];
             versionId: components["schemas"]["Id"];
         };
@@ -7210,7 +8035,7 @@ export interface components {
         };
         PrepareReference: {
             /** @enum {string} */
-            kind: "PROJECT" | "FACT" | "KNOWLEDGE";
+            kind: "PROJECT" | "FACT" | "KNOWLEDGE" | "COLLECTION";
             itemId: components["schemas"]["Id"];
             versionId: components["schemas"]["Id"];
             title: string;
@@ -8144,14 +8969,25 @@ export interface components {
             /** @description 该确切版本具有参考文本或检查点；不提供参考正文。 */
             hasReference: boolean;
         };
-        /** @description 标题和编号取确切知识版本，状态反映当前有效性；不使用当前草稿标题替换历史。 */
+        /**
+         * @description 题目显式知识引用专用状态；ARCHIVED优先于REVIEW_REQUIRED，后者优先于SUPERSEDED/CURRENT。CURRENT仅表示本次来源核对未发现变化，不代表已审正确。题单及其他旧BankReferenceState不变。
+         * @enum {string}
+         */
+        BankKnowledgeReferenceState: "CURRENT" | "SUPERSEDED" | "ARCHIVED" | "REVIEW_REQUIRED";
+        /** @description 确切题目版本的当前知识来源观察；items与该版knowledgeLinks严格同序，无引用为[]。读取失败不视为CURRENT，不变更原题面或曝光。 */
+        BankKnowledgeReferencePage: {
+            questionId: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"];
+            items: components["schemas"]["BankKnowledgeReference"][];
+        };
+        /** @description 标题和编号取确切知识发布版本。当前题目详情与历史窄端点均按该题目版createdAt核三域采用影响的pending和冻结后createdAt/decidedAt；归档优先，其次上游待复核，再区分改版/当前。不使用草稿标题替换历史，不返回知识正文；这是动态来源观察，不是技术审阅。旧命令回执仍保留当时观察，需主动GET读取当前状态。 */
         BankKnowledgeReference: {
             itemId: components["schemas"]["Id"];
             versionId: components["schemas"]["Id"];
             title: string;
             /** Format: int32 */
             number: number;
-            state: components["schemas"]["BankReferenceState"];
+            state: components["schemas"]["BankKnowledgeReferenceState"];
         };
         BankQuestion: {
             id: components["schemas"]["Id"];
@@ -8867,7 +9703,7 @@ export interface components {
             sourceQa?: components["schemas"]["AiSourceQaInput"];
             /** @description 第26个可选NON_NULL尾字段，仅本地核对，不发送模型。新含直接材料的KNOWLEDGE_DRAFT／QUESTION_DRAFT／MATERIAL_QA／材料FACT_DRAFT／材料RELATION_DRAFT／材料SOURCE_QA清单必须包含全部不同excerptId，按ID字典序排序且每个ID恰一项，完整拒绝缺失、多余或重复；SOURCE_QA同摘录多片段仅一项。与固定材料核ACTIVE／ALLOWED／revision，同时参与Manifest hash及持续授权scope hash；提交、重试、发送前、接纳、采用与暂态正文均复核。旧存储缺省／null仅在全部直接材料仍ACTIVE／ALLOWED／revision=0时兼容；无材料模式不得出现非空checks。新任务由服务端重建清单，客户端不可省略以绕过；空新增尾仅按原规则省略，不全局清null、不重写旧JSON／hash／回执。 */
             materialChecks?: components["schemas"]["MaterialLifecycleCheck"][] | null;
-            /** @description 第27个可选NON_NULL尾字段。知识根为sources内NOTE／CONCEPT及sourceQa.sources内KNOWLEDGE确切版本；有根的新清单重建ADOPTED知识采用、确切知识来源、直接摘录、所选确切准备版本和表达最终FACT_BASIS事实的直接材料，并保守继承这些表达／事实不晚于所读版的全部实际AI采用。表达原任务全部FACT均展开，包括最终删去的事实；FACT MATERIAL原任务全部固定摘录均继承，包括手工后续版移除的材料。核原任务／决定／Manifest与hash、全部原始来源身份／ordinal／真实投影、准备JSON及关系材料绑定；实际表达采用目标类型与最终非空事实子集、FACT采用首版UNVERIFIED及固定source分别核对，历史目标不能绕过普通FACT已核实输入门禁。知识trainingDraft与FACT TRAINING采用逐项核训练来源头、确切原答案身份、版号／条件及逐字选区，再保守继承整张不可变答案图的KNOWLEDGE／PROJECT／FACT确切引用，不只限手选节点。答案JSON全部知识引用去重集合与V62登记完整相等，准备图引用核真实owner／kind／版号／标题；允许合法历史、归档及UNVERIFIED图引用，不升级普通FACT输入资格。新清单保存当前ACTIVE／ALLOWED全部不同摘录revision，按excerptId严格升序，无材料保存[]；无知识根只允许null／省略。不沿当前关系图或父项目当前版猜测历史；知识trainingDraft再核固定训练题面、逐任务六字段投影及题库来源身份，题面知识引用与V62原行全量相等；有题库来源时核确切QuestionPrompt及原知识绑定顺序，继承该题库版以前全部QUESTION_DRAFT实际采用的原知识、准备与材料来源。原题库采用只允许新建首版，后续手工版仍继承原采用；不以最终人工题目等于模型候选为前提。无题库FOLLOW_UP／REPLAY先核固定题面、number=0及空知识登记；FOLLOW_UP再核training-follow-up-2成功任务/当前成功尝试、ai_follow_up与正式子题双向绑定、原Manifest/hash、确切父问/父答完整窄投影及完整候选/生成快照。父仅同场MAIN或FOLLOW_UP、root为同场MAIN、position_index为0–59且父位置严格早于子，拒绝追问父链环。原session.context_json与全部保存contextChecks有序镜像，只按原CURRENT子序列恢复实际context，逐项核确切准备版及白名单正文，再继承原父问、整张父答图与实际外发背景材料；不比较今天状态/代次，不按候选citation子集缩小。候选封闭结构/固定说明、码点限额、1–3条UTF-16逐字引用及整份生成snapshot均核，保留历史合法NUL。Manifest与原context各最多131072 UTF-8字节，候选最多524288字节。旧training-follow-up-1和未知版本缺少本批已核生成规则，新祖先用途故障关闭，不补checks、改摘要或影响原历史读取。REPLAY/个人回忆生成祖先仍未闭合；FACT TRAINING不添加题面依赖。仅知识trainingDraft显式feedbackTaskId另核ANSWER_EVALUATION成功任务、当前成功尝试、ai_evaluation原绑定、严格Manifest/hash、固定EvaluationInput及完整报告；逐任务比较所选完整Observation、level和limitations，缓存不跳过选择核对。原输入与同一确切题面、完整原答窄投影、版号/条件、会话mode/feedbackTiming及本题确切题库standard逐字段有序相等；无题库standard须null，有题库空参考/检查点仍合法，不借根主问或current版标准。完整报告含未选观察均核封闭结构、原码点文本限额、AI未审等级/固定说明及八类UTF-16逐字引文/覆盖约束，保留历史合法NUL，报告最多524288 UTF-8字节。原TrainingDraftInput未保存attemptId/reportHash，不补造整份历史报告字节存证或语义认证。评价原输入不含背景或图引用元数据，材料仍沿原完整答案图及题面路径继承，不按报告引用子集缩小；FACT TRAINING不增加评价。尚不含事实历史父项目、无题库REPLAY/个人回忆生成祖先、未明确选定的评价或参考、隐式训练背景／白板原文、TARGET组织链接及其他物化路径；显式追问背景仅覆盖原任务实际发送者。旧[]或部分数组遗漏扩大后材料则当前资格失败，须新预览，不追补旧数组；旧null仅扩展全集仍允许且revision=0兼容。新清单捕获今天代次，不要求祖先任务旧代次等于今天。参与Manifest hash与scope hash，null省略、[]参与；历史JSON／摘要／回执不改写，不进入模型正文、费用投影或SOURCE_QA内部结构。全部根共享200个知识／准备确切版本、不同确切答案、训练题目、题库确切版本、成功评价taskId及成功追问taskId节点（分域去重，含原采用目标）、500次知识／表达／事实／题库实际采用（评价/追问不计采用）、2500条全部原始绑定（含训练来源头、答案图每个引用、V62答案与题面登记、题库原知识行与原出题来源、ai_evaluation原头及完整报告全部citation、ai_follow_up原头/全部保存contextChecks/实际外发context/完整候选citation）、200个不同摘录预算；相同答案复用展开但各任务头与选区仍核，分用途去重并拒绝跨用途task冲突，超限409 KNOWLEDGE_MATERIAL_LINEAGE_LIMIT而非截断，损坏身份／绑定故障关闭。用途许可独立于内容复核，KEEP_CURRENT不重新授权；已采用材料四动作继续拒绝。前端只核形状与顺序，历史空数组不证明今天扩展后的集合为空，完整集合及当前资格由服务器重建。 */
+            /** @description 第27个可选NON_NULL尾字段。知识根为sources内NOTE／CONCEPT及sourceQa.sources内KNOWLEDGE确切版本；有根的新清单重建ADOPTED知识采用、确切知识来源、直接摘录、所选确切准备版本和表达最终FACT_BASIS事实的直接材料，并保守继承这些表达／事实不晚于所读版的全部实际AI采用。表达原任务全部FACT均展开，包括最终删去的事实；FACT MATERIAL原任务全部固定摘录均继承，包括手工后续版移除的材料。核原任务／决定／Manifest与hash、全部原始来源身份／ordinal／真实投影、准备JSON及关系材料绑定；实际表达采用目标类型与最终非空事实子集、FACT采用首版UNVERIFIED及固定source分别核对，历史目标不能绕过普通FACT已核实输入门禁。知识trainingDraft与FACT TRAINING采用逐项核训练来源头、确切原答案身份、版号／条件及逐字选区，再保守继承整张不可变答案图的KNOWLEDGE／PROJECT／FACT确切引用，不只限手选节点。答案JSON全部知识引用去重集合与V62登记完整相等，准备图引用核真实owner／kind／版号／标题；允许合法历史、归档及UNVERIFIED图引用，不升级普通FACT输入资格。新清单保存当前ACTIVE／ALLOWED全部不同摘录revision，按excerptId严格升序，无材料保存[]；无知识根只允许null／省略。不沿当前关系图或父项目当前版猜测历史；知识trainingDraft再核固定训练题面、逐任务六字段投影及题库来源身份，题面知识引用与V62原行全量相等；有题库来源时核确切QuestionPrompt及原知识绑定顺序，继承该题库版以前全部QUESTION_DRAFT实际采用的原知识、准备与材料来源。原题库采用只允许新建首版，后续手工版仍继承原采用；不以最终人工题目等于模型候选为前提。无题库FOLLOW_UP／REPLAY先核固定题面、number=0及空知识登记；FOLLOW_UP再核training-follow-up-2成功任务/当前成功尝试、ai_follow_up与正式子题双向绑定、原Manifest/hash、确切父问/父答完整窄投影及完整候选/生成快照。父仅同场MAIN或FOLLOW_UP、root为同场MAIN、position_index为0–59且父位置严格早于子，拒绝追问父链环。原session.context_json与全部保存contextChecks有序镜像，只按原CURRENT子序列恢复实际context，逐项核确切准备版及白名单正文，再继承原父问、整张父答图与实际外发背景材料；不比较今天状态/代次，不按候选citation子集缩小。候选封闭结构/固定说明、码点限额、1–3条UTF-16逐字引用及整份生成snapshot均核，保留历史合法NUL。Manifest与原context各最多131072 UTF-8字节，候选最多524288字节。旧training-follow-up-1和未知版本缺少本批已核生成规则，新祖先用途故障关闭，不补checks、改摘要或影响原历史读取。REPLAY另核review_repractice的SAME绑定、单题FOCUSED配置及完整复制快照。ANSWER基线只读取原答身份与ENDED会话见证，再沿确切原题面展开，兼容合法旧baseline_kind空值及那组固定旧warnings，不能继承未复制的基线答案图或隐式背景；复制链独立检测环。RECOLLECTION/NONE核确切个人回忆版及原九字段内容，只重建title/question/conditions/type题面，不读取当前版号或比较今天revision，不展开回忆原答、反馈、缺口或面试安排。FACT TRAINING不添加题面依赖。仅知识trainingDraft显式feedbackTaskId另核ANSWER_EVALUATION成功任务、当前成功尝试、ai_evaluation原绑定、严格Manifest/hash、固定EvaluationInput及完整报告；逐任务比较所选完整Observation、level和limitations，缓存不跳过选择核对。原输入与同一确切题面、完整原答窄投影、版号/条件、会话mode/feedbackTiming及本题确切题库standard逐字段有序相等；无题库standard须null，有题库空参考/检查点仍合法，不借根主问或current版标准。完整报告含未选观察均核封闭结构、原码点文本限额、AI未审等级/固定说明及八类UTF-16逐字引文/覆盖约束，保留历史合法NUL，报告最多524288 UTF-8字节。原TrainingDraftInput未保存attemptId/reportHash，不补造整份历史报告字节存证或语义认证。评价原输入不含背景或图引用元数据，材料仍沿原完整答案图及题面路径继承，不按报告引用子集缩小；FACT TRAINING不增加评价。原直接FACT检查、EXPRESSION事实检查及原实际发送追问FACT背景明确保存projectGeneration时，另核父项目确切版见证：同owner PROJECT的当前单调代次完全相等、真实指针/版号一致且ACTIVE，或V71匹配的全部previous/current事件端点。事件最多两条，一入一出，版本/版号/ACTIVE一致，允许收藏导致revision间隔；两端真实版本LEFT JOIN，root_title只核previous标题，事件原规则及当前观察边界全部核。没有见证不按当前版/时间/版号差猜测，也不补缺失代次0；新预览409 KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE，统一current仅对此返回false以保留普通历史读取，其他数据库/损坏/预算错误继续抛。项目材料是用途资格依赖，不证明FACT复制了项目正文，不加入新模型输入。尚不含未捕获父项目代次的图FACT引用/手工表达关系/事实首版目标、未明确选定的评价或参考、隐式训练背景／白板原文、TARGET组织链接及其他物化路径；显式追问背景仅覆盖原任务实际发送者。旧[]或部分数组遗漏扩大后材料则当前资格失败，须新预览，不追补旧数组；旧null仅扩展全集仍允许且revision=0兼容。新清单捕获今天代次，不要求祖先任务旧代次等于今天。参与Manifest hash与scope hash，null省略、[]参与；历史JSON／摘要／回执不改写，不进入模型正文、费用投影或SOURCE_QA内部结构。全部根共享200个知识／准备确切版本、不同确切答案、训练题目、题库确切版本、成功评价taskId、成功追问taskId及确切个人回忆版本节点（分域去重，含原采用目标）、500次知识／表达／事实／题库实际采用（评价/追问不计采用）、2500条全部原始绑定（含训练来源头、答案图每个引用、V62答案与题面登记、题库原知识行与原出题来源、ai_evaluation原头及完整报告全部citation、ai_follow_up原头/全部保存contextChecks/实际外发context/完整候选citation、逐REPLAY绑定及基线原答身份见证、去重后的确切个人回忆版本见证、按项目去重的当前观察及按项目代次去重的全部匹配事件行）、200个不同摘录预算；相同答案复用展开但各任务头与选区仍核，分用途去重并拒绝跨用途task冲突，超限409 KNOWLEDGE_MATERIAL_LINEAGE_LIMIT而非截断，损坏身份／绑定故障关闭。用途许可独立于内容复核，KEEP_CURRENT不重新授权；已采用材料四动作继续拒绝。前端只核形状与顺序，历史空数组不证明今天扩展后的集合为空，完整集合及当前资格由服务器重建。 有见证的父项目确切版共享既有200节点；见证缓存按(projectId,generation)，同项目不同历史代次分别核，不计500实际采用。V71现有索引只限制单项目返回，不保证长历史扫描成本有界，真实查询计划待服务器。 */
             knowledgeMaterialChecks?: components["schemas"]["MaterialLifecycleCheck"][] | null;
         } & (components["schemas"]["AiFactDraftManifestRule"] & components["schemas"]["AiRewriteManifestRule"] & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
         AiPreview: {
@@ -9025,7 +9861,7 @@ export interface components {
             manifest: components["schemas"]["AiManifest"];
             attempts: components["schemas"]["AiAttempt"][];
             candidate: components["schemas"]["AiCandidate"] | null;
-            /** @description 知识用途表示来源仍为当前有效版本；FOLLOW_UP 表示本场 RUNNING 代次和确切输入仍有效，不表示预算或根题额度仍有余量。 评价表示确切输入与访问确认仍存在，不包含任务数量／预算判断。 MATERIAL_QA核验当前资料模块和完整确切摘录；GENERAL无资料依赖；不认证内容质量。 EXPRESSION_DRAFT核验全部原事实及父项目的当前状态、确切版本与授权代次，包括最终采用时未选中的原来源，不证明表达语义或真实经历。 PREPARATION_PLAN核对一个固定目标版本及其sourceGeneration仍当前有效，不因日期已过去失效，也不证明缺口或学习效果。 训练片段整理复核确切历史提交、固定题面、所选片段及报告正文；不使用最新提交、会话generation或反馈接受/争议状态替代固定输入，正常不可用与数据库错误分别处理。 表达素材混选逐一比较表达自身和全部事实/父项目授权代次；未单独选择的依据也参与本地可用性核对，不认证表达内容。 RELATION_DRAFT核验全部固定知识版本仍ACTIVE且当前，草稿编辑、收藏、主题和布局不替换发布正文；不证明候选关系语义正确，也不表示正式关系必然可创建。 ANSWER_COMPARISON核对正式绑定、双端ENDED确切提交与访问记录、训练代次及每条来源当前OPEN/TRACKING/verification和动作归属/修订；不表示任务额度、预算或判断正确，false不抹去历史候选。 MEMORY_CARD_DRAFT核对全部固定知识来源仍ACTIVE且为当前发布版本；不表示参考已核实、卡片已启用排程或发生复习，来源变化仍保留原候选与采用历史。 JD_REQUIREMENT_DRAFT核验唯一目标当前版本、完整raw JD及固定sourceGeneration；归档恢复或改后改回不会恢复旧授权，false不抹去原候选、已采用要求和费用历史。 SOURCE_QA 核各域固定来源/范围/限定和本地检查仍满足新外发资格；当前性不替代原答评价许可，不把出现更新提交或正常会话推进误判失效。来源正常改版/归档/决定推进不重写旧清单与回答，历史仍须固定绑定和当前读取许可。 */
+            /** @description 知识用途表示来源仍为当前有效版本；FOLLOW_UP 表示本场 RUNNING 代次和确切输入仍有效，不表示预算或根题额度仍有余量。 评价表示确切输入与访问确认仍存在，不包含任务数量／预算判断。 MATERIAL_QA核验当前资料模块和完整确切摘录；GENERAL无资料依赖；不认证内容质量。 EXPRESSION_DRAFT核验全部原事实及父项目的当前状态、确切版本与授权代次，包括最终采用时未选中的原来源，不证明表达语义或真实经历。 PREPARATION_PLAN核对一个固定目标版本及其sourceGeneration仍当前有效，不因日期已过去失效，也不证明缺口或学习效果。 训练片段整理复核确切历史提交、固定题面、所选片段及报告正文；不使用最新提交、会话generation或反馈接受/争议状态替代固定输入，正常不可用与数据库错误分别处理。 表达素材混选逐一比较表达自身和全部事实/父项目授权代次；未单独选择的依据也参与本地可用性核对，不认证表达内容。 RELATION_DRAFT核验全部固定知识版本仍ACTIVE且当前，草稿编辑、收藏、主题和布局不替换发布正文；不证明候选关系语义正确，也不表示正式关系必然可创建。 ANSWER_COMPARISON核对正式绑定、双端ENDED确切提交与访问记录、训练代次及每条来源当前OPEN/TRACKING/verification和动作归属/修订；不表示任务额度、预算或判断正确，false不抹去历史候选。 MEMORY_CARD_DRAFT核对全部固定知识来源仍ACTIVE且为当前发布版本；不表示参考已核实、卡片已启用排程或发生复习，来源变化仍保留原候选与采用历史。 JD_REQUIREMENT_DRAFT核验唯一目标当前版本、完整raw JD及固定sourceGeneration；归档恢复或改后改回不会恢复旧授权，false不抹去原候选、已采用要求和费用历史。 SOURCE_QA 核各域固定来源/范围/限定和本地检查仍满足新外发资格；当前性不替代原答评价许可，不把出现更新提交或正常会话推进误判失效。来源正常改版/归档/决定推进不重写旧清单与回答，历史仍须固定绑定和当前读取许可。 S8第三十七批：知识整理/出题通用分支、制卡及关系候选直接知识按原任务createdAt核三域影响，revision=0、影响创建时间或处理时间不早于原任务时为false；等时亦失效，确认保留正文不恢复旧任务。新预览无冻结点时仍只核未决影响。该规则不认证提前进入训练/复盘等专用分支或完整间接祖先，不替代费用、授权和候选语义判断。 S8第三十八批SOURCE_QA的用户显式KNOWLEDGE选区按原任务createdAt核三域未决影响及created_at/decided_at不早于冻结点的记录，等时亦为false；不改变其他七域、历史读取权限或固定选区，也不认证完整间接祖先。 */
             sourcesCurrent: boolean;
             /** @description 仅 KNOWLEDGE_DRAFT 返回知识终态决定，其他用途为 null；旧版本幂等回执可能省略此字段，客户端按 null 处理。 */
             decision?: components["schemas"]["AiCandidateDecision"] | null;
@@ -9087,7 +9923,7 @@ export interface components {
         /** @enum {string} */
         AiDecisionStatus: "ADOPTED" | "IGNORED";
         /**
-         * @description 知识/题目采用历史中的准备来源，以及表达生成采用历史中的FACT来源：当前仍CURRENT但固定SourceCheck（FACT含父项目代次）不匹配时为REVIEW_REQUIRED，明确非CURRENT状态原样保留。EXPRESSION自身UNVERIFIED仍映射REVIEW_REQUIRED，其自身及全部事实依据继续按固定expressionChecks比较。当前匹配不证明接入前更正历史完整；不改写原清单、采用内容或旧回执，不恢复外发授权。
+         * @description 知识/题目采用历史中的准备来源，以及表达生成采用历史中的FACT来源：当前仍CURRENT但固定SourceCheck（FACT含父项目代次）不匹配时为REVIEW_REQUIRED，明确非CURRENT状态原样保留。EXPRESSION自身UNVERIFIED仍映射REVIEW_REQUIRED，其自身及全部事实依据继续按固定expressionChecks比较。当前匹配不证明接入前更正历史完整；不改写原清单、采用内容或旧回执，不恢复外发授权。 AI题目实际知识来源按原任务createdAt核三域pending及不早于基线的更正/处理；UNAVAILABLE、ARCHIVED优先，再REVIEW_REQUIRED、SUPERSEDED、CURRENT。此扩展仅适用于题目采用来源中的NOTE/CONCEPT，不自动扩大到知识或卡片采用来源。
          * @enum {string}
          */
         AiOriginState: "CURRENT" | "SUPERSEDED" | "ARCHIVED" | "UNAVAILABLE" | "WITHDRAWN" | "PROJECT_ARCHIVED" | "UNVERIFIED" | "REVIEW_REQUIRED";
@@ -16622,7 +17458,7 @@ export interface components {
                 /** @constant */
                 status?: "SUCCEEDED";
             };
-            /** @description 服务端核对全部固定知识的ACTIVE/类型/当前版本/确切内容，并按模式核对材料/训练、人工复盘/面后回忆或AI反馈固定来源及当前决定后的整体结果。不能仅由知识source.state推断；false仍可历史读取，不授权采用或补充。原答访问权限与反馈时机守卫保持有效，权限和存储错误不降为false。 */
+            /** @description 服务端核对全部固定知识的ACTIVE/类型/当前版本/确切内容，并按模式核对材料/训练、人工复盘/面后回忆或AI反馈固定来源及当前决定后的整体结果。不能仅由知识source.state推断；false仍可历史读取，不授权采用或补充。原答访问权限与反馈时机守卫保持有效，权限和存储错误不降为false。 S8第三十七批：固定知识端点沿原任务createdAt核三域未决影响及created_at/decided_at不早于冻结点的记录；已处理、正文不变或重新授权不恢复旧任务。材料/训练/反馈等模式仍须独立满足原守卫；不认证完整间接祖先。 */
             sourcesCurrent: boolean;
             /** @description 按原Manifest顺序返回全部2–5个确切知识来源元数据，至少2个CONCEPT，itemId与versionId分别不重复。kind显式非null；title/number保留当时版本，state为当前查询结果。无source body。 */
             sources: (components["schemas"]["AiOriginSource"] & {
@@ -17936,6 +18772,46 @@ export interface components {
             /** @constant */
             confirmed: true;
         };
+        /** @enum {string} */
+        MaterialKnowledgeImpactContext: "MATERIAL_EXCERPT" | "KNOWLEDGE";
+        /** @enum {string} */
+        MaterialKnowledgeImpactDomain: "MATERIAL_EXCERPT" | "KNOWLEDGE";
+        /** @description 固定的本跳实际输入身份。第一跳为更正声明旧材料摘录，versionId/versionNumber/title明确为null；知识后代三项均为真实固定版，不伪造材料知识版号。 */
+        MaterialKnowledgeImpactSource: {
+            domain: components["schemas"]["MaterialKnowledgeImpactDomain"];
+            itemId: components["schemas"]["Id"];
+            versionId: components["schemas"]["Id"] | null;
+            versionNumber: number | null;
+            title: string | null;
+        } & unknown;
+        /** @description V74真实更正声明的一条实际知识采用影响；不新建伪根。根、原任务、本跳来源及确切采用目标版固定。第一跳材料、无父且depth=1；后代知识、同根同时间、父目标等于来源且来源版号不早于父采用版。保留一条稳定真实最短发现父路径，不冒充全部依赖。revision0待处理；revision1一次人工处理。处理只关闭该影响，不恢复旧评分/授权/卡排程；旧材料祖先仍可能阻止新AI用途。 */
+        MaterialKnowledgeImpact: {
+            id: components["schemas"]["Id"];
+            revision: number;
+            correction: components["schemas"]["MaterialCorrectionStatement"];
+            source: components["schemas"]["MaterialKnowledgeImpactSource"];
+            taskId: components["schemas"]["Id"];
+            targetItemId: components["schemas"]["Id"];
+            targetTitle: string;
+            targetVersionId: components["schemas"]["Id"];
+            targetVersionNumber: number;
+            depth: number;
+            parentImpactId: components["schemas"]["Id"] | null;
+            /**
+             * Format: date-time
+             * @description 有效UTC Z时间，年份1000–9999，小数秒至多6位且精确可存为微秒；范围1000-01-01T00:00:00Z至9999-12-31T23:59:59.999999Z，禁止截断。有效日历日期由服务端核对。
+             */
+            createdAt: string;
+            resolution: components["schemas"]["KnowledgeRevalidationResolution"] | null;
+        } & (unknown & unknown);
+        /** @description 按createdAt DESC,id DESC分页；MATERIAL_EXCERPT按旧摘录真实更正根，KNOWLEDGE按采用目标。游标绑定owner/context/itemId/state，PENDING仅revision0，ALL保留处理历史。只返回元数据，不补写影响或触发模型。 */
+        MaterialKnowledgeImpactPage: {
+            context: components["schemas"]["MaterialKnowledgeImpactContext"];
+            itemId: components["schemas"]["Id"];
+            state: components["schemas"]["KnowledgeRevalidationState"];
+            items: components["schemas"]["MaterialKnowledgeImpact"][];
+            nextCursor: string | null;
+        };
         /** @description 真实准备根的当时观察；版本身份、来源代次、修订及状态分别保存，不能用修订代替来源代次。仅FACT有核实状态。 */
         PreparationKnowledgeObservation: {
             versionId: components["schemas"]["Id"];
@@ -18058,7 +18934,42 @@ export interface components {
             items: components["schemas"]["MaterialReferenceEntry"][];
             nextCursor: string | null;
         };
-        /** @description 确切材料摘录的独立生命周期元数据，不含摘录正文。现存摘录升级为ACTIVE／ALLOWED／revision=0且不补造事件；缺失基线为完整性错误，不按默认状态补写。 */
+        /** @description 显式建立旧固定摘录到另一条新固定摘录的内容更正关系。本人owner命令锁内核两端修订、ACTIVE、真实原文与来源、正文差异、无既有更正旧端及旧端未支持原始绑定；允许跨附件和AI用途已撤回的替代摘录。必须先保存新摘录，不在请求中改写正文。真实知识ADOPTED须完整知识闭包和受支持出口证明；原其他直接材料采用/本地绑定仍拒绝。S8第二十八批仅扩展严格核对原任务/清单/来源/决定/首版卡且当前保留全部原知识来源的AI采用卡；移除原来源或其他未支持出口仍阻塞，独立证明超限整体拒绝。V74真实根、V75实际影响、既有Memory/Reviewed失效及回执同事务；不自动替换原文或恢复AI，不改变两端生命周期revision、V73事件或AI许可。 */
+        MaterialCorrectionCreate: {
+            expectedRevision: components["schemas"]["Revision"];
+            replacementExcerptId: components["schemas"]["Id"];
+            expectedReplacementRevision: components["schemas"]["Revision"];
+            /** @description 整个请求的原始JSON最多20000字节；reason原始字符串沿Jackson maxStringLength=10000守卫，按Java String.strip()去首尾空白后须为1–1000个UTF-16单元，拒绝NUL与不成对代理字符。空白语义为Java Character.isWhitespace；NBSP／U+2007／U+202F／FEFF不被strip移除。JSON Schema maxLength按Unicode码点计数，实际原始字符串、strip后UTF-16长度与字符安全由服务端严格校验。 */
+            reason: string;
+            /**
+             * @description 必须由用户显式确认本次动作，不能省略或为false。
+             * @constant
+             */
+            confirmed: true;
+        };
+        /** @description 真实且不可撤销的更正声明，不含正文。一个旧摘录只声明一次，保留当时两端生命周期revision、规范理由与UTC微秒时间；不是V73生命周期事件。A→B后可另行声明B→C，原A仍指B；声明时替代不能是已更正旧端，不自动追到最终替代或改绑历史。 */
+        MaterialCorrectionStatement: {
+            id: components["schemas"]["Id"];
+            excerptId: components["schemas"]["Id"];
+            replacementExcerptId: components["schemas"]["Id"];
+            sourceRevision: components["schemas"]["Revision"];
+            replacementRevision: components["schemas"]["Revision"];
+            /** @description 已按Java String.strip()规范化保存的完整理由，1–1000个UTF-16单元，不能再次裁剪或规范化；拒绝NUL与不成对代理字符。空白语义为Java Character.isWhitespace，NBSP／U+2007／U+202F／FEFF可保留为合法正文。JSON Schema maxLength按Unicode码点计数，实际UTF-16长度和canonical边界由服务端校验。 */
+            reason: string;
+            /**
+             * Format: date-time
+             * @description UTC ISO-8601，持久时间精度为微秒。
+             */
+            createdAt: string;
+        };
+        /** @description 本人确切摘录的更正元数据State4，无声明明确返回correction:null。lifecycleRevision是读取时的生命周期修订，更正本身不推进它；命令回执固定原事实，不因替代后来归档或再次更正而改写。历史读取不要求两端今天仍可新选用；不含正文，不表示完整影响清单。 */
+        MaterialCorrectionState: {
+            excerptId: components["schemas"]["Id"];
+            attachmentId: components["schemas"]["Id"];
+            lifecycleRevision: components["schemas"]["Revision"];
+            correction: components["schemas"]["MaterialCorrectionStatement"] | null;
+        };
+        /** @description 确切材料摘录的独立生命周期元数据，不含摘录正文。现存摘录升级为ACTIVE／ALLOWED／revision=0且不补造事件；缺失基线为完整性错误，不按默认状态补写。 内容更正另读MaterialCorrectionState；这里的ACTIVE/ALLOWED不表示已更正旧端仍可新选用，历史元数据与八表hasReferences不含完整更正影响。 */
         MaterialLifecycleState: {
             excerptId: components["schemas"]["Id"];
             attachmentId: components["schemas"]["Id"];
@@ -18075,10 +18986,10 @@ export interface components {
              * @description UTC ISO-8601，持久时间精度为微秒。
              */
             updatedAt: string;
-            /** @description 对八张原始绑定表的已登记历史引用执行保守EXISTS检查，不按任务结果、采用状态或当前修订过滤；不是生命周期可执行性标志或完整删除清单。合法纯AI输入登记的成功变更回执仍可为true，是否阻塞由命令owner锁内另行核对。 */
+            /** @description 对八张原始绑定表的历史登记执行保守EXISTS，不按任务结果、采用状态或当前修订过滤；不是命令可执行性标志或完整删除清单。纯AI输入登记或受支持知识采用链的用途变更成功回执均可为true；命令仍在owner锁内核动作专用准入、真实闭包及全部未支持原始出口。 */
             hasReferences: boolean;
         };
-        /** @description 只接受真实状态转换；owner锁内核修订、动作及不支持绑定。仅合法直接AI输入登记且无正式采用内容及其他本地绑定时可变更；准备／正式关系材料证据／审阅原始绑定、任一ADOPTED知识／题目／事实／关系决定或不支持身份均以MATERIAL_HAS_REFERENCES拒绝。成功revision加一，状态、追加事件与幂等回执同事务，hasReferences可保持true；不开放已采用内容传播或供应商实时取消。 */
+        /** @description 只接受真实状态转换；owner锁内核修订、动作与原始绑定。无采用的合法AI输入登记沿原规则；仅REVOKE_AI/ALLOW_AI可支持已完整重建、核实原历史且无未支持原始出口的实际知识采用闭包。ARCHIVE/RESTORE对已采用材料仍阻塞，直接准备/题目/事实/关系/审阅及其他未支持身份仍以MATERIAL_HAS_REFERENCES拒绝。命令不信任先前预览，成功revision加一，原状态/用途事件及幂等回执同事务；不创建正文更正或内容复核影响，重新允许不恢复旧授权/任务资格，不承诺实时取消供应商请求。 已更正旧端四类动作均拒绝，内容更正声明与状态/用途许可独立。 */
         MaterialLifecycleChange: {
             expectedRevision: components["schemas"]["Revision"];
             action: components["schemas"]["MaterialLifecycleAction"];
@@ -18141,6 +19052,732 @@ export interface components {
          * @enum {string}
          */
         MaterialLifecycleAction: "ARCHIVE" | "RESTORE" | "REVOKE_AI" | "ALLOW_AI";
+        KnowledgeTextImportCreate: {
+            /** @description 最多200 UTF-16单位的.md/.markdown/.txt名称；不含路径或ASCII控制字符。 */
+            fileName: string;
+            /** @description 未处理原文，严格UTF-8编码1–400000字节；最多100000 UTF-16单位，BOM/换行参与摘要。不是附件或可信外部证据。 */
+            source: string;
+            /** @description 用户确认的最终标题，strip后非空；最多200 UTF-16单位，无ASCII控制字符或不配对代理项。 */
+            title: string;
+            /** @description 用户确认的最终正文，最多100000 UTF-16单位，可为空字符串；不重演客户端YAML/链接转换。 */
+            body: string;
+            topicIds: components["schemas"]["Id"][];
+            /**
+             * @description 必须显式传false或true；true明确允许相同原始文本再建独立副本，不覆盖或更新既有映射。
+             * @default false
+             */
+            createCopy: boolean;
+        };
+        KnowledgeTextImportEntry: {
+            id: components["schemas"]["Id"];
+            fileName: string;
+            sourceSha256: string;
+            /** Format: int32 */
+            sourceBytes: number;
+            /**
+             * Format: int32
+             * @description UTF-16编码单元数。
+             */
+            sourceCharacters: number;
+            itemId: components["schemas"]["Id"];
+            /** @description 创建首版的确切ID，不随发布新版本改变。 */
+            versionId: components["schemas"]["Id"];
+            /** @description 创建首版标题，不是当前草稿标题。 */
+            title: string;
+            itemStatus: components["schemas"]["ItemStatus"];
+            createCopy: boolean;
+            /**
+             * Format: date-time
+             * @description UTC导入登记时间。
+             */
+            createdAt: string;
+        };
+        KnowledgeTextImportSaved: {
+            item: components["schemas"]["ItemDetail"];
+            record: components["schemas"]["KnowledgeTextImportEntry"];
+        };
+        KnowledgeTextImportPage: {
+            items: components["schemas"]["KnowledgeTextImportEntry"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        KnowledgeTextImportBatchFile: {
+            /** @description 精确文件名，.md/.markdown/.txt，不含路径、ASCII控制字符或未配对代理项；同批文件名不可重复。 */
+            fileName: string;
+            /** @description 浏览器声明的原始UTF-8摘要；成功导入时服务器严格编码并重算核对，未提交声明不认证正文或来源。 */
+            sourceSha256: string;
+            /** Format: int32 */
+            sourceBytes: number;
+            /**
+             * Format: int32
+             * @description 原始文本UTF-16编码单元数。
+             */
+            sourceCharacters: number;
+        };
+        KnowledgeTextImportBatchCreate: {
+            /** @description 有序元数据清单，exact重复文件名拒绝；相同源不同名称允许，提交逐项查重。 */
+            files: components["schemas"]["KnowledgeTextImportBatchFile"][];
+        };
+        KnowledgeTextImportBatchImport: {
+            /**
+             * Format: int64
+             * @description 客户端预期修订，须为JavaScript安全非负整数；与实际不符的新命令409，原键恢复先于修订检查。
+             */
+            revision: number;
+            /** @description 未处理原文，严格UTF-8编码1–400000字节；最多100000 UTF-16单位，BOM/换行参与摘要。不是附件或可信外部证据。 */
+            source: string;
+            /** @description 用户确认的最终标题，strip后非空；最多200 UTF-16单位，无ASCII控制字符或不配对代理项。 */
+            title: string;
+            /** @description 用户确认的最终正文，最多100000 UTF-16单位，可为空字符串；不重演客户端YAML/链接转换。 */
+            body: string;
+            topicIds: components["schemas"]["Id"][];
+            /**
+             * @description 必须显式传false或true；true明确允许相同原始文本再建独立副本，不覆盖或更新既有映射。
+             * @default false
+             */
+            createCopy: boolean;
+        };
+        KnowledgeTextImportBatchSkip: {
+            /**
+             * Format: int64
+             * @description 客户端预期修订，须为JavaScript安全非负整数；与实际不符的新命令409，原键恢复先于修订检查。
+             */
+            revision: number;
+        };
+        KnowledgeTextImportBatchEntry: {
+            id: components["schemas"]["Id"];
+            /** Format: int32 */
+            ordinal: number;
+            /** @description 精确文件名，.md/.markdown/.txt，不含路径、ASCII控制字符或未配对代理项；同批文件名不可重复。 */
+            fileName: string;
+            /** @description 浏览器声明的原始UTF-8摘要；成功导入时服务器严格编码并重算核对，未提交声明不认证正文或来源。 */
+            sourceSha256: string;
+            /** Format: int32 */
+            sourceBytes: number;
+            /**
+             * Format: int32
+             * @description 原始文本UTF-16编码单元数。
+             */
+            sourceCharacters: number;
+            /** @enum {string} */
+            state: "PENDING" | "IMPORTED" | "SKIPPED";
+            /** @description 本次读取时已有同owner同摘要导入记录，仅为冲突预览；提交仍在owner锁内重新查重，包含归档对象。 */
+            hasRegisteredSource: boolean;
+            /** @description 仅IMPORTED对应确切成功记录，固定首版及其标题；状态为查询时知识状态，旧回执不冒充当前。 */
+            record: components["schemas"]["KnowledgeTextImportEntry"] | null;
+        };
+        KnowledgeTextImportBatchDetail: {
+            id: components["schemas"]["Id"];
+            /**
+             * Format: int64
+             * @description 实际已处理数，从0开始，每份成功导入或跳过后加1。
+             */
+            revision: number;
+            /** @enum {string} */
+            state: "OPEN" | "COMPLETE";
+            /** Format: date-time */
+            createdAt: string;
+            entries: components["schemas"]["KnowledgeTextImportBatchEntry"][];
+        };
+        KnowledgeTextImportBatchSummary: {
+            id: components["schemas"]["Id"];
+            /**
+             * Format: int64
+             * @description 实际已处理数，从0开始，每份成功导入或跳过后加1。
+             */
+            revision: number;
+            /** @enum {string} */
+            state: "OPEN" | "COMPLETE";
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            imported: number;
+            /** Format: int32 */
+            skipped: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        KnowledgeTextImportBatchPage: {
+            items: components["schemas"]["KnowledgeTextImportBatchSummary"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        KnowledgeTextImportBatchDirectoryFile: {
+            /** @description 精确末段名称，最多200 UTF-16单位，.md/.markdown/.txt；不含路径、ASCII控制字符或无效Unicode。目录创建另受sourcePath规则限制；不同sourcePath可以同名。 */
+            fileName: string;
+            /** @description 浏览器声明的原始UTF-8摘要；成功导入时服务器严格编码并重算核对，未提交声明不认证正文或来源。 */
+            sourceSha256: string;
+            /** Format: int32 */
+            sourceBytes: number;
+            /**
+             * Format: int32
+             * @description 原始文本UTF-16编码单元数。
+             */
+            sourceCharacters: number;
+            /** @description 纯元数据相对路径，最多600 UTF-16单位、32段；拒绝绝对路径、空段、.、..、反斜线、冒号、ASCII控制字符及无效Unicode。末段逐字等于fileName，不做大小写、Unicode或百分号归一，不读取或写入服务器文件系统。浏览器目录选择包含所选根目录名。 */
+            sourcePath: string;
+        };
+        KnowledgeTextImportBatchCreateDirectory: {
+            /** @description 有序五字段目录元数据。exact重复sourcePath拒绝，不同路径同名允许；相同原文仍受既有导入账本查重。清单保存不认证原文或创建笔记。 */
+            files: components["schemas"]["KnowledgeTextImportBatchDirectoryFile"][];
+        };
+        KnowledgeTextImportBatchEntryPath: {
+            entryId: components["schemas"]["Id"];
+            /** @description 与确切entry ID绑定的不可变元数据身份。目录项遵守目录创建规则；原平面批次只回填精确fileName并保留旧文件名规则，含冒号旧名不因新目录限制失读，不能由旧名称推断历史目录。 */
+            sourcePath: string;
+        };
+        KnowledgeTextImportBatchDirectoryDetail: {
+            /** @description 原批次Detail结构保持。目录批次中Entry.fileName是末段，不作为批次唯一键；原File/Entry名称描述中的平面清单唯一性不适用于此目录响应，唯一身份为paths中的sourcePath。原import/skip仍返回Detail。 */
+            batch: components["schemas"]["KnowledgeTextImportBatchDetail"];
+            /** @description 与batch.entries同序且一一全覆盖；entryId及sourcePath各自唯一。与batch在同一REPEATABLE_READ快照、同一次条目读取构造；不另存或返回未提交原文。 */
+            paths: components["schemas"]["KnowledgeTextImportBatchEntryPath"][];
+        };
+        KnowledgeTextImportBatchPublishLinks: {
+            expectedVersionId: components["schemas"]["Id"];
+            /**
+             * Format: int64
+             * @description 预览时读取的草稿修订；须为JavaScript安全非负整数，新命令与当前不符时409。原键恢复先于当前修订核对。
+             */
+            expectedDraftRevision: number;
+            /** @description 用户明确确认的完整新正文；严格UTF-8及控制符/400000字节边界，不能空白。服务器不将此字段认证为只含链接变更。 */
+            body: string;
+        };
+        KnowledgeTextImportCreateWithTags: {
+            /** @description 最多200 UTF-16单位的.md/.markdown/.txt名称；不含路径或ASCII控制字符。 */
+            fileName: string;
+            /** @description 未处理原文，严格UTF-8编码1–400000字节；最多100000 UTF-16单位，BOM/换行参与摘要。不是附件或可信外部证据。 */
+            source: string;
+            /** @description 用户确认的最终标题，strip后非空；最多200 UTF-16单位，无ASCII控制字符或不配对代理项。 */
+            title: string;
+            /** @description 用户确认的最终正文，最多100000 UTF-16单位，可为空字符串；不重演客户端YAML/链接转换。 */
+            body: string;
+            topicIds: components["schemas"]["Id"][];
+            /**
+             * @description 必须显式传false或true；true明确允许相同原始文本再建独立副本，不覆盖或更新既有映射。
+             * @default false
+             */
+            createCopy: boolean;
+            /** @description 明确采用的原始标签列表；每项最多40 UTF-16且严格Unicode、strip后非空。先检查原始数量及每项，再strip和Locale.ROOT去重，保留首个写法。允许原始重复；不拆分、不认证YAML来源。 */
+            tags: string[];
+        };
+        KnowledgeTextImportSavedWithTags: {
+            item: components["schemas"]["ItemDetail"];
+            record: components["schemas"]["KnowledgeTextImportEntry"];
+            organization: components["schemas"]["Organization"];
+        };
+        ArchiveCheckpoint: {
+            sequence: number;
+            sha256: string;
+        };
+        KnowledgeSourceSource: {
+            title: string;
+            /** @description 可为空字符串；非空时仅支持有主机且不含账号信息的http／https URL。仅记录用户来源声明，不自动读取网络内容或授予模型权限。 */
+            url: string;
+            author: string;
+            /** @description 可为null；有效历史时间，不早于1000-01-01T00:00:00Z，不晚于服务器当前时间五分钟，最多微秒精度。 */
+            acquiredAt: string | null;
+            applicableVersion: string;
+            rights: string;
+            note: string;
+        };
+        KnowledgeSourceDocument: {
+            itemId: string;
+            versionId: string;
+            revision: number;
+            sources: components["schemas"]["KnowledgeSourceSource"][];
+            savedAt: string | null;
+        };
+        /** @description 完整两字段；sources每项完整七字段，其中只有acquiredAt允许null，其余必须为字符串。来源修订独立于正文与草稿；只能向当前活跃发布版追加来源修订。 */
+        KnowledgeSourceSave: {
+            expectedRevision: number;
+            sources: components["schemas"]["KnowledgeSourceSource"][];
+        };
+        /** @enum {string} */
+        KnowledgePackageDecision: "IMPORT" | "SKIP";
+        /** @description kind／decision以及tags／aliases／topicIds均为明确选择；NOTE的aliases必须为空。IMPORT目标需存在主题，引用到SKIP项或未就绪附件会阻断预览。 */
+        KnowledgePackageSourceItem: {
+            /** @description 严格相对路径，最多32段；不能含控制字符、反斜杠、冒号、空段、.或..；按UTF-16计长，支持中文及空格。 */
+            sourceId: string;
+            /** @description 独立、未经最终body改写的原文件文本。服务器严格以UTF-8重算SHA256；单项最多400000字节，不持久化此字段。 */
+            source: string;
+            title: string;
+            /** @description 明确确认的最终正文。包内知识链接使用package:加UTF-8编码相对路径，附件使用package-attachment:。代码区不转换，不猜标题；须使用可定位内联或自动链接。 */
+            body: string;
+            kind: components["schemas"]["ItemKind"];
+            decision: components["schemas"]["KnowledgePackageDecision"];
+            tags: string[];
+            aliases: string[];
+            topicIds: string[];
+        };
+        KnowledgePackageSourceAttachment: {
+            sourceId: string;
+            attachmentId: string;
+            sourceSha256: string;
+        };
+        KnowledgePackagePlan: {
+            items: components["schemas"]["KnowledgePackageSourceItem"][];
+            sourceAttachments: components["schemas"]["KnowledgePackageSourceAttachment"][];
+        };
+        KnowledgePackageRegister: {
+            packageKey: string;
+            createCopy: boolean;
+            items: components["schemas"]["KnowledgePackageSourceItem"][];
+            sourceAttachments: components["schemas"]["KnowledgePackageSourceAttachment"][];
+        };
+        KnowledgePackageCommit: {
+            expectedRevision: number;
+            expectedPlanSha256: string;
+            items: components["schemas"]["KnowledgePackageSourceItem"][];
+            sourceAttachments: components["schemas"]["KnowledgePackageSourceAttachment"][];
+        };
+        KnowledgePackageIssue: {
+            sourceId: string;
+            code: string;
+            message: string;
+        };
+        KnowledgePackagePreview: {
+            packageKey: string;
+            planSha256: string;
+            existingPackageId: string | null;
+            importCount: number;
+            skipCount: number;
+            issues: components["schemas"]["KnowledgePackageIssue"][];
+        };
+        KnowledgePackageMapping: {
+            sourceId: string;
+            sourceSha256: string;
+            sourceBytes: number;
+            sourceCharacters: number;
+            kind: components["schemas"]["ItemKind"];
+            decision: components["schemas"]["KnowledgePackageDecision"];
+            title: string;
+            tags: string[];
+            aliases: string[];
+            topicIds: string[];
+            itemId: string | null;
+            versionId: string | null;
+        };
+        KnowledgePackageDetail: {
+            id: string;
+            revision: number;
+            /** @enum {string} */
+            state: "REGISTERED" | "COMMITTED";
+            packageKey: string;
+            planSha256: string;
+            createCopy: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            committedAt: string | null;
+            mappings: components["schemas"]["KnowledgePackageMapping"][];
+            sourceAttachments: components["schemas"]["KnowledgePackageSourceAttachment"][];
+        };
+        KnowledgePackageSummary: {
+            id: string;
+            revision: number;
+            /** @enum {string} */
+            state: "REGISTERED" | "COMMITTED";
+            packageKey: string;
+            createCopy: boolean;
+            importCount: number;
+            skipCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            committedAt: string | null;
+        };
+        KnowledgePackagePage: {
+            items: components["schemas"]["KnowledgePackageSummary"][];
+            nextCursor: string | null;
+        };
+        KnowledgeMergePreviewRequest: {
+            sourceId: string;
+            targetId: string;
+        };
+        KnowledgeMergeSide: {
+            item: components["schemas"]["ItemDetail"];
+            organization: components["schemas"]["Organization"];
+            position: components["schemas"]["Position"];
+            relations: components["schemas"]["Relation"][];
+        };
+        KnowledgeMergeImpactCount: {
+            kind: string;
+            count: number;
+        };
+        KnowledgeMergePreview: {
+            digest: string;
+            layoutRevision: number;
+            source: components["schemas"]["KnowledgeMergeSide"];
+            target: components["schemas"]["KnowledgeMergeSide"];
+            suggestedAliases: string[];
+            suggestedTags: string[];
+            suggestedTopicIds: string[];
+            suggestedNoteIds: string[];
+            impacts: components["schemas"]["KnowledgeMergeImpactCount"][];
+        };
+        KnowledgeMergeCommit: {
+            sourceId: string;
+            targetId: string;
+            expectedDigest: string;
+            aliases: string[];
+            tags: string[];
+            topicIds: string[];
+            noteIds: string[];
+            mainNoteId: string | null;
+            favorite: boolean;
+            useSourcePosition: boolean;
+            /** @constant */
+            confirmed: true;
+        };
+        KnowledgeMergeMergeRecord: {
+            id: string;
+            sourceId: string;
+            targetId: string;
+            sourceVersionId: string;
+            targetVersionId: string;
+            targetRevisionAfter: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        KnowledgeMergeResult: {
+            merge: components["schemas"]["KnowledgeMergeMergeRecord"];
+            target: components["schemas"]["ItemDetail"];
+            organization: components["schemas"]["Organization"];
+        };
+        KnowledgeMergeResolution: {
+            requestedId: string;
+            resolvedId: string;
+            path: components["schemas"]["KnowledgeMergeMergeRecord"][];
+        };
+        /** @enum {string} */
+        PreferenceTheme: "LIGHT" | "DARK" | "SYSTEM";
+        /** @enum {string} */
+        PreferenceMotion: "SYSTEM" | "REDUCED" | "FULL";
+        PreferencePreferences: {
+            revision: number;
+            theme: components["schemas"]["PreferenceTheme"];
+            fontSize: number;
+            contentWidth: number;
+            motion: components["schemas"]["PreferenceMotion"];
+            timeZone: string;
+            saveRecoveryNotice: boolean;
+            updatedAt: string | null;
+        };
+        PreferenceSave: {
+            expectedRevision: number;
+            theme: components["schemas"]["PreferenceTheme"];
+            fontSize: number;
+            contentWidth: number;
+            motion: components["schemas"]["PreferenceMotion"];
+            timeZone: string;
+            saveRecoveryNotice: boolean;
+        };
+        PreferenceUsage: {
+            notes: number;
+            concepts: number;
+            knowledgeVersions: number;
+            boards: number;
+            preparationItems: number;
+            questions: number;
+            trainingSessions: number;
+            submittedAnswers: number;
+            memoryCards: number;
+            attachments: number;
+            aiTasks: number;
+            materialReservedBytes: number;
+            materialQuotaBytes: number;
+            materialsEnabled: boolean;
+            /** Format: date-time */
+            checkedAt: string;
+        };
+        /** @enum {string} */
+        DataArchiveState: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+        DataArchiveCreate: {
+            /** @constant */
+            confirmedSensitiveData: true;
+        };
+        DataArchiveStatus: {
+            enabled: boolean;
+            lifecycleReady: boolean;
+            formatVersion: number;
+            expiryHours: number;
+            maximumBytes: number;
+            maximumRows: number;
+            exclusions: string[];
+        };
+        DataArchiveJob: {
+            id: string;
+            state: components["schemas"]["DataArchiveState"];
+            formatVersion: number;
+            /** Format: date-time */
+            createdAt: string;
+            startedAt: string | null;
+            completedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string;
+            byteSize: number | null;
+            sha256: string | null;
+            rowCount: number | null;
+            fileCount: number | null;
+            errorCode: string | null;
+            downloadable: boolean;
+        };
+        DataArchiveJobPage: {
+            items: components["schemas"]["DataArchiveJob"][];
+        };
+        DataArchiveColumn: {
+            name: string;
+            /** @description java.sql.Types JDBC类型码，可能为负数。 */
+            jdbcType: number;
+            typeName: string;
+            size: number;
+            scale: number;
+            nullable: boolean;
+            generated: boolean;
+            defaultValue: string | null;
+            expression: string | null;
+        };
+        DataArchiveForeignKey: {
+            name: string;
+            parentTable: string;
+            ordinal: number;
+            column: string;
+            parentColumn: string;
+        };
+        DataArchiveTable: {
+            name: string;
+            columns: components["schemas"]["DataArchiveColumn"][];
+            primaryKey: string[];
+            foreignKeys: components["schemas"]["DataArchiveForeignKey"][];
+            definitionSha256: string;
+        };
+        DataArchiveSchema: {
+            tables: components["schemas"]["DataArchiveTable"][];
+            sha256: string;
+        };
+        DataArchiveEntry: {
+            path: string;
+            kind: string;
+            table: string | null;
+            attachmentId: string | null;
+            recordId: string | null;
+            rows: number;
+            byteSize: number;
+            sha256: string;
+        };
+        /** @description 确切的隐私清除文件缺项；manifest明确列出路径及原归属，恢复不得把旧磁盘副本重新装入。 */
+        DataArchiveFileOmission: {
+            path: string;
+            /** @enum {string} */
+            kind: "ATTACHMENT" | "PARSE_RESULT" | "PREVIEW";
+            attachmentId: components["schemas"]["Id"];
+            recordId: components["schemas"]["Id"];
+            /** @constant */
+            reason: "PRIVACY_CLEARED";
+        };
+        DataArchiveManifest: {
+            format: string;
+            formatVersion: number;
+            archiveId: string;
+            ownerId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            schema: components["schemas"]["DataArchiveSchema"];
+            lifecycleCheckpoint: components["schemas"]["ArchiveCheckpoint"];
+            rowCount: number;
+            payloadBytes: number;
+            entries: components["schemas"]["DataArchiveEntry"][];
+            omittedFiles: components["schemas"]["DataArchiveFileOmission"][];
+            exclusions: string[];
+            transformations: string[];
+        };
+        DataArchivePreview: {
+            archiveId: string;
+            ownerId: string;
+            formatVersion: number;
+            archiveSha256: string;
+            schemaSha256: string;
+            rows: number;
+            files: number;
+            bytes: number;
+            targetDatabase: string;
+            targetEmpty: boolean;
+            targetSealed: boolean;
+            latestCheckpoint: components["schemas"]["ArchiveCheckpoint"];
+            exclusions: string[];
+            transformations: string[];
+        };
+        DataArchiveRestoreResult: {
+            archiveId: string;
+            ownerId: string;
+            state: string;
+            appliedCheckpoint: components["schemas"]["ArchiveCheckpoint"];
+            restoredRows: number;
+            restoredFiles: number;
+        };
+        /** @enum {string} */
+        BoardReferenceKind: "KNOWLEDGE" | "QUESTION" | "ATTACHMENT";
+        DataPrivacyInitializeLedger: {
+            acknowledgeCurrentBaseline: boolean;
+        };
+        DataPrivacySelectObject: {
+            objectKind: components["schemas"]["DataPrivacyRootKind"];
+            objectId: components["schemas"]["Id"];
+        };
+        DataPrivacyCommand: {
+            objectKind: components["schemas"]["DataPrivacyRootKind"];
+            objectId: components["schemas"]["Id"];
+            previewDigest: string;
+            confirmWholeMixedDocuments: boolean | null;
+        };
+        DataPrivacyObjectInfo: {
+            objectKind: components["schemas"]["DataPrivacyObjectKind"];
+            objectId: components["schemas"]["Id"];
+            title: string;
+            status: string;
+            revision: number;
+            impact: string;
+        };
+        DataPrivacyRowImpact: {
+            table: string;
+            rows: number;
+            fields: string[];
+            handling: string;
+        };
+        DataPrivacyPreview: {
+            /** @enum {string} */
+            action: "TRASH" | "RESTORE" | "PURGE";
+            objectKind: components["schemas"]["DataPrivacyRootKind"];
+            objectId: components["schemas"]["Id"];
+            digest: string;
+            objects: components["schemas"]["DataPrivacyObjectInfo"][];
+            storage: components["schemas"]["DataPrivacyRowImpact"][];
+            limitations: string[];
+            ledgerRedactions: number;
+        };
+        DataPrivacyResult: {
+            /** @enum {string} */
+            action: "TRASH" | "RESTORE" | "PURGE";
+            objects: components["schemas"]["PrivacyLedgerSubject"][];
+            ledgerSequence: number;
+            ledgerHash: string;
+            state: string;
+        };
+        DataPrivacyTrashEntry: {
+            objectKind: components["schemas"]["DataPrivacyRootKind"];
+            objectId: components["schemas"]["Id"];
+            /** @constant */
+            state: "TRASHED";
+            revision: number;
+            previousStatus: string | null;
+            /** @description 服务器UTC LocalDateTime，字符串不带偏移；显示时须按UTC解释。 */
+            trashedAt: string;
+            /** @description 服务器UTC LocalDateTime，字符串不带偏移；显示时须按UTC解释。 */
+            updatedAt: string;
+        };
+        DataPrivacyTrashPage: {
+            items: components["schemas"]["DataPrivacyTrashEntry"][];
+            nextCursor: string | null;
+        };
+        PrivacyLifecycleStatus: {
+            configured: boolean;
+            initialized: boolean;
+            synchronizedWithDatabase: boolean;
+            latestHead: components["schemas"]["PrivacyLedgerHead"];
+            appliedSequence: number | null;
+            appliedHash: string | null;
+            /** @enum {string} */
+            state: "NOT_CONFIGURED" | "NOT_INITIALIZED" | "READY" | "RECONCILIATION_REQUIRED";
+        };
+        PrivacyLedgerSubject: {
+            kind: components["schemas"]["PrivacyLedgerKind"];
+            id: components["schemas"]["Id"];
+        };
+        PrivacyLedgerHead: {
+            sequence: number;
+            hash: string;
+        };
+        /** @enum {string} */
+        MaterialDependencyImpactState: "PENDING" | "ALL";
+        /** @enum {string} */
+        MaterialDependencyImpactDomain: "PREPARATION" | "QUESTION" | "RELATION" | "STANDARD_REVIEW" | "KNOWLEDGE";
+        /** @enum {string} */
+        MaterialDependencyImpactBinding: "PREPARATION_REFERENCE" | "QUESTION_ADOPTION" | "FACT_ADOPTION" | "RELATION_ADOPTION" | "RELATION_EVIDENCE" | "REVIEW_EVIDENCE" | "SOURCE_DEPENDENCY";
+        /** @enum {string} */
+        MaterialDependencyImpactChoice: "KEEP_CURRENT" | "UPDATED" | "ARCHIVED" | "WITHDRAWN" | "REMOVED";
+        /** @description 原始确切目标。PREPARATION／QUESTION／KNOWLEDGE有版本而revision为null；RELATION无版本或修订；STANDARD_REVIEW以revision标识。 */
+        MaterialDependencyImpactTarget: {
+            domain: components["schemas"]["MaterialDependencyImpactDomain"];
+            id: string;
+            versionId: string | null;
+            versionNumber: number | null;
+            revision: number | null;
+            title: string;
+        };
+        /** @description 同owner当前目标。准备材料／题目／知识具有当前版本和revision；RELATION三项版本／修订为null；STANDARD_REVIEW只具有revision。 */
+        MaterialDependencyImpactCurrentTarget: {
+            domain: components["schemas"]["MaterialDependencyImpactDomain"];
+            id: string;
+            versionId: string | null;
+            versionNumber: number | null;
+            revision: number | null;
+            status: string;
+            title: string;
+        };
+        MaterialDependencyImpactResolution: {
+            choice: components["schemas"]["MaterialDependencyImpactChoice"];
+            /** @description 1–1000个Unicode码点，不能全为空白、含NUL或无效代理项；保持确切原文。 */
+            reason: string;
+            targetVersionId: string | null;
+            targetRevision: number | null;
+            /** Format: date-time */
+            decidedAt: string;
+        };
+        MaterialDependencyImpactImpact: {
+            id: string;
+            revision: number;
+            correction: components["schemas"]["MaterialCorrectionStatement"];
+            binding: components["schemas"]["MaterialDependencyImpactBinding"];
+            bindingId: string;
+            taskId: string | null;
+            target: components["schemas"]["MaterialDependencyImpactTarget"];
+            currentTarget: components["schemas"]["MaterialDependencyImpactCurrentTarget"];
+            /** Format: date-time */
+            createdAt: string;
+            resolution: components["schemas"]["MaterialDependencyImpactResolution"] | null;
+        };
+        MaterialDependencyImpactPage: {
+            excerptId: string;
+            state: components["schemas"]["MaterialDependencyImpactState"];
+            items: components["schemas"]["MaterialDependencyImpactImpact"][];
+            nextCursor: string | null;
+        };
+        /** @description 完整六字段必填，目标版本与修订须逐项匹配详情。可空字段仍须显式传null；confirmed必须为true。处理只登记决定，不替代目标的真实更新、归档、撤回或移除。 */
+        MaterialDependencyImpactResolve: {
+            expectedRevision: number;
+            expectedTargetVersionId: string | null;
+            expectedTargetRevision: number | null;
+            choice: components["schemas"]["MaterialDependencyImpactChoice"];
+            /** @description 1–1000个Unicode码点，不能全为空白、含NUL或无效代理项；保持确切原文。 */
+            reason: string;
+            /** @constant */
+            confirmed: true;
+        };
+        /**
+         * @description 影响预览中的业务身份；AI_AUTHORIZATION可以作为清除派生范围出现，但不能被直接选择为操作根对象。
+         * @enum {string}
+         */
+        DataPrivacyObjectKind: "KNOWLEDGE" | "PREPARATION" | "QUESTION" | "MEMORY_CARD" | "BOARD" | "MATERIAL" | "AI_TASK" | "TRAINING" | "REVIEW_FEEDBACK" | "RECOLLECTION" | "PREPARATION_TASK" | "REVIEW_ACTION" | "QUESTION_COLLECTION" | "INTERVIEW_EVENT" | "AI_AUTHORIZATION";
+        /**
+         * @description 可作为回收站／恢复／清除根对象的14类身份。模型范围授权须走原生撤权，不能作为这些操作的根对象。
+         * @enum {string}
+         */
+        DataPrivacyRootKind: "KNOWLEDGE" | "PREPARATION" | "QUESTION" | "MEMORY_CARD" | "BOARD" | "MATERIAL" | "AI_TASK" | "TRAINING" | "REVIEW_FEEDBACK" | "RECOLLECTION" | "PREPARATION_TASK" | "REVIEW_ACTION" | "QUESTION_COLLECTION" | "INTERVIEW_EVENT";
+        /**
+         * @description 独立账本支持的身份类型；包含内部材料摘录与导出记录，不等于回收站可选根对象。
+         * @enum {string}
+         */
+        PrivacyLedgerKind: "KNOWLEDGE" | "PREPARATION" | "QUESTION" | "MEMORY_CARD" | "BOARD" | "MATERIAL" | "AI_TASK" | "AI_AUTHORIZATION" | "TRAINING" | "REVIEW_FEEDBACK" | "RECOLLECTION" | "PREPARATION_TASK" | "REVIEW_ACTION" | "QUESTION_COLLECTION" | "INTERVIEW_EVENT" | "MATERIAL_EXCERPT" | "EXPORT";
     };
     responses: {
         /** @description 请求参数、JSON或幂等键不合法。 */
@@ -18269,7 +19906,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description REVISION_CONFLICT／REVISION_LIMIT、ATTACHMENT_IMMUTABLE／ATTACHMENT_NOT_READY、UPLOAD_IN_PROGRESS／UPLOAD_ATTEMPT_LIMIT／UPLOAD_ATTEMPT_CLOSED／UPLOAD_INTERRUPTED、PARSE_IN_PROGRESS／PARSE_ATTEMPT_LIMIT／PARSE_QUEUE_FULL／PARSE_NOT_SUCCEEDED、MATERIAL_QUOTA_EXCEEDED 或 IDEMPOTENCY_KEY_REUSED；未知上传结果先查原尝试，失败尝试与历史解析仍保留容量。 ASSISTANCE_CONFIRMATION_REQUIRED：当前存在未授权资料访问的独立训练时，须回到该会话显式确认辅助；普通读取同样受限，确认前不得自动重试，历史答案条件不倒改。 MATERIAL_REVISION_CONFLICT：expectedRevision与当前材料revision不符；MATERIAL_STATE_CONFLICT：请求动作不是当前状态的有效转换；MATERIAL_HAS_REFERENCES：准备／正式关系直接材料证据／审阅原始绑定，或AI输入已有ADOPTED知识／题目／事实／关系决定，或不支持的任务／来源／决定身份阻止四动作；合法纯AI输入登记及IGNORED本身不阻止。MATERIAL_NOT_ACTIVE：新选用或直接材料capture需要的摘录已归档；MATERIAL_AI_USE_REVOKED：直接材料capture核验发现AI用途已撤回。准备事实／表达等间接材料资格失效沿既有AI_SOURCE_CHANGED，不改为直接材料错误码。 */
+        /** @description REVISION_CONFLICT／REVISION_LIMIT、ATTACHMENT_IMMUTABLE／ATTACHMENT_NOT_READY、UPLOAD_IN_PROGRESS／UPLOAD_ATTEMPT_LIMIT／UPLOAD_ATTEMPT_CLOSED／UPLOAD_INTERRUPTED、PARSE_IN_PROGRESS／PARSE_ATTEMPT_LIMIT／PARSE_QUEUE_FULL／PARSE_NOT_SUCCEEDED、MATERIAL_QUOTA_EXCEEDED 或 IDEMPOTENCY_KEY_REUSED；未知上传结果先查原尝试，失败尝试与历史解析仍保留容量。 ASSISTANCE_CONFIRMATION_REQUIRED：当前存在未授权资料访问的独立训练时，须回到该会话显式确认辅助；普通读取同样受限，确认前不得自动重试，历史答案条件不倒改。 MATERIAL_REVISION_CONFLICT：expectedRevision与当前材料revision不符；MATERIAL_STATE_CONFLICT：请求动作不是当前状态的有效转换；MATERIAL_HAS_REFERENCES：直接准备／正式关系材料证据／审阅、题目／事实／关系采用或不支持身份仍阻塞；已采用知识仅对完整核验且无未支持出口的REVOKE_AI／ALLOW_AI例外，归档／恢复仍拒绝。知识闭包任一历史版的题目／卡片／准备／关系依据／问答／白板／训练／审阅／面试／回忆历史／安排等原始出口保守阻塞，不证明它们均已外发或正式物化；合法纯AI登记和IGNORED沿原规则。命令重建闭包的超限沿MATERIAL_KNOWLEDGE_PREVIEW_LIMIT，祖先缺历史及额度沿KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE／KNOWLEDGE_MATERIAL_LINEAGE_LIMIT，均409且无部分写入。MATERIAL_NOT_ACTIVE：新选用或直接材料capture需要的摘录已归档；MATERIAL_AI_USE_REVOKED：直接材料capture核验发现AI用途已撤回。准备事实／表达等间接材料资格失效沿既有AI_SOURCE_CHANGED，不改为直接材料错误码。 MATERIAL_CONTENT_CORRECTED：旧摘录已声明内容更正，不能重复声明、新选用或以四类生命周期动作恢复；选择已更正替代也拒绝。更正命令两端expectedRevision/expectedReplacementRevision不符沿MATERIAL_REVISION_CONFLICT；已有采用/本地绑定或不支持身份沿MATERIAL_HAS_REFERENCES。历史更正读取及同键原回执保持。 正文更正的真实知识ADOPTED须完整闭包和受支持出口证明；MATERIAL_KNOWLEDGE_CLOCK_CONFLICT拒绝非严格前进时间。S8第二十八批仅对更正命令增加AI制卡严格证明：原任务/Manifest/hash/全部来源/决定/首版卡及当前保留全部原来源一致才支持，移除或替换原来源仍MATERIAL_HAS_REFERENCES；独立200任务/2500原始绑定超限MATERIAL_CARD_PROOF_LIMIT，整体无写入。坏历史/矛盾绑定为完整性错误，不吞成空来源。原直接其他采用/本地绑定、题目/训练/准备/关系等未支持出口保持MATERIAL_HAS_REFERENCES；不改变归档/恢复及REVOKE_AI/ALLOW_AI的原限制。 */
         MaterialProblem409: {
             headers: {
                 [name: string]: unknown;
@@ -18404,7 +20041,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description AI_DISABLED、AI_NOT_CONFIGURED、AI_CONFIG_CHANGED、AI_MANIFEST_CHANGED、AI_SOURCE_CHANGED、AI_BUDGET_EXCEEDED、AI_CURRENCY_PENDING、AI_STATE_CONFLICT、AI_CANDIDATE_DECIDED、VERSION_CONFLICT、DRAFT_UNPUBLISHED、KNOWLEDGE_ARCHIVED、SOURCE_CHANGED、AI_UNKNOWN_COST_CONFIRMATION_REQUIRED、REVISION_CONFLICT、IDEMPOTENCY_KEY_REUSED 或 ASSISTANCE_CONFIRMATION_REQUIRED；保留原输入。候选用途与采用接口不符返回 AI_STATE_CONFLICT；采用来源变化返回 AI_SOURCE_CHANGED，最终题目的新增知识关联变化返回 SOURCE_CHANGED。独立训练资料守卫覆盖全部AI操作及幂等回执。 通用重试 FOLLOW_UP 返回 AI_FOLLOW_UP_ROUTE_REQUIRED；通用采用／忽略该用途返回 AI_STATE_CONFLICT。通用预览／创建拒绝 FOLLOW_UP 并返回 400 AI_PURPOSE_INVALID。 表达采用还核验全部原FACT及父项目代次、目标当前版本与revision；来源或目标冲突保留最终改写，已决定任务不能用新键再次采用。 PREPARATION_PLAN采用同样核对目标当前版本和来源代次、AI任务修订及未决定状态；来源冲突或已决定不得改写已保存的普通任务。 RELATION_DRAFT逐项采用若规范化端点和类型的正式关系已存在返回RELATION_EXISTS，整次不写决定，不给已有手工边补AI来源；仍核对任务修订、来源、单项未决定及知识领域循环/容量。旧整任务采用/忽略不接收此用途；任一关系候选已有终态决定后不能重试生成。 ANSWER_COMPARISON沿用AI_SOURCE_CHANGED/AI_MANIFEST_CHANGED/AI_EVALUATION_ACCESS_REQUIRED；每comparison最多3任务或已有在途任务返回AI_COMPARISON_LIMIT。新授权核对动作归属/修订和训练代次，来源变化后历史候选可读但不可继续原授权发送；候选不进入通用采用/忽略，返回AI_STATE_CONFLICT。 S8第十五至二十一批：knowledgeMaterialChecks覆盖知识实际采用、确切准备依据、原表达／事实采用、固定答案图及知识trainingDraft题面与题库原出题来源，显式feedbackTaskId另核成功评价、原输入/确切标准和完整报告。无题库FOLLOW_UP另核v2成功生成绑定、完整候选/生成快照、确切父问/父答及原实际外发准备背景；只取保存CURRENT子序列，不以今天状态补造。父位置严格早于子以拒绝追问父链环；旧1/未知版新祖先用途故障关闭，不改历史读取。FACT TRAINING不增加题面/评价，REPLAY/个人回忆仍未闭合；未保存的attemptId/reportHash不补造。旧数组遗漏扩展材料须新预览，历史JSON／摘要／回执不改写。知识／准备含采用目标、答案、题目、题库版及评价/追问taskId共200节点，知识／表达／事实／题库共500实际采用、全部原始绑定共2500（含评价原头/完整报告citation、追问原头/全部保存checks/actual context/完整candidate citation）、摘录共200；评价/追问不计采用，超限409 KNOWLEDGE_MATERIAL_LINEAGE_LIMIT，不返回截断许可。材料用途与内容复核独立；事实历史父项目、无题库REPLAY/个人回忆、未明确选定的评价或参考、隐式背景／白板原文、TARGET组织链接及其他物化路径未闭合，已采用材料四动作继续拒绝。 */
+        /** @description AI_DISABLED、AI_NOT_CONFIGURED、AI_CONFIG_CHANGED、AI_MANIFEST_CHANGED、AI_SOURCE_CHANGED、AI_BUDGET_EXCEEDED、AI_CURRENCY_PENDING、AI_STATE_CONFLICT、AI_CANDIDATE_DECIDED、VERSION_CONFLICT、DRAFT_UNPUBLISHED、KNOWLEDGE_ARCHIVED、SOURCE_CHANGED、AI_UNKNOWN_COST_CONFIRMATION_REQUIRED、REVISION_CONFLICT、IDEMPOTENCY_KEY_REUSED 或 ASSISTANCE_CONFIRMATION_REQUIRED；保留原输入。候选用途与采用接口不符返回 AI_STATE_CONFLICT；采用来源变化返回 AI_SOURCE_CHANGED，最终题目的新增知识关联变化返回 SOURCE_CHANGED。独立训练资料守卫覆盖全部AI操作及幂等回执。 通用重试 FOLLOW_UP 返回 AI_FOLLOW_UP_ROUTE_REQUIRED；通用采用／忽略该用途返回 AI_STATE_CONFLICT。通用预览／创建拒绝 FOLLOW_UP 并返回 400 AI_PURPOSE_INVALID。 表达采用还核验全部原FACT及父项目代次、目标当前版本与revision；来源或目标冲突保留最终改写，已决定任务不能用新键再次采用。 PREPARATION_PLAN采用同样核对目标当前版本和来源代次、AI任务修订及未决定状态；来源冲突或已决定不得改写已保存的普通任务。 RELATION_DRAFT逐项采用若规范化端点和类型的正式关系已存在返回RELATION_EXISTS，整次不写决定，不给已有手工边补AI来源；仍核对任务修订、来源、单项未决定及知识领域循环/容量。旧整任务采用/忽略不接收此用途；任一关系候选已有终态决定后不能重试生成。 ANSWER_COMPARISON沿用AI_SOURCE_CHANGED/AI_MANIFEST_CHANGED/AI_EVALUATION_ACCESS_REQUIRED；每comparison最多3任务或已有在途任务返回AI_COMPARISON_LIMIT。新授权核对动作归属/修订和训练代次，来源变化后历史候选可读但不可继续原授权发送；候选不进入通用采用/忽略，返回AI_STATE_CONFLICT。 S8第十五至二十三批：knowledgeMaterialChecks覆盖知识实际采用、确切准备依据、原表达／事实采用、固定答案图及知识trainingDraft题面与题库原出题来源，显式feedbackTaskId另核成功评价、原输入/确切标准和完整报告。无题库FOLLOW_UP另核v2成功生成绑定、完整候选/生成快照、确切父问/父答及原实际外发准备背景；只取保存CURRENT子序列，不以今天状态补造。父位置严格早于子以拒绝追问父链环；旧1/未知版新祖先用途故障关闭，不改历史读取。FACT TRAINING不增加题面/评价，REPLAY核真实SAME绑定及固定配置、完整原题复制与来源环，原答只核身份；个人回忆只核确切历史版和题面投影，不沿未复制内容扩材料；未保存的attemptId/reportHash不补造。旧数组遗漏扩展材料须新预览，历史JSON／摘要／回执不改写。知识／准备含采用目标、答案、题目、题库版、评价/追问taskId及确切个人回忆版本共200节点，知识／表达／事实／题库共500实际采用、全部原始绑定共2500（含评价原头/完整报告citation、追问原头/全部保存checks/actual context/完整candidate citation、复练绑定/基线原答身份/确切个人回忆版本见证）、摘录共200；评价/追问不计采用，超限409 KNOWLEDGE_MATERIAL_LINEAGE_LIMIT，不返回截断许可。材料用途与内容复核独立；未捕获父项目代次的FACT路径、未明确选定的评价或参考、隐式背景／白板原文、TARGET组织链接及其他物化路径未闭合，已采用材料四动作继续拒绝。 原FACT直接检查、表达事实检查及追问实际发送FACT背景保存父项目代次时，纳入同代次当前见证或V71真实事件映射的确切项目版材料；同代次当前观察必须完整核owner/kind/pointer/number/ACTIVE，历史端点全量一致且不超当前观察，冲突或损坏不能挑行跳过。缺见证返回KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE，保留输入，不用当前版本替代历史；普通current仅此返回false，历史任务仍可读，不能继续原授权。项目当前观察与匹配事件共享2500绑定，确切项目版共享200节点。未保存代次及V71之前未登记的历史不补造，已采用材料四动作保持。 */
         AiProblem409: {
             headers: {
                 [name: string]: unknown;
@@ -18638,6 +20275,15 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
+        /** @description 内容已进入回收站、彻底清除或用途已撤回，不能访问。 */
+        Problem410: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
     };
     parameters: {
         /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
@@ -18651,6 +20297,45 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getMaterialKnowledgeAdoptionPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 本人确切摘录，标准小写UUID。 */
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 只读知识采用链元数据；范围限定，不表示更正传播或完整删除影响。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialKnowledgePreview"];
+                };
+            };
+            400: components["responses"]["MaterialProblem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["MaterialProblem404"];
+            /** @description 独立训练资料条件未确认沿ASSISTANCE_CONFIRMATION_REQUIRED；反向200版/500边/2500原始行超限为MATERIAL_KNOWLEDGE_PREVIEW_LIMIT。祖先证明缺见证沿KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE、原预算超限沿KNOWLEDGE_MATERIAL_LINEAGE_LIMIT；保留明确错误，不返回截断或伪空图，不修改原任务或授权。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["MaterialProblem503"];
+        };
+    };
     getSession: {
         parameters: {
             query?: never;
@@ -20051,7 +21736,7 @@ export interface operations {
     listKnowledgeLibrary: {
         parameters: {
             query?: {
-                collection?: "ALL" | "FAVORITES" | "RECENT" | "UNCATEGORIZED";
+                collection?: "ALL" | "FAVORITES" | "RECENT" | "UNCATEGORIZED" | "BROKEN_LINKS";
                 kind?: components["schemas"]["ItemKind"];
                 status?: "ACTIVE" | "ARCHIVED";
                 /** @description 已发布标题字面量筛选。 */
@@ -20093,7 +21778,7 @@ export interface operations {
                 status?: "ACTIVE" | "ARCHIVED";
                 topicId?: components["schemas"]["Id"];
                 tag?: string;
-                source?: "USER";
+                source?: "ALL" | "USER" | "AI_ADOPTED" | "TEXT_IMPORT" | "PACKAGE_IMPORT";
                 limit?: number;
                 /** @description 跳过已经数据库回验可见的有效结果数量；范围0–1000。 */
                 offset?: number;
@@ -22701,6 +24386,39 @@ export interface operations {
             401: components["responses"]["Problem401"];
             404: components["responses"]["BankProblem404"];
             409: components["responses"]["BankProblem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getBankQuestionKnowledgeReferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 当前 owner 下的稳定对象 ID；ID 本身不代表读取权限。 */
+                id: components["schemas"]["Id"];
+                /** @description 必须属于路径对象的确切版本 ID。 */
+                versionId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 只读确切版来源元数据；无隐藏参考或曝光。Cache-Control: no-store。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankKnowledgeReferencePage"];
+                };
+            };
+            400: components["responses"]["BankProblem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["BankProblem404"];
+            409: components["responses"]["BankProblem409"];
+            422: components["responses"]["BankProblem422"];
             500: components["responses"]["Problem500"];
             503: components["responses"]["Problem503"];
         };
@@ -34216,7 +35934,7 @@ export interface operations {
             401: components["responses"]["Problem401"];
             403: components["responses"]["Problem403"];
             404: components["responses"]["Problem404"];
-            /** @description AI_SOURCE_CHANGED：所选知识不再ACTIVE、不是当前发布版本或不可访问，或知识采用、确切准备依据、原表达／事实采用、固定答案图引用、知识整理固定题面和题库原出题来源（含显式选定评价及FOLLOW_UP v2确切父问/父答/实际外发背景路径）的材料许可／代次失配，或旧显式数组遗漏扩展材料而须重新预览；KNOWLEDGE_MATERIAL_LINEAGE_LIMIT：支持路径的完整知识材料闭包超过共享预算，不能返回截断许可。另沿用AI_MANIFEST_CHANGED及既有配置、预算、币种和训练资料守卫冲突。创建来源、类型、要求或配置变化须重新预览。 */
+            /** @description AI_SOURCE_CHANGED：所选知识不再ACTIVE、不是当前发布版本或不可访问，或知识采用、确切准备依据、原表达／事实采用、固定答案图引用、知识整理固定题面和题库原出题来源（含显式选定评价及FOLLOW_UP v2确切父问/父答/实际外发背景、REPLAY原题复制及个人回忆确切版题面路径）的材料许可／代次失配，或旧显式数组遗漏扩展材料而须重新预览；KNOWLEDGE_MATERIAL_LINEAGE_LIMIT：支持路径的完整知识材料闭包超过共享预算，不能返回截断许可。另沿用AI_MANIFEST_CHANGED及既有配置、预算、币种和训练资料守卫冲突。创建来源、类型、要求或配置变化须重新预览。 原事实父项目有明确代次时核同代次当前见证或V71真实事件对应的确切项目版材料；缺见证返回KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE，不能以当前版猜历史，不返回部分许可。 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -34278,7 +35996,7 @@ export interface operations {
             401: components["responses"]["Problem401"];
             403: components["responses"]["Problem403"];
             404: components["responses"]["Problem404"];
-            /** @description AI_SOURCE_CHANGED：所选知识不再ACTIVE、不是当前发布版本或不可访问，或知识采用、确切准备依据、原表达／事实采用、固定答案图引用、知识整理固定题面和题库原出题来源（含显式选定评价及FOLLOW_UP v2确切父问/父答/实际外发背景路径）的材料许可／代次失配，或旧显式数组遗漏扩展材料而须重新预览；KNOWLEDGE_MATERIAL_LINEAGE_LIMIT：支持路径的完整知识材料闭包超过共享预算，不能返回截断许可。另沿用AI_MANIFEST_CHANGED及既有配置、预算、币种和训练资料守卫冲突。创建来源、类型、要求或配置变化须重新预览。 同一Idempotency-Key对应不同请求返回IDEMPOTENCY_KEY_REUSED。 */
+            /** @description AI_SOURCE_CHANGED：所选知识不再ACTIVE、不是当前发布版本或不可访问，或知识采用、确切准备依据、原表达／事实采用、固定答案图引用、知识整理固定题面和题库原出题来源（含显式选定评价及FOLLOW_UP v2确切父问/父答/实际外发背景、REPLAY原题复制及个人回忆确切版题面路径）的材料许可／代次失配，或旧显式数组遗漏扩展材料而须重新预览；KNOWLEDGE_MATERIAL_LINEAGE_LIMIT：支持路径的完整知识材料闭包超过共享预算，不能返回截断许可。另沿用AI_MANIFEST_CHANGED及既有配置、预算、币种和训练资料守卫冲突。创建来源、类型、要求或配置变化须重新预览。 同一Idempotency-Key对应不同请求返回IDEMPOTENCY_KEY_REUSED。 原事实父项目有明确代次时核同代次当前见证或V71真实事件对应的确切项目版材料；缺见证返回KNOWLEDGE_MATERIAL_LINEAGE_HISTORY_UNAVAILABLE，不能以当前版猜历史，不返回部分许可。 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -35737,6 +37455,152 @@ export interface operations {
             503: components["responses"]["Problem503"];
         };
     };
+    listMaterialKnowledgeSourceImpacts: {
+        parameters: {
+            query: {
+                state: components["schemas"]["KnowledgeRevalidationState"];
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                itemId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 材料更正实际知识影响元数据页。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialKnowledgeImpactPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listKnowledgeMaterialImpacts: {
+        parameters: {
+            query: {
+                state: components["schemas"]["KnowledgeRevalidationState"];
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                itemId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 材料更正实际知识影响元数据页。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialKnowledgeImpactPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getMaterialKnowledgeImpact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                impactId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 一条真实材料更正知识影响及父指针。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialKnowledgeImpact"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    resolveMaterialKnowledgeImpact: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path: {
+                itemId: components["schemas"]["Id"];
+                impactId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeRevalidationResolve"];
+            };
+        };
+        responses: {
+            /** @description 已处理的原固定影响及一次人工决定。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialKnowledgeImpact"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
     listPreparationKnowledgeSourceImpacts: {
         parameters: {
             query: {
@@ -35918,6 +37782,77 @@ export interface operations {
             503: components["responses"]["MaterialProblem503"];
         };
     };
+    getMaterialExcerptCorrection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 当前owner的确切摘录身份，标准小写UUID。 */
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 确切摘录的更正元数据；无声明时correction为null，响应不包含正文。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCorrectionState"];
+                };
+            };
+            400: components["responses"]["MaterialProblem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["MaterialProblem404"];
+            409: components["responses"]["MaterialProblem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["MaterialProblem503"];
+        };
+    };
+    declareMaterialExcerptCorrection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path: {
+                /** @description 当前owner的确切摘录身份，标准小写UUID。 */
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCorrectionCreate"];
+            };
+        };
+        responses: {
+            /** @description 确切摘录的更正元数据；无声明时correction为null，响应不包含正文。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCorrectionState"];
+                };
+            };
+            400: components["responses"]["MaterialProblem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["MaterialProblem404"];
+            409: components["responses"]["MaterialProblem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["MaterialProblem503"];
+        };
+    };
     getMaterialExcerptLifecycle: {
         parameters: {
             query?: never;
@@ -36023,6 +37958,1440 @@ export interface operations {
             409: components["responses"]["MaterialProblem409"];
             500: components["responses"]["Problem500"];
             503: components["responses"]["MaterialProblem503"];
+        };
+    };
+    listKnowledgeTextImports: {
+        parameters: {
+            query?: {
+                /** @description 可选，原始UTF-8字节指纹，BOM和换行参与。 */
+                sourceSha256?: string;
+                /** @description 上页nextCursor；固定记录身份，不接受其他owner或不匹配当前源的记录。 */
+                cursor?: components["schemas"]["Id"];
+                /** @description 每页1至50。 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本人已登记的成功导入元数据；不返回原文或最终正文。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            409: components["responses"]["Problem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    createKnowledgeTextImport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportCreate"];
+            };
+        };
+        responses: {
+            /** @description 知识及导入记录已同事务提交；同键同请求返回原结果。 */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportSaved"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listKnowledgeTextImportBatches: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["Id"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 有界元数据页，不返回任何原文。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            409: components["responses"]["Problem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    createKnowledgeTextImportBatch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description 清单及回执已提交，尚未创建任何笔记。 */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getKnowledgeTextImportBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本人确切批次元数据及原首版入口。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    importKnowledgeTextImportBatchEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path: {
+                id: components["schemas"]["Id"];
+                entryId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportBatchImport"];
+            };
+        };
+        responses: {
+            /** @description 本份创建和进度已提交，返回不含正文的当时批次结果。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    skipKnowledgeTextImportBatchEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path: {
+                id: components["schemas"]["Id"];
+                entryId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportBatchSkip"];
+            };
+        };
+        responses: {
+            /** @description 本份已明确跳过且记录进度。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    createKnowledgeTextImportDirectoryBatch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportBatchCreateDirectory"];
+            };
+        };
+        responses: {
+            /** @description 目录清单与回执已保存，revision=0且全部PENDING，尚未创建知识。 */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDirectoryDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getKnowledgeTextImportDirectoryBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 同一读取快照的batch与完整路径映射，非正文或外部资格。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportBatchDirectoryDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    publishKnowledgeTextImportBatchEntryLinks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path: {
+                id: components["schemas"]["Id"];
+                entryId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportBatchPublishLinks"];
+            };
+        };
+        responses: {
+            /** @description 后续新版本与回执同事务提交，返回当时完整ItemDetail；导入首版和批次进度保持。 */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    createKnowledgeTextImportWithTags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeTextImportCreateWithTags"];
+            };
+        };
+        responses: {
+            /** @description 新笔记、首版、导入记录及规范化组织标签同事务提交；原键返回当时三字段回执。 */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeTextImportSavedWithTags"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getPersonalPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencePreferences"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    savePersonalPreferences: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceSave"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencePreferences"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getPersonalUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceUsage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getKnowledgeSources: {
+        parameters: {
+            query?: {
+                revision?: number;
+            };
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+                versionId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceDocument"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    saveKnowledgeSources: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["schemas"]["Id"];
+                versionId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeSourceSave"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceDocument"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    previewKnowledgePackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgePackagePlan"];
+            };
+        };
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePackagePreview"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listKnowledgePackages: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePackagePage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    registerKnowledgePackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgePackageRegister"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePackageDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getKnowledgePackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePackageDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    commitKnowledgePackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgePackageCommit"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePackageDetail"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    previewConceptMerge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeMergePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeMergePreview"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    commitConceptMerge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeMergeCommit"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeMergeResult"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    resolveMergedConcept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeMergeResolution"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getDataArchiveStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataArchiveStatus"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listDataArchives: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataArchiveJobPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    createDataArchive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataArchiveCreate"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataArchiveJob"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getDataArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataArchiveJob"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    downloadDataArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getDataPrivacyStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyLifecycleStatus"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    initializeDataPrivacyLedger: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacyInitializeLedger"];
+            };
+        };
+        responses: {
+            /** @description 账本初始化后的当前状态；相同事件标识可接续中断初始化，已有业务检查点时返回当前状态。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyLifecycleStatus"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listDataPrivacyTrash: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyTrashPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    commitDataPrivacyTrash: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacyCommand"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyResult"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    previewDataPrivacyTrash: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacySelectObject"];
+            };
+        };
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyPreview"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    previewDataPrivacyRestore: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacySelectObject"];
+            };
+        };
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyPreview"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    commitDataPrivacyRestore: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacyCommand"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyResult"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    previewDataPrivacyPurge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacySelectObject"];
+            };
+        };
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyPreview"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    commitDataPrivacyPurge: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataPrivacyCommand"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataPrivacyResult"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            410: components["responses"]["Problem410"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    listMaterialDependencyImpacts: {
+        parameters: {
+            query: {
+                state: components["schemas"]["MaterialDependencyImpactState"];
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                excerptId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialDependencyImpactPage"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    getMaterialDependencyImpact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                impactId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 读取或预览结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialDependencyImpactImpact"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
+        };
+    };
+    resolveMaterialDependencyImpact: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 先GET /api/v1/auth/csrf，使用其headerName与token；登录／退出后重新获取。 */
+                "X-CSRF-TOKEN": components["parameters"]["Csrf"];
+                /** @description 每条业务命令固定UUID。结果未知使用同键同请求重试；同键不同请求返回409。 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                impactId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialDependencyImpactResolve"];
+            };
+        };
+        responses: {
+            /** @description 命令提交或同键原回执。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialDependencyImpactImpact"];
+                };
+            };
+            400: components["responses"]["Problem400"];
+            401: components["responses"]["Problem401"];
+            403: components["responses"]["Problem403"];
+            404: components["responses"]["Problem404"];
+            409: components["responses"]["Problem409"];
+            413: components["responses"]["Problem413"];
+            422: components["responses"]["Problem422"];
+            500: components["responses"]["Problem500"];
+            503: components["responses"]["Problem503"];
         };
     };
 }

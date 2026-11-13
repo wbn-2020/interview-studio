@@ -18,6 +18,7 @@ const readable = computed(() => store.sessionActive && !access.checking && !acce
 const origins = useQuery({
   queryKey: computed(() => ['ai', store.sessionEpoch, 'question-origins', props.questionId, props.versionId, cursor.value]),
   enabled: computed(() => opened.value && readable.value),
+  staleTime: 0,
   queryFn: async () => {
     const epoch = store.sessionEpoch
     const questionId = props.questionId
@@ -34,11 +35,14 @@ const origins = useQuery({
     return value
   },
 })
+// 每次核对完成前隐藏上次观察，避免将缓存里的 CURRENT 当成本次结果。
+const visibleOrigins = computed(() => readable.value && !origins.isFetching.value
+  && !origins.isPending.value && !origins.error.value ? origins.data.value : undefined)
 watch([() => props.questionId, () => props.versionId, () => store.sessionEpoch], () => { cursor.value = undefined; cursors.value = [] }, { flush: 'sync' })
 function next() {
-  if (!readable.value || origins.data.value?.nextCursor == null) return
+  if (!readable.value || visibleOrigins.value?.nextCursor == null) return
   cursors.value.push(cursor.value)
-  cursor.value = origins.data.value.nextCursor
+  cursor.value = visibleOrigins.value.nextCursor
 }
 </script>
 
@@ -46,10 +50,11 @@ function next() {
   <section class="question-origins" :aria-label="`题目版本 ${versionNumber} 的 AI 采用来源`">
     <header><div><h3>AI 采用来源 · 题目 v{{ versionNumber }}</h3><p class="field-help">查看本版本及更早版本发生的采用记录。</p></div><NButton size="small" :disabled="!readable" :aria-expanded="opened" @click="opened = !opened">{{ opened ? '收起来源' : '查看采用来源' }}</NButton></header>
     <template v-if="opened && readable">
-      <p class="field-help">下列记录保留出题时外发的知识、准备版本及附件摘录，与题目中手工选择的知识关联分别记录。来源留痕不证明技术正确，也不证明后来改写的每一句文字都由这些材料支持。当前检查不证明接入前的更正历史完整，也不能据此恢复当时的外发授权。</p>
-      <p v-if="origins.isPending.value" role="status">正在读取采用来源…</p><p v-if="origins.error.value" class="notice error" role="alert">{{ errorText(origins.error.value) }}<NButton text :disabled="!readable" @click="origins.refetch()">重新读取来源</NButton></p>
-      <p v-else-if="origins.data.value && !origins.data.value.items.length" class="field-help">截至所选题目版本，尚无 AI 候选采用记录。</p>
-      <article v-for="origin in origins.data.value?.items" :key="origin.taskId" class="origin-record">
+      <p class="field-help">下列记录保留出题时外发的知识、准备版本及附件摘录，与题目中手工选择的知识关联分别记录。知识来源按原任务创建时间核对上游更正及处理，状态仅代表上次读取的观察。来源留痕不证明技术正确，也不证明后来改写的每一句文字都由这些材料支持。当前检查不证明接入前的更正历史完整，也不能据此恢复当时的外发授权。</p>
+      <div class="row-actions"><NButton size="small" :disabled="!readable || origins.isFetching.value" @click="origins.refetch()">重新核对采用来源</NButton></div>
+      <p v-if="origins.isFetching.value || origins.isPending.value" role="status">正在核对采用来源…</p><p v-else-if="origins.error.value" class="notice error" role="alert">{{ errorText(origins.error.value) }}<NButton text :disabled="!readable || origins.isFetching.value" @click="origins.refetch()">重新读取来源</NButton></p>
+      <p v-else-if="visibleOrigins && !visibleOrigins.items.length" class="field-help">截至所选题目版本，尚无 AI 候选采用记录。</p>
+      <article v-for="origin in visibleOrigins?.items" :key="origin.taskId" class="origin-record">
         <div class="origin-heading"><strong>{{ origin.direct ? '本版本直接采用' : `历史采用 · 保存于 v${origin.targetVersionNumber}` }}</strong><time>{{ aiDate(origin.adoptedAt) }}</time></div>
         <p v-if="!origin.direct" class="field-help">这次采用发生在更早版本，所选版本可能经过后续人工编辑。</p>
         <div class="origin-links"><RouterLink class="text-link" :to="{ name: 'ai', query: { item: origin.taskId } }">查看原任务、候选与引用</RouterLink><RouterLink class="text-link" :to="{ name: 'bank', query: { item: questionId, version: origin.targetVersionId } }">查看采用时保存的 v{{ origin.targetVersionNumber }}</RouterLink></div>
@@ -57,6 +62,7 @@ function next() {
           <ul class="origin-sources"><li v-for="source in origin.sources" :key="`${source.itemId}/${source.versionId}`"><RouterLink v-if="aiOriginSourceRoute(source)" class="text-link" :to="aiOriginSourceRoute(source)!">{{ source.title }} · v{{ source.number }}</RouterLink><span v-else>{{ source.title }} · v{{ source.number }}</span><span class="source-state">{{ source.kind == null ? '历史知识来源' : aiSourceKindLabel(source.kind) }} · {{ aiOriginStateLabels[source.state] }}</span>
             <span v-if="source.kind === 'EXPRESSION'" class="source-state">这是用户保存的表达素材，不作为项目事实确认；其关联事实仅参与授权核对，未单独选择的事实原文不会随表达自动外发。</span>
             <span v-if="source.kind === 'EXPRESSION' && source.state === 'REVIEW_REQUIRED'" class="source-state">表达依据待复核，或表达自身、事实依据及所属项目的代次与当时不一致。请回到确切表达核对；历史正文与引用保留在原任务中，原授权不会恢复。</span>
+            <span v-if="(source.kind === 'NOTE' || source.kind === 'CONCEPT') && source.state === 'REVIEW_REQUIRED'" class="source-state">该知识的上游来源仍待处理，或在原任务冻结后发生过更正／处理。即使知识正文未变，也请核对原任务及来源；处理完成不会自动恢复这份历史来源的当前状态。</span>
             <span v-if="source.state !== 'UNAVAILABLE' && !aiOriginSourceRoute(source)" class="source-state">来源类型无法识别，请重新读取来源后核对。<NButton text :disabled="!readable" @click="origins.refetch()">重新读取来源</NButton></span></li></ul>
         </template>
         <template v-if="origin.materialSources?.length"><h4>当次外发的附件摘录</h4><p class="field-help">这里保留采用时的来源标识；完整固定正文及引用区间见原任务。</p>
@@ -69,7 +75,7 @@ function next() {
           </li></ul>
         </template>
       </article>
-      <div v-if="cursors.length || origins.data.value?.nextCursor != null" class="row-actions"><NButton size="small" :disabled="!readable || !cursors.length" @click="cursor = cursors.pop()">较新记录</NButton><NButton size="small" :disabled="!readable || origins.data.value?.nextCursor == null" @click="next">更早记录</NButton></div>
+      <div v-if="visibleOrigins && (cursors.length || visibleOrigins.nextCursor != null)" class="row-actions"><NButton size="small" :disabled="!readable || origins.isFetching.value || !cursors.length" @click="cursor = cursors.pop()">较新记录</NButton><NButton size="small" :disabled="!readable || origins.isFetching.value || visibleOrigins.nextCursor == null" @click="next">更早记录</NButton></div>
     </template>
   </section>
 </template>

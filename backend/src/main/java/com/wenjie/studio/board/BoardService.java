@@ -7,7 +7,6 @@ import com.wenjie.studio.knowledge.KnowledgeDtos;
 import com.wenjie.studio.knowledge.KnowledgeService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,12 +24,15 @@ public class BoardService {
     private final BoardMapper mapper;
     private final IdempotencyService commands;
     private final KnowledgeService knowledge;
+    private final BoardReferenceReader referenceReader;
     private final JsonMapper json;
 
-    public BoardService(BoardMapper mapper, IdempotencyService commands, KnowledgeService knowledge, JsonMapper json) {
+    public BoardService(BoardMapper mapper, IdempotencyService commands, KnowledgeService knowledge,
+                        BoardReferenceReader referenceReader, JsonMapper json) {
         this.mapper = mapper;
         this.commands = commands;
         this.knowledge = knowledge;
+        this.referenceReader = referenceReader;
         this.json = json;
     }
 
@@ -48,7 +50,7 @@ public class BoardService {
         Detail stored = stored(owner, uuid(id));
         // 当前画布显示最新发布版本；历史入口始终直接读不可变快照。
         return new Detail(stored.id(), stored.kind(), stored.title(), stored.revision(), stored.updatedAt(),
-                stored.nodes(), stored.edges(), stored.viewport(), references(owner, stored.nodes()));
+                stored.nodes(), stored.edges(), stored.viewport(), referenceReader.current(owner, stored.nodes()));
     }
 
     public Detail create(String owner, String key, Create request) {
@@ -145,7 +147,9 @@ public class BoardService {
             board.nodes().forEach(node -> nodes.put(node.id(), node));
             Node source = nodes.get(edge.source());
             Node target = nodes.get(edge.target());
-            if (source.type() != NodeType.REFERENCE || target.type() != NodeType.REFERENCE) {
+            if (source.type() != NodeType.REFERENCE || target.type() != NodeType.REFERENCE
+                    || source.referenceKind() != ReferenceKind.KNOWLEDGE
+                    || target.referenceKind() != ReferenceKind.KNOWLEDGE) {
                 throw invalid("正式关系两端必须引用知识概念。");
             }
             var relation = knowledge.createRelationWithinCommand(owner,
@@ -158,7 +162,7 @@ public class BoardService {
         if (previous.revision() >= MAX_REVISION) throw new ApiException(422, "CAPACITY_EXCEEDED", "画布修订数量已达到上限。");
         Detail result = new Detail(previous.id(), previous.kind(), title(request.title()), previous.revision() + 1,
                 now(), List.copyOf(request.nodes()), List.copyOf(request.edges()), request.viewport(),
-                references(owner, request.nodes()));
+                referenceReader.current(owner, request.nodes()));
         String serialized = json.writeValueAsString(result);
         if (mapper.update(owner, result, previous.revision(), serialized) != 1) {
             throw new ApiException(409, "REVISION_CONFLICT", "画布已更新，请比较服务器版本后处理本地修改。");
@@ -169,7 +173,7 @@ public class BoardService {
 
     private void recordHistory(String owner, Detail board, String serialized) {
         mapper.insertHistory(owner, board, serialized);
-        for (Reference reference : board.references()) mapper.insertReference(owner, board.id(), board.revision(), reference);
+        referenceReader.record(owner, board);
     }
 
     private Detail stored(String owner, String id) {
@@ -181,16 +185,9 @@ public class BoardService {
     private Detail requireSnapshot(String owner, String id, long revision) {
         String snapshot = mapper.snapshot(owner, id, revision);
         if (snapshot == null) throw new ApiException(404, "BOARD_REVISION_NOT_FOUND", "画布历史修订不存在。");
-        return json.readValue(snapshot, Detail.class);
-    }
-
-    private List<Reference> references(String owner, List<Node> nodes) {
-        List<String> ids = nodes.stream().filter(node -> node.type() == NodeType.REFERENCE)
-                .map(Node::itemId).distinct().sorted().toList();
-        if (ids.isEmpty()) return List.of();
-        var refs = mapper.references(owner, ids);
-        if (refs.size() != ids.size()) throw new ApiException(409, "REFERENCE_UNAVAILABLE", "画布包含不存在或不可访问的知识引用，请保留本地内容并核对来源。");
-        return List.copyOf(refs);
+        Detail result = json.readValue(snapshot, Detail.class);
+        referenceReader.requireHistoricalAccess(owner, result);
+        return result;
     }
 
     private static void validate(Save request) {
@@ -209,9 +206,9 @@ public class BoardService {
             if (node.group() != null && (node.group().isBlank() || node.group().length() > 40)) throw invalid("分组名称需要为 1–40 个字符或 null。");
             if (node.type() == NodeType.REFERENCE) {
                 uuid(node.itemId());
-                if (!node.text().isEmpty()) throw invalid("引用节点通过知识对象读取内容，不保存另一份正文。");
+                if (node.referenceKind() == null || !node.text().isEmpty()) throw invalid("引用节点需要明确来源类型，并通过原对象读取内容。");
             } else {
-                if (node.itemId() != null || node.text().length() > 5000) throw invalid("临时文本不绑定知识 ID，且最多 5000 个字符。");
+                if (node.itemId() != null || node.referenceKind() != null || node.text().length() > 5000) throw invalid("临时文本不绑定来源 ID 或类型，且最多 5000 个字符。");
                 total += node.text().length();
             }
         }

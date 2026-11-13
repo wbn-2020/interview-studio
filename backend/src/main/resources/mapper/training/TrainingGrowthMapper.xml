@@ -35,7 +35,7 @@
     <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
   </select>
 
-  <select id="question" resultType="com.wenjie.studio.training.TrainingGrowthRows$QuestionRow">
+  <select id="question" resultType="com.wenjie.studio.training.TrainingGrowthRows$QuestionRow" timeout="5">
     SELECT q.id,q.owner_id,q.session_id,q.source_question_id,q.source_version_id,q.question_kind,
       JSON_OBJECT('rootType',JSON_TYPE(q.snapshot_json),
         'contentType',JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content')),
@@ -51,7 +51,7 @@
         'technology',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')),'[^[:space:]]'),
         'scenario',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),'[^[:space:]]'),
         'conditions',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),'[^[:space:]]')) AS metadata_json,
-      s.id AS parent_session_id,s.owner_id AS session_owner_id,s.mode,s.generation,
+      s.id AS parent_session_id,s.owner_id AS session_owner_id,s.mode,s.generation,s.created_at AS session_created_at,
       JSON_OBJECT('rootType',JSON_TYPE(s.context_json),
         'references',COALESCE((
           SELECT JSON_ARRAYAGG(JSON_OBJECT(
@@ -74,11 +74,39 @@
     WHERE q.owner_id=#{owner} AND q.session_id=#{sessionId} AND q.id=#{questionId}
   </select>
 
-  <select id="knowledge" resultType="com.wenjie.studio.training.TrainingGrowthRows$KnowledgeRow">
+  <select id="knowledge" resultType="com.wenjie.studio.training.TrainingGrowthRows$KnowledgeRow" timeout="5">
     SELECT refs.item_id,refs.version_id,k.kind,k.status,k.current_version_id,
       v.id AS fixed_version_id,p.id AS current_version_exists_id,
       CASE WHEN v.id IS NULL OR p.id IS NULL THEN NULL
-        ELSE CAST(v.body AS BINARY)&lt;&gt;CAST(p.body AS BINARY) END AS body_changed
+        ELSE CAST(v.body AS BINARY)&lt;&gt;CAST(p.body AS BINARY) END AS body_changed,
+      (EXISTS(SELECT 1 FROM knowledge_revalidation_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number AND i.revision=0)
+      OR EXISTS(SELECT 1 FROM preparation_knowledge_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number AND i.revision=0)
+      OR EXISTS(SELECT 1 FROM material_knowledge_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number AND i.revision=0)) AS upstream_pending,
+      <!-- 在待处理期间冻结的回答，事后处理也不能自动恢复；处理时间同样参加历史核对。 -->
+      (SELECT MAX(GREATEST(i.created_at,COALESCE(i.decided_at,i.created_at)))
+        FROM knowledge_revalidation_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number) AS knowledge_changed_at,
+      (SELECT MAX(GREATEST(i.created_at,COALESCE(i.decided_at,i.created_at)))
+        FROM preparation_knowledge_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number) AS preparation_changed_at,
+      (SELECT MAX(GREATEST(i.created_at,COALESCE(i.decided_at,i.created_at)))
+        FROM material_knowledge_impact i JOIN knowledge_version adopted
+        ON adopted.owner_id=i.owner_id AND adopted.item_id=i.target_item_id AND adopted.id=i.target_version_id
+        WHERE i.owner_id=#{owner} AND i.target_item_id=refs.item_id
+          AND adopted.version_number&lt;=v.version_number) AS material_changed_at
     FROM (
       <foreach collection="references" item="ref" separator=" UNION ALL ">
         SELECT #{ref.itemId} AS item_id,#{ref.versionId} AS version_id

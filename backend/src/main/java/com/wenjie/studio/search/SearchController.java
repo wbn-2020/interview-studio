@@ -22,7 +22,7 @@ public final class SearchController {
                                      @RequestParam(defaultValue = "ACTIVE") String status,
                                      @RequestParam(required = false) String topicId,
                                      @RequestParam(required = false) String tag,
-                                     @RequestParam(defaultValue = "USER") String source,
+                                     @RequestParam(defaultValue = "ALL") String source,
                                      @RequestParam(defaultValue = "20") int limit,
                                      @RequestParam(defaultValue = "0") int offset) {
         return search.search(owner.id(), q, kind, status, topicId, tag, source, limit, offset);

@@ -10,7 +10,7 @@ public final class QuestionDtos {
     public enum Type { EXPLAIN, CODE_READING, DEBUG, PROJECT, TRADEOFF, SYSTEM_DESIGN, BEHAVIOR }
     public enum Dimension { EXPLAIN, DEBUG, TRADEOFF, OWNERSHIP, COMMUNICATION, OTHER }
     public enum StandardStatus { PERSONAL_UNREVIEWED }
-    public enum ReferenceState { CURRENT, SUPERSEDED, ARCHIVED }
+    public enum ReferenceState { CURRENT, SUPERSEDED, ARCHIVED, REVIEW_REQUIRED }
     public enum ExposureKind { AUTHORED, REFERENCE_VIEW, EVALUATION_ACCESS }
 
     public record Source(String title, String url, String note) {}
@@ -35,6 +35,7 @@ public final class QuestionDtos {
                                   StandardStatus standardStatus, boolean hasReference) {}
     public record KnowledgeReference(String itemId, String versionId, String title, int number,
                                      ReferenceState state) {}
+    public record KnowledgeReferencePage(String questionId, String versionId, List<KnowledgeReference> items) {}
     public record Question(String id, Status status, long revision, boolean favorite, Instant createdAt,
                            Instant updatedAt, QuestionVersion currentVersion,
                            List<KnowledgeReference> knowledgeReferences) {}

@@ -24,7 +24,7 @@ function carriesReference(path: string, method: string): boolean {
     || method === 'POST' && pathname === '/ai/authorizations/matches'
     || method === 'POST' && new RegExp(`^/ai/authorizations/${uuid}/revoke$`).test(pathname)
     || method === 'GET' && new RegExp(`^/ai/tasks/${uuid}/authorization-uses$`).test(pathname)) return false
-  return /^\/(knowledge|prepare|materials|bank|schedule|ai|review|memory|today|growth|search|recent|lifecycle)(\/|$)/.test(pathname)
+  return /^\/(knowledge|prepare|materials|bank|schedule|ai|review|memory|today|growth|search|recent|lifecycle|preferences|data-privacy)(\/|$)/.test(pathname)
     || /\/questions\/[^/]+\/evaluations(?:\/preview)?$/.test(path)
     || path.endsWith('/reference') || path.endsWith('/import-board')
 }
@@ -107,8 +107,11 @@ async function request<T>(path: string, init: RequestInit, timeoutMs = 30_000): 
       }
       throw new ApiError(response.status, problem.code ?? 'HTTP_ERROR', problem.detail ?? `请求未完成（${response.status}）`, problem.currentRevision)
     }
-    if (response.status === 204) return undefined as T
-    const result = await response.json() as T
+    const result = response.status === 204 ? undefined as T : await response.json() as T
+    // 成功响应也可能晚于退出／重新登录；写入结果仍未知，原键必须保留到当前会话恢复。
+    if (epoch !== requestSessionEpoch) {
+      throw new ApiError(0, 'SESSION_CHANGED', '会话已变化。本次响应暂不展示，写入请在重新登录后用原请求恢复。')
+    }
     // 资料请求可能先于另一标签开始训练发出；成功写入仍保留原键重试，不能当作明确未执行。
     if (carriesReference(path, init.method ?? 'GET') && trainingEpoch !== trainingAccessEpoch) {
       throw new ApiError(0, 'TRAINING_ACCESS_CHANGED', '训练条件已变化。本次响应暂不展示，写入请在确认资料权限后用原请求恢复。')

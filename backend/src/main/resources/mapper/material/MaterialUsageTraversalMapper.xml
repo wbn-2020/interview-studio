@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.material.MaterialUsageTraversalMapper">
+  <!-- 每条边取自实际登记；结构关系不在此集合，历史目标不按今天状态过滤。 -->
+  <select id="edges" resultType="com.wenjie.studio.material.MaterialUsageTraversalMapper$Edge" timeout="5">
+    SELECT * FROM (
+    <choose>
+      <when test="domain == 'MATERIAL_EXCERPT'">
+        SELECT CONCAT('prep-material~',r.version_id) AS `key`,0 AS source_number,'PREPARATION' AS domain,
+          r.item_id AS id,r.version_id,v.version_number AS number,NULL AS revision,v.title,NULL AS task_id,v.created_at
+        FROM preparation_material_reference r LEFT JOIN preparation_version v
+          ON v.owner_id=r.owner_id AND v.item_id=r.item_id AND v.id=r.version_id
+        WHERE r.owner_id=#{owner} AND r.excerpt_id=#{id}
+        UNION ALL
+        SELECT CONCAT('material-draft~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_material_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+        UNION ALL
+        SELECT CONCAT('material-fact~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_fact_draft_material s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+        UNION ALL
+        SELECT CONCAT('material-relation~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_relation_evidence_material s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+        UNION ALL
+        SELECT CONCAT('material-relation-evidence~',s.evidence_id),0,'RELATION',e.relation_id,NULL,NULL,NULL,
+          e.relation_type,NULL,e.created_at FROM knowledge_relation_evidence_material s
+        LEFT JOIN knowledge_relation_evidence e ON e.owner_id=s.owner_id AND e.id=s.evidence_id AND e.source_kind='MATERIAL'
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+        UNION ALL
+        SELECT CONCAT('material-review~',s.review_id,'~',s.revision,'~',s.evidence_id),0,'STANDARD_REVIEW',
+          s.review_id,NULL,NULL,s.revision,q.title,NULL,r.created_at FROM standard_review_evidence s
+        LEFT JOIN standard_review_revision r ON r.owner_id=s.owner_id AND r.review_id=s.review_id AND r.revision=s.revision
+        LEFT JOIN question_version q ON q.owner_id=r.owner_id AND q.question_id=r.question_id AND q.id=r.question_version_id
+        WHERE s.owner_id=#{owner} AND s.excerpt_id=#{id}
+      </when>
+      <when test="domain == 'KNOWLEDGE'">
+        SELECT CONCAT('knowledge-draft~',s.task_id) AS `key`,v.version_number AS source_number,'TASK' AS domain,
+          s.task_id AS id,NULL AS version_id,NULL AS number,NULL AS revision,t.purpose AS title,s.task_id,t.created_at
+        FROM ai_knowledge_source s LEFT JOIN knowledge_version v
+          ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+        LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-input~',s.task_id),v.version_number,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_draft_knowledge_input s LEFT JOIN knowledge_version v
+          ON v.owner_id=s.owner_id AND v.item_id=s.knowledge_item_id AND v.id=s.knowledge_version_id
+        LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.knowledge_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-question~',s.task_id),v.version_number,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_question_source s LEFT JOIN knowledge_version v
+          ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+        LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-relation~',s.task_id),v.version_number,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_relation_source s LEFT JOIN knowledge_version v
+          ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
+        LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.source_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-question-reference~',r.version_id),s.version_number,'QUESTION',r.question_id,
+          r.version_id,v.version_number,NULL,v.title,NULL,v.created_at FROM question_knowledge_reference r
+        LEFT JOIN knowledge_version s ON s.owner_id=r.owner_id AND s.item_id=r.knowledge_item_id AND s.id=r.knowledge_version_id
+        LEFT JOIN question_version v ON v.owner_id=r.owner_id AND v.question_id=r.question_id AND v.id=r.version_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-answer~',r.answer_id,'~',r.knowledge_version_id),s.version_number,'TRAINING_ANSWER',
+          r.answer_id,NULL,NULL,NULL,q.title,NULL,a.created_at FROM training_answer_knowledge_reference r
+        LEFT JOIN knowledge_version s ON s.owner_id=r.owner_id AND s.item_id=r.knowledge_item_id AND s.id=r.knowledge_version_id
+        LEFT JOIN training_answer a ON a.owner_id=r.owner_id AND a.id=r.answer_id AND a.session_id=r.session_id AND a.question_id=r.question_id
+        LEFT JOIN training_question q ON q.owner_id=a.owner_id AND q.id=a.question_id AND q.session_id=a.session_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-training~',r.question_id,'~',r.knowledge_version_id),s.version_number,'TRAINING_QUESTION',
+          r.question_id,NULL,NULL,NULL,q.title,NULL,session.created_at FROM training_question_knowledge_snapshot r
+        LEFT JOIN knowledge_version s ON s.owner_id=r.owner_id AND s.item_id=r.knowledge_item_id AND s.id=r.knowledge_version_id
+        LEFT JOIN training_question q ON q.owner_id=r.owner_id AND q.id=r.question_id AND q.session_id=r.session_id
+        LEFT JOIN training_session session ON session.owner_id=q.owner_id AND session.id=q.session_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-supplement~',r.supplement_id,'~',r.ordinal),s.version_number,'RELATION',
+          e.relation_id,NULL,NULL,NULL,e.relation_type,NULL,e.created_at FROM knowledge_relation_supplement_source r
+        LEFT JOIN knowledge_version s ON s.owner_id=r.owner_id AND s.item_id=r.source_item_id AND s.id=r.source_version_id
+        LEFT JOIN knowledge_relation_supplement e ON e.owner_id=r.owner_id AND e.id=r.supplement_id
+        WHERE r.owner_id=#{owner} AND r.source_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('knowledge-review~',r.review_id,'~',r.revision,'~',r.evidence_id),s.version_number,'STANDARD_REVIEW',
+          r.review_id,NULL,NULL,r.revision,q.title,NULL,v.created_at FROM standard_review_evidence r
+        LEFT JOIN knowledge_version s ON s.owner_id=r.owner_id AND s.item_id=r.knowledge_item_id AND s.id=r.knowledge_version_id
+        LEFT JOIN standard_review_revision v ON v.owner_id=r.owner_id AND v.review_id=r.review_id AND v.revision=r.revision
+        LEFT JOIN question_version q ON q.owner_id=v.owner_id AND q.question_id=v.question_id AND q.id=v.question_version_id
+        WHERE r.owner_id=#{owner} AND r.knowledge_item_id=#{id}
+      </when>
+      <when test="domain == 'PREPARATION'">
+        SELECT CONCAT('preparation-ai~',r.task_id) AS `key`,s.version_number AS source_number,'TASK' AS domain,
+          r.task_id AS id,NULL AS version_id,NULL AS number,NULL AS revision,t.purpose AS title,r.task_id,t.created_at
+        FROM ai_preparation_source r LEFT JOIN preparation_version s
+          ON s.owner_id=r.owner_id AND s.item_id=r.source_item_id AND s.id=r.source_version_id
+        LEFT JOIN ai_task t ON t.owner_id=r.owner_id AND t.id=r.task_id
+        WHERE r.owner_id=#{owner} AND r.source_item_id=#{id}
+        UNION ALL
+        SELECT CONCAT('fact-basis~',r.id),s.version_number,'PREPARATION',r.target_item_id,r.target_version_id,
+          v.version_number,NULL,v.title,NULL,v.created_at FROM preparation_reference r
+        LEFT JOIN preparation_version s ON s.owner_id=r.owner_id AND s.item_id=r.preparation_source_item_id
+          AND s.id=r.preparation_source_version_id
+        LEFT JOIN preparation_version v ON v.owner_id=r.owner_id AND v.item_id=r.target_item_id AND v.id=r.target_version_id
+        WHERE r.owner_id=#{owner} AND r.preparation_source_item_id=#{id} AND r.use_type='FACT_BASIS'
+        UNION ALL
+        SELECT CONCAT('preparation-answer~',a.id,'~',j.ordinal),s.version_number,'TRAINING_ANSWER',a.id,NULL,NULL,NULL,
+          q.title,NULL,a.created_at FROM training_answer a
+        JOIN JSON_TABLE(a.content_json,'$.diagram.nodes[*]' COLUMNS(
+          ordinal FOR ORDINALITY,kind VARCHAR(16) PATH '$.reference.kind' NULL ON EMPTY,
+          item_id VARCHAR(36) PATH '$.reference.itemId' NULL ON EMPTY,
+          version_id VARCHAR(36) PATH '$.reference.versionId' NULL ON EMPTY)) j
+        LEFT JOIN preparation_version s ON s.owner_id=a.owner_id AND s.item_id=j.item_id AND s.id=j.version_id
+        LEFT JOIN training_question q ON q.owner_id=a.owner_id AND q.id=a.question_id AND q.session_id=a.session_id
+        WHERE a.owner_id=#{owner} AND j.item_id=#{id} AND j.kind IN ('PROJECT','FACT')
+        UNION ALL
+        SELECT CONCAT('preparation-followup~',t.id,'~',j.ordinal),s.version_number,'TASK',t.id,NULL,NULL,NULL,t.purpose,t.id,t.created_at
+        FROM ai_task t JOIN JSON_TABLE(t.manifest_json,'$.training.context[*]' COLUMNS(
+          ordinal FOR ORDINALITY,item_id VARCHAR(36) PATH '$.itemId',version_id VARCHAR(36) PATH '$.versionId')) j
+        LEFT JOIN preparation_version s ON s.owner_id=t.owner_id AND s.item_id=j.item_id AND s.id=j.version_id
+        WHERE t.owner_id=#{owner} AND t.purpose='FOLLOW_UP' AND j.item_id=#{id}
+      </when>
+      <when test="domain == 'QUESTION'">
+        SELECT CONCAT('bank-training~',q.id) AS `key`,v.version_number AS source_number,'TRAINING_QUESTION' AS domain,
+          q.id,NULL AS version_id,NULL AS number,NULL AS revision,q.title,NULL AS task_id,session.created_at
+        FROM training_question q LEFT JOIN question_version v
+          ON v.owner_id=q.owner_id AND v.question_id=q.source_question_id AND v.id=q.source_version_id
+        LEFT JOIN training_session session ON session.owner_id=q.owner_id AND session.id=q.session_id
+        WHERE q.owner_id=#{owner} AND q.source_question_id=#{id}
+        UNION ALL
+        SELECT CONCAT('bank-review~',r.review_id,'~',r.revision),v.version_number,'STANDARD_REVIEW',r.review_id,NULL,NULL,r.revision,v.title,NULL,r.created_at
+        FROM standard_review_revision r LEFT JOIN question_version v
+          ON v.owner_id=r.owner_id AND v.question_id=r.question_id AND v.id=r.question_version_id
+        WHERE r.owner_id=#{owner} AND r.question_id=#{id}
+      </when>
+      <when test="domain == 'TRAINING_QUESTION'">
+        SELECT CONCAT('training-draft-question~',s.task_id) AS `key`,0 AS source_number,'TASK' AS domain,s.task_id AS id,
+          NULL AS version_id,NULL AS number,NULL AS revision,t.purpose AS title,s.task_id,t.created_at
+        FROM ai_training_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.question_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-followup-question~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_follow_up s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.question_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-evaluation-question~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_evaluation s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.question_id=#{id}
+      </when>
+      <when test="domain == 'TRAINING_ANSWER'">
+        SELECT CONCAT('training-draft-answer~',s.task_id) AS `key`,0 AS source_number,'TASK' AS domain,s.task_id AS id,
+          NULL AS version_id,NULL AS number,NULL AS revision,t.purpose AS title,s.task_id,t.created_at
+        FROM ai_training_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.answer_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-followup-answer~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_follow_up s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.answer_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-evaluation-answer~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_evaluation s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.answer_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-fact~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_fact_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.kind='TRAINING' AND s.answer_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-relation~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_relation_evidence_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.kind='TRAINING' AND s.answer_id=#{id}
+        UNION ALL
+        SELECT CONCAT('training-relation-evidence~',e.id),0,'RELATION',e.relation_id,NULL,NULL,NULL,e.relation_type,NULL,e.created_at
+        FROM knowledge_relation_evidence e WHERE e.owner_id=#{owner} AND e.source_kind='TRAINING' AND e.answer_id=#{id}
+      </when>
+      <when test="domain == 'TASK'">
+        SELECT CONCAT('adopt-knowledge~',d.task_id) AS `key`,0 AS source_number,'KNOWLEDGE' AS domain,d.target_item_id AS id,
+          d.target_version_id AS version_id,v.version_number AS number,NULL AS revision,v.title,d.task_id,d.created_at
+        FROM ai_candidate_decision d LEFT JOIN knowledge_version v
+          ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('adopt-question~',d.task_id),0,'QUESTION',d.target_question_id,d.target_version_id,
+          v.version_number,NULL,v.title,d.task_id,d.created_at FROM ai_question_decision d LEFT JOIN question_version v
+          ON v.owner_id=d.owner_id AND v.question_id=d.target_question_id AND v.id=d.target_version_id
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('adopt-expression~',d.task_id),0,'PREPARATION',d.target_item_id,d.target_version_id,
+          v.version_number,NULL,v.title,d.task_id,d.created_at FROM ai_expression_decision d LEFT JOIN preparation_version v
+          ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('adopt-fact~',d.task_id),0,'PREPARATION',d.target_item_id,d.target_version_id,
+          v.version_number,NULL,v.title,d.task_id,d.created_at FROM ai_fact_draft_decision d LEFT JOIN preparation_version v
+          ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('adopt-requirement~',d.task_id),0,'PREPARATION',d.target_item_id,d.target_version_id,
+          v.version_number,NULL,v.title,d.task_id,d.created_at FROM ai_jd_requirement_decision d LEFT JOIN preparation_version v
+          ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('adopt-relation~',d.task_id,'~',d.candidate_id),0,'RELATION',d.relation_id,NULL,NULL,NULL,
+          JSON_UNQUOTE(JSON_EXTRACT(d.content_json,'$.type')),d.task_id,d.created_at FROM ai_relation_decision d
+        WHERE d.owner_id=#{owner} AND d.task_id=#{id} AND d.status='ADOPTED'
+        UNION ALL
+        SELECT CONCAT('generated-followup~',s.task_id),0,'TRAINING_QUESTION',q.id,NULL,NULL,NULL,q.title,s.task_id,t.created_at
+        FROM ai_follow_up s LEFT JOIN training_question q
+          ON q.owner_id=s.owner_id AND q.session_id=s.session_id AND q.id=s.generated_question_id
+        LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.task_id=#{id} AND s.generated_question_id IS NOT NULL
+        UNION ALL
+        SELECT CONCAT('evaluation-draft~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_training_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.evaluation_task_id=#{id}
+        UNION ALL
+        SELECT CONCAT('evaluation-relation~',s.task_id),0,'TASK',s.task_id,NULL,NULL,NULL,t.purpose,s.task_id,t.created_at
+        FROM ai_relation_feedback_draft_source s LEFT JOIN ai_task t ON t.owner_id=s.owner_id AND t.id=s.task_id
+        WHERE s.owner_id=#{owner} AND s.evaluation_task_id=#{id}
+        UNION ALL
+        SELECT CONCAT('evaluation-relation-evidence~',e.id),0,'RELATION',e.relation_id,NULL,NULL,NULL,
+          e.relation_type,NULL,e.created_at FROM knowledge_relation_ai_feedback_evidence e
+        WHERE e.owner_id=#{owner} AND e.task_id=#{id}
+      </when>
+      <otherwise>
+        SELECT NULL AS `key`,NULL AS source_number,NULL AS domain,NULL AS id,NULL AS version_id,NULL AS number,
+          NULL AS revision,NULL AS title,NULL AS task_id,NULL AS created_at WHERE 1=0
+      </otherwise>
+    </choose>
+    ) bindings WHERE (source_number>=#{minimum} OR source_number IS NULL) ORDER BY `key` LIMIT #{limit}
+  </select>
+  <select id="versionWitness" resultType="_boolean" timeout="5">
+    <choose>
+      <when test="domain == 'KNOWLEDGE'">
+        SELECT EXISTS(SELECT 1 FROM knowledge_version WHERE owner_id=#{owner} AND item_id=#{itemId}
+          AND id=#{versionId} AND version_number=#{number})
+      </when>
+      <when test="domain == 'PREPARATION'">
+        SELECT EXISTS(SELECT 1 FROM preparation_version WHERE owner_id=#{owner} AND item_id=#{itemId}
+          AND id=#{versionId} AND version_number=#{number})
+      </when>
+      <otherwise>SELECT FALSE</otherwise>
+    </choose>
+  </select>
+  <insert id="insertPath">
+    INSERT INTO material_dependency_path(owner_id,impact_id,excerpt_id,path_json)
+    VALUES(#{owner},#{impactId},#{excerptId},#{pathJson})
+  </insert>
+  <select id="path" resultType="com.wenjie.studio.material.MaterialUsageTraversalMapper$Saved" timeout="5">
+    SELECT owner_id,impact_id,excerpt_id,path_json FROM material_dependency_path WHERE owner_id=#{owner} AND impact_id=#{impactId}
+  </select>
+  <select id="legacyKnowledge" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM material_knowledge_impact WHERE owner_id=#{owner} AND correction_id=#{correctionId}
+      AND target_item_id=#{itemId} AND target_version_id=#{versionId})
+  </select>
+  <insert id="insertStatus">
+    INSERT INTO material_usage_status_event(owner_id,id,event_id,path_hash,excerpt_id,domain,target_id,
+      target_version_id,target_version_number,target_revision,created_at,path_json)
+    VALUES(#{owner},#{id},#{event.id},#{hash},#{event.excerptId},#{target.domain},#{target.id},#{target.versionId},
+      #{target.number},#{target.revision},#{event.createdAt},#{pathJson})
+  </insert>
+</mapper>

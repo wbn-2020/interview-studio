@@ -97,6 +97,13 @@ public class KnowledgeRevalidationService {
                 }
             }
             Instant now = now();
+            Instant frozenAt = mapper.latestFrozenAt(owner);
+            if (frozenAt != null) {
+                time(frozenAt);
+                // 处理时间须晚于训练冻结点，否则时钟回拨会把冻结时仍待处理的影响伪装成更早已解决。
+                if (!now.isAfter(frozenAt)) throw new ApiException(409, "KNOWLEDGE_REVALIDATION_CLOCK_CONFLICT",
+                        "服务器时间未晚于既有冻结证据或来源处理，处理未提交，请校正服务器时间后重试。");
+            }
             if (now.isBefore(before.createdAt())) {
                 throw new ApiException(409, "KNOWLEDGE_REVALIDATION_CLOCK_CONFLICT",
                         "服务器时间早于本次来源影响，处理未提交，请校正服务器时间后重试。");

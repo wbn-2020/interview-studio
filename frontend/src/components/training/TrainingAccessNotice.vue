@@ -19,7 +19,9 @@ let epoch = workspace.sessionEpoch
 const locked = computed(() => writer.locked.value || Boolean(deferred.value))
 watch(locked, value => { lock.locked = value; workspace.changes.set('training-access-command', lock) }, { immediate: true, flush: 'sync' })
 onUnmounted(() => { if (workspace.changes.get('training-access-command') === lock) workspace.changes.delete('training-access-command') })
-const blocked = computed(() => access.checking || access.challenge || access.needsGuard(route.name, route.query.item, route.query.create))
+const blocked = computed(() => access.checking || access.challenge
+  || route.name === 'data-management' && access.restricted
+  || access.needsGuard(route.name, route.query.item, route.query.create))
 function returnToTraining() {
   if (!access.active) return
   access.challenge = false

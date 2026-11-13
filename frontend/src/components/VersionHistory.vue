@@ -6,13 +6,19 @@ import { NButton } from 'naive-ui'
 import { read, errorText } from '../api/client'
 import type { Schema, Version } from '../api/client'
 import { useWorkspaceStore } from '../state/workspace'
+import { useTrainingAccessStore } from '../state/trainingAccess'
 import MarkdownPreview from './MarkdownPreview.vue'
 import AiKnowledgeOrigins from './AiKnowledgeOrigins.vue'
 import KnowledgeReferences from './KnowledgeReferences.vue'
+import KnowledgeMarkdownExport from './KnowledgeMarkdownExport.vue'
+import KnowledgeSources from './KnowledgeSources.vue'
 const props = defineProps<{ id: string; published: Version }>()
 const route = useRoute()
 const router = useRouter()
 const store = useWorkspaceStore()
+const access = useTrainingAccessStore()
+const readable = computed(() => store.sessionActive && !access.checking && !access.restricted && !access.challenge
+  && !store.changes.get('training-access-command')?.locked)
 const cursor = ref<number>()
 const selectedId = ref<string>(props.published.id)
 const comparisonId = ref<string>()
@@ -67,12 +73,27 @@ function isChanged(index: number, side: 'left' | 'right') {
     <div class="row-actions"><NButton v-if="cursor" size="small" @click="cursor = undefined">最新版本</NButton><NButton v-if="list.data.value?.nextCursor" size="small" @click="cursor = Number(list.data.value.nextCursor)">更早版本</NButton></div>
     <p v-if="selected.error.value || comparison.error.value" class="notice error">{{ errorText(selected.error.value ?? comparison.error.value) }}</p><p v-if="selected.isFetching.value" role="status">正在读取原版本…</p>
     <div v-if="selected.data.value" class="row-actions"><strong>v{{ selected.data.value.number }} · {{ selected.data.value.title }}</strong><NButton size="small" @click="sourceMode = !sourceMode">{{ sourceMode ? '阅读排版' : '原文行号' }}</NButton><NButton v-if="comparisonId" size="small" @click="comparisonId = undefined">关闭对照</NButton></div>
+    <KnowledgeMarkdownExport v-if="selected.data.value?.id === selectedId && selected.data.value" :item-id="id"
+      :version-id="selected.data.value.id" :version-number="selected.data.value.number"
+      :enabled="!selected.isFetching.value && !selected.error.value" />
     <div v-if="difference" class="difference-summary"><h3>变化区段</h3><p v-if="difference.titleChanged">标题有变化：「{{ comparison.data.value?.title }}」 → 「{{ selected.data.value?.title }}」</p><p v-else class="field-help">标题相同。</p><template v-if="difference.leftCount || difference.rightCount"><p>共同前缀 {{ difference.prefix }} 行之后，当前所选版本含 {{ difference.leftCount }} 行变化区段，对照版本含 {{ difference.rightCount }} 行变化区段。</p><p class="field-help">按共同首尾定位变化范围，中间可能仍含相同行；这不是逐行最小差异。纯插入或删除时一侧区段为 0 行。</p><NButton size="small" @click="locateDifference">跳到变化区段</NButton></template><p v-else>正文完全相同。</p></div>
     <div :class="['version-comparison', { paired: comparisonId }]">
       <article><template v-if="sourceMode"><p v-if="requestedVersion && route.query.lineStart" class="field-help">引用定位：源版本固定，第 {{ lineStart }}–{{ lineEnd }} 行。</p><div class="source-lines"><div v-for="(line, index) in displayLines" :key="sourcePage * 100 + index" :class="{ changed: isChanged(sourcePage * 100 + index, 'left'), highlighted: requestedVersion === selectedId && route.query.lineStart && sourcePage * 100 + index + 1 >= lineStart && sourcePage * 100 + index + 1 <= lineEnd }"><span>{{ sourcePage * 100 + index + 1 }}</span><code>{{ line || ' ' }}</code></div></div><div class="row-actions"><NButton size="small" :disabled="!sourcePage" @click="sourcePage--">前 100 行</NButton><NButton size="small" :disabled="(sourcePage + 1) * 100 >= lines.length" @click="sourcePage++">后 100 行</NButton><small>{{ lines.length }} 行</small></div></template><MarkdownPreview v-else-if="selected.data.value" :value="selected.data.value.body" /></article>
       <article v-if="comparison.data.value && comparisonId"><h3>对照 · v{{ comparison.data.value.number }} · {{ comparison.data.value.title }}</h3><div class="source-lines"><div v-for="(line,index) in comparisonLines" :key="comparisonPage * 100 + index" :class="{ changed: isChanged(comparisonPage * 100 + index, 'right') }"><span>{{ comparisonPage * 100 + index + 1 }}</span><code>{{ line || ' ' }}</code></div></div><div class="row-actions"><NButton size="small" :disabled="!comparisonPage" @click="comparisonPage--">前 100 行</NButton><NButton size="small" :disabled="(comparisonPage + 1) * 100 >= otherLines.length" @click="comparisonPage++">后 100 行</NButton><small>{{ otherLines.length }} 行</small></div></article>
     </div>
     <AiKnowledgeOrigins v-if="selected.data.value" :item-id="id" :version-id="selected.data.value.id" :version-number="selected.data.value.number" />
+    <details v-if="selected.data.value?.id === selectedId && selected.data.value">
+      <summary>查看所选 v{{ selected.data.value.number }} 的资料来源记录</summary>
+      <KnowledgeSources :key="selectedId" :item-id="id" :version-id="selected.data.value.id"
+        :version-number="selected.data.value.number" :active="false"
+        :enabled="readable && !selected.isFetching.value && !selected.error.value" />
+    </details>
+    <details v-if="comparison.data.value?.id === comparisonId && comparison.data.value">
+      <summary>查看对照 v{{ comparison.data.value.number }} 的资料来源记录</summary>
+      <KnowledgeSources :key="comparisonId" :item-id="id" :version-id="comparison.data.value.id"
+        :version-number="comparison.data.value.number" :active="false"
+        :enabled="readable && !comparison.isFetching.value && !comparison.error.value" />
+    </details>
     <div v-if="selected.data.value?.id === selectedId" class="row-actions"><NButton size="small" :aria-expanded="referencesOpen" @click="referencesOpen = !referencesOpen">{{ referencesOpen ? '收起此版本引用影响' : '查看此版本引用影响' }}</NButton></div>
     <KnowledgeReferences v-if="referencesOpen && selected.data.value?.id === selectedId" :item-id="id" :version-id="selected.data.value.id" :version-number="selected.data.value.number" />
   </section>

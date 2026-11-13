@@ -11,7 +11,7 @@ import java.util.Set;
 @Service
 public class TrainingAccessGuard {
     private static final String TRAINING = "/api/v1/training";
-    private static final Set<String> MATERIALS = Set.of("knowledge", "prepare", "materials", "bank", "schedule", "ai", "review", "memory", "today", "growth", "search", "recent", "lifecycle");
+    private static final Set<String> MATERIALS = Set.of("knowledge", "prepare", "materials", "bank", "schedule", "ai", "review", "memory", "today", "growth", "search", "recent", "lifecycle", "preferences", "data-privacy");
     private final TrainingMapper training;
     private final IdempotencyMapper workspaces;
 
@@ -30,6 +30,10 @@ public class TrainingAccessGuard {
     @Transactional(timeout = 30)
     public void checkHttp(String owner, String method, String pattern, String sessionId) {
         if (!guarded(pattern)) return;
+        // 这里只延迟预检；新命令仍在 owner 锁内守卫，原未决意图由完整类型化请求核验后接续。
+        if ("POST".equals(method) && (Set.of("/api/v1/data-privacy/trash", "/api/v1/data-privacy/restore",
+                "/api/v1/data-privacy/purge").contains(pattern)
+                || "/api/v1/materials/excerpts/{id}/lifecycle/changes".equals(pattern))) return;
         workspaces.ensureWorkspace(owner);
         if (workspaces.lockWorkspace(owner) == null) throw new IllegalStateException("未能锁定个人工作区");
         check(owner, method, pattern, sessionId);
@@ -50,6 +54,8 @@ public class TrainingAccessGuard {
         if (!guarded(path)) return;
         // 此出口只有不透明通知游标；任何任务正文仍须经过原资料出口的动态守卫。
         if ("GET".equals(method) && "/api/v1/ai/events".equals(path)) return;
+        // 只含无正文账本检查点，用于恢复管理；回收站清单和范围预览仍按资料访问处理。
+        if ("GET".equals(method) && "/api/v1/data-privacy/status".equals(path)) return;
         if (authorizationMetadata(method, path)) return;
         var active = training.active(owner);
         if (active == null || "LEARNING".equals(active.mode()) || active.materialAccess()) return;

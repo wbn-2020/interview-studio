@@ -166,7 +166,8 @@
     VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.number},#{source.title},#{ordinal})
   </insert>
   <select id="origins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
-    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json,
+      t.created_at AS task_created_at,t.manifest_hash,t.purpose AS task_purpose,t.status AS task_status
     FROM ai_candidate_decision d
     JOIN knowledge_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id
     JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
@@ -182,7 +183,7 @@
         WHEN i.status='ARCHIVED' THEN 'ARCHIVED'
         WHEN i.status&lt;&gt;'ACTIVE' THEN 'UNAVAILABLE'
         WHEN i.current_version_id=s.source_version_id THEN 'CURRENT'
-        ELSE 'SUPERSEDED' END AS state, i.kind
+        ELSE 'SUPERSEDED' END AS state, i.kind,s.ordinal
     FROM ai_knowledge_source s
     LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
     LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
@@ -308,7 +309,8 @@
     VALUES (#{owner},#{taskId},#{source.itemId},#{source.versionId},#{source.number},#{source.title},#{ordinal})
   </insert>
   <select id="questionOrigins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
-    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json,
+      t.created_at AS task_created_at,t.manifest_hash,t.purpose AS task_purpose,t.status AS task_status
     FROM ai_question_decision d
     JOIN question_version v ON v.owner_id=d.owner_id AND v.question_id=d.target_question_id AND v.id=d.target_version_id
     JOIN ai_task t ON t.owner_id=d.owner_id AND t.id=d.task_id
@@ -324,7 +326,7 @@
         WHEN i.status='ARCHIVED' THEN 'ARCHIVED'
         WHEN i.status&lt;&gt;'ACTIVE' THEN 'UNAVAILABLE'
         WHEN i.current_version_id=s.source_version_id THEN 'CURRENT'
-        ELSE 'SUPERSEDED' END AS state, i.kind
+        ELSE 'SUPERSEDED' END AS state, i.kind,s.ordinal
     FROM ai_question_source s
     LEFT JOIN knowledge_item i ON i.owner_id=s.owner_id AND i.id=s.source_item_id
     LEFT JOIN knowledge_version v ON v.owner_id=s.owner_id AND v.item_id=s.source_item_id AND v.id=s.source_version_id
@@ -333,7 +335,8 @@
     ORDER BY s.task_id,s.ordinal
   </select>
   <select id="expressionOrigins" resultType="com.wenjie.studio.ai.AiRows$OriginRow">
-    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json
+    SELECT d.task_id,d.target_version_id,v.version_number AS target_version_number,d.created_at AS adopted_at,t.manifest_json,
+      t.created_at AS task_created_at,t.manifest_hash,t.purpose AS task_purpose,t.status AS task_status
     FROM ai_expression_decision d
     JOIN preparation_item i ON i.owner_id=d.owner_id AND i.id=d.target_item_id AND i.kind='EXPRESSION'
     JOIN preparation_version v ON v.owner_id=d.owner_id AND v.item_id=d.target_item_id AND v.id=d.target_version_id

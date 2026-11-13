@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.knowledge.KnowledgeAttachmentMapper">
+  <resultMap id="attachment" type="com.wenjie.studio.knowledge.KnowledgeAttachmentMapper$Attachment">
+    <constructor><idArg column="id" javaType="java.lang.String"/><arg column="sha256" javaType="java.lang.String"/></constructor>
+  </resultMap>
+  <resultMap id="unscanned" type="com.wenjie.studio.knowledge.OrganizationRows$UnscannedVersion">
+    <constructor>
+      <idArg column="id" javaType="java.lang.String"/>
+      <arg column="item_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="_int"/>
+      <arg column="body" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+  <select id="readyAttachments" resultMap="attachment" timeout="5">
+    SELECT id,sha256 FROM material_attachment
+    WHERE owner_id=#{owner} AND status='READY' AND ready_upload_id IS NOT NULL AND id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </select>
+  <select id="unscannedVersions" resultMap="unscanned" timeout="5">
+    SELECT v.id,v.item_id,v.version_number,v.body FROM knowledge_version v
+    WHERE v.owner_id=#{owner} AND NOT EXISTS (
+      SELECT 1 FROM knowledge_attachment_scan s WHERE s.owner_id=v.owner_id AND s.version_id=v.id)
+    ORDER BY v.id LIMIT #{limit}
+  </select>
+  <select id="scanExists" resultType="_boolean" timeout="5">
+    SELECT EXISTS(SELECT 1 FROM knowledge_attachment_scan WHERE owner_id=#{owner} AND version_id=#{versionId})
+  </select>
+  <insert id="insertReference" timeout="5">
+    INSERT INTO knowledge_attachment_reference
+      (id,owner_id,item_id,version_id,version_number,attachment_id,attachment_sha256,
+       ordinal_number,reference_kind,line_start,line_end,created_at)
+    VALUES (#{id},#{owner},#{itemId},#{versionId},#{versionNumber},#{attachmentId},#{sha256},
+       #{ordinal},#{kind},#{lineStart},#{lineEnd},#{now})
+  </insert>
+  <insert id="markScanned" timeout="5">
+    INSERT INTO knowledge_attachment_scan
+      (version_id,owner_id,item_id,parser_version,reference_count,unresolved_count,processed_at)
+    VALUES (#{versionId},#{owner},#{itemId},#{parserVersion},#{referenceCount},#{unresolved},#{now})
+  </insert>
+</mapper>

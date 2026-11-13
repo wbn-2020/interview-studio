@@ -148,6 +148,8 @@
     AND EXISTS (SELECT 1 FROM material_excerpt_lifecycle lifecycle
       WHERE lifecycle.owner_id=e.owner_id AND lifecycle.excerpt_id=e.id
         AND lifecycle.attachment_id=e.attachment_id AND lifecycle.status='ACTIVE')
+    AND NOT EXISTS (SELECT 1 FROM material_excerpt_correction correction
+      WHERE correction.owner_id=e.owner_id AND correction.excerpt_id=e.id)
     <if test="afterId != null">AND e.id &lt; #{afterId}</if>
     AND (e.locator COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
       OR e.text COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!')

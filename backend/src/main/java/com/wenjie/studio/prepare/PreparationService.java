@@ -7,6 +7,7 @@ import com.wenjie.studio.knowledge.KnowledgeService;
 import com.wenjie.studio.material.MaterialService;
 import com.wenjie.studio.lifecycle.PreparationKnowledgePropagation;
 import com.wenjie.studio.lifecycle.PreparationKnowledgeDtos.ChangeKind;
+import com.wenjie.studio.lifecycle.KnowledgeRevalidationQuery;
 import com.wenjie.studio.prepare.PreparationDtos.*;
 import com.wenjie.studio.prepare.PreparationRows.ItemRow;
 import com.wenjie.studio.prepare.PreparationRows.VersionRow;
@@ -40,17 +41,22 @@ public class PreparationService {
     private final MaterialService materials;
     private final ExpressionBasisReviewService expressionBasis;
     private final PreparationKnowledgePropagation knowledgePropagation;
+    private final KnowledgeRevalidationQuery knowledgeRevalidation;
+    private final PreparationSources sourceEligibility;
     private final JsonMapper json;
 
     public PreparationService(PreparationMapper mapper, IdempotencyService commands,
                               KnowledgeService knowledge, MaterialService materials, JsonMapper json,
-                              ExpressionBasisReviewService expressionBasis, PreparationKnowledgePropagation knowledgePropagation) {
+                              ExpressionBasisReviewService expressionBasis, PreparationKnowledgePropagation knowledgePropagation,
+                              KnowledgeRevalidationQuery knowledgeRevalidation, PreparationSources sourceEligibility) {
         this.mapper = mapper;
         this.commands = commands;
         this.knowledge = knowledge;
         this.materials = materials;
         this.expressionBasis = expressionBasis;
         this.knowledgePropagation = knowledgePropagation;
+        this.knowledgeRevalidation = knowledgeRevalidation;
+        this.sourceEligibility = sourceEligibility;
         this.json = json.rebuild().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
                 .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS).build();
@@ -412,6 +418,10 @@ public class PreparationService {
         var references = mapper.references(owner, row.currentVersionId()).stream().map(link ->
                 reference(owner, new VersionLink(LinkKind.valueOf(link.sourceKind()), link.sourceItemId(), link.sourceVersionId()))).toList();
         boolean review = row.kind().equals("EXPRESSION") && mapper.hasInvalidFactBasis(owner, row.currentVersionId());
+        // 岗位中的既有组织关联可保留供对照，但正文未改版不代表其采用来源仍然有效。
+        review |= references.stream().anyMatch(link -> link.kind() == LinkKind.KNOWLEDGE
+                && knowledgeRevalidation.pending(owner, link.itemId(), link.versionId()));
+        review |= !sourceEligibility.locallyUsable(owner, Kind.valueOf(row.kind()), row.id(), row.currentVersionId());
         return new Item(row.id(), Kind.valueOf(row.kind()), row.projectId(), Status.valueOf(row.status()), row.revision(),
                 row.verification() == null ? null : Verification.valueOf(row.verification()), row.favorite(), row.createdAt(),
                 row.updatedAt(), toVersion(requireVersion(owner, row)), references, review);
@@ -464,6 +474,9 @@ public class PreparationService {
         for (VersionLink link : links) {
             Reference source = reference(owner, link);
             String key = link.kind() + ":" + link.itemId() + ":" + link.versionId();
+            if (link.kind() == LinkKind.KNOWLEDGE && !preserved.contains(key)) {
+                knowledgeRevalidation.requireClear(owner, link.itemId(), link.versionId());
+            }
             // 目标保留既有旧版本属于组织关系；新增内容依据绝不能继承旧版本的有效身份。
             if (source.state() != ReferenceState.CURRENT && !preserved.contains(key)) {
                 if (source.state() == ReferenceState.WITHDRAWN || source.state() == ReferenceState.UNVERIFIED) {
@@ -475,6 +488,12 @@ public class PreparationService {
     }
 
     private Reference reference(String owner, VersionLink link) {
+        if (link.kind() == LinkKind.COLLECTION) {
+            // 题单仅用于目标整理，固定确切版本；不得按准备正文或知识来源展开题目与参考答案。
+            Reference source = mapper.collectionReference(owner, link.itemId(), link.versionId());
+            if (source == null) throw sourceUnavailable();
+            return source;
+        }
         if (link.kind() == LinkKind.KNOWLEDGE) {
             try {
                 var source = knowledge.detail(owner, link.itemId());

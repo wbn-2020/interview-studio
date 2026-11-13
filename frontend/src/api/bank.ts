@@ -12,6 +12,7 @@ export type QuestionExposurePage = Schema['BankExposurePage']
 export type QuestionType = Schema['BankQuestionType']
 export type QuestionDimension = Schema['BankDimension']
 export type QuestionKnowledgeReference = Schema['BankKnowledgeReference']
+export type QuestionKnowledgeReferencePage = Schema['BankKnowledgeReferencePage']
 
 export const questionTypeLabels: Record<QuestionType, string> = {
   EXPLAIN: '原理解释', CODE_READING: '代码阅读', DEBUG: '排错', PROJECT: '项目经历',
@@ -22,7 +23,7 @@ export const questionDimensionLabels: Record<QuestionDimension, string> = {
   OWNERSHIP: '责任边界', COMMUNICATION: '表达沟通', OTHER: '其他',
 }
 export const knowledgeReferenceLabels: Record<QuestionKnowledgeReference['state'], string> = {
-  CURRENT: '当前发布版本', SUPERSEDED: '知识已改版', ARCHIVED: '知识已归档',
+  CURRENT: '当前发布版本', SUPERSEDED: '知识已改版', ARCHIVED: '知识已归档', REVIEW_REQUIRED: '上游来源待复核',
 }
 export const questionTypeOptions = Object.entries(questionTypeLabels).map(([value, label]) => ({ value, label }))
 export const questionDimensionOptions = Object.entries(questionDimensionLabels).map(([value, label]) => ({ value, label }))

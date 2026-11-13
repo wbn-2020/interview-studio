@@ -102,7 +102,7 @@ final class GenerationIndex {
         BooleanQuery.Builder result = new BooleanQuery.Builder();
         filter(result, "owner", owner);
         filter(result, "status", criteria.status());
-        filter(result, "source", criteria.source());
+        // 来源按当前真实登记回验；旧索引的 USER 字段不能屏蔽升级前已采用／导入的对象。
         if (criteria.kind() != null) filter(result, "kind", criteria.kind());
         if (criteria.topicId() != null) filter(result, "topic", criteria.topicId());
         if (criteria.tag() != null) filter(result, "tag_exact", criteria.tag().toLowerCase(Locale.ROOT));

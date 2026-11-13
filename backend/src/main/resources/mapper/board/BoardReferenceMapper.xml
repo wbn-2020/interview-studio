@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.board.BoardReferenceMapper">
+  <resultMap id="reference" type="com.wenjie.studio.board.BoardDtos$Reference">
+    <constructor>
+      <idArg column="item_id" javaType="java.lang.String"/>
+      <arg column="kind" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="status" javaType="java.lang.String"/>
+      <arg column="version_id" javaType="java.lang.String"/>
+      <arg column="version_number" javaType="_int"/>
+      <arg column="body" javaType="java.lang.String"/>
+      <arg column="reference_kind" javaType="com.wenjie.studio.board.BoardDtos$ReferenceKind"/>
+      <arg column="attachment_revision" javaType="java.lang.Long"/>
+    </constructor>
+  </resultMap>
+  <!-- 题面投影不查询 reference_answer/checkpoints_json，也不产生查阅参考的曝光。 -->
+  <select id="questions" resultMap="reference">
+    SELECT q.id AS item_id, 'QUESTION' AS kind, v.title, q.status,
+           v.id AS version_id, v.version_number,
+           LEFT(JSON_UNQUOTE(JSON_EXTRACT(v.prompt_json, '$.prompt')), 2000) AS body,
+           'QUESTION' AS reference_kind, NULL AS attachment_revision
+    FROM question q JOIN question_version v
+      ON v.owner_id = q.owner_id AND v.question_id = q.id AND v.id = q.current_version_id
+    WHERE q.owner_id = #{owner} AND q.id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY q.id
+  </select>
+  <select id="attachments" resultMap="reference">
+    SELECT id AS item_id, 'ATTACHMENT' AS kind, file_name AS title, status,
+           NULL AS version_id, 0 AS version_number, LEFT(description, 2000) AS body,
+           'ATTACHMENT' AS reference_kind, revision AS attachment_revision
+    FROM material_attachment WHERE owner_id = #{owner} AND status = 'READY' AND id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    ORDER BY id
+  </select>
+  <select id="knowledgeVersion" resultType="int">
+    SELECT COUNT(*) FROM knowledge_item i JOIN knowledge_version v
+      ON v.owner_id = i.owner_id AND v.item_id = i.id
+    WHERE i.owner_id = #{owner} AND i.id = #{id} AND v.id = #{version}
+  </select>
+  <select id="questionVersion" resultType="int">
+    SELECT COUNT(*) FROM question q JOIN question_version v
+      ON v.owner_id = q.owner_id AND v.question_id = q.id
+    WHERE q.owner_id = #{owner} AND q.id = #{id} AND v.id = #{version}
+  </select>
+  <select id="attachmentRevision" resultType="int">
+    SELECT COUNT(*) FROM material_attachment
+    WHERE owner_id = #{owner} AND id = #{id} AND status = 'READY' AND revision &gt;= #{revision}
+  </select>
+  <insert id="insert">
+    INSERT INTO knowledge_board_external_reference
+      (owner_id, board_id, board_revision, reference_kind, item_id, version_id, attachment_revision)
+    VALUES (#{owner}, #{boardId}, #{revision}, #{reference.referenceKind}, #{reference.itemId},
+            #{reference.versionId}, #{reference.attachmentRevision})
+  </insert>
+</mapper>

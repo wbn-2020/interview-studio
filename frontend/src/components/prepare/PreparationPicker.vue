@@ -7,10 +7,11 @@ import type { ItemDetail, Schema } from '../../api/client'
 import { useWorkspaceStore } from '../../state/workspace'
 import type { ChosenVersion, PreparationPage, ReferenceKind } from '../../api/preparation'
 
-const props = defineProps<{ kinds: ReferenceKind[]; disabled?: boolean; excludeVersionIds?: string[] }>()
+type MaterialReferenceKind = Exclude<ReferenceKind, 'COLLECTION'>
+const props = defineProps<{ kinds: MaterialReferenceKind[]; disabled?: boolean; excludeVersionIds?: string[] }>()
 const emit = defineEmits<{ choose: [value: ChosenVersion] }>()
 const store = useWorkspaceStore()
-const kind = ref<ReferenceKind>(props.kinds[0] ?? 'FACT')
+const kind = ref<MaterialReferenceKind>(props.kinds[0] ?? 'FACT')
 const input = ref('')
 const search = ref('')
 const cursor = ref<string>()
@@ -19,7 +20,7 @@ const choosing = ref(false)
 const chooseError = ref('')
 let alive = true
 onUnmounted(() => { alive = false })
-const labels: Record<ReferenceKind, string> = { PROJECT: '项目', FACT: '已核实事实', KNOWLEDGE: '知识笔记／概念' }
+const labels: Record<MaterialReferenceKind, string> = { PROJECT: '项目', FACT: '已核实事实', KNOWLEDGE: '知识笔记／概念' }
 const options = computed(() => props.kinds.map(value => ({ value, label: labels[value] })))
 const results = useQuery({
   queryKey: computed(() => ['preparation', store.sessionEpoch, 'picker', kind.value, search.value, cursor.value]),
@@ -39,7 +40,7 @@ const results = useQuery({
 })
 watch(kind, () => { cursor.value = undefined; previous.value = [] })
 function submit() { search.value = input.value.trim(); cursor.value = undefined; previous.value = [] }
-async function choose(item: { kind: ReferenceKind; id: string; title: string; number: number; versionId?: string }) {
+async function choose(item: { kind: MaterialReferenceKind; id: string; title: string; number: number; versionId?: string }) {
   if (props.disabled || choosing.value || !store.sessionActive) return
   const sessionEpoch = store.sessionEpoch
   choosing.value = true
