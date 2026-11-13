@@ -120,6 +120,7 @@ function endPan(event: PointerEvent) {
 function wheelZoom(event: WheelEvent) { setZoom(zoom.value + (event.deltaY < 0 ? 0.08 : -0.08)) }
 function chooseView(label: string) {
   if (label === '列表') { emit('navigate', 10); return }
+  if (label === '白板') { emit('navigate', 13); return }
   view.value = label
 }
 function practice() {
@@ -269,7 +270,7 @@ function practice() {
         </section>
         <section class="graph-evidence">
           <h2><RIcon name="link" :size="23" />相关证据</h2>
-          <button @click="emit('navigate', 8)"><RIcon name="file-text" :size="24" /><span>分布式系统设计与实现.pdf</span><RIcon name="chevron-right" :size="22" /></button>
+          <button @click="emit('navigate', 6)"><RIcon name="file-text" :size="24" /><span>分布式系统设计与实现.pdf</span><RIcon name="chevron-right" :size="22" /></button>
         </section>
       </div>
       <div v-else class="graph-alternate-content">
@@ -288,7 +289,7 @@ function practice() {
         </template>
         <template v-else>
           <h2><RIcon name="link" :size="23" />相关证据</h2>
-          <button @click="emit('navigate', 8)">分布式系统设计与实现.pdf<RIcon name="chevron-right" :size="20" /></button>
+          <button @click="emit('navigate', 6)">分布式系统设计与实现.pdf<RIcon name="chevron-right" :size="20" /></button>
         </template>
       </div>
       <button class="graph-practice" @click="practice"><RIcon name="crosshair" :size="24" />练这一点</button>

@@ -20,6 +20,10 @@ const navigation = [
   { path: '/knowledge', label: '知识', icon: 'book-open' }, { path: '/practice/sessions', prefix: '/practice', label: '训练', icon: 'dumbbell' },
   { path: '/review', label: '复盘', icon: 'refresh-cw' }, { path: '/growth', label: '成长', icon: 'chart-no-axes-combined' },
 ]
+const galaxyIcons: Record<string, string> = {
+  '/today': 'house', '/prepare': 'layers', '/knowledge': 'knowledge-network',
+  '/practice/sessions': 'play', '/review': 'chart-no-axes-column', '/growth': 'trending-up',
+}
 const secondary = [
   { path: '/practice/questions', label: '题库', icon: 'database' }, { path: '/knowledge/cards', label: '回忆卡', icon: 'credit-card' },
   { path: '/recent', label: '最近访问', icon: 'clock' }, { path: '/ai', label: 'AI 任务', icon: 'sparkles' },
@@ -42,7 +46,7 @@ watch(() => route.fullPath, () => { userMenu.value = false })
     <aside class="app-nav studio-sidebar">
       <RouterLink class="studio-brand" to="/today" aria-label="问阶 · 今日"><RBrand :variant="compact ? 9 : 2" /></RouterLink>
       <nav class="studio-primary-nav" aria-label="主导航">
-        <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" class="studio-nav-item" :class="{ 'studio-selected': active(item) }" :aria-current="active(item) ? 'page' : undefined"><RIcon :name="compact && item.path === '/knowledge' ? 'share-2' : screen === 'today' && item.path === '/today' ? 'calendar-days' : item.icon" :size="28" /><span>{{ item.label }}</span></RouterLink>
+        <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" class="studio-nav-item" :class="{ 'studio-selected': active(item) }" :aria-current="active(item) ? 'page' : undefined"><RIcon :name="compact ? galaxyIcons[item.path]! : screen === 'today' && item.path === '/today' ? 'calendar-days' : item.icon" :size="compact ? 34 : 28" /><span>{{ item.label }}</span></RouterLink>
         <template v-if="!compact"><div class="studio-nav-rule" /><RouterLink v-for="item in secondary" :key="item.path" :to="item.path" class="studio-nav-item studio-secondary" :class="{ 'studio-selected': route.path === item.path }"><RIcon :name="item.icon" :size="27" /><span>{{ item.label }}</span></RouterLink></template>
       </nav>
       <button class="studio-avatar studio-sidebar-avatar" title="账户与设置" aria-label="账户与设置" :aria-expanded="userMenu" @click="userMenu = !userMenu">林</button>

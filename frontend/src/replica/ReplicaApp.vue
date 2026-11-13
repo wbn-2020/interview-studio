@@ -31,6 +31,14 @@ const active = computed(() => {
     : n >= 14 && n <= 20 ? 17 : n >= 21 && n <= 23 ? 21 : n === 24 ? 24 : n
 })
 const nav = computed(() => {
+  if (scene.value === 9) return [
+    { id: 2, label: '今日', icon: 'house' },
+    { id: 3, label: '准备', icon: 'layers' },
+    { id: 10, label: '知识', icon: 'knowledge-network' },
+    { id: 17, label: '训练', icon: 'play' },
+    { id: 21, label: '复盘', icon: 'chart-no-axes-column' },
+    { id: 24, label: '成长', icon: 'trending-up' },
+  ]
   const ordinary = [
     { id: 2, label: '今日', icon: scene.value === 2 ? 'calendar-days' : 'house' },
     { id: 3, label: '准备', icon: scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
@@ -100,7 +108,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)"><RBrand :variant="scene" /></a>
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
-              <RIcon :name="item.icon" :size="28" /><span>{{ item.label }}</span>
+              <RIcon :name="item.icon" :size="scene === 9 ? 34 : 28" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
               <div class="r-nav-separator" />
@@ -159,8 +167,12 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-09 .r-sidebar .r-brand-word { font-size: 26px; }
 .r-scene-09 .r-sidebar nav { top: 40px; left: 13px; right: 13px; gap: 9px; }
 .r-scene-09 .r-nav-item { height: 91px; flex-direction: column; justify-content: center; gap: 3px; padding: 0; font-size: 21px; border-radius: 18px; }
-.r-scene-09 .r-topbar { left: 280px; top: 14px; }
-.r-scene-09 .r-top-search { left: 336px !important; }
+.r-scene-09 .r-nav-item.r-selected { height: 83px; margin-bottom: 8px; background: linear-gradient(120deg,#a77a36,#80541f); }
+.r-scene-09::before { content: ""; position: absolute; left: 0; top: 0; width: 248px; height: 93px; border: 1px solid #5d503233; border-radius: 26px 0 0; pointer-events: none; }
+.r-scene-09::after { content: ""; position: absolute; left: 248px; right: 0; top: 92px; border-top: 1px solid #5d503226; pointer-events: none; }
+.r-scene-09 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; }
+.r-scene-09 .r-topbar { left: 280px; top: 14px; height: 70px; }
+.r-scene-09 .r-top-search { left: 336px !important; top: 11px; height: 49px; }
 .r-scene-09 .r-breadcrumb { font-size: 19px; }
 .r-scene-09 .r-sidebar-avatar { left: 30px; bottom: 37px; }
 .r-scene-10 .r-sidebar { left: 7px; width: 213px; top: 21px; bottom: 33px; border-radius: 20px; }

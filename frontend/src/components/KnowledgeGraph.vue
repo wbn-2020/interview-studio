@@ -12,8 +12,9 @@ import { useTrainingAccessStore } from '../state/trainingAccess'
 import type { RelationGraphCandidateEdge, RelationGraphCandidateIdentity } from '../api/relationGraph'
 import { relationGraphEdgeId } from '../api/relationGraph'
 import RelationGraphCandidates from './RelationGraphCandidates.vue'
+import RIcon from '../replica/RIcon.vue'
 
-const props = defineProps<{ graph: GraphResponse; selectedId?: string; selectedKind?: 'NOTE' | 'CONCEPT'; topicId?: string; topicIds?: string[]; relationTypes?: Relation['type'][] }>()
+const props = defineProps<{ graph: GraphResponse; selectedId?: string; selectedKind?: 'NOTE' | 'CONCEPT'; topicId?: string; topicIds?: string[]; relationTypes?: Relation['type'][]; overlay?: boolean; titleQuery?: string }>()
 const emit = defineEmits<{ select: [id: string]; saved: []; reload: [] }>()
 type Position = { id: string; x: number; y: number }
 type Viewport = { x: number; y: number; zoom: number }
@@ -43,6 +44,7 @@ const navigation = ref<string[]>([])
 const navigationIndex = ref(-1)
 const requestedNavigationIndex = ref<number>()
 const notice = ref('')
+const toolsOpen = ref(false)
 const pairAttempts = ref(0)
 const writer = useCommand()
 const store = useWorkspaceStore()
@@ -72,6 +74,7 @@ const targetOptions = computed(() => {
   return [...targets.values()]
 })
 const connectedEdges = computed(() => displayed.value.edges.filter(edge => edge.sourceId === props.selectedId || edge.targetId === props.selectedId))
+const titleMatches = computed(() => displayed.value.nodes.filter(node => node.title.toLocaleLowerCase().includes(props.titleQuery?.trim().toLocaleLowerCase() ?? '')))
 const visibleCandidateEdges = computed(() => {
   if (!readable.value) return []
   const ids = new Set(nodeIds.value)
@@ -175,6 +178,11 @@ function highlight() {
     cy.nodes().filter(node => !matching.has(node.id())).addClass('dimmed')
     cy.edges().filter(edge => !matching.has(edge.source().id()) && !matching.has(edge.target().id())).addClass('dimmed')
   }
+  if (props.titleQuery?.trim()) {
+    const matching = new Set(titleMatches.value.map(node => node.id))
+    cy.nodes().filter(node => !matching.has(node.id())).addClass('dimmed')
+    cy.edges().filter(edge => !matching.has(edge.source().id()) && !matching.has(edge.target().id())).addClass('dimmed')
+  }
   cy.edges().filter(edge => !edge.hasClass('candidate-edge')).forEach(edge => {
     edge.style('display', props.relationTypes && !props.relationTypes.includes(edge.data('relationType')) ? 'none' : 'element')
   })
@@ -205,6 +213,13 @@ function applyViewport(value: Viewport) {
 }
 function fit() { if (cy && editable.value && !preview.value) cy.fit(cy.elements().filter(element => !element.hasClass('candidate-edge')), 65) }
 function magnify(ratio: number) { if (cy && editable.value && !preview.value) cy.zoom({ level: Math.max(.05, Math.min(10, cy.zoom() * ratio)), renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }) }
+function resetViewport() {
+  if (!cy || !editable.value || preview.value) return
+  // 恢复已保存镜头不改动节点；尚未保存的节点位置仍沿原布局修订保存。
+  applyViewport(savedViewport.value)
+  viewportDirty.value = false
+}
+defineExpose({ openTools: () => { toolsOpen.value = true } })
 function focus(id = props.selectedId, distance = 1) {
   if (!readable.value || !id || (id === props.selectedId && !selectedConcept.value)) return
   if (dirty.value || writer.locked.value) { notice.value = '请先保存或放弃当前布局，再切换邻域。'; return }
@@ -334,7 +349,7 @@ watch([() => props.selectedId, () => props.selectedKind], ([id, kind]) => {
   if (kind === 'CONCEPT' && !displayed.value.nodes.some(node => node.id === id) && !dirty.value && !writer.locked.value) focus(id)
   highlight()
 }, { immediate: true })
-watch([() => props.topicId, () => props.topicIds, () => props.relationTypes, pathQuery.data], highlight, { deep: true })
+watch([() => props.topicId, () => props.topicIds, () => props.relationTypes, () => props.titleQuery, pathQuery.data], highlight, { deep: true })
 watch([editable, preview], ([enabled, pendingPreview]) => { cy?.autoungrabify(!enabled || Boolean(pendingPreview)); cy?.userPanningEnabled(enabled && !pendingPreview); cy?.userZoomingEnabled(enabled && !pendingPreview) })
 onMounted(() => {
   cy = cytoscape({ container: canvas.value, elements: [], layout: { name: 'preset' }, minZoom: .05, maxZoom: 10, wheelSensitivity: .2, autoungrabify: !editable.value, userPanningEnabled: editable.value, userZoomingEnabled: editable.value,
@@ -368,18 +383,26 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
 </script>
 
 <template>
-  <div class="graph-workspace">
+  <div class="graph-workspace" :class="{ 'graph-overlay': overlay }">
   <section class="galaxy" aria-label="知识星图">
-    <div class="galaxy-caption"><span>{{ centerId ? '知识邻域' : '知识星图' }}</span><small>{{ displayed.nodes.length }} 个概念 · {{ displayed.edges.length }} 条真实关系</small><small v-if="visibleCandidateEdges.length" class="candidate-count">{{ visibleCandidateEdges.length }} 条待确认候选 · 虚线层</small></div>
-    <div ref="canvas" class="galaxy-canvas" role="img" aria-label="概念关系画布；可通过左侧列表选择节点，通过下方按钮移动位置；开启候选层后可在候选列表审阅虚线关系" />
+    <svg v-if="overlay" class="galaxy-orbits" viewBox="0 92 1418 932" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      <g transform="translate(-118 0)">
+        <ellipse cx="701" cy="506" rx="703" ry="377" stroke="#b88c4c" stroke-opacity=".07" stroke-dasharray="3 5" transform="rotate(-9 701 506)" />
+        <ellipse cx="703" cy="505" rx="466" ry="278" stroke="#b88c4c" stroke-opacity=".07" stroke-dasharray="3 6" transform="rotate(14 703 505)" />
+        <path d="M118 243Q582 98 1004 142M118 853Q321 875 437 1024M1177 1024Q1401 867 1514 760" stroke="#b78c4c" stroke-width=".6" stroke-opacity=".34" />
+        <path d="m390 470 638 2M705 239v631M437 794l579-447M488 301l500 554" stroke="#8e7955" stroke-opacity=".08" stroke-dasharray="2 6" />
+        <circle cx="339" cy="938" r="10" fill="#e9a84c" opacity=".1" />
+        <circle cx="339" cy="938" r="3.5" fill="#f5b44f" />
+      </g>
+    </svg>
+    <div v-if="!overlay" class="galaxy-caption"><span>{{ centerId ? '知识邻域' : '知识星图' }}</span><small>{{ displayed.nodes.length }} 个概念 · {{ displayed.edges.length }} 条真实关系</small><small v-if="visibleCandidateEdges.length" class="candidate-count">{{ visibleCandidateEdges.length }} 条待确认候选 · 虚线层</small></div>
+    <div ref="canvas" class="galaxy-canvas" role="img" aria-label="概念关系画布；可在筛选与管理中打开探索与布局工具选择或移动节点；开启候选层后可在候选列表审阅虚线关系" />
     <div v-if="!displayed.nodes.length" class="galaxy-empty"><span aria-hidden="true">✧</span><h2>从一个概念开始</h2><p>创建概念，再添加有意义的关系。<br />你的知识会在同一片星空中逐渐相连。</p></div>
     <div class="galaxy-actions">
       <div class="galaxy-legend"><span><i class="legend-core" />核心关系</span><span><i class="legend-related" />关联关系</span><span><i class="legend-candidate" />候选关系</span></div>
-      <button :disabled="!editable || !!preview" aria-label="缩小星图" @click="magnify(.8)">−</button><span>{{ zoom }}%</span><button :disabled="!editable || !!preview" aria-label="放大星图" @click="magnify(1.25)">＋</button><button :disabled="!editable || !!preview" @click="fit">全景</button><button :disabled="!selectedConcept || dirty || writer.locked.value" @click="focus()">相邻</button><button v-if="centerId" :disabled="dirty || writer.locked.value" @click="showAll">全图</button>
+      <div class="galaxy-zoom"><button :disabled="!editable || !!preview" aria-label="缩小星图" title="缩小星图" @click="magnify(.8)"><RIcon name="minus" :size="23" /></button><button class="galaxy-zoom-value" :disabled="!editable || !!preview" aria-label="恢复已保存镜头" title="恢复已保存镜头" @click="resetViewport">{{ zoom }}%</button><button :disabled="!editable || !!preview" aria-label="放大星图" title="放大星图" @click="magnify(1.25)"><RIcon name="plus" :size="23" /></button></div>
     </div>
-    <div v-if="selectedId && selectedConcept" class="node-movement" aria-label="通过键盘按钮移动选中节点">
-      <span>移动节点</span><button :disabled="!editable || !!preview" aria-label="向左移动" @click="nudge(-20, 0)">←</button><button :disabled="!editable || !!preview" aria-label="向上移动" @click="nudge(0, -20)">↑</button><button :disabled="!editable || !!preview" aria-label="向下移动" @click="nudge(0, 20)">↓</button><button :disabled="!editable || !!preview" aria-label="向右移动" @click="nudge(20, 0)">→</button>
-    </div>
+    <p v-if="titleQuery?.trim()" class="galaxy-query-status" role="status">当前窗口 {{ titleMatches.length }} 个标题匹配；其他节点淡显，坐标保持不变。</p>
     <div v-if="dirty || writer.error.value || displayed.truncated || notice || stateQuery.error.value || neighborhoodQuery.error.value || !paired" class="galaxy-status" aria-live="polite">
       <p v-if="!paired && !dirty">正在对齐坐标与镜头的修订，完成后可编辑布局。<button :disabled="!readable || writer.locked.value" @click="refreshPair(true)">重新读取一致布局</button></p>
       <p v-if="displayed.truncated">当前是部分图谱，最多显示 200 个概念和 600 条关系。完整对象关系可在详情查看。</p>
@@ -391,7 +414,10 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
       <template v-else-if="dirty"><span>布局或镜头尚未保存</span><NButton v-if="writer.pending.value && !writer.busy.value" size="small" @click="writer.retry">用原请求重试</NButton><NButton v-else size="small" :loading="writer.busy.value" :disabled="!editable" @click="save">保存布局</NButton><NButton size="small" :disabled="writer.locked.value" @click="discard">重新读取布局</NButton></template>
       <NButton v-else-if="writer.pending.value && !writer.busy.value" size="small" @click="writer.retry">用原请求重试</NButton>
     </div>
-    <details class="graph-explorer"><summary>探索与布局工具</summary><div class="graph-tool-content">
+    <details class="graph-explorer" :open="toolsOpen" @toggle="toolsOpen = ($event.target as HTMLDetailsElement).open"><summary>探索与布局工具</summary><div class="graph-tool-content">
+      <p>{{ centerId ? '知识邻域' : '知识星图' }} · {{ displayed.nodes.length }} 个概念 · {{ displayed.edges.length }} 条真实关系<span v-if="visibleCandidateEdges.length"> · {{ visibleCandidateEdges.length }} 条待确认候选</span></p>
+      <div class="graph-tool-row"><NButton size="small" :disabled="!editable || !!preview" @click="fit">全景</NButton><NButton size="small" :disabled="!selectedConcept || dirty || writer.locked.value" @click="focus()">相邻</NButton><NButton v-if="centerId" size="small" :disabled="dirty || writer.locked.value" @click="showAll">全图</NButton></div>
+      <div v-if="selectedId && selectedConcept" class="graph-tool-row graph-node-movement" aria-label="通过键盘按钮移动选中节点"><span>移动节点</span><NButton size="small" :disabled="!editable || !!preview" aria-label="向左移动" @click="nudge(-20, 0)">←</NButton><NButton size="small" :disabled="!editable || !!preview" aria-label="向上移动" @click="nudge(0, -20)">↑</NButton><NButton size="small" :disabled="!editable || !!preview" aria-label="向下移动" @click="nudge(0, 20)">↓</NButton><NButton size="small" :disabled="!editable || !!preview" aria-label="向右移动" @click="nudge(20, 0)">→</NButton></div>
       <div class="graph-tool-row"><NButton size="small" :disabled="navigationIndex <= 0" @click="navigateHistory(-1)">后退</NButton><NButton size="small" :disabled="navigationIndex >= navigation.length - 1" @click="navigateHistory(1)">前进</NButton><NButton size="small" :disabled="!selectedConcept || dirty || writer.locked.value" @click="focus(selectedId, 2)">展开两层邻域</NButton></div>
       <p>选择、世界坐标与镜头分别保存。主题过滤不会重新排列节点。</p>
       <label for="graph-node-list">当前窗口概念（键盘可用）</label><select id="graph-node-list" :value="selectedId ?? ''" @change="select(($event.target as HTMLSelectElement).value)"><option value="" disabled>选择概念</option><option v-for="node in displayed.nodes" :key="node.id" :value="node.id">{{ node.title }}</option></select>
@@ -401,14 +427,20 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
       <p v-if="candidatesQuery.error.value" role="alert">{{ errorText(candidatesQuery.error.value) }}</p><NSelect v-model:value="pathTarget" :options="targetOptions" placeholder="选择目标概念" aria-label="路径目标概念" filterable /><NSelect v-model:value="pathType" :options="relationOptions" clearable placeholder="全部语义关系" aria-label="路径关系类型" /><NButton size="small" :disabled="!selectedConcept || !pathTarget || !readable" :loading="pathQuery.isFetching.value" @click="findPath">从当前概念查找</NButton>
       <p v-if="pathQuery.error.value" role="alert">{{ errorText(pathQuery.error.value) }}</p><p v-if="pathQuery.data.value && !pathQuery.data.value.found">没有找到符合方向和类型的路径。</p><ol v-if="pathQuery.data.value?.found" class="graph-path"><li v-for="(id, index) in pathQuery.data.value.nodeIds" :key="id"><button @click="select(id)">{{ nodeName(id) }}</button><small v-if="pathQuery.data.value.edges[index]">经由 {{ relationNames[pathQuery.data.value.edges[index]!.type] }}</small></li></ol><p v-if="pathQuery.data.value?.truncated">关系超过查询边界，结果不代表全图结论。</p>
       <h3>布局与撤销</h3><NButton size="small" :disabled="!editable || !!preview || !displayed.nodes.length" @click="previewLayout">预览环形重排</NButton><p>撤销恢复所选保存之前的坐标和镜头，保留正文与后来创建的概念。</p><p v-if="historyQuery.error.value" role="alert">{{ errorText(historyQuery.error.value) }} <button @click="historyQuery.refetch()">重试</button></p><p v-else-if="!historyQuery.data.value?.items.length">还没有布局保存历史。</p><ul class="graph-history"><li v-for="entry in historyQuery.data.value?.items" :key="entry.revision"><span>修订 {{ entry.revision }} · {{ entry.positionCount }} 个位置<br /><small>{{ new Date(entry.createdAt).toLocaleString() }}</small></span><NButton size="small" :disabled="dirty || !editable" @click="restore(entry.revision)">撤销此变更</NButton></li></ul><div class="graph-tool-row"><NButton size="small" :disabled="!historyPages.length" @click="previousHistory">较新</NButton><NButton size="small" :disabled="!historyQuery.data.value?.nextCursor" @click="nextHistory">更早</NButton></div>
+      <RelationGraphCandidates :node-ids="nodeIds" :selected-candidate="selectedCandidate" :disabled="!readable" @projection="projectCandidates" @select="selectCandidate" />
     </div></details>
   </section>
-  <RelationGraphCandidates :node-ids="nodeIds" :selected-candidate="selectedCandidate" :disabled="!readable" @projection="projectCandidates" @select="selectCandidate" />
   </div>
 </template>
 
 <style scoped>
 .graph-workspace { display: flex; flex-direction: column; min-height: 100%; min-width: 0; }
+.galaxy-orbits { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.galaxy-zoom { display: flex; align-items: center; gap: 8px; }
+.galaxy-zoom > button { display: grid; place-items: center; }
+.galaxy-zoom-value { min-width: 60px !important; }
+.galaxy-query-status { position: absolute; z-index: 2; left: 20px; bottom: 85px; max-width: calc(100% - 40px); padding: 8px 12px; border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 14px; }
+.graph-overlay .graph-explorer:not([open]) { display: none; }
 .graph-workspace > .galaxy { flex: 1 0 480px; min-height: 480px; }
 .galaxy-caption .candidate-count { color: #d8c7ff; }
 .graph-explorer { position: absolute; z-index: 4; top: 16px; right: 15px; max-width: min(320px, calc(100% - 30px)); color: #dce9ef; background: #182434; border: 1px solid #36485b; border-radius: 7px; font-size: 12px; }
@@ -426,16 +458,32 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
 .graph-path { margin: 0; padding-left: 20px; max-height: 220px; overflow: auto; }
 .graph-path li { padding: 4px 0; }
 .graph-path small { display: block; color: #b7c4d1; }
-.graph-explorer :focus-visible, .galaxy-actions button:focus-visible, .node-movement button:focus-visible { outline: 2px solid #c6e9e1; outline-offset: 2px; }
-.graph-explorer button:disabled, .galaxy-actions button:disabled, .node-movement button:disabled { opacity: .5; cursor: not-allowed; }
+.graph-explorer :focus-visible, .galaxy-actions button:focus-visible { outline: 2px solid #c6e9e1; outline-offset: 2px; }
+.graph-explorer button:disabled, .galaxy-actions button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 650px) { .graph-explorer { top: 62px; } .galaxy-status { top: 105px; } .graph-tool-content { max-height: 48vh; } }
 @media (prefers-reduced-motion: reduce) { .galaxy *, .galaxy *::before, .galaxy *::after { animation: none !important; transition: none !important; } }
 </style>
 
 <style scoped>
 .graph-workspace > .galaxy { min-height: 755px; background: radial-gradient(ellipse at 45% 50%, #825c2117, transparent 52%); overflow: visible; }.galaxy-caption { top: 15px; left: 25px; color: #b5aa99; font-size: 16px; }.galaxy-caption > span { display: none; }.galaxy-caption small { font-size: 14px; color: #a69c8d; }.galaxy-empty { width: 340px; }.galaxy-empty > span { color: #e8b66d; font-size: 62px; }.galaxy-empty h2 { font-size: 25px; color: #f4e8d5; }.galaxy-empty p { font-size: 17px; color: #a69a87; }
-.galaxy-actions { left: 50%; right: auto; bottom: 0; transform: translateX(-50%); gap: 12px; padding: 12px 20px; border: 1px solid #77603b; border-radius: 34px; background: #14110be8; color: #d1c9bc; font-size: 19px; white-space: nowrap; }.galaxy-actions button { min-width: 36px; min-height: 36px; font-size: 20px; border: 1px solid #ffffff0c; border-radius: 50%; }.galaxy-actions button:nth-last-child(-n+3) { font-size: 15px; border-radius: 18px; }.galaxy-legend { display: flex; gap: 20px; padding-right: 20px; border-right: 1px solid #ffffff26; }.galaxy-legend span { display: flex; align-items: center; gap: 10px; font-size: 18px; }.galaxy-legend i { width: 15px; height: 15px; border-radius: 50%; }.legend-core { background: #e6ad51; }.legend-related { background: #72cec7; }.legend-candidate { background: #8b8578; }.node-movement { background: #1d170ee8; border-color: #6c5335; border-radius: 20px; bottom: 77px; left: 22px; font-size: 15px; }.node-movement button { font-size: 19px; }
+.galaxy-actions { left: 50%; right: auto; bottom: 0; transform: translateX(-50%); gap: 12px; padding: 12px 20px; border: 1px solid #77603b; border-radius: 34px; background: #14110be8; color: #d1c9bc; font-size: 19px; white-space: nowrap; }.galaxy-actions button { min-width: 36px; min-height: 36px; font-size: 20px; border: 1px solid #ffffff0c; border-radius: 50%; }.galaxy-legend { display: flex; gap: 20px; padding-right: 20px; border-right: 1px solid #ffffff26; }.galaxy-legend span { display: flex; align-items: center; gap: 10px; font-size: 18px; }.galaxy-legend i { width: 15px; height: 15px; border-radius: 50%; }.legend-core { background: #e6ad51; }.legend-related { background: #72cec7; }.legend-candidate { background: #8b8578; }
 .graph-explorer { top: 50px; background: #1a150fe8; border-color: #5a4530; border-radius: 15px; color: #e8dcc9; font-size: 15px; }.graph-tool-content { border-color: #5a4530; }.graph-tool-content p { color: #b5a58e; }.graph-tool-content select { background: #241b12; color: #f1e0c7; border-color: #655137; }.galaxy-status { border-radius: 13px; background: #2b2116eb; color: #e6d4b9; }.galaxy-status p { font-size: 14px; color: inherit; }.galaxy-caption .candidate-count { color: #e8b86c; }
-@media (max-width: 1250px) { .galaxy-legend { gap: 12px; padding-right: 12px; }.galaxy-legend span { font-size: 14px; gap: 6px; }.galaxy-actions { gap: 6px; padding: 8px 12px; }.galaxy-actions button:nth-last-child(-n+3) { display: none; } }
-@media (max-width: 600px) { .graph-workspace > .galaxy { min-height: 600px; }.galaxy-legend { display: none; }.galaxy-actions button:nth-last-child(-n+3) { display: inline-block; }.galaxy-empty { width: 270px; }.graph-explorer { top: 50px; } }
+@media (max-width: 1250px) { .galaxy-legend { gap: 12px; padding-right: 12px; }.galaxy-legend span { font-size: 14px; gap: 6px; }.galaxy-actions { gap: 6px; padding: 8px 12px; } }
+@media (max-width: 600px) { .graph-workspace > .galaxy { min-height: 600px; }.galaxy-legend { display: none; }.galaxy-empty { width: 270px; }.graph-explorer { top: 50px; } }
+@media (min-width: 1251px) {
+  .graph-overlay { height: 100%; }
+  .graph-overlay > .galaxy { flex: 1 1 0; min-height: 0; overflow: hidden; }
+  .graph-overlay .galaxy-actions { left: calc(50% - 378px); bottom: 33px; width: 638px; height: 64px; transform: none; gap: 0; padding: 0 23px 0 29px; }
+  .graph-overlay .galaxy-legend { gap: 29px; padding-right: 0; border: 0; }
+  .graph-overlay .galaxy-legend span { gap: 10px; font-size: 18px; }
+  .graph-overlay .galaxy-legend span:first-child { color: #ffe4a2; }
+  .graph-overlay .galaxy-legend i { width: 16px; height: 16px; }
+  .graph-overlay .galaxy-zoom { margin-left: auto; height: 34px; padding-left: 34px; border-left: 1px solid #aaa18e66; }
+  .graph-overlay .galaxy-zoom > button { display: grid; width: 39px; height: 39px; padding: 0; border-radius: 50%; font-size: 19px; color: #d1c9bc; }
+  .graph-overlay .galaxy-zoom > .galaxy-zoom-value { width: 60px; border: 0; border-radius: 0; }
+  .graph-overlay .graph-explorer { top: 84px; left: 290px; right: auto; z-index: 6; max-width: min(360px,calc(100% - 310px)); }
+  .graph-overlay .graph-tool-content { width: 350px; max-height: min(65vh,600px); }
+  .graph-overlay .galaxy-status { left: 290px; right: 460px; top: 92px; }
+  .graph-overlay .galaxy-query-status { left: 290px; bottom: 108px; max-width: calc(100% - 750px); }
+}
 </style>

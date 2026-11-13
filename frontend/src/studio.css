@@ -42,6 +42,15 @@ html[data-studio-theme="light"] .studio-product :is(.studio-sidebar,.studio-glob
 html[data-studio-theme="light"] .studio-product .studio-nav-item { color: var(--muted); }html[data-studio-theme="light"] .studio-product .studio-nav-item.studio-selected { color: #fff4e4; }
 html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,button) { color: #315b50; background: #dbeae2; border-color: #b5cfc3; }
 .screen-galaxy { --sidebar: 118px; }.studio-product.screen-galaxy .studio-sidebar { left: 0; top: 92px; bottom: 1px; width: 118px; border-radius: 27px; }.screen-galaxy .studio-brand { position: fixed; top: 23px; left: 30px; }.screen-galaxy .studio-primary-nav { top: 40px; left: 13px; right: 13px; gap: 9px; }.studio-product.screen-galaxy .studio-nav-item { height: 91px; min-height: 91px; flex-direction: column; justify-content: center; gap: 3px; padding: 0; font-size: 21px; }.screen-galaxy .studio-topbar { left: 280px; top: 14px; }.screen-galaxy .studio-global-search { width: 560px; }.screen-galaxy .studio-sidebar-avatar { left: 30px; bottom: 37px; }.studio-product.screen-galaxy .studio-main { padding: 110px 27px 24px 18px; }
+@media (min-width: 1251px) {
+  .screen-galaxy::before { content: ""; position: absolute; left: 0; top: 0; width: 248px; height: 93px; border: 1px solid #5d503233; border-radius: 26px 0 0; pointer-events: none; }
+  .screen-galaxy::after { content: ""; position: absolute; left: 248px; right: 0; top: 92px; border-top: 1px solid #5d503226; pointer-events: none; }
+  .screen-galaxy .studio-brand .r-brand-word { font-size: 26px; }
+  .screen-galaxy .studio-brand .r-brand-word small { font-size: 16px; }
+  .studio-product.screen-galaxy .studio-nav-item.studio-selected { height: 83px; min-height: 83px; margin-bottom: 8px; background: linear-gradient(120deg,#a77a36,#80541f); }
+  .screen-galaxy .studio-topbar { right: 34px; height: 70px; }
+  .screen-galaxy .studio-global-search { position: absolute; left: 336px; height: 49px; margin-left: 0; }
+}
 .studio-product .preference-save-notice { max-width: none; font-size: 14px; }
 @media (max-height: 900px) and (min-width: 901px) { .studio-product .studio-primary-nav { gap: 1px; top: 115px; }.studio-product .studio-nav-item { height: 48px; min-height: 48px; }.studio-product .studio-secondary { height: 42px; min-height: 42px; }.studio-nav-rule { margin: 12px 13px; }.studio-product.screen-galaxy .studio-primary-nav { top: 25px; gap: 3px; }.studio-product.screen-galaxy .studio-nav-item { min-height: 76px; height: 76px; } }
 @media (max-width: 1250px) { .studio-topbar { gap: 16px; right: 22px; }.studio-breadcrumb { font-size: 17px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }.studio-top-status { gap: 16px; }.studio-global-search { width: 320px !important; }.studio-product .studio-main { padding-right: 22px; }.studio-saved { font-size: 17px; }.studio-product .page-heading h1 { font-size: 40px; } }

@@ -139,6 +139,32 @@ try {
         await page.getByRole('dialog', { name: '全局命令面板' }).waitFor({ state: 'visible' })
         checks.push({ check: 'command-close-reopen', scene: scene.id, passed: true })
       }
+      if (scene.id === '09') {
+        const candidates = page.getByRole('switch', { name: '显示候选关系' })
+        ensure(await candidates.getAttribute('aria-checked') === 'true', '09初始候选关系未打开')
+        await candidates.click()
+        ensure(await candidates.getAttribute('aria-checked') === 'false' && await page.locator('.graph-candidate').count() === 0,
+          '09候选开关未隐藏虚线层')
+        await candidates.click()
+        ensure(await candidates.getAttribute('aria-checked') === 'true' && await page.locator('.graph-candidate').count() === 1,
+          '09候选开关未恢复虚线层')
+        await page.getByRole('button', { name: '放大星图', exact: true }).click()
+        ensure(await page.locator('.graph-zoom-value').textContent() === '110%', '09放大后比例不符')
+        await page.getByRole('button', { name: '重置星图视图' }).click()
+        ensure(await page.locator('.graph-zoom-value').textContent() === '100%', '09重置后比例不符')
+        await page.getByRole('navigation', { name: '知识视图' }).getByRole('button', { name: '白板', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="13"]').waitFor({ state: 'visible' })
+        ensure(new URL(page.url()).searchParams.get('scene') === '13', '09白板入口未同步场景地址')
+        ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '09白板返回后加载失败')
+        await ready()
+        await page.getByRole('button', { name: '分布式系统设计与实现.pdf', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="06"]').waitFor({ state: 'visible' })
+        ensure(new URL(page.url()).searchParams.get('scene') === '06', '09证据没有进入附件资料')
+        ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '09附件返回后加载失败')
+        await ready()
+        ensure(captured.equals(await screenshot()), '09交互后重新访问的初态与原截图不符')
+        checks.push({ check: 'graph-candidates-zoom-whiteboard-attachment', scene: scene.id, passed: true })
+      }
       const resourceErrors = (await Promise.all(resourceTasks)).filter(Boolean)
       ensure(!pageErrors.length && !resourceErrors.length, [...pageErrors, ...resourceErrors].join('\n'))
       const png = await sharp(captured).withIccProfile('srgb').png().toBuffer()
