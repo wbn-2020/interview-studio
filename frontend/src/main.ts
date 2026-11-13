@@ -51,6 +51,12 @@ router.beforeEach((to, from) => {
   if (to.fullPath === from.fullPath) return true
   // 搜索条件变化不会卸载来源问答创建器；离开搜索页仍保留默认草稿和原键保护。
   if (to.name === 'search' && from.name === 'search') return workspace.canLeave([])
+  if (to.name === 'growth' && from.name === 'growth') {
+    const keys = ['panel', 'targetId', 'targetVersionId', 'zoneId', 'from', 'to', 'topicId', 'dimension', 'linked', 'classified']
+    // 地址恢复也遵守原标签的写请求边界；列勾选和记录条件不卸载独立证据编辑器。
+    return workspace.canLeave(keys.some(key => JSON.stringify(to.query[key]) !== JSON.stringify(from.query[key]))
+      ? ['today-placement-editor', 'growth-next-step-preference'] : [])
+  }
   if (to.name === 'knowledge' && from.name === 'knowledge') {
     const keys: string[] = []
     if (to.query.item !== from.query.item) keys.push('editor', 'organization', 'connections', 'create')
