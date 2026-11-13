@@ -89,9 +89,11 @@ try {
     const response = await context.request.get(new URL(name, base).href, { headers: { 'Cache-Control': 'no-cache' } })
     ensure(response.ok(), `${name} 返回 HTTP ${response.status()}`)
     ensure(new URL(response.url()).origin === base.origin, `${name} 跳转到了其他站点`)
-    const sha256 = hash(await response.body())
-    ensure(sha256 === entries.get(name).sha256, `${name} 与候选制品不一致，停止取证`)
-    checks.push({ check: 'deployed-entry-sha256', file: name, sha256, passed: true })
+    const body = await response.body(), sha256 = hash(body), expectedSha256 = entries.get(name).sha256
+    const passed = sha256 === expectedSha256
+    checks.push({ check: 'deployed-entry-sha256', file: name, status: response.status(), bytes: body.length,
+      sha256, expectedSha256, passed })
+    ensure(passed, `${name} 与候选制品不一致，停止取证`)
   }
   for (const scene of scenes) {
     const page = await context.newPage(), pageErrors = [], resourceTasks = []

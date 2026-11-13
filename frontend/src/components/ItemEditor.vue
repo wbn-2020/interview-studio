@@ -27,8 +27,9 @@ import KnowledgeSources from './KnowledgeSources.vue'
 import NoteContextSidebar from './NoteContextSidebar.vue'
 import type { ConceptMergeResolution } from '../api/knowledgeMerge'
 import RIcon from '../replica/RIcon.vue'
+import KnowledgeGraphDetail from './KnowledgeGraphDetail.vue'
 
-const props = defineProps<{ id: string; topics: Topic[]; graph?: GraphResponse; compact?: boolean }>()
+const props = defineProps<{ id: string; topics: Topic[]; graph?: GraphResponse; compact?: boolean; graphOverview?: boolean }>()
 const emit = defineEmits<{ changed: []; open: [id: string]; close: []; loaded: [kind: 'NOTE' | 'CONCEPT'] }>()
 const writer = useCommand()
 const store = useWorkspaceStore()
@@ -189,11 +190,12 @@ function insertReference(item: Schema['ItemSummary']) {
 </script>
 
 <template>
-  <section class="item-editor" :class="{ 'item-note-editor': current?.kind === 'NOTE' && !compact }" aria-label="知识详情">
+  <section class="item-editor" :class="{ 'item-note-editor': current?.kind === 'NOTE' && !compact, 'item-graph-overview': compact && graphOverview }" aria-label="知识详情">
     <div v-if="itemQuery.isPending.value && !current" class="loading-block" role="status">正在读取正文…</div>
     <div v-else-if="!current" class="notice error" role="alert">{{ errorText(itemQuery.error.value) }}<NButton text @click="itemQuery.refetch()">重试读取</NButton></div>
     <template v-if="current">
-      <div v-if="compact" class="item-overview">
+      <KnowledgeGraphDetail v-if="compact && graphOverview" :item-id="id" :current="current" :enabled="readable" :graph="graph" @open="emit('open', $event)" />
+      <div v-else-if="compact" class="item-overview">
         <header class="item-overview-heading"><RIcon v-if="current.kind === 'CONCEPT'" name="sparkles" :size="42" /><h2>{{ current.published.title }}</h2><button class="studio-icon-button" title="打开完整详情" aria-label="打开完整详情" @click="router.push({ name: 'knowledge', query: { view: 'detail', item: id } })"><RIcon name="external-link" :size="25" /></button></header>
         <p class="item-overview-meta">{{ current.kind === 'CONCEPT' ? '概念' : '笔记' }} · v{{ current.published.number }}<span v-if="current.kind === 'CONCEPT' && graph"> · 当前图中 {{ linkedRelations.length }} 条关系</span></p>
         <div class="detail-tabs item-overview-tabs" role="group" aria-label="知识概览"><button class="active" @click="openEditor('preview')">概览</button><button @click="openEditor()">笔记</button><button @click="openEditor('relations')">关系</button><button @click="openEditor('sources')">证据</button></div>
