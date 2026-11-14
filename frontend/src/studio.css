@@ -45,7 +45,7 @@ body { background: var(--bg); }
   .studio-product.screen-library .studio-primary-nav { top: 114px; left: 13px; right: 13px; gap: 4px; }
   .studio-product.screen-library .studio-nav-item { height: 60px; min-height: 60px; padding-inline: 18px; gap: 18px; font-size: 22px; border-radius: 16px; }
   .studio-product.screen-library .studio-nav-item.studio-selected { background: linear-gradient(110deg, #a36d3c85, #603d2390); }
-  .screen-library .studio-nav-rule { margin: 33px 14px 20px; }
+  .screen-library .studio-nav-rule { margin: 17px 14px 24px; }
   .studio-product.screen-library .studio-secondary { height: 56px; min-height: 56px; font-size: 21px; }
   .screen-library .studio-avatar { width: 47px; height: 53px; border: 1px solid #827b8b66; background: linear-gradient(130deg, #6a6577, #4d4857); font-size: 25px; }
   .screen-library .studio-sidebar-avatar { left: 27px; bottom: 24px; }

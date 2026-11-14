@@ -253,7 +253,7 @@ function addTopic() {
           <NPopover trigger="click" placement="bottom-start" :width="340" :show-arrow="false">
             <template #trigger><NButton class="library-filter-trigger"><RIcon name="filter" :size="22" />筛选<RIcon name="chevron-down" :size="18" /></NButton></template>
             <form class="library-filter-form" @submit.prevent="submitSearch">
-              <NInput v-model:value="search" :maxlength="100" placeholder="筛选已发布标题" aria-label="按标题筛选" clearable />
+              <NInput v-model:value="search" :maxlength="100" placeholder="筛选已发布标题" :input-props="{ 'aria-label': '按标题筛选' }" clearable />
               <NSelect v-model:value="filter" :options="filters" aria-label="筛选知识类型与状态" />
               <NSelect v-model:value="collection" :options="collections" aria-label="知识收藏与访问分类" />
               <NButton attr-type="submit">应用筛选</NButton>
@@ -306,11 +306,12 @@ function addTopic() {
 .library-order { padding: 8px 16px; border: 1px solid var(--line); border-radius: 24px; }
 @media(min-width:1251px) {
   .knowledge-library:not(.knowledge-editor-open) > .page-heading { height: 100px; margin-bottom: 0; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading > div:first-child { padding-left: 21px; }
   .knowledge-library:not(.knowledge-editor-open) > .page-heading h1 { font-size: 50px; line-height: 65px; }
   .knowledge-library:not(.knowledge-editor-open) > .page-heading > div > .muted { font-size: 20px; line-height: 33px; margin-top: 2px; }
   .knowledge-library:not(.knowledge-editor-open) > .page-heading .row-actions { gap: 16px; padding-right: 7px; }
-  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button) { height: 58px; min-width: 156px; font-size: 21px; border-radius: 20px; padding-inline: 21px; }
-  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button--primary-type) { min-width: 173px; color: #1a1008; background: linear-gradient(150deg, #e7b37f, #c78e5d); }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button) { height: 58px; width: 156px; min-width: 156px; font-size: 20px; border-radius: 20px; padding-inline: 18px; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button--primary-type) { width: 173px; min-width: 173px; color: #1a1008; background: linear-gradient(150deg, #e7b37f, #c78e5d); }
   .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button__content) { gap: 10px; }
   .knowledge-library:not(.knowledge-editor-open) > .knowledge-toolbar { left: 502px; top: 13px; transform: none; }
   .knowledge-library:not(.knowledge-editor-open) > .knowledge-toolbar .view-switch { height: 58px; }
