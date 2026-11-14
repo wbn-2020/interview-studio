@@ -124,6 +124,8 @@ const selectedSetting = ref('外观与数据')
 const settingFocus = ref('')
 const timezoneOpen = ref(false)
 const saveIntervalOpen = ref(false)
+const timezoneButton = ref<HTMLButtonElement>()
+const saveIntervalButton = ref<HTMLButtonElement>()
 const dataOverview = [
   { name: '笔记', value: '18', icon: 'file-text', color: '#80d2eb' },
   { name: '概念', value: '42', icon: 'lightbulb', color: '#ffe429' },
@@ -141,6 +143,10 @@ function selectSetting(name: string, target: string) {
 }
 function exportData(format: string) {
   emit('notify', `已选择${format}，当前复刻页面不生成或导出数据`)
+}
+function closeSettingMenu(kind: 'timezone' | 'save') {
+  if (kind === 'timezone') { timezoneOpen.value = false; timezoneButton.value?.focus({ preventScroll: true }) }
+  else { saveIntervalOpen.value = false; saveIntervalButton.value?.focus({ preventScroll: true }) }
 }
 
 function drawHorizon() {
@@ -312,22 +318,22 @@ onMounted(drawHorizon)
     <template v-else-if="scene === 28">
       <div class="settings-heading"><p>设置 <span>/</span> 外观与数据</p><h1>设置</h1></div>
       <nav class="utility-panel settings-navigation" aria-label="设置分类">
-        <button v-for="section in settingSections" :key="section.name" :class="{ selected: selectedSetting === section.name }" :aria-pressed="selectedSetting === section.name" @click="selectSetting(section.name, section.target)"><RIcon :name="section.icon" :size="29" /><span>{{ section.name }}</span></button>
+        <button v-for="section in settingSections" :key="section.name" :class="{ selected: selectedSetting === section.name }" :aria-pressed="selectedSetting === section.name" @click="selectSetting(section.name, section.target)"><RIcon :name="section.icon" variant="settings" :size="29" /><span>{{ section.name }}</span></button>
       </nav>
       <section class="utility-panel settings-appearance" :class="{ 'utility-focused': settingFocus === 'appearance' }">
         <h2><RIcon name="sun" :size="35" />外观</h2>
-        <div class="settings-row settings-theme-row"><h3>主题外观</h3><div class="utility-segment" role="group" aria-label="主题外观"><button v-for="theme in [{ name: '跟随系统', icon: 'monitor' }, { name: '深色', icon: 'moon' }, { name: '浅色', icon: 'sun' }]" :key="theme.name" :class="{ selected: settings.theme === theme.name }" :aria-pressed="settings.theme === theme.name" @click="settings.theme = theme.name"><RIcon :name="theme.icon" :size="26" />{{ theme.name }}</button></div></div>
+        <div class="settings-row settings-theme-row"><h3>主题外观</h3><div class="utility-segment" role="group" aria-label="主题外观"><button v-for="theme in [{ name: '跟随系统', icon: 'monitor' }, { name: '深色', icon: 'moon' }, { name: '浅色', icon: 'sun' }]" :key="theme.name" :class="{ selected: settings.theme === theme.name }" :aria-pressed="settings.theme === theme.name" @click="settings.theme = theme.name"><RIcon :name="theme.icon" variant="settings" :size="26" />{{ theme.name }}</button></div></div>
         <div class="settings-row settings-width-row"><h3>内容宽度</h3><div class="utility-segment" role="group" aria-label="内容宽度"><button v-for="width in ['舒适', '宽', '全宽']" :key="width" :class="{ selected: settings.width === width }" :aria-pressed="settings.width === width" @click="settings.width = width">{{ width }}</button></div></div>
         <div class="settings-row settings-font-row" :class="{ 'utility-focused': settingFocus === 'font' }"><h3>正文字号</h3><div class="utility-segment" role="group" aria-label="正文字号"><button v-for="font in ['15', '16', '17']" :key="font" :class="{ selected: settings.font === font }" :aria-pressed="settings.font === font" @click="settings.font = font">{{ font }}</button></div></div>
         <div class="settings-row settings-motion-row" :class="{ 'utility-focused': settingFocus === 'motion' }"><h3>动效</h3><div class="utility-segment" role="group" aria-label="动效"><button v-for="motion in ['轻量', '完整', '静止']" :key="motion" :class="{ selected: settings.motion === motion }" :aria-pressed="settings.motion === motion" @click="settings.motion = motion">{{ motion }}</button></div></div>
         <div class="settings-motion-note"><span>减少动效可提升流畅度</span><label><button class="utility-switch" role="switch" :aria-checked="settings.reducedMotion" aria-label="减少动效" @click="settings.reducedMotion = !settings.reducedMotion" /><span>减少动效</span></label></div>
         <div class="settings-appearance-rule" />
-        <div class="settings-row settings-timezone-row" :class="{ 'utility-focused': settingFocus === 'timezone' }"><h3>时区</h3><div class="utility-dropdown"><button class="settings-select" :aria-expanded="timezoneOpen" @click="timezoneOpen = !timezoneOpen; saveIntervalOpen = false"><RIcon name="globe" :size="25" /><span>{{ settings.timezone }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="timezoneOpen" class="utility-menu settings-select-menu" role="menu"><button v-for="timezone in ['Asia/Shanghai', 'Asia/Tokyo', 'UTC']" :key="timezone" role="menuitemradio" :aria-checked="settings.timezone === timezone" @click="settings.timezone = timezone; timezoneOpen = false">{{ timezone }}<RIcon v-if="settings.timezone === timezone" name="check" :size="18" /></button></div></div></div>
-        <div class="settings-row settings-save-row" :class="{ 'utility-focused': settingFocus === 'save' }"><h3>自动保存间隔</h3><div class="utility-dropdown"><button class="settings-select" :aria-expanded="saveIntervalOpen" @click="saveIntervalOpen = !saveIntervalOpen; timezoneOpen = false"><span>{{ settings.saveInterval }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="saveIntervalOpen" class="utility-menu settings-select-menu" role="menu"><button v-for="interval in ['1 分钟', '2 分钟', '5 分钟']" :key="interval" role="menuitemradio" :aria-checked="settings.saveInterval === interval" @click="settings.saveInterval = interval; saveIntervalOpen = false">{{ interval }}<RIcon v-if="settings.saveInterval === interval" name="check" :size="18" /></button></div></div></div>
+        <div class="settings-row settings-timezone-row" :class="{ 'utility-focused': settingFocus === 'timezone' }"><h3>时区</h3><div class="utility-dropdown" @keydown.esc.prevent.stop="closeSettingMenu('timezone')"><button ref="timezoneButton" class="settings-select" :aria-expanded="timezoneOpen" aria-haspopup="menu" @click="timezoneOpen = !timezoneOpen; saveIntervalOpen = false"><RIcon name="globe" :size="25" /><span>{{ settings.timezone }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="timezoneOpen" class="utility-menu settings-select-menu" role="menu" aria-label="时区"><button v-for="timezone in ['Asia/Shanghai', 'Asia/Tokyo', 'UTC']" :key="timezone" role="menuitemradio" :aria-checked="settings.timezone === timezone" @click="settings.timezone = timezone; timezoneOpen = false">{{ timezone }}<RIcon v-if="settings.timezone === timezone" name="check" :size="18" /></button></div></div></div>
+        <div class="settings-row settings-save-row" :class="{ 'utility-focused': settingFocus === 'save' }"><h3>自动保存间隔</h3><div class="utility-dropdown" @keydown.esc.prevent.stop="closeSettingMenu('save')"><button ref="saveIntervalButton" class="settings-select" :aria-expanded="saveIntervalOpen" aria-haspopup="menu" @click="saveIntervalOpen = !saveIntervalOpen; timezoneOpen = false"><span>{{ settings.saveInterval }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="saveIntervalOpen" class="utility-menu settings-select-menu" role="menu" aria-label="自动保存间隔"><button v-for="interval in ['1 分钟', '2 分钟', '5 分钟']" :key="interval" role="menuitemradio" :aria-checked="settings.saveInterval === interval" @click="settings.saveInterval = interval; saveIntervalOpen = false">{{ interval }}<RIcon v-if="settings.saveInterval === interval" name="check" :size="18" /></button></div></div></div>
       </section>
       <aside class="utility-panel settings-data" :class="{ 'utility-focused': settingFocus === 'usage' || settingFocus === 'export' }">
         <h2><RIcon name="database" :size="29" />数据概览</h2>
-        <dl class="settings-data-overview"><div v-for="item in dataOverview" :key="item.name"><dt><RIcon :name="item.icon" :size="30" :style="{ color: item.color }" />{{ item.name }}</dt><dd>{{ item.value }}</dd></div></dl>
+        <dl class="settings-data-overview"><div v-for="item in dataOverview" :key="item.name"><dt><RIcon :name="item.icon" variant="settings" :size="30" :style="{ color: item.color }" />{{ item.name }}</dt><dd>{{ item.value }}</dd></div></dl>
         <div class="settings-export-section"><h3>导出数据</h3><p>导出你的知识与学习数据</p><button class="utility-primary settings-export-primary" @click="exportData('完整导出')"><RIcon name="download" :size="25" />完整导出</button><button class="utility-button settings-export-secondary" @click="exportData('Markdown 导出')"><RIcon name="file-text" :size="25" />Markdown 导出</button><button class="utility-button settings-export-secondary" @click="exportData('JSON Canvas 导出')"><span class="settings-braces">{ }</span>JSON Canvas 导出</button><p class="settings-export-note"><RIcon name="info" :size="24" />笔记凭据不会导出</p></div>
       </aside>
     </template>
@@ -512,21 +518,21 @@ onMounted(drawHorizon)
 .task-authorization-note .r-icon { color: #7b746b; }
 .utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(110deg, #d4a071, #be8253 60%, #a46b42) !important; }
 
-/* 28：坐标均从原图 x 减去 240；分段设置只改变当前组件内存。 */
+/* 28：固定展示偏好只在当前组件内存切换，不写入正式用户设置。 */
 .settings-heading { position: absolute; top: 116px; left: 24px; }
-.settings-heading > p { display: flex; gap: 15px; align-items: center; color: #c9c2b9; font-size: 20px; }
+.settings-heading > p { display: flex; gap: 15px; align-items: center; color: #c9c2b9; font-size: 19px; }
 .settings-heading > p > span { color: #e1d6c8; }
-.settings-heading h1 { margin-top: 11px; font-size: 54px; font-weight: 650; line-height: 1.3; }
+.settings-heading h1 { margin-top: 6px; font-size: 54px; font-weight: 600; line-height: 1.3; }
 .settings-navigation { top: 247px; left: 24px; width: 230px; height: 666px; padding: 13px 9px; background: linear-gradient(130deg, #392a1cc7, #1b1713db 50%, #30231ad6); border-color: #7150387a; border-radius: 25px; }
 .settings-navigation > button { display: flex; align-items: center; gap: 20px; width: 208px; height: 58px; padding: 0 18px !important; border: 1px solid transparent !important; border-radius: 21px; color: #d6d0c8; font-size: 20px; text-align: left; white-space: nowrap; }
 .settings-navigation > button:first-child { height: 64px; margin-bottom: 7px; }
-.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: linear-gradient(115deg, #93633bb3, #4d321fc9) !important; font-weight: 550; }
+.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: radial-gradient(ellipse at 10% 0, #d99e6055, transparent 85%), linear-gradient(115deg, #805631b3, #4d321fc9) !important; font-weight: 400; }
 .settings-navigation > button:hover { background-color: #ffffff06; }
-.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: linear-gradient(120deg, #261f18c4, #211c17e0); }
-.settings-appearance > h2 { position: absolute; top: 20px; left: 27px; display: flex; align-items: center; gap: 16px; font-size: 29px; font-weight: 600; }
+.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: radial-gradient(ellipse at 0 25%, #34251b33, transparent 75%), linear-gradient(120deg, #1b1511, #1a1512); }
+.settings-appearance > h2 { position: absolute; top: 20px; left: 27px; display: flex; align-items: center; gap: 12px; font-size: 29px; font-weight: 500; }
 .settings-appearance > h2 .r-icon { color: #f3b275; }
 .settings-row { position: absolute; left: 29px; right: 25px; display: flex; align-items: center; min-height: 53px; }
-.settings-row > h3 { width: 133px; flex: none; font-size: 20px; font-weight: 550; white-space: nowrap; }
+.settings-row > h3 { width: 133px; flex: none; font-size: 20px; font-weight: 400; white-space: nowrap; }
 .settings-theme-row { top: 88px; }
 .settings-width-row { top: 178px; }
 .settings-font-row { top: 267px; }
@@ -535,9 +541,9 @@ onMounted(drawHorizon)
 .utility-segment > button { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; height: 53px; margin-top: -1px; border: 1px solid #51483b3d !important; border-radius: 23px; font-size: 20px; white-space: nowrap; }
 .utility-segment > button:first-child { margin-left: -1px; }
 .utility-segment > button:last-child { margin-right: -1px; }
-.utility-segment > button.selected { border-color: #f0b77f !important; color: #fff7ec; background: radial-gradient(ellipse at 30% 5%, #ecbd8cb0, transparent 62%), linear-gradient(125deg, #cd9666, #96623ed9 70%, #ad8055) !important; box-shadow: inset 0 0 0 1px #f3c99e3d; font-weight: 550; }
+.utility-segment > button.selected { border-color: #efb77f !important; color: #fff7ec; background: radial-gradient(ellipse at 38% 100%, #713c2666, transparent 70%), radial-gradient(ellipse at 0 0, #f8c89b66, transparent 75%), linear-gradient(115deg, #c18a58, #87512f 70%, #b68253) !important; box-shadow: inset 0 0 0 1px #f3c99e26; font-weight: 500; }
 .utility-segment > button:hover { background-color: #ffffff07; }
-.settings-theme-row .utility-segment { gap: 4px; background: transparent; border-color: transparent; }
+.settings-theme-row .utility-segment, .settings-motion-row .utility-segment { grid-template-columns: 152px 152px 1fr; gap: 4px; background: transparent; border-color: transparent; }
 .settings-theme-row .utility-segment > button { border-color: #67594b85 !important; }
 .settings-theme-row .utility-segment > button.selected { border-color: #f0b77f !important; }
 .settings-theme-row .utility-segment > button:first-child { font-size: 18px; gap: 9px; }
@@ -556,21 +562,20 @@ onMounted(drawHorizon)
 .settings-select > span { flex: 1; }
 .settings-select > .r-icon:last-child { margin-left: auto; }
 .settings-select-menu { top: auto; bottom: calc(100% + 8px); min-width: 100%; }
-.settings-data { top: 245px; left: 924px; width: 352px; height: 691px; padding: 23px 24px; border-radius: 24px; background: linear-gradient(125deg, #262019c4, #211c17df); }
-.settings-data > h2 { display: flex; align-items: center; gap: 18px; font-size: 23px; font-weight: 600; }
+.settings-data { top: 245px; left: 924px; width: 352px; height: 691px; padding: 23px 24px; border-radius: 24px; background: linear-gradient(125deg, #1d1713, #1d1815); }
+.settings-data > h2 { display: flex; align-items: center; gap: 22px; font-size: 23px; font-weight: 500; }
 .settings-data > h2 .r-icon { color: #f0ba82; }
-.settings-data-overview { height: 256px; margin: 19px 0 0; border: 1px solid #ffffff03; border-bottom-color: #ffffff13; border-radius: 18px 18px 0 0; }
+.settings-data-overview { height: 256px; margin: 19px 0 0; padding-top: 4px; border: 1px solid #ffffff03; border-bottom-color: #ffffff13; border-radius: 18px 18px 0 0; background: #08060524; }
 .settings-data-overview > div { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 9px 0 6px; border-bottom: 1px solid #ffffff06; }
 .settings-data-overview > div:first-child { height: 65px; }
 .settings-data-overview > div:last-child { border-bottom: 0; }
-.settings-data-overview dt { display: flex; align-items: center; gap: 20px; font-size: 21px; }
-.settings-data-overview > div:nth-child(3) dt .r-icon { transform: rotate(90deg); }
-.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 600; }
+.settings-data-overview dt { display: flex; align-items: center; gap: 20px; font-size: 20px; }
+.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 500; }
 .settings-export-section { margin-top: 17px; }
-.settings-export-section h3 { font-size: 23px; font-weight: 600; }
+.settings-export-section h3 { font-size: 23px; font-weight: 500; }
 .settings-export-section > p { color: #b6aea4; font-size: 18px; margin-top: 1px; white-space: nowrap; }
 .settings-export-section > button { width: 300px; font-size: 20px; }
-.settings-export-primary { margin-top: 18px; height: 53px; border-radius: 21px; color: #fff5e9; font-weight: 550 !important; background: radial-gradient(ellipse at 15% 5%, #eec29599, transparent 70%), linear-gradient(130deg, #b77b4c, #7b4c2fe3) !important; }
+.settings-export-primary { margin-top: 17px; height: 53px; border-radius: 21px; color: #fff5e9; font-weight: 400 !important; background: radial-gradient(ellipse at 40% 100%, #63351e66, transparent 75%), radial-gradient(ellipse at 0 0, #eec29566, transparent 70%), linear-gradient(110deg, #b77b4c, #774629 80%, #98643e) !important; }
 .settings-export-secondary { height: 52px; margin-top: 18px; gap: 16px; border-radius: 22px; border-color: #7b716794 !important; background: linear-gradient(120deg, #49423b75, #49423b59) !important; }
 .settings-export-secondary + .settings-export-secondary { margin-top: 16px; }
 .settings-braces { font-family: Consolas, monospace; font-size: 24px; }

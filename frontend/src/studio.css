@@ -198,6 +198,33 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
   .studio-product.screen-ai .ai-product > .page-heading::before { content: none; }
   .studio-product.screen-ai .ai-product > .page-heading h1 { font-size: 42px; font-weight: 600; }
 }
+@media(min-width:1351px) {
+  .screen-settings :is(.studio-sidebar, .studio-topbar, .preferences-workspace) { will-change: transform; }
+  html:not([data-studio-theme="light"]) .screen-settings { background: radial-gradient(ellipse 420px 440px at 0 0, #523b2559, transparent), #090705; }
+  .studio-product.screen-settings .studio-sidebar { left: 19px; top: 20px; bottom: 28px; width: 212px; border-color: #70563e99; }
+  .screen-settings .studio-sidebar::before { content: ""; position: absolute; left: 0; right: 0; top: 91px; height: 1px; background: #a78d6e38; }
+  .screen-settings .studio-brand { left: 22px; top: 20px; width: 166px; height: 49px; display: flex; align-items: center; }
+  .screen-settings .studio-brand .r-brand { gap: 11px; }
+  .screen-settings .studio-brand .r-emblem { width: 43px; height: 47px; filter: none; }
+  .screen-settings .studio-brand .r-brand-word { font-size: 24px; line-height: 29px; }
+  .screen-settings .studio-brand .r-brand-word small { margin-top: 0; font-size: 14px; line-height: 20px; }
+  .studio-product.screen-settings .studio-primary-nav { left: 20px; right: 15px; top: 116px; gap: 3px; }
+  .studio-product.screen-settings .studio-nav-item { height: 59px; min-height: 59px; padding: 0 0 0 10px; gap: 24px; font-size: 22px; }
+  .studio-product.screen-settings .studio-secondary { height: 57px; min-height: 57px; }
+  .screen-settings .studio-nav-rule { margin: 14px 5px 22px 0; background: #baa58b38; }
+  .screen-settings .studio-sidebar-avatar { left: 28px; bottom: 31px; width: 53px; height: 54px; }
+  .screen-settings .studio-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -39px; width: 169px; height: 1px; background: #baa58b2d; }
+  .screen-settings .studio-avatar { font-size: 25px; background: linear-gradient(115deg, #aa917c, #776151); }
+  .screen-settings .studio-topbar { left: 264px; right: 20px; top: 20px; height: 75px; padding: 0 18px; border-radius: 25px; }
+  .screen-settings .studio-global-search { position: absolute; left: 275px; top: 11px; width: 456px; height: 52px; padding: 0 17px; gap: 12px; }
+  .screen-settings .studio-global-search kbd { padding: 2px 7px; border-radius: 8px; background: #ffffff07; }
+  .screen-settings .studio-top-status { gap: 18px; }
+  .screen-settings .studio-saved { margin-right: 18px; gap: 13px; font-size: 20px; }
+  .screen-settings .studio-saved:not(.pending) svg { width: 22px; height: 22px; background: #4bc98c; color: #0b3923; }
+  .screen-settings .studio-top-status .studio-icon-button { width: 58px; height: 52px; background: #ffffff04; }
+  .screen-settings .studio-top-status > .studio-avatar { width: 50px; height: 52px; }
+  .studio-product.screen-settings .studio-main { padding: 116px 20px 32px 24px; }
+}
 @media (max-height: 900px) and (min-width: 901px) { .studio-product .studio-primary-nav { gap: 1px; top: 115px; }.studio-product .studio-nav-item { height: 48px; min-height: 48px; }.studio-product .studio-secondary { height: 42px; min-height: 42px; }.studio-nav-rule { margin: 12px 13px; }.studio-product.screen-galaxy .studio-primary-nav { top: 25px; gap: 3px; }.studio-product.screen-galaxy .studio-nav-item { min-height: 76px; height: 76px; } }
 @media (max-width: 1250px) { .studio-topbar { gap: 16px; right: 22px; }.studio-breadcrumb { font-size: 17px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }.studio-top-status { gap: 16px; }.studio-global-search { width: 320px !important; }.studio-product .studio-main { padding-right: 22px; }.studio-saved { font-size: 17px; }.studio-product .page-heading h1 { font-size: 40px; } }
 @media (max-width: 900px) { .studio-product { --sidebar: 88px; }.studio-product .studio-sidebar { left: 0; top: 0; bottom: 0; width: 88px; border-radius: 0; }.studio-brand { left: 20px !important; top: 22px !important; }.studio-brand .r-brand-word { display: none; }.studio-product .studio-primary-nav { left: 8px; right: 8px; top: 112px; }.studio-product .studio-nav-item { padding: 0; justify-content: center; }.studio-product .studio-nav-item span, .studio-product .studio-secondary, .studio-nav-rule { display: none; }.studio-sidebar-avatar { left: 17px; }.studio-topbar, .screen-galaxy .studio-topbar { left: 110px; right: 20px; }.studio-breadcrumb { display: none; }.studio-global-search { margin-left: 0; width: auto !important; flex: 1; }.studio-top-status { gap: 12px; }.studio-saved { font-size: 15px; }.studio-top-status .studio-avatar { display: none; }.studio-product .studio-main, .studio-product.screen-galaxy .studio-main { padding: 105px 20px 30px; margin-left: 88px; }.studio-product .page-heading h1 { font-size: 34px; } }

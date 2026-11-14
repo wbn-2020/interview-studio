@@ -1631,6 +1631,90 @@ try {
         checks.push({ check: 'ai-authorization-filter-escape-focus-selection-toggle-cancel-send-boundary-navigation-refresh', scene: scene.id,
           passed: true, businessWrites: writes, limitations: '筛选、取消、发送确认与持续授权仅页面内存；未调用真实AI或写入任务／授权；不可辨认小字留空，原字体和品牌素材未取得' })
       }
+      if (scene.id === '28') {
+        const layout = await page.evaluate(() => {
+          const box = selector => { const rect = document.querySelector(selector).getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height] }
+          const brand = document.querySelector('.r-sidebar > a'), rect = brand.getBoundingClientRect()
+          return {
+            sidebar: box('.r-sidebar'), search: box('.r-top-search'), directory: box('.settings-navigation'),
+            appearance: box('.settings-appearance'), data: box('.settings-data'),
+            title: box('.settings-heading h1'), brand: box('.r-sidebar > a'),
+            brandHittable: brand.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)),
+            navigation: [...document.querySelectorAll('.r-nav-item')].map(node => node.textContent.trim()),
+            categories: [...document.querySelectorAll('.settings-navigation > button')].map(node => node.textContent.trim()),
+            rows: [...document.querySelectorAll('.settings-data-overview > div')].map(node => node.textContent.trim()),
+            selected: [...document.querySelectorAll('.settings-row button.selected')].map(node => node.textContent.trim()),
+            primaryIcons: [...document.querySelectorAll('.r-nav-item:not(.r-secondary) > svg > path:first-child')].map(node => node.getAttribute('d')),
+            singleLine: [...document.querySelectorAll('.r-nav-item > span')].every(node => node.getBoundingClientRect().height < 40),
+          }
+        })
+        ensure(JSON.stringify(layout.sidebar) === '[19,20,212,976]' && JSON.stringify(layout.search) === '[540,32,456,52]'
+          && JSON.stringify(layout.directory) === '[264,247,230,666]' && JSON.stringify(layout.appearance) === '[508,245,644,691]'
+          && JSON.stringify(layout.data) === '[1164,245,352,691]' && layout.title[0] === 264
+          && layout.brandHittable && layout.singleLine, '28品牌命中、三栏或外壳几何不符')
+        ensure(layout.navigation.join(',') === '今日,准备,知识,训练,复盘,成长,题库,回忆卡,最近访问,AI 任务'
+          && layout.categories.join(',') === '外观与数据,阅读与写作,动效,时区,保存与恢复,导入 / 导出,数据用量,安全'
+          && layout.rows.join(',') === '笔记18,概念42,关系68,附件2.4 GB'
+          && layout.selected.join(',') === '深色,舒适,15,完整'
+          && layout.primaryIcons[1].startsWith('M6 2h12') && layout.primaryIcons[3].startsWith('M5 3a1')
+          && layout.primaryIcons[4].startsWith('M3 11a9') && layout.primaryIcons[5].startsWith('m2 18'), '28文案、初态、次序或专用导航轮廓不符')
+        checks.push({ check: 'settings-reference-three-panels-shell-icons-and-defaults', scene: scene.id, ...layout, passed: true })
+        const writes = []
+        const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(new URL(request.url()).pathname) }
+        page.on('request', onWrite)
+        for (const [name, choices] of [['主题外观', ['跟随系统','浅色','深色']], ['内容宽度', ['宽','全宽','舒适']], ['正文字号', ['16','17','15']], ['动效', ['轻量','静止','完整']]]) {
+          const group = page.getByRole('group', { name, exact: true })
+          for (const choice of choices) {
+            await group.getByRole('button', { name: choice, exact: true }).click()
+            ensure(await group.locator('button[aria-pressed="true"]').count() === 1
+              && await group.locator('button[aria-pressed="true"]').innerText() === choice, `28 ${name}单选失败`)
+          }
+        }
+        const reduced = page.getByRole('switch', { name: '减少动效', exact: true })
+        ensure(await reduced.getAttribute('aria-checked') === 'false', '28减少动效初态错误')
+        await reduced.click(); ensure(await reduced.getAttribute('aria-checked') === 'true', '28开关未打开'); await reduced.click()
+        const timezone = page.locator('.settings-timezone-row .settings-select'), interval = page.locator('.settings-save-row .settings-select')
+        for (const [trigger, menu, choice] of [[timezone, '时区', 'UTC'], [interval, '自动保存间隔', '5 分钟']]) {
+          await trigger.click()
+          await page.getByRole('menu', { name: menu, exact: true }).getByRole('menuitemradio', { name: choice, exact: true }).focus()
+          await page.keyboard.press('Escape')
+          ensure(!await page.getByRole('menu').count() && await trigger.evaluate(node => node === document.activeElement), `28 ${menu} Esc或焦点错误`)
+          await trigger.click()
+          const menuBox = await page.getByRole('menu', { name: menu, exact: true }).boundingBox()
+          ensure(menuBox && menuBox.y >= 0 && menuBox.y + menuBox.height <= 1024, `28 ${menu}溢出视口`)
+          await page.getByRole('menuitemradio', { name: choice, exact: true }).click()
+          ensure((await trigger.innerText()).trim() === choice && !await page.getByRole('menu').count(), `28 ${menu}选择未同步`)
+        }
+        await timezone.click(); await interval.click()
+        ensure(!await page.getByRole('menu', { name: '时区', exact: true }).count()
+          && await page.getByRole('menu', { name: '自动保存间隔', exact: true }).count() === 1, '28两个菜单未互斥')
+        await page.keyboard.press('Escape')
+        const directory = page.getByRole('navigation', { name: '设置分类', exact: true })
+        for (const [name, selector] of [['阅读与写作','.settings-font-row'], ['动效','.settings-motion-row'], ['时区','.settings-timezone-row'], ['保存与恢复','.settings-save-row'], ['导入 / 导出','.settings-data'], ['数据用量','.settings-data']]) {
+          await directory.getByRole('button', { name, exact: true }).click()
+          ensure(await directory.locator('[aria-pressed="true"]').count() === 1
+            && await page.locator(selector).evaluate(node => node.classList.contains('utility-focused')), `28 ${name}定位失败`)
+        }
+        await directory.getByRole('button', { name: '安全', exact: true }).click()
+        ensure(await page.getByRole('status').innerText() === '安全设置的详细状态尚待补充参考', '28安全边界未明确')
+        for (const format of ['完整导出','Markdown 导出','JSON Canvas 导出']) {
+          await page.getByRole('button', { name: format, exact: true }).click()
+          ensure(await page.getByRole('status').innerText() === `已选择${format}，当前复刻页面不生成或导出数据`, '28导出边界不符')
+        }
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '28偏好与菜单操作后刷新未恢复参考初态')
+        await page.locator('.r-top-search').click()
+        await page.getByRole('dialog', { name: '全局命令面板', exact: true }).waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await page.getByRole('link', { name: '问阶今日', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="02"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '28导航返回未恢复参考初态')
+        page.off('request', onWrite)
+        ensure(!writes.length, '28固定参考态出现业务写入')
+        checks.push({ check: 'settings-segments-switch-menus-escape-focus-categories-export-boundary-navigation-refresh', scene: scene.id, passed: true,
+          businessWrites: writes, limitations: '固定偏好仅当前组件内存；不导出实际数据，不替代正式设置修订、持久保存或完整视觉验收；原字体与品牌素材缺失' })
+      }
       if (scene.id === '09') {
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
         ensure(await candidates.getAttribute('aria-checked') === 'true', '09初始候选关系未打开')

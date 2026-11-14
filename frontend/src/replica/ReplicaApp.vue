@@ -31,6 +31,11 @@ const active = computed(() => {
     : n >= 14 && n <= 20 ? 17 : n >= 21 && n <= 23 ? 21 : n === 24 ? 24 : n
 })
 const nav = computed(() => {
+  if (scene.value === 28) return [
+    { id: 2, label: '今日', icon: 'house' }, { id: 3, label: '准备', icon: 'file-text' },
+    { id: 10, label: '知识', icon: 'book-open' }, { id: 17, label: '训练', icon: 'play' },
+    { id: 21, label: '复盘', icon: 'history' }, { id: 24, label: '成长', icon: 'trending-up' },
+  ]
   if (scene.value === 25) return [
     { id: 2, label: '今日', icon: 'calendar-days' }, { id: 3, label: '准备', icon: 'square-check-rounded' },
     { id: 10, label: '知识', icon: 'book-open' }, { id: 17, label: '训练', icon: 'play' },
@@ -132,7 +137,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-              <RIcon v-else-if="scene === 27" :name="item.icon" variant="authorization" :size="30" :stroke-width="1.9" />
+              <RIcon v-else-if="[27, 28].includes(scene)" :name="item.icon" :variant="scene === 27 ? 'authorization' : 'settings'" :size="30" :stroke-width="1.9" />
               <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="scene === 9 ? 34 : [16, 18, 19, 21, 22, 23, 24, 25].includes(scene) ? 30 : 28" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
@@ -140,7 +145,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <span v-if="scene === 15" class="r-tools-heading">工具</span>
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-                <RIcon v-else-if="scene === 27" :name="item.icon" variant="authorization" :size="29" :stroke-width="1.9" />
+                <RIcon v-else-if="[27, 28].includes(scene)" :name="item.icon" :variant="scene === 27 ? 'authorization' : 'settings'" :size="29" :stroke-width="1.9" />
                 <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 && item.id !== 14 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[18, 21, 23, 24, 25].includes(scene) ? 30 : scene === 22 ? 28 : 27" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
             </template>
@@ -612,10 +617,28 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-27 .r-saved svg { width: 27px; height: 27px; background: #54d675; fill: none; color: #0b3a18; padding: 5px; }
 .r-scene-27 .r-top-status > .r-avatar { position: relative; width: 51px; height: 54px; font-size: 24px; border-color: #467ebc55; background: linear-gradient(120deg, #3d7db8, #21517d); }
 .r-scene-27 .r-top-status > .r-avatar::after { content: ""; position: absolute; width: 9px; height: 13px; right: 1px; bottom: 0; border-radius: 50%; background: #eab47b; filter: blur(3px); z-index: -1; }
-.r-scene-28 .r-sidebar { left: 19px; top: 20px; width: 212px; bottom: 28px; }
-.r-scene-28 .r-sidebar nav { left: 20px; right: 15px; top: 118px; gap: 4px; }
-.r-scene-28 .r-nav-item { height: 59px; padding-left: 12px; font-size: 22px; }
-.r-scene-28 .r-topbar { left: 264px; height: 75px; top: 20px; padding-right: 18px; border: 1px solid #3e3024; background: #221b1570; border-radius: 25px; }
+.r-scene-28 { will-change: transform; background: radial-gradient(ellipse 420px 440px at 0 0, #523b2559, transparent), radial-gradient(ellipse at 0 100%, #33271d29, transparent 65%), #090705; }
+.r-scene-28 .r-sidebar { left: 19px; top: 20px; width: 212px; bottom: 28px; border-color: #70563e99; background: radial-gradient(ellipse at 0 0, #50382545, transparent 65%), linear-gradient(115deg, #211b16, #1b1714 60%, #211a16); }
+.r-scene-28 .r-sidebar::before { content: ""; position: absolute; left: 0; right: 0; top: 91px; height: 1px; background: #a78d6e38; }
+.r-scene-28 .r-sidebar > a { position: absolute; left: 22px; top: 20px; width: 166px; height: 49px; display: flex; align-items: center; }
+.r-scene-28 .r-sidebar :deep(.r-brand) { position: static; gap: 11px; }
+.r-scene-28 .r-sidebar :deep(.r-emblem) { width: 43px; height: 47px; filter: none; }
+.r-scene-28 .r-sidebar :deep(.r-brand-word) { font-size: 24px; font-weight: 600; line-height: 29px; color: #f6f4f0; }
+.r-scene-28 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 20px; color: #c6c1bc; }
+.r-scene-28 .r-sidebar nav { left: 20px; right: 15px; top: 116px; gap: 3px; }
+.r-scene-28 .r-nav-item { height: 59px; padding-left: 10px; gap: 22px; font-size: 22px; color: #ccc7c2; white-space: nowrap; }
+.r-scene-28 .r-nav-item.r-secondary { height: 57px; }
+.r-scene-28 .r-nav-separator { margin: 14px 5px 22px 0; background: #baa58b38; }
+.r-scene-28 .r-sidebar-avatar { left: 28px; bottom: 31px; }
+.r-scene-28 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -39px; width: 169px; height: 1px; background: #baa58b2d; }
+.r-scene-28 .r-avatar { width: 53px; height: 54px; font-size: 25px; border-color: #af988244; background: linear-gradient(115deg, #aa917c, #776151); }
+.r-scene-28 .r-topbar { left: 264px; right: 20px; height: 75px; top: 20px; padding-right: 18px; border: 1px solid #55453777; background: linear-gradient(110deg, #221a144d, #211b16a6); border-radius: 25px; }
+.r-scene-28 .r-top-search { left: 275px !important; top: 11px; width: 456px !important; height: 52px; font-size: 19px; padding: 0 17px; color: #bab3ad; background: linear-gradient(110deg, #32292085, #28221d99) !important; border-color: #bca28866 !important; }
+.r-scene-28 .r-top-status { gap: 18px; }
+.r-scene-28 .r-saved { margin-right: 18px; gap: 13px; color: #4bd68d; font-size: 20px; }
+.r-scene-28 .r-saved svg { width: 22px; height: 22px; color: #0b3923; background: #4bc98c; fill: none; padding: 4px; }
+.r-scene-28 .r-top-status .r-icon-btn { width: 58px; height: 52px; background: #ffffff04; }
+.r-scene-28 .r-top-status > .r-avatar { width: 50px; height: 52px; }
 .r-scene-30 .r-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; }
 .r-scene-30 .r-sidebar .r-brand { left: 27px; top: 31px; }
 .r-scene-30 .r-sidebar :deep(.r-emblem) { width: 62px; height: 62px; }
