@@ -27,6 +27,7 @@ const currentOnly = ref(true)
 const selectedRecent = ref(0)
 const recentCleared = ref(false)
 const recentMenuOpen = ref(false)
+const recentTypeButton = ref<HTMLButtonElement>()
 const currentObject = computed(() => recentObjects[selectedRecent.value] ?? recentObjects[0]!)
 const visibleObjects = computed(() => recentCleared.value ? [] : recentObjects
   .map((item, index) => ({ ...item, index }))
@@ -47,6 +48,20 @@ function selectRecentType(type: string) {
 function clearRecent() {
   recentCleared.value = true
   emit('notify', '已清除本次页面中的访问历史')
+}
+function recentRowKeydown(event: KeyboardEvent, index: number) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const rows = visibleObjects.value, current = rows.findIndex(item => item.index === index)
+  const target = event.key === 'Home' ? rows[0] : event.key === 'End' ? rows.at(-1)
+    : rows[(current + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length]
+  if (!target) return
+  selectedRecent.value = target.index
+  void nextTick().then(() => document.getElementById(`recent-reference-row-${target.index}`)?.focus({ preventScroll: true }))
+}
+function closeRecentMenu() {
+  recentMenuOpen.value = false
+  recentTypeButton.value?.focus({ preventScroll: true })
 }
 
 const taskItems = [
@@ -134,79 +149,103 @@ function drawHorizon() {
   }
   const planetPath = () => {
     ctx.beginPath()
-    ctx.moveTo(-100, 263)
-    ctx.bezierCurveTo(320, 174, 731, 111, 1007, 135)
+    ctx.moveTo(-100, 260)
+    ctx.bezierCurveTo(320, 191, 731, 114, 1007, 135)
     ctx.bezierCurveTo(1135, 145, 1255, 179, 1415, 244)
   }
   ctx.clearRect(0, 0, 1312, 1024)
-  const atmosphere = ctx.createRadialGradient(750, 156, 20, 750, 156, 620)
-  atmosphere.addColorStop(0, '#4f779636')
-  atmosphere.addColorStop(0.65, '#1e4b7020')
+  const atmosphere = ctx.createRadialGradient(765, 156, 20, 765, 156, 590)
+  atmosphere.addColorStop(0, '#54779a40')
+  atmosphere.addColorStop(0.65, '#2344621e')
   atmosphere.addColorStop(1, '#16314900')
   ctx.fillStyle = atmosphere
-  ctx.fillRect(0, 100, 1312, 180)
+  ctx.fillRect(0, 100, 1312, 175)
   ctx.save()
   planetPath()
   ctx.lineTo(1415, 365)
   ctx.lineTo(-100, 365)
   ctx.closePath()
   ctx.clip()
-  const surface = ctx.createLinearGradient(0, 140, 0, 325)
-  surface.addColorStop(0, '#42444a')
-  surface.addColorStop(0.28, '#1c2730')
-  surface.addColorStop(0.62, '#101317dd')
-  surface.addColorStop(1, '#0b0a0800')
-  ctx.fillStyle = surface
-  ctx.fillRect(0, 125, 1312, 240)
-  for (let i = 0; i < 5500; i++) {
-    const x = random() * 1312
-    const y = 134 + random() * 180
-    const opacity = Math.max(0, (1 - (y - 134) / 180) * random() * 0.19)
-    ctx.strokeStyle = `rgba(${122 + Math.floor(random() * 55)},${132 + Math.floor(random() * 40)},151,${opacity})`
-    ctx.lineWidth = 0.3 + random() * 1.7
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x + random() * 28 + 2, y - random() * 4)
-    ctx.stroke()
+  // 连续多尺度噪声只生成自有纹理；坐标、种子和采样尺度固定，不依赖动画或设备随机数。
+  const noise = (x: number, y: number) => {
+    const hash = (a: number, b: number) => {
+      let value = Math.imul(a, 374761393) ^ Math.imul(b, 668265263) ^ 260112
+      value = Math.imul(value ^ value >>> 13, 1274126177)
+      return ((value ^ value >>> 16) >>> 0) / 4294967295
+    }
+    const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy)
+    const top = hash(x0, y0) * (1 - sx) + hash(x0 + 1, y0) * sx
+    const bottom = hash(x0, y0 + 1) * (1 - sx) + hash(x0 + 1, y0 + 1) * sx
+    return top * (1 - sy) + bottom * sy
   }
-  const terminator = ctx.createLinearGradient(750, 0, 1312, 0)
-  terminator.addColorStop(0, '#9b694700')
-  terminator.addColorStop(1, '#b7814a42')
-  ctx.fillStyle = terminator
-  ctx.fillRect(700, 130, 612, 170)
+  const cubic = (t: number, a: number, b: number, c: number, d: number) =>
+    (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t * t * c + t ** 3 * d
+  const texture = document.createElement('canvas')
+  texture.width = 1312; texture.height = 190
+  const paint = texture.getContext('2d')
+  if (!paint) { ctx.restore(); return }
+  const pixels = paint.createImageData(1312, 190)
+  for (let x = 0; x < 1312; x++) {
+    const second = x > 1007, xs = second ? [1007, 1135, 1255, 1415] : [-100, 320, 731, 1007]
+    const ys = second ? [135, 145, 179, 244] : [260, 191, 114, 135]
+    let low = 0, high = 1
+    for (let step = 0; step < 12; step++) {
+      const middle = (low + high) / 2
+      if (cubic(middle, xs[0]!, xs[1]!, xs[2]!, xs[3]!) < x) low = middle
+      else high = middle
+    }
+    const rimY = cubic((low + high) / 2, ys[0]!, ys[1]!, ys[2]!, ys[3]!)
+    const warm = Math.max(0, Math.min(1, (x - 650) / 550))
+    for (let y = 0; y < 190; y++) {
+      const depth = Math.max(0, y + 125 - rimY)
+      const broad = noise(x * .012, depth * .12)
+      const cloud = noise(x * .055 + depth * .04, depth * .48) * .6
+        + noise(x * .18, depth * 1.4) * .27 + noise(x * .55, depth * 3) * .13
+      const light = (.35 + broad * .5 + cloud * .65) * Math.exp(-depth / 40)
+      const sun = 34 * Math.exp(-(((x - 1006) / 370) ** 2)) * Math.exp(-depth / 65)
+      const index = (y * 1312 + x) * 4
+      pixels.data[index] = 10 + (48 + warm * 39) * light + sun
+      pixels.data[index + 1] = 10 + (63 + warm * 3) * light + sun * .72
+      pixels.data[index + 2] = 12 + (88 - warm * 26) * light + sun * .56
+      pixels.data[index + 3] = Math.round(255 * Math.min(1, Math.max(0, (295 - y - 125) / 55)))
+    }
+  }
+  paint.putImageData(pixels, 0, 0)
+  ctx.drawImage(texture, 0, 125)
   ctx.restore()
   const rim = ctx.createLinearGradient(0, 0, 1312, 0)
   rim.addColorStop(0, '#3e6a8655')
-  rim.addColorStop(0.4, '#7395b7bb')
+  rim.addColorStop(0.4, '#a2b5cebb')
   rim.addColorStop(0.73, '#ffe0c9')
   rim.addColorStop(1, '#df9660a0')
   ctx.save()
   planetPath()
   ctx.strokeStyle = rim
-  ctx.lineWidth = 2
+  ctx.lineWidth = 1.4
   ctx.shadowColor = '#e8b48d'
-  ctx.shadowBlur = 11
+  ctx.shadowBlur = 7
   ctx.stroke()
   ctx.restore()
-  const sunlight = ctx.createRadialGradient(1006, 135, 0, 1006, 135, 82)
+  const sunlight = ctx.createRadialGradient(1006, 135, 0, 1006, 135, 51)
   sunlight.addColorStop(0, '#fff5dd')
-  sunlight.addColorStop(0.06, '#fff1d2eb')
-  sunlight.addColorStop(0.2, '#ffd3a78a')
+  sunlight.addColorStop(0.04, '#fff1d2eb')
+  sunlight.addColorStop(0.16, '#ffd3a78a')
   sunlight.addColorStop(1, '#c7884500')
   ctx.fillStyle = sunlight
-  ctx.fillRect(923, 53, 166, 166)
+  ctx.fillRect(955, 84, 102, 102)
   ctx.save()
   ctx.translate(1006, 135)
   for (let i = 0; i < 8; i++) {
     ctx.rotate(Math.PI / 4)
-    const beam = ctx.createLinearGradient(0, 0, 0, 52)
+    const beam = ctx.createLinearGradient(0, 0, 0, 31)
     beam.addColorStop(0, '#ffeed77d')
     beam.addColorStop(1, '#ffe6c000')
     ctx.fillStyle = beam
     ctx.beginPath()
-    ctx.moveTo(-2, 0)
-    ctx.lineTo(0, 55)
-    ctx.lineTo(2, 0)
+    ctx.moveTo(-1, 0)
+    ctx.lineTo(0, 33)
+    ctx.lineTo(1, 0)
     ctx.fill()
   }
   ctx.restore()
@@ -228,6 +267,17 @@ function drawHorizon() {
   ctx.strokeStyle = '#d4a07336'
   ctx.lineWidth = 1.5
   ctx.stroke()
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(-80, 1070)
+  ctx.bezierCurveTo(500, 930, 940, 904, 1400, 1040)
+  ctx.lineTo(1400, 1100); ctx.lineTo(-80, 1100); ctx.closePath(); ctx.clip()
+  for (let index = 0; index < 7000; index++) {
+    const x = random() * 1312, y = 950 + random() * 74
+    ctx.fillStyle = `rgba(157,112,78,${random() * .065})`
+    ctx.fillRect(x, y, 1 + random() * 7, .5 + random() * 2)
+  }
+  ctx.restore()
 }
 
 watch(() => props.scene, async () => {
@@ -273,8 +323,8 @@ onMounted(drawHorizon)
       </div>
       <div class="recent-actions">
         <div class="utility-dropdown">
-          <button class="utility-button recent-type-button" :aria-expanded="recentMenuOpen" @click="recentMenuOpen = !recentMenuOpen"><RIcon name="layout-grid" :size="24" />{{ recentType }}<RIcon name="chevron-down" :size="17" /></button>
-          <div v-if="recentMenuOpen" class="utility-menu" role="menu">
+          <button ref="recentTypeButton" class="utility-button recent-type-button" :aria-expanded="recentMenuOpen" aria-haspopup="menu" @click="recentMenuOpen = !recentMenuOpen" @keydown.esc.prevent="closeRecentMenu"><RIcon name="layout-grid" variant="recent" :size="24" />{{ recentType }}<RIcon name="chevron-down" :size="17" /></button>
+          <div v-if="recentMenuOpen" class="utility-menu" role="menu" @keydown.esc.prevent.stop="closeRecentMenu">
             <button v-for="type in ['全部类型', ...recentObjects.map(item => item.type)]" :key="type" role="menuitemradio" :aria-checked="recentType === type" @click="selectRecentType(type)">{{ type }}<RIcon v-if="recentType === type" name="check" :size="17" /></button>
           </div>
         </div>
@@ -287,7 +337,7 @@ onMounted(drawHorizon)
           <template v-else>
             <svg v-if="category.icon === 'video'" class="r-icon" width="27" height="27" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="1" y="5" width="15" height="14" rx="3" /><path d="m17 9 6-4v14l-6-4Z" /></svg>
             <svg v-else-if="category.name === '准备'" class="r-icon" width="27" height="27" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor" /><path d="m6 12 4 4 8-9" fill="none" stroke="#29251f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            <RIcon v-else :name="category.icon" :size="27" />
+            <RIcon v-else :name="category.icon" variant="recent" :size="27" />
             <span>{{ category.name }}</span>
           </template>
           <span class="recent-count">{{ recentCleared ? 0 : category.count }}</span>
@@ -298,11 +348,12 @@ onMounted(drawHorizon)
 
       <section class="utility-panel recent-table" aria-label="最近访问对象">
         <div class="recent-table-head"><span>对象</span><span>类型</span><span>当前状态</span><span>最近访问</span><span /></div>
-        <button v-for="item in visibleObjects" :key="item.title" class="recent-table-row" :class="{ selected: selectedRecent === item.index }" :aria-pressed="selectedRecent === item.index" @click="selectedRecent = item.index">
+        <button v-for="item in visibleObjects" :id="`recent-reference-row-${item.index}`" :key="item.title" class="recent-table-row" :class="{ selected: selectedRecent === item.index }" :aria-pressed="selectedRecent === item.index" :tabindex="selectedRecent === item.index ? 0 : -1" @click="selectedRecent = item.index" @keydown="recentRowKeydown($event, item.index)">
           <span class="recent-object-name">
             <span class="recent-object-icon" :class="item.color">
               <svg v-if="item.icon === 'layers'" width="24" height="25" aria-hidden="true"><use href="#utility-stack" /></svg>
-              <RIcon v-else :name="item.icon" :size="item.icon === 'refresh-cw' ? 27 : 23" />
+              <svg v-else-if="item.color === 'red'" width="23" height="25" viewBox="0 0 24 26" fill="none" aria-hidden="true"><path d="M11 4c-1 6 2 13 8 13-5-3-14-2-16 3 3-1 7-6 9-13" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round" /><path d="M5 23h14" stroke="currentColor" stroke-width="1.2" /></svg>
+              <RIcon v-else :name="item.icon" variant="recent" :size="item.icon === 'refresh-cw' ? 27 : 23" />
             </span>
             <span :class="{ 'recent-pdf-name': item.color === 'red' }">{{ item.title }}</span>
           </span>
@@ -447,14 +498,14 @@ onMounted(drawHorizon)
 
 /* 26：坐标均从原图 x 减去 224；行星为确定性程序绘制，缺少原始纹理素材。 */
 .recent-horizon { position: absolute; top: 0; left: 0; width: 1312px; height: 1024px; pointer-events: none; }
-.recent-heading { position: absolute; top: 146px; left: 40px; }
-.recent-heading h1 { font-size: 56px; line-height: 1.3; font-weight: 650; color: #faf9f6; }
-.recent-heading p { margin-top: 6px; font-size: 23px; color: #d8c1aa; }
+.recent-heading { position: absolute; top: 144px; left: 40px; }
+.recent-heading h1 { font-size: 54px; line-height: 1.3; font-weight: 500; color: #faf9f6; }
+.recent-heading p { margin-top: 5px; font-size: 22px; color: #d8c1aa; }
 .recent-actions { position: absolute; top: 196px; left: 970px; display: flex; gap: 20px; z-index: 2; }
 .recent-actions .utility-button { height: 55px; border-radius: 21px; }
 .recent-type-button { width: 161px; gap: 7px; padding: 0 12px !important; }
 .recent-clear-button { width: 140px; padding: 0 12px !important; gap: 9px; }
-.recent-filters { top: 287px; left: 15px; width: 209px; height: 601px; padding: 19px 12px; background: linear-gradient(115deg, #26211bdb, #151310e3); }
+.recent-filters { top: 287px; left: 15px; width: 209px; height: 601px; padding: 19px 12px; background: linear-gradient(115deg, #211c18, #151211); border-color: #51483d66; }
 .recent-category { display: flex; align-items: center; gap: 19px; width: 183px; height: 60px; padding: 0 13px !important; border-radius: 15px; text-align: left; font-size: 22px; color: #c0bbb4; }
 .recent-category:first-child { height: 56px; margin-bottom: 5px; }
 .recent-category.selected { color: #fff8ef; background: linear-gradient(120deg, #795435bf, #573c29cf) !important; box-shadow: inset 0 0 0 1px #9c754b3d; }
@@ -467,18 +518,18 @@ onMounted(drawHorizon)
 .recent-accessibility input { appearance: none; display: inline-grid; place-items: center; width: 23px; height: 23px; margin: 0; border: 1px solid #a8a29b; border-radius: 5px; background: #c5c1ba; cursor: pointer; }
 .recent-accessibility input:checked::after { content: ""; width: 12px; height: 7px; border-left: 3px solid #292722; border-bottom: 3px solid #292722; transform: translateY(-2px) rotate(-45deg); }
 .recent-accessibility input:not(:checked) { background: transparent; }
-.recent-table { top: 287px; left: 241px; width: 721px; height: 613px; background: linear-gradient(120deg, #221e19d9, #171411e6 70%); }
+.recent-table { top: 287px; left: 241px; width: 721px; height: 613px; background: linear-gradient(115deg, #221c1877, transparent 45%), #171412; border-color: #71614e99; }
 .recent-table-head, .recent-table-row { display: grid; grid-template-columns: 260px 118px 160px 109px 19px; align-items: center; text-align: left; }
 .recent-table-head { height: 74px; padding-left: 21px; color: #d1ccc4; font-size: 20px; }
 .recent-table-head > span:not(:first-child) { position: relative; }
 .recent-table-head > span:not(:first-child)::before { content: ""; position: absolute; left: -15px; top: 0; height: 31px; width: 1px; background: #ffffff04; }
-.recent-table-row { position: relative; width: 706px; height: 77px; padding: 0 21px !important; border-top: 1px solid transparent !important; border-bottom: 1px solid transparent !important; font-size: 20px; }
+.recent-table-row { position: relative; width: 706px; height: 77.5px; padding: 0 21px !important; border-top: 1px solid transparent !important; border-bottom: 1px solid transparent !important; font-size: 20px; }
 .recent-table-row::after { content: ""; position: absolute; left: 21px; right: 8px; bottom: -1px; height: 1px; background: #ffffff09; }
 .recent-table-row.selected { border: 1px solid #ad7749 !important; border-right-color: #8a60383d !important; background: linear-gradient(120deg, #6a452b82, #37291d80) !important; border-radius: 15px; }
 .recent-table-row.selected::after { display: none; }
 .recent-table-row:hover { background-color: #ffffff05; }
-.recent-object-name { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-weight: 550; }
-.recent-object-name .recent-pdf-name { font-size: 18px; }
+.recent-object-name { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-weight: 400; }
+.recent-object-name .recent-pdf-name { font-size: 17px; }
 .recent-object-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 28px; border-radius: 6px; }
 .recent-object-icon.blue { color: #e0f7ff; background: linear-gradient(135deg, #75bfe7, #438ac2); }
 .recent-object-icon.purple { color: #c994ee; }
@@ -486,21 +537,21 @@ onMounted(drawHorizon)
 .recent-object-icon.red { color: #fff3ef; background: linear-gradient(135deg, #ff9082, #df413d); }
 .recent-visit-time { white-space: nowrap; }
 .recent-row-chevron { color: #aaa59d; }
-.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(125deg, #211d18de, #171410eb); }
-.recent-detail-art { display: flex; align-items: center; justify-content: center; width: 94px; height: 94px; border: 1px solid #45728d7a; border-radius: 23px; color: #a7dcf5; background: linear-gradient(130deg, #34586c, #233b4b); }
+.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(115deg, #30231b45, transparent 70%), #1c1713; border-color: #81715a88; }
+.recent-detail-art { display: flex; align-items: center; justify-content: center; width: 94px; height: 94px; border: 1px solid #45728d7a; border-radius: 23px; color: #a7dcf5; background: linear-gradient(130deg, #35566a, #293f4c); }
 .recent-detail-art.purple { color: #cc9cf5; background: #392a4a; border-color: #6b4b86; }
 .recent-detail-art.indigo { color: #c6d4ff; background: #303e70; border-color: #4f6097; }
 .recent-detail-art.red { color: #ffc7ba; background: #6e3830; border-color: #ae6855; }
-.recent-detail h2 { height: 42px; margin-top: 18px; font-size: 29px; font-weight: 650; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-detail h2 { height: 42px; margin-top: 16px; font-size: 29px; font-weight: 500; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .recent-detail-type { margin-top: 9px; padding: 4px 17px; font-size: 20px; }
 .recent-detail-type.blue { background: #303758ab; color: #d2e5ff; }
 .recent-detail-rule { height: 1px; margin: 20px 0 18px; background: #ffffff13; }
 .recent-state-label { font-size: 20px; color: #ded7ce; }
-.recent-state-box { display: flex; align-items: center; height: 64px; margin: 9px -6px 0; padding: 0 20px; gap: 12px; border: 1px solid #ffffff03; border-radius: 17px; background: linear-gradient(100deg, #39332c73, #3b342d66); }
+.recent-state-box { display: flex; align-items: center; height: 64px; margin: 7px -6px 0; padding: 0 20px; gap: 12px; border: 1px solid #ffffff03; border-radius: 17px; background: linear-gradient(100deg, #39332c73, #3b342d66); }
 .recent-state-dot { flex: none; width: 18px; height: 19px; border: 1px solid #a9f4e1a3; border-radius: 50%; background: linear-gradient(130deg, #8aeddb, #57b9b0); }
-.recent-state-box .utility-tag { padding: 2px 4px; background: #25403753; font-size: 22px; font-weight: 550; }
+.recent-state-box .utility-tag { padding: 2px 4px; background: #25403753; font-size: 22px; font-weight: 400; }
 .recent-learning-note { display: flex; align-items: center; gap: 9px; height: 55px; margin: 16px -6px 0 !important; padding: 0 15px; border: 1px solid #ffffff04; border-radius: 15px; font-size: 19px; white-space: nowrap; }
-.recent-open { width: 265px; margin: 23px -6px 0; }
+.recent-open { width: 265px; margin: 23px -6px 0; font-weight: 500; }
 .recent-open .r-icon { fill: #86552a; color: #86552a; }
 .recent-version-note { display: flex; align-items: center; gap: 8px; height: 46px; margin: 16px -6px 0 !important; padding: 0 9px; border: 1px solid #ffffff07; border-radius: 15px; font-size: 17px; white-space: nowrap; color: #aba195; }
 

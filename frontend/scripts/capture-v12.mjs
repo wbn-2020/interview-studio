@@ -1453,6 +1453,100 @@ try {
         await assertFrame(captured, '25背景任务交互后刷新未恢复静止初态')
         checks.push({ check: 'command-shell-five-tasks-filter-visible-selection-refresh', scene: scene.id, initialLayout, passed: true })
       }
+      if (scene.id === '26') {
+        const layout = await page.evaluate(() => {
+          const box = selector => {
+            const node = document.querySelector(selector), rect = node.getBoundingClientRect()
+            return [rect.x, rect.y, rect.width, rect.height]
+          }
+          const canvas = document.querySelector('.recent-horizon'), pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+          const colors = new Set()
+          for (let index = 0; index < pixels.length; index += 64) if (pixels[index + 3]) colors.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`)
+          return {
+            filters: box('.recent-filters'), table: box('.recent-table'), detail: box('.recent-detail'),
+            sidebar: box('.r-sidebar'), search: box('.r-top-search'), state: box('.recent-state-box'),
+            rows: [...document.querySelectorAll('.recent-object-name > span:last-child')].map(node => node.textContent.trim()),
+            counts: [...document.querySelectorAll('.recent-count')].map(node => node.textContent.trim()),
+            navigation: [...document.querySelectorAll('.r-sidebar .r-nav-item')].map(node => ({ text: node.textContent.trim(), height: node.getBoundingClientRect().height,
+              labelHeight: node.querySelector('span').getBoundingClientRect().height })),
+            selected: document.querySelector('.r-nav-item.r-selected')?.textContent.trim(),
+            bookmark: document.querySelector('.r-saved path')?.getAttribute('d'), brandPaths: document.querySelectorAll('.r-brand path').length,
+            canvas: [canvas.width, canvas.height], canvasColors: colors.size,
+            horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+          }
+        })
+        ensure(JSON.stringify(layout.filters) === JSON.stringify([239,287,209,601])
+          && JSON.stringify(layout.table) === JSON.stringify([465,287,721,613])
+          && JSON.stringify(layout.detail) === JSON.stringify([1202,287,313,613])
+          && JSON.stringify(layout.sidebar) === JSON.stringify([21,130,201,867])
+          && JSON.stringify(layout.search) === JSON.stringify([662,31,441,58])
+          && JSON.stringify(layout.state) === JSON.stringify([1225,598,267,64]), '26面板、侧栏、搜索或状态位置不符')
+        ensure(JSON.stringify(layout.rows) === JSON.stringify(['缓存一致性','缓存删除失败以后','字节跳动 · 技术一面','营销交易平台-项目复盘.pdf','系统设计取舍'])
+          && layout.counts.join(',') === '18,6,4,3,3,2' && layout.selected === '最近访问'
+          && layout.navigation.length === 10 && layout.navigation.every(item => item.labelHeight < item.height)
+          && layout.bookmark === 'M5 2h14v20l-7-5-7 5Z' && layout.brandPaths === 4
+          && JSON.stringify(layout.canvas) === '[1312,1024]' && layout.canvasColors > 1000 && !layout.horizontalOverflow, '26行内容、分类计数、单行导航、图标或画布不符')
+        ensure(await page.locator('.recent-accessibility input').isChecked()
+          && await page.locator('.recent-table-row.selected .recent-object-name').innerText() === '缓存一致性'
+          && await page.locator('.recent-detail h2').innerText() === '缓存一致性', '26初始选择或可访问开关不符')
+        checks.push({ check: 'recent-five-rows-counts-single-line-shell-fixed-canvas-geometry', scene: scene.id, layout, passed: true })
+        const writes = []
+        const onWrite = request => {
+          if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method())
+        }
+        page.on('request', onWrite)
+        const categories = page.locator('.recent-filters')
+        await categories.locator('.recent-category').filter({ hasText: '知识' }).click()
+        ensure(await page.locator('.recent-table-row').count() === 2, '26知识分类未筛出两项')
+        await page.locator('.recent-table-row').first().focus()
+        await page.keyboard.press('ArrowDown')
+        ensure(await page.locator('.recent-detail h2').innerText() === '系统设计取舍', '26方向键未更新预览')
+        await page.keyboard.press('Home')
+        ensure(await page.locator('.recent-detail h2').innerText() === '缓存一致性', '26Home未恢复首项')
+        await page.keyboard.press('End')
+        ensure(await page.locator('.recent-detail h2').innerText() === '系统设计取舍', '26End未选择末项')
+        await categories.locator('.recent-category').first().click()
+        const typeButton = page.locator('.recent-type-button')
+        await typeButton.click()
+        await page.getByRole('menuitemradio', { name: '资料', exact: true }).focus()
+        await page.keyboard.press('Escape')
+        ensure(!await page.getByRole('menu').count() && await typeButton.evaluate(node => node === document.activeElement), '26类型菜单Esc未关闭／归还焦点')
+        await typeButton.click()
+        await page.getByRole('menuitemradio', { name: '资料', exact: true }).click()
+        ensure(await page.locator('.recent-table-row').count() === 1 && await page.locator('.recent-detail h2').innerText() === '营销交易平台-项目复盘.pdf', '26资料类型或预览不符')
+        await categories.locator('.recent-category').filter({ hasText: '知识' }).click()
+        ensure(!await page.locator('.recent-table-row').count() && !await page.locator('.recent-detail').count()
+          && await page.locator('.utility-empty').innerText() === '当前分类没有可显示的访问记录', '26组合筛选空态未清除预览')
+        await categories.locator('.recent-category').first().click()
+        await page.locator('.recent-open').click()
+        await page.locator('.r-canvas[data-scene="06"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await typeButton.click()
+        await page.getByRole('menuitemradio', { name: '独立复练', exact: true }).click()
+        await page.locator('.recent-open').click()
+        await page.locator('.r-canvas[data-scene="21"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await page.locator('.recent-accessibility input').uncheck()
+        ensure(await page.locator('.recent-table-row').count() === 5, '26现有可访问样例被错误过滤')
+        await page.locator('.recent-accessibility input').check()
+        await page.getByRole('button', { name: '清除历史', exact: true }).click()
+        ensure(!await page.locator('.recent-table-row').count() && !await page.locator('.recent-detail').count()
+          && await page.locator('.utility-empty').innerText() === '暂无最近访问记录'
+          && (await page.locator('.recent-count').allTextContents()).every(value => value === '0'), '26页面内清除边界不符')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '26分类／类型／选择／清除后刷新未恢复原始画面')
+        await page.locator('.r-top-search').click()
+        await page.getByRole('dialog', { name: '全局命令面板' }).waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await page.getByRole('link', { name: '问阶今日', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="02"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '26导航返回未恢复固定种子画布及选择初态')
+        page.off('request', onWrite)
+        ensure(!writes.length, '26固定参考态出现意外业务写入')
+        checks.push({ check: 'recent-category-type-keyboard-preview-clear-boundary-navigation-refresh', scene: scene.id, passed: true,
+          businessWrites: writes, limitations: '固定条目均可访问，开关未验证真实权限差异；清除仅当前页面内存，不代替正式历史删除；原行星素材与字体未获得' })
+      }
       if (scene.id === '09') {
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
         ensure(await candidates.getAttribute('aria-checked') === 'true', '09初始候选关系未打开')
