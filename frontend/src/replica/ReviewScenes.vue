@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import RIcon from './RIcon.vue'
 
 const props = defineProps<{ scene: number }>()
@@ -93,6 +93,29 @@ function judgmentKeydown(event: KeyboardEvent) {
   judgment.value = judgments[next]!
   const group = (event.currentTarget as HTMLElement).parentElement
   group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+}
+
+function confidenceKeydown(event: KeyboardEvent) {
+  const index = confidenceOptions.indexOf(confidence.value)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? confidenceOptions.length - 1
+    : ['ArrowRight', 'ArrowDown'].includes(event.key) ? (index + 1) % confidenceOptions.length
+      : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? (index + confidenceOptions.length - 1) % confidenceOptions.length : -1
+  if (next < 0) return
+  event.preventDefault()
+  confidence.value = confidenceOptions[next]!
+  const group = (event.currentTarget as HTMLElement).parentElement
+  group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+}
+
+async function editFragment(index: number) {
+  editingFragment.value = editingFragment.value === index ? null : index
+  await nextTick()
+  document.querySelector<HTMLTextAreaElement>('.rv23-fragment.editing textarea')?.focus()
+}
+
+function openRecallSuggestion(target: number, title: string) {
+  emit('navigate', target)
+  emit('notify', `已打开相关页面；由回忆创建${title}的持久流程待确认`)
 }
 
 function togglePriority(index: number) {
@@ -256,13 +279,13 @@ watch(() => props.scene, () => {
       <p class="rv-subheading"><span class="rv23-company" aria-hidden="true"><svg viewBox="0 0 30 30"><path d="M7 9v12M12 13v8M17 7v14M22 11v10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" /><path d="m6 19 6-4 5 2 6-7" fill="none" stroke="#89d4ed" stroke-width="2" /></svg></span>字节跳动 · 技术一面 · 11月12日</p>
     </div>
     <div class="rv-actions rv23-actions">
-      <button class="r-btn rv23-draft" @click="emit('notify', '回忆草稿已保存到当前页面状态')"><RIcon name="file-text" :size="26" />保存草稿</button>
-      <button class="r-btn r-primary rv23-complete" @click="editingFragment = null; emit('notify', '已完成本次回忆记录')"><RIcon name="check" :size="29" />完成记录</button>
+      <button class="r-btn rv23-draft" @click="emit('notify', '草稿仅在本次页面内保留；持久保存待确认')"><RIcon name="file-text" variant="recollection" :size="26" />保存草稿</button>
+      <button class="r-btn r-primary rv23-complete" @click="editingFragment = null; emit('notify', '本次页面已结束编辑；记录提交与持久保存待确认')"><RIcon name="check" :size="29" />完成记录</button>
     </div>
     <section class="r-panel rv-panel rv23-confidence" aria-label="自信程度">
       <h2>自信程度</h2>
       <div class="rv23-confidence-options" role="radiogroup" aria-label="回忆自信程度">
-        <button v-for="option in confidenceOptions" :key="option" role="radio" :aria-checked="confidence === option" :class="{ selected: confidence === option }" @click="confidence = option"><span v-if="confidence === option" class="rv23-confidence-check"><RIcon name="check" :size="17" /></span>{{ option }}</button>
+        <button v-for="option in confidenceOptions" :key="option" role="radio" :aria-checked="confidence === option" :tabindex="confidence === option ? 0 : -1" :class="{ selected: confidence === option }" @click="confidence = option" @keydown="confidenceKeydown"><span v-if="confidence === option" class="rv23-confidence-check"><RIcon name="check" :size="17" /></span>{{ option }}</button>
       </div>
     </section>
     <article class="r-panel rv-panel rv23-record">
@@ -271,22 +294,22 @@ watch(() => props.scene, () => {
         <div class="rv23-fragment-content">
           <h3>{{ fragment.title }}</h3>
           <textarea v-if="editingFragment === index" v-model="fragment.text" :aria-label="fragment.title" rows="1" spellcheck="false" @keydown.ctrl.enter="editingFragment = null" @keydown.esc="editingFragment = null" />
-          <p v-else @click="editingFragment = index">{{ fragment.text }}</p>
+          <p v-else @click="editFragment(index)">{{ fragment.text }}</p>
         </div>
-        <button class="rv23-add-fragment" :aria-expanded="editingFragment === index" @click="editingFragment = editingFragment === index ? null : index"><RIcon :name="editingFragment === index ? 'check' : 'plus'" :size="23" />{{ editingFragment === index ? '完成片段' : '添加片段' }}</button>
+        <button class="rv23-add-fragment" :aria-label="`${editingFragment === index ? '完成' : '编辑'}${fragment.title}片段`" :aria-expanded="editingFragment === index" @click="editFragment(index)"><RIcon :name="editingFragment === index ? 'check' : 'plus'" :size="23" />{{ editingFragment === index ? '完成片段' : '添加片段' }}</button>
       </section>
       <p class="rv23-warning"><RIcon name="info" :size="28" />模糊处保留，不补写确定结论</p>
-      <p class="rv23-record-source"><RIcon name="file-text" :size="27" />来源：<span>回忆记录 · 非逐字实录</span></p>
+      <p class="rv23-record-source"><RIcon name="file-text" variant="recollection" :size="27" />来源：<span>回忆记录 · 非逐字实录</span></p>
     </article>
     <aside class="r-panel rv-panel rv23-create">
       <h2>从这段回忆创建</h2>
-      <button v-for="suggestion in recallSuggestions" :key="suggestion.title" class="rv23-create-item" @click="emit('navigate', suggestion.target)">
+      <button v-for="suggestion in recallSuggestions" :key="suggestion.title" class="rv23-create-item" @click="openRecallSuggestion(suggestion.target, suggestion.title)">
         <span class="rv23-create-icon" :class="suggestion.tone"><RIcon :name="suggestion.icon" :size="35" /></span>
         <span class="rv23-create-copy"><strong>{{ suggestion.title }}</strong><span>{{ suggestion.text }}</span></span>
       </button>
       <div class="rv23-create-meta">
-        <p><RIcon name="file-text" :size="27" /><span>来源：</span><span>目标：字节跳动 · 技术一面</span></p>
-        <div class="rv23-tags"><RIcon name="file-text" :size="27" /><span>标签：</span><button class="amber" @click="emit('notify', '回忆身份：回忆记录 · 非逐字实录')">回忆身份</button><button class="cyan" @click="confidence = '不确定'">条件不完整</button></div>
+        <p><RIcon name="file-text" variant="recollection" :size="27" /><span>来源：</span><span>目标：字节跳动 · 技术一面</span></p>
+        <div class="rv23-tags"><RIcon name="file-text" variant="recollection" :size="27" /><span>标签：</span><button class="amber" @click="emit('notify', '回忆身份：回忆记录 · 非逐字实录')">回忆身份</button><button class="cyan" @click="emit('notify', '条件不完整：仅标识原记录条件，不改变回忆自信程度')">条件不完整</button></div>
       </div>
     </aside>
   </section>
@@ -492,15 +515,15 @@ watch(() => props.scene, () => {
 .rv23-actions { top: 132px; right: 31px; gap: 16px; }
 .rv23-actions .r-btn { height: 62px; font-size: 24px; border-radius: 35px; padding: 11px 22px !important; }
 .rv23-draft { width: 181px; border-color: #52473d !important; background: linear-gradient(110deg, #24201c77, #211b1677) !important; }
-.rv23-complete { width: 174px; box-shadow: inset 0 0 9px #ffdeb56b; color: #fff8f0; border-color: #f4d0a3 !important; background: linear-gradient(120deg, #a76d3f, #edb880) !important; text-shadow: 0 1px 1px #754b2b; }
-.rv23-confidence { position: absolute; left: 32px; top: 266px; width: 725px; height: 175px; border-radius: 19px; padding: 28px 27px; background: linear-gradient(120deg, #29231fc4, #211c18c9); }
+.rv23 .rv23-complete.r-primary { width: 174px; box-shadow: inset 0 0 9px #ffdeb56b; color: #fff8f0; border-color: #f4d0a3 !important; background: linear-gradient(115deg, #a2714a, #b2825b 50%, #edbb91) !important; font-weight: 500; text-shadow: 0 1px 1px #754b2b; }
+.rv23-confidence { position: absolute; left: 32px; top: 266px; width: 725px; height: 175px; border-radius: 19px; padding: 28px 27px; background: linear-gradient(115deg, #1c1816, #191614); }
 .rv23-confidence h2 { font-size: 25px; }
 .rv23-confidence-options { display: flex; position: absolute; top: 80px; left: 27px; right: 27px; height: 64px; border-radius: 38px; border: 1px solid #4b4139a6; background: #ffffff06; }
 .rv23-confidence-options button { display: flex; align-items: center; justify-content: center; gap: 13px; flex: 1; border-radius: 36px; font-size: 24px; font-weight: 500; }
 .rv23-confidence-options button.selected { border: 1px solid #efb979; background: radial-gradient(ellipse at 52% 100%, #da9a5d8c, transparent), linear-gradient(120deg, #805632, #a5764b9c); box-shadow: inset 0 0 13px #fbd4a83b, 0 0 13px #d1904c26; color: #fff6e7; font-weight: 600; }
 .rv23-confidence-check { width: 25px; height: 25px; border-radius: 50%; background: #f4c493; color: #59402a; display: inline-flex; align-items: center; justify-content: center; }
-.rv23-record { position: absolute; left: 32px; top: 440px; width: 725px; height: 514px; border-radius: 22px; padding: 10px 27px 0; background: linear-gradient(115deg, #2a241fce, #211b17ca); }
-.rv23-fragment { position: relative; height: 104px; display: flex; gap: 30px; padding: 17px 10px 13px; border-radius: 15px; background: linear-gradient(110deg, #332b223d, #32291f2b); margin-bottom: 10px; }
+.rv23-record { position: absolute; left: 32px; top: 440px; width: 725px; height: 514px; border-radius: 22px; padding: 10px 27px 0; background: linear-gradient(115deg, #1c1816, #191614); }
+.rv23-fragment { position: relative; height: 104px; display: flex; gap: 30px; padding: 17px 10px 13px; border-radius: 15px; background: linear-gradient(110deg, #211c18, #1d1917); margin-bottom: 10px; }
 .rv23-fragment-number { width: 38px; flex: none; color: #7f7973; font-size: 29px; line-height: 1.6; }
 .rv23-fragment-content { min-width: 0; padding-top: 1px; }
 .rv23-fragment h3 { font-size: 24px; font-weight: 600; line-height: 1.5; }
@@ -508,13 +531,13 @@ watch(() => props.scene, () => {
 .rv23-fragment:nth-child(2) .rv23-fragment-content p { padding-left: 12px; }
 .rv23-add-fragment { display: flex; align-items: center; justify-content: center; gap: 4px; position: absolute; top: 18px; right: 14px; height: 46px; width: 139px; border: 1px solid #807468 !important; border-radius: 27px; background: linear-gradient(120deg, #2e27208c, #221d188c) !important; font-size: 21px; }
 .rv23-fragment-content textarea { width: 410px; height: 39px; padding: 0 4px; resize: none; border: 1px solid #a57b54; border-radius: 4px; background: #17120b88; font-size: 22px; line-height: 1.6; }
-.rv23-warning { display: flex; align-items: center; gap: 12px; height: 66px; padding: 0 16px; margin-top: 1px !important; border-radius: 14px; background: #62482b23; color: #ffd19a; font-size: 20px; }
+.rv23-warning { display: flex; align-items: center; gap: 12px; height: 66px; padding: 0 16px; margin-top: 1px !important; border-radius: 14px; background: #29211b; color: #ffd19a; font-size: 20px; }
 .rv23-record-source { display: flex; align-items: center; gap: 13px; height: 79px; margin-top: 12px !important; border-top: 1px solid #75614c40; color: #d2c9be; font-size: 21px; }
 .rv23-record-source .r-icon { color: #9a9288; }
 .rv23-record-source > span { margin-left: 0; }
-.rv23-create { position: absolute; left: 768px; top: 266px; width: 493px; height: 688px; border-radius: 20px; padding: 28px 26px 0; background: linear-gradient(115deg, #29231ed1, #211b17b8); }
+.rv23-create { position: absolute; left: 768px; top: 266px; width: 493px; height: 688px; border-radius: 20px; padding: 28px 26px 0; background: linear-gradient(115deg, #1c1816, #191614); }
 .rv23-create h2 { font-size: 25px; margin-bottom: 17px; }
-.rv23-create-item { display: flex; gap: 20px; width: 100%; height: 136px; border: 1px solid #4d413533 !important; border-radius: 16px; padding: 16px 16px !important; background: linear-gradient(110deg, #43352a35, #332b233d) !important; text-align: left; margin-bottom: 10px; }
+.rv23-create-item { display: flex; gap: 20px; width: 100%; height: 136px; border: 1px solid #4d413533 !important; border-radius: 16px; padding: 16px 16px !important; background: linear-gradient(110deg, #24201c, #201b18) !important; text-align: left; margin-bottom: 10px; }
 .rv23-create-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 64px; height: 65px; margin-top: 3px; border: 1px solid; border-radius: 50%; }
 .rv23-create-icon.amber { color: #e89a57; border-color: #8c552b; background: radial-gradient(ellipse, #77431e30, #53361f20); }
 .rv23-create-icon.cyan { color: #a8e8ee; border-color: #387078; background: radial-gradient(ellipse, #28566155, #263e4355); }
@@ -522,7 +545,7 @@ watch(() => props.scene, () => {
 .rv23-create-copy { min-width: 0; }
 .rv23-create-copy strong { display: block; font-size: 24px; line-height: 1.4; margin-bottom: 8px; font-weight: 600; }
 .rv23-create-copy > span { display: block; white-space: pre-line; font-size: 20px; line-height: 1.55; color: #d5cdc3; }
-.rv23-create-meta { border-top: 1px solid #79614b40; margin-top: 19px; padding-top: 22px; color: #d0c6bb; }
+.rv23-create-meta { border-top: 1px solid #79614b40; margin-top: 27px; padding-top: 22px; color: #d0c6bb; }
 .rv23-create-meta > p { display: flex; align-items: center; gap: 13px; font-size: 20px; white-space: nowrap; }
 .rv23-create-meta .r-icon { color: #958b7f; flex: none; }
 .rv23-tags { display: flex; align-items: center; gap: 13px; margin-top: 16px; font-size: 20px; white-space: nowrap; }

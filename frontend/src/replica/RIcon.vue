@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' | 'recollection' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -312,12 +312,28 @@ const comparePaths: Record<string, string[]> = {
   'sliders-horizontal': ['M2 5h20M2 12h20M2 19h20', 'm7 2 3 3-3 3-3-3ZM16 9l3 3-3 3-3-3ZM9 16l3 3-3 3-3-3Z'],
   scale: ['M12 2v19M5 22h14M3 6h18', 'm5 6-4 10h8Zm14 0-4 10h8Z'],
 }
+// 面后回忆使用实心准备／知识、历史复盘和折线柱状成长，不替换其他页的图标。
+const recollectionPaths: Record<string, string[]> = {
+  house: ['M2 10.5 12 2l10 8.5h-3V22h-5v-8h-4v8H5V10.5Z'],
+  clipboard: ['M4 5h16a2 2 0 0 1 2 2v14H2V7a2 2 0 0 1 2-2ZM8 2h8v4H8Z', 'M5 10h14M7 14l2-2M15 17h2'],
+  'book-open': libraryPaths['book-open']!,
+  play: ['M6 3 21 12 6 21Z', 'm10 8 7 4-7 4Z'],
+  'refresh-cw': ['M3 10a9 9 0 1 1 1 7', 'M3 3v7h6M12 6v6l4 2'],
+  'chart-no-axes-combined': comparePaths['chart-no-axes-combined']!,
+  database: libraryPaths.database!,
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M3 8h18M16 12v4M6 6h5'],
+  clock: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 5v7l4 3'],
+  sparkles: comparePaths.sparkles!,
+  bell: notePaths.bell!,
+  'circle-check': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm7 12 3 3 7-7'],
+  'file-text': ['M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z', 'M14 2v6h5M8 12h7M8 17h4'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
-const fillOpacity = computed(() => props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
+const fillOpacity = computed(() => props.variant === 'recollection' ? ({ house: .35, clipboard: .85, 'book-open': .9, play: .3, 'chart-no-axes-combined': .8, database: .9, 'credit-card': .8 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
     : props.variant === 'route' ? ({ play: .65, 'book-open': .5, 'chart-no-axes-combined': .65 } as Record<string, number>)[props.name] ?? 0
     : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9

@@ -882,6 +882,104 @@ try {
           businessWrites: writes, passed: true,
           limitations: '仅固定参考态；判断与依据只在本次页面保留，正式持久保存及非空复练业务待服务器验收，未写入示例数据' })
       }
+      if (scene.id === '23') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [0, 0, 244, 1024], '.r-top-search': [595, 27, 503, 56],
+          '.rv23-confidence': [276, 266, 725, 175], '.rv23-record': [276, 440, 725, 514],
+          '.rv23-create': [1012, 266, 493, 688],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '23面板或框架几何不符：' + selector)
+        }
+        const fragments = page.locator('.rv23-fragment')
+        const expectedFragments = ['缓存删除失败后如何恢复？', '先查删除结果，再补偿......', '似乎追问了重试上限']
+        ensure(JSON.stringify(await fragments.locator('.rv23-fragment-number').allTextContents()) === JSON.stringify(['01', '02', '03'])
+          && JSON.stringify(await fragments.locator('h3').allTextContents()) === JSON.stringify(['问题', '我的回答片段', '面试官反馈（回忆）'])
+          && JSON.stringify(await fragments.locator('p').allTextContents()) === JSON.stringify(expectedFragments), '23三片段初态文字不符')
+        const suggestionLines = await page.locator('.rv23-create-copy > span').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) {
+            for (let index = 0; index < text.textContent.length; index++) {
+              if (text.textContent[index] === '\n') continue
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+          }
+          return [...rows.values()]
+        }))
+        ensure(JSON.stringify(suggestionLines) === JSON.stringify([
+          ['这道题涉及缓存一致性与数据恢复，', '建议标记为待审题。'],
+          ['对缓存删除后的恢复策略不够熟悉，', '需要补充相关知识。'],
+          ['下次重点练习缓存一致性相关问题，', '并准备重试策略。'],
+        ]), '23右栏三项说明必须各两行且文字完整')
+        const confidence = page.getByRole('radiogroup', { name: '回忆自信程度', exact: true })
+        ensure(await confidence.getByRole('radio').count() === 3
+          && await confidence.getByRole('radio', { name: '有些模糊', exact: true }).getAttribute('aria-checked') === 'true'
+          && await page.locator('.rv23-complete').evaluate(node => getComputedStyle(node).color === 'rgb(255, 248, 240)')
+          && await page.locator('.r-saved svg').evaluate(node => getComputedStyle(node).fill === 'none')
+          && await page.locator('.rv23-record-source').textContent() === '来源：回忆记录 · 非逐字实录',
+          '23确定度、按钮字色、空心保存标记或回忆来源身份不符')
+        checks.push({ check: 'recollection-three-fragments-two-line-suggestions-confidence-source-fixed-geometry', scene: scene.id,
+          geometry, suggestionLines, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        for (const option of ['记得较清楚', '有些模糊', '不确定']) {
+          await confidence.getByRole('radio', { name: option, exact: true }).click()
+          ensure(await confidence.locator('[aria-checked="true"]').count() === 1
+            && await confidence.getByRole('radio', { name: option, exact: true }).getAttribute('tabindex') === '0', '23确定度未保持单选和唯一焦点入口')
+        }
+        await confidence.getByRole('radio', { name: '不确定', exact: true }).focus()
+        for (const [key, expected] of [['ArrowRight', '记得较清楚'], ['ArrowLeft', '不确定'], ['Home', '记得较清楚'], ['End', '不确定'], ['ArrowUp', '有些模糊'], ['ArrowDown', '不确定']]) {
+          await page.keyboard.press(key)
+          ensure(await confidence.getByRole('radio', { name: expected, exact: true }).evaluate(node => node === document.activeElement && node.getAttribute('aria-checked') === 'true'), '23确定度键盘或焦点不符：' + key)
+        }
+        for (let index = 0; index < 3; index++) {
+          const fragment = fragments.nth(index)
+          await fragment.getByRole('button').click()
+          const editor = fragment.getByRole('textbox')
+          ensure(await editor.evaluate(node => node === document.activeElement), '23片段编辑未获得焦点')
+          await editor.fill(expectedFragments[index] + '（待核对）')
+          if (index === 0) await page.keyboard.press('Control+Enter')
+          else if (index === 1) await page.keyboard.press('Escape')
+          else await fragment.getByRole('button').click()
+          ensure(await fragment.locator('p').textContent() === expectedFragments[index] + '（待核对）', '23片段编辑值未保留')
+        }
+        await page.getByRole('button', { name: '保存草稿', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '草稿仅在本次页面内保留；持久保存待确认', '23草稿提示不能伪装为持久化')
+        await page.getByRole('button', { name: '完成记录', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '本次页面已结束编辑；记录提交与持久保存待确认', '23完成提示不能伪装为提交成功')
+        await page.getByRole('button', { name: '回忆身份', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '回忆身份：回忆记录 · 非逐字实录', '23回忆不能冒充逐字原答')
+        await confidence.getByRole('radio', { name: '有些模糊', exact: true }).click()
+        await page.getByRole('button', { name: '条件不完整', exact: true }).click()
+        ensure(await confidence.getByRole('radio', { name: '有些模糊', exact: true }).getAttribute('aria-checked') === 'true', '23条件标签不应改写自信程度')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '23编辑、确定度、标签、草稿和完成后刷新未恢复初态')
+        for (const [index, target, title] of [[0, '14', '待审题'], [1, '10', '知识缺口'], [2, '17', '复练动作']]) {
+          await page.locator('.rv23-create-item').nth(index).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target
+            && await page.getByRole('status').textContent() === `已打开相关页面；由回忆创建${title}的持久流程待确认`, '23相关页面导航或创建边界不符')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '23相关页面返回失败'); await ready()
+        }
+        for (const [selector, target] of [['.r-top-search', '25'], ['.r-sidebar > a', '02']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '23框架导航未同步地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '23框架导航返回失败'); await ready()
+        }
+        await assertFrame(captured, '23导航返回后未恢复初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '23固定态不应写入业务接口')
+        checks.push({ check: 'recollection-confidence-keyboard-fragment-edit-save-boundary-identity-navigation-refresh', scene: scene.id,
+          businessWrites: writes, passed: true,
+          limitations: '仅本次页面内确定度和片段编辑；持久保存、提交、创建及正式非空回忆业务待确认／服务器验收' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -1317,7 +1415,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
