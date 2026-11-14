@@ -187,12 +187,13 @@ function endDrag(event: PointerEvent) {
 .kl-table tbody tr:first-child td { height: 81px; padding-bottom: 10px; }
 .kl-table tbody tr:first-child td:first-child { padding-top: 8px; padding-bottom: 10px; }
 .kl-table tbody tr:not(:first-child) td:first-child { white-space: nowrap; }
-.kl-table .r-table tr.r-selected td { background: linear-gradient(110deg, #69402170, #51321c70); border-block-color: #a67647a8; }
+.kl-table .r-table tr.r-selected { background: linear-gradient(110deg, #69402180, #51321c70); clip-path: inset(0 round 12px); }
+.kl-table .r-table tr.r-selected td { background: transparent; border-block-color: #a67647a8; }
 .kl-table .r-table tr.r-selected td:first-child { border-left-color: #ae7948; border-radius: 12px 0 0 12px; }
 .kl-table .r-table tr.r-selected td:last-child { border-right-color: #ae7948; border-radius: 0 12px 12px 0; }
 .kl-table .r-pill { font-size: 19.5px; }
 .kl-detail { background: linear-gradient(180deg, #1b1713, #15120f 70%); }
-.kl-detail h2 { font-size: 28px; }
+.kl-detail h2 { font-size: 27px; line-height: 39.2px; }
 .kl-excerpt { font-size: 18px; line-height: 36px !important; }
 .kl-detail h3 { font-size: 19px; }
 .kl-detail .kl-tags { margin-top: 18px !important; }
