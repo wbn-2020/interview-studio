@@ -212,6 +212,7 @@ onUnmounted(() => {
 .sp-inbox-heading { position: absolute; top: 109px; left: 26px; }.sp-inbox-heading h1 { font-size: 47px; }.sp-inbox-heading p { margin-top: 3px; font-size: 23px; }.sp-inbox-actions { position: absolute; right: 30px; top: 133px; gap: 17px; }.sp-inbox-actions .r-btn { font-size: 24px; min-height: 58px; border-radius: 17px; padding: 10px 24px !important; }
 .sp-inbox-sources { position: absolute; top: 233px; left: 15px; bottom: 90px; width: 233px; border-radius: 20px; padding: 20px 10px; border-color: #393023; }.sp-inbox-sources h2 { padding: 0 15px 17px; font-size: 25px; }.sp-inbox-sources > button { display: flex; width: 100%; min-height: 64px; padding: 12px 17px !important; gap: 13px; text-align: left; font-size: 23px; border-radius: 15px; white-space: nowrap; }.sp-inbox-sources button.selected { background: #7c582f50 !important; color: #faead4; }.sp-inbox-sources small { margin-left: auto; font-size: 23px; }.sp-inbox-sources svg { color: #efc38d; }
 .sp-inbox-order { position: relative; border-radius: 23px; background: #ffffff08; }
+.sp-inbox-detail { transform: translateZ(0); }
 .sp-inbox-order svg { position: absolute; right: 9px; pointer-events: none; }
 .sp-inbox-list header .sp-inbox-order select { appearance: none; background: transparent; padding-right: 28px; }
 .sp-inbox-list .r-checkbox:indeterminate { background: #b77c3e; border-color: #e7b279; }

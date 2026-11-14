@@ -168,6 +168,52 @@ try {
       let interactionError = null
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
+      if (scene.id === '06') {
+        const library = page.locator('.file-library'), viewer = page.locator('.pdf-viewer')
+        ensure(await library.locator('.file-item:visible').count() === 5, '06初始文件行数不符')
+        await viewer.getByRole('button', { name: '下一页', exact: true }).click()
+        ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible(), '06下一页未更新')
+        await viewer.getByRole('button', { name: '上一页', exact: true }).click()
+        await viewer.getByRole('button', { name: '缩小', exact: true }).click()
+        ensure((await viewer.locator('.pdf-zoom').textContent()).trim() === '90%', '06缩小未更新比例')
+        await viewer.getByRole('button', { name: '适应页面', exact: true }).click()
+        ensure((await viewer.locator('.pdf-zoom').textContent()).trim() === '100%', '06适应页面未复位比例')
+        await library.getByRole('button', { name: '文本 6', exact: true }).click()
+        ensure(await library.locator('.file-item:visible').count() === 3, '06文本筛选行数不符')
+        await page.locator('.parsing-status').click()
+        ensure(await page.locator('.parsing-content').count() === 0, '06解析区未折叠')
+        await page.locator('.parsing-status').click()
+        ensure(await page.locator('.parsing-content').isVisible(), '06解析区未重新展开')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '06页码、缩放、筛选和折叠后刷新未恢复初态')
+        checks.push({ check: 'attachment-pagination-zoom-filter-collapse-refresh', scene: scene.id, passed: true })
+      }
+      if (scene.id === '11') {
+        const prose = page.locator('.kn-prose p').first(), initialText = await prose.textContent()
+        const lines = await prose.evaluate(node => {
+          const text = node.firstChild, rows = new Map()
+          if (!text || text.nodeType !== Node.TEXT_NODE) throw new Error('正文文本节点缺失')
+          for (let index = 0; index < text.textContent.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const y = range.getBoundingClientRect().top
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+          }
+          return [...rows.values()]
+        })
+        const referenceLines = ['缓存更新失败通常发生在删除、更新或写入缓存的环节，', '需要结合日志和调用链，定位是缓存操作失败，还是后续', '流程处理异常。']
+        const wrapped = JSON.stringify(lines) === JSON.stringify(referenceLines)
+        checks.push({ check: 'note-reference-paragraph-lines', scene: scene.id, lines, referenceLines, passed: wrapped })
+        ensure(wrapped, '11正文换行与参考三行不符')
+        await page.getByRole('button', { name: '阅读', exact: true }).click()
+        ensure(await prose.getAttribute('contenteditable') === 'false', '11阅读态仍可编辑')
+        await page.getByRole('button', { name: '编辑', exact: true }).click()
+        await prose.fill(initialText + '（验收编辑）')
+        await page.getByRole('button', { name: '阅读', exact: true }).click()
+        ensure(await prose.textContent() === initialText + '（验收编辑）', '11模式切换丢失本次编辑')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '11编辑和阅读切换后刷新未恢复参考初态')
+        checks.push({ check: 'note-edit-read-refresh', scene: scene.id, passed: true })
+      }
       if (scene.id === '25') {
         const dialog = page.getByRole('dialog', { name: '全局命令面板' })
         const input = dialog.getByRole('combobox', { name: '搜索命令' })
@@ -335,7 +381,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['09', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['06', '09', '11', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
