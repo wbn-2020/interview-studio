@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -138,10 +138,35 @@ const paths: Record<string, string[]> = {
   'help-circle': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M9 8a3 3 0 0 1 6 0c0 3-3 3-3 6', 'M12 18h.01'],
 }
 const aliases: Record<string, string> = { 'book': 'book-open', 'edit': 'pencil', 'edit-3': 'pencil', 'check-square': 'square', 'clipboard-check': 'calendar-check', 'clipboard-list': 'list', 'bar-chart': 'chart-no-axes-column', 'git-compare': 'arrow-up-down', 'workflow': 'network', 'maximize-2': 'maximize', 'minimize': 'scan', 'refresh': 'refresh-cw', 'list-filter': 'sliders-horizontal', 'timer': 'clock', 'list-ordered': 'list', 'file-up': 'upload', 'file-down': 'download', 'rotate-cw': 'refresh-cw', 'hard-drive': 'database', 'file-search': 'file-text', 'grip': 'layout-grid', 'move': 'crosshair', 'link-2': 'link', 'list-todo': 'list-checks', 'notebook': 'file-text', 'route': 'git-branch', 'git-compare-arrows': 'arrow-up-down', 'undo-2': 'rotate-ccw', 'redo-2': 'refresh-cw', 'circle-check-2': 'circle-check' }
-const iconPaths = computed(() => paths[aliases[props.name] ?? props.name] ?? paths.square)
+// 列表参考使用带实心轮廓的图标，仅在对应页面采用，其他参考页保留各自形状。
+const libraryPaths: Record<string, string[]> = {
+  calendar: ['M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 20V6A1.5 1.5 0 0 1 5 4.5Z', 'M7 2v5M17 2v5M4 9h16'],
+  'calendar-days': ['M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 20V6A1.5 1.5 0 0 1 5 4.5Z', 'M7 2v5M17 2v5M4 9h16'],
+  play: ['M7 3.3a1 1 0 0 1 1.5-.9l13 8.7a1 1 0 0 1 0 1.8l-13 8.7a1 1 0 0 1-1.5-.9Z'],
+  'book-open': ['M3 3.5c3-1.2 6-.5 9 1.5 3-2 6-2.7 9-1.5v17c-3-1.2-6-.8-9 1-3-1.8-6-2.2-9-1Z', 'M12 5v16'],
+  dumbbell: ['M8 3v18M16 3v18M4 7v10M20 7v10M8 12h8'],
+  'refresh-cw': ['M18.5 6a9 9 0 1 1-6.5-3', 'M12 1v5h5'],
+  'chart-no-axes-combined': ['M3 13h4v8H3ZM10 8h4v13h-4ZM17 3h4v18h-4Z'],
+  database: ['M20.5 5c0 4.7-17 4.7-17 0s17-4.7 17 0ZM3.5 8.5v4c0 4.7 17 4.7 17 0v-4c-4 3.2-13 3.2-17 0ZM3.5 16v3c0 4.7 17 4.7 17 0v-3c-4 3.2-13 3.2-17 0Z'],
+  'credit-card': ['M4 3h14a2 2 0 0 1 2 2v15H6a2 2 0 0 1-2-2Z', 'M7 7h13M7 11h7M7 15h4M17 11v7M3 7H1v14h15'],
+  clock: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 6v6l4 2'],
+  sparkles: ['M12 2 15 9 21 12 15 15 12 22 9 15 3 12 9 9Z', 'M12 7v10M7 12h10'],
+  folder: ['M2.5 5a1 1 0 0 1 1-1h5l2 2H21a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1Z'],
+  'layout-grid': ['M3 2h5a2 2 0 0 1 2 2v5H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM16 2h5a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-7V4a2 2 0 0 1 2-2ZM1 13h9v7a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2ZM14 13h9v7a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2Z'],
+  bookmark: ['M3 3h9l9 9-9 9-9-9Z', 'M7.5 7.5h.01'],
+  inbox: ['M5 3h14l3 13v5H2v-5Z', 'M2 15h6l2 4h4l2-4h6'],
+  'file-plus': ['M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V6Z', 'M13 2v6h4M16 13v7M12.5 16.5h7'],
+  bell: ['M18 8a6 6 0 0 0-12 0c0 7-2 7-2 10h16c0-3-2-3-2-10Z', 'M10 21h4'],
+  filter: ['M3 3h18l-7.5 8v9l-3-1v-8Z'],
+  link: ['m9.5 14.5 5-5', 'm10.5 7.5 2-2a4 4 0 0 1 6 6l-2 2M13.5 16.5l-2 2a4 4 0 0 1-6-6l2-2'],
+}
+const libraryFills: Record<string, number> = { calendar: .08, 'calendar-days': .08, play: .8, 'book-open': .9, 'chart-no-axes-combined': .8, database: .8, clock: .8, folder: .75, 'layout-grid': .95, bookmark: .85, inbox: .65, 'file-plus': .8, bell: .4, filter: .65 }
+const iconPaths = computed(() => props.variant === 'library' && libraryPaths[props.name]
+  ? libraryPaths[props.name] : paths[aliases[props.name] ?? props.name] ?? paths.square)
+const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0 : 0)
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="strokeWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
-    <path v-for="(d, i) in iconPaths" :key="i" :d="d" />
+    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" />
   </svg>
 </template>

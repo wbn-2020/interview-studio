@@ -99,10 +99,10 @@ function endDrag(event: PointerEvent) {
   <section v-if="scene === 10" class="knowledge-list-page">
     <div class="kl-heading"><h1>知识</h1><p class="r-muted">沉淀技术知识，构建你的面试知识体系</p></div>
     <div class="r-segmented kl-views"><button @click="emit('navigate', 9)"><RIcon name="star" />星图</button><button class="r-active"><RIcon name="list" />列表</button><button @click="emit('navigate', 13)"><RIcon name="panel-left" />白板</button></div>
-    <div class="kl-actions r-row"><button class="r-btn" @click="emit('navigate', 11)"><RIcon name="file-plus" />新建笔记</button><button class="r-btn r-primary" @click="emit('notify', '新建知识点流程待确认')"><RIcon name="plus" />新建知识点</button></div>
-    <aside class="r-panel kl-folders"><button v-for="(row, i) in [['全部笔记', '18', 'layout-grid'], ['Java 并发', '6', 'folder'], ['JVM 与性能', '4', 'folder'], ['缓存 / 消息', '5', 'folder'], ['系统设计', '3', 'folder']]" :key="row[0]" class="r-row" :class="{ selected: folder === i }" @click="folder = i"><RIcon :name="row[2]!" :size="24" /><span>{{ row[0] }}</span><small>{{ row[1] }}</small></button><div class="r-rule" /><button class="r-row" @click="folder = 5"><RIcon name="bookmark" />未归类<small>2</small></button><button class="r-row" @click="emit('navigate', 30)"><RIcon name="inbox" />收件箱<small>3</small></button></aside>
-    <section class="r-panel kl-table"><div class="r-row kl-filters"><button class="r-btn" @click="emit('notify', '当前筛选：全部笔记')"><RIcon name="filter" :size="22" />筛选<RIcon name="chevron-down" :size="18" /></button><button class="r-btn" @click="emit('notify', '当前按更新时间降序')">更新时间<RIcon name="chevron-down" :size="18" /></button></div><table class="r-table"><thead><tr><th>标题</th><th>主题</th><th>关联概念</th><th>版本</th><th>更新</th></tr></thead><tbody><tr v-for="(row, i) in rows" :key="row[0]" :class="{ 'r-selected': selected === i }" tabindex="0" @click="selected = i" @keydown.enter="selected = i"><td>{{ row[0] }}</td><td><span class="r-pill" :class="['teal', 'blue', 'green', 'amber'][i]">{{ row[1] }}</span></td><td>{{ row[2] }}</td><td>{{ row[3] }}</td><td>{{ row[4] }}</td></tr></tbody></table></section>
-    <aside class="r-panel kl-detail"><h2>{{ selected === 0 ? '缓存更新失败时怎样定位' : rows[selected]![0] }}</h2><p class="r-row r-muted"><RIcon name="calendar" :size="22" />今天 14:32<span>│</span><RIcon name="square-pen" :size="20" />{{ rows[selected]![3] }}</p><p class="kl-excerpt">在分布式缓存场景中，更新失败往往不是单点问题，而是涉及多层原因。可以从以下几个方向进行排查：...</p><h3>关联概念</h3><div class="r-row kl-tags"><span class="r-pill teal">缓存</span><span class="r-pill blue">分布式</span><span class="r-pill green">一致性</span></div><div class="r-rule" /><button class="r-row kl-backlinks" @click="emit('navigate', 12)"><RIcon name="link" />引用与反向链接 <span class="r-muted">2</span></button><button class="r-btn r-primary" @click="emit('navigate', 11)"><RIcon name="external-link" />打开笔记</button><button class="r-btn" @click="emit('navigate', 16)"><RIcon name="credit-card" />创建回忆卡</button></aside>
+    <div class="kl-actions r-row"><button class="r-btn" @click="emit('navigate', 11)"><RIcon name="file-plus" variant="library" />新建笔记</button><button class="r-btn r-primary" @click="emit('notify', '新建知识点流程待确认')"><RIcon name="plus" />新建知识点</button></div>
+    <aside class="r-panel kl-folders"><button v-for="(row, i) in [['全部笔记', '18', 'layout-grid'], ['Java 并发', '6', 'folder'], ['JVM 与性能', '4', 'folder'], ['缓存 / 消息', '5', 'folder'], ['系统设计', '3', 'folder']]" :key="row[0]" class="r-row" :class="{ selected: folder === i }" @click="folder = i"><RIcon :name="row[2]!" variant="library" :size="24" /><span>{{ row[0] }}</span><small>{{ row[1] }}</small></button><div class="r-rule" /><button class="r-row" @click="folder = 5"><RIcon name="bookmark" variant="library" />未归类<small>2</small></button><button class="r-row" @click="emit('navigate', 30)"><RIcon name="inbox" variant="library" />收件箱<small>3</small></button></aside>
+    <section class="r-panel kl-table"><div class="r-row kl-filters"><button class="r-btn" @click="emit('notify', '当前筛选：全部笔记')"><RIcon name="filter" variant="library" :size="22" />筛选<RIcon name="chevron-down" :size="18" /></button><button class="r-btn" @click="emit('notify', '当前按更新时间降序')">更新时间<RIcon name="chevron-down" :size="18" /></button></div><table class="r-table"><thead><tr><th>标题</th><th>主题</th><th>关联概念</th><th>版本</th><th>更新</th></tr></thead><tbody><tr v-for="(row, i) in rows" :key="row[0]" :class="{ 'r-selected': selected === i }" tabindex="0" @click="selected = i" @keydown.enter="selected = i"><td>{{ row[0] }}</td><td><span class="r-pill" :class="['teal', 'blue', 'green', 'amber'][i]">{{ row[1] }}</span></td><td>{{ row[2] }}</td><td>{{ row[3] }}</td><td>{{ row[4] }}</td></tr></tbody></table></section>
+    <aside class="r-panel kl-detail"><h2>{{ selected === 0 ? '缓存更新失败时怎样定位' : rows[selected]![0] }}</h2><p class="r-row r-muted"><RIcon name="calendar" variant="library" :size="22" />今天 14:32<span>│</span><RIcon name="square-pen" :size="20" />{{ rows[selected]![3] }}</p><p class="kl-excerpt">在分布式缓存场景中，更新失败往往不是单点问题，而是涉及多层原因。可以从以下几个方向进行排查：...</p><h3>关联概念</h3><div class="r-row kl-tags"><span class="r-pill teal">缓存</span><span class="r-pill blue">分布式</span><span class="r-pill green">一致性</span></div><div class="r-rule" /><button class="r-row kl-backlinks" @click="emit('navigate', 12)"><RIcon name="link" variant="library" />引用与反向链接 <span class="r-muted">2</span></button><button class="r-btn r-primary" @click="emit('navigate', 11)"><RIcon name="external-link" />打开笔记</button><button class="r-btn" @click="emit('navigate', 16)"><RIcon name="credit-card" />创建回忆卡</button></aside>
   </section>
 
   <section v-else-if="scene === 11" class="knowledge-note-page">
@@ -162,27 +162,44 @@ function endDrag(event: PointerEvent) {
 .kb-minimap { position: absolute; right: 22px; bottom: 21px; width: 258px; height: 167px; padding: 16px 18px; border-radius: 20px; border-color: #332a20; }.kb-minimap > div { border: 1px solid #4b4032; border-radius: 10px; height: 133px; background: #ffffff03; }.kb-minimap svg { width: 100%; height: 100%; }.kb-zoom { position: absolute; bottom: 21px; left: 715px; height: 59px; padding: 0 16px; border-color: #332a20; border-radius: 21px; gap: 16px; font-size: 18px; }.kb-zoom button { color: #b6aea2; }.kb-zoom button:nth-last-child(2) { border-left: 1px solid #3b3025 !important; padding-left: 15px !important; }
 .kl-heading { left: 33px; }
 .kl-heading p { font-size: 20px; }
+.kl-actions { right: 26px; }
+.kl-actions .r-btn { width: 156px; font-size: 20px; border-radius: 20px; }
+.kl-actions .r-btn.r-primary { width: 173px; }
+.knowledge-list-page .r-btn { background: linear-gradient(120deg, #201b16a8, #15120f88) !important; }
+.knowledge-list-page .r-btn.r-primary { background: linear-gradient(150deg, #dfaa77, #c18a5b 65%, #ad734a) !important; font-weight: 500; }
 .kl-folders { background: linear-gradient(180deg, #181511, #151310); }
 .kl-folders button { font-size: 20px; gap: 11px; padding-right: 21px !important; }
+.kl-folders .r-rule { margin-top: 20px; }
 .kl-folders small { font-size: 20px; }
 .kl-table { background: linear-gradient(180deg, #14110e, #0f0d0b 70%); }
-.kl-filters { gap: 1px; }
-.kl-table .r-table th:first-child { width: 29.8%; }
-.kl-table .r-table th:nth-child(2) { width: 19.6%; }
-.kl-table .r-table th:nth-child(3) { width: 18.2%; }
-.kl-table .r-table th:nth-child(4) { width: 14.1%; }
-.kl-table th { font-size: 18.5px; line-height: 30px; white-space: nowrap; padding-top: 12px; padding-bottom: 18px; }
-.kl-table td { font-size: 18.4px; line-height: 30px; padding: 8px 20px; }
+.kl-filters { gap: 14px; }
+.kl-filters .r-btn { padding-inline: 16px !important; }
+.kl-filters .r-btn:first-child { width: 121px; }
+.kl-filters .r-btn:last-child { width: 134px; }
+.kl-table .r-table { width: calc(100% - 14px); border-collapse: separate; border-spacing: 0; }
+.kl-table .r-table th:first-child { width: 190px; }
+.kl-table .r-table th:nth-child(2) { width: 125px; }
+.kl-table .r-table th:nth-child(3) { width: 117px; }
+.kl-table .r-table th:nth-child(4) { width: 90px; }
+.kl-table th { height: 59px; font-size: 19.5px; line-height: 30px; white-space: nowrap; padding-top: 10px; padding-bottom: 18px; }
+.kl-table td { font-size: 19.5px; line-height: 30px; padding: 8px 20px; border-top: 1px solid transparent; }
 .kl-table td:first-child { line-height: 30px; }
-.kl-table tbody tr:first-child td { height: 77px; padding-bottom: 16px; }
-.kl-table tbody tr:first-child td:first-child { padding-top: 6px; padding-bottom: 10px; }
-.kl-table .r-pill { font-size: 18px; }
-.kl-detail { background: linear-gradient(180deg, #1b1713, #171511); }
-.kl-detail h2 { font-size: 27px; }
+.kl-table tbody tr:first-child td { height: 81px; padding-bottom: 10px; }
+.kl-table tbody tr:first-child td:first-child { padding-top: 8px; padding-bottom: 10px; }
+.kl-table tbody tr:not(:first-child) td:first-child { white-space: nowrap; }
+.kl-table .r-table tr.r-selected td { background: linear-gradient(110deg, #69402170, #51321c70); border-block-color: #a67647a8; }
+.kl-table .r-table tr.r-selected td:first-child { border-left-color: #ae7948; border-radius: 12px 0 0 12px; }
+.kl-table .r-table tr.r-selected td:last-child { border-right-color: #ae7948; border-radius: 0 12px 12px 0; }
+.kl-table .r-pill { font-size: 19.5px; }
+.kl-detail { background: linear-gradient(180deg, #1b1713, #15120f 70%); }
+.kl-detail h2 { font-size: 28px; }
 .kl-excerpt { font-size: 18px; line-height: 36px !important; }
 .kl-detail h3 { font-size: 19px; }
+.kl-detail .kl-tags { margin-top: 18px !important; }
+.kl-tags .r-pill { line-height: 1.8; }
+.kl-detail .r-rule { margin-bottom: 24px; }
 .kl-backlinks { font-size: 19px; }
-.kl-detail > .r-btn { font-size: 20px; }
+.kl-detail > .r-btn { font-size: 20px; margin-top: 37px; }
 .kd-heading { top: 104px; }
 .kd-heading h1 { font-size: 40px; line-height: 56px; margin-bottom: 12px; }
 .kd-actions .r-btn { font-size: 19px; }
