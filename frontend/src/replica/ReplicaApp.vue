@@ -41,10 +41,10 @@ const nav = computed(() => {
   ]
   const ordinary = [
     { id: 2, label: '今日', icon: scene.value === 2 ? 'calendar-days' : 'house' },
-    { id: 3, label: '准备', icon: scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
+    { id: 3, label: '准备', icon: scene.value === 18 ? 'square-check-rounded' : scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: 'book-open' },
-    { id: 17, label: '训练', icon: [17, 18, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },
-    { id: 21, label: '复盘', icon: [5, 13, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
+    { id: 17, label: '训练', icon: scene.value === 18 ? 'circle-play' : [17, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },
+    { id: 21, label: '复盘', icon: [5, 13, 18, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
     { id: 24, label: '成长', icon: [5, 30].includes(scene.value) ? 'leaf' : [3, 7, 12, 13, 16, 18, 20, 23, 26, 27].includes(scene.value) ? 'sprout' : 'chart-no-axes-combined' },
   ]
   if (scene.value === 16) [ordinary[2], ordinary[3]] = [ordinary[3]!, ordinary[2]!]
@@ -53,8 +53,8 @@ const nav = computed(() => {
   return ordinary
 })
 const secondary = computed(() => [
-  { id: 14, label: '题库', icon: [2, 6, 10, 12, 14, 16, 19, 22, 23, 28].includes(scene.value) ? 'database' : 'layers' },
-  { id: 16, label: '回忆卡', icon: 'credit-card' },
+  { id: 14, label: '题库', icon: [2, 6, 10, 12, 14, 16, 18, 19, 22, 23, 28].includes(scene.value) ? 'database' : 'layers' },
+  { id: 16, label: '回忆卡', icon: scene.value === 18 ? 'memory-cards' : 'credit-card' },
   ...(scene.value === 26 ? [] : [{ id: 26, label: '最近访问', icon: 'clock' }]),
   { id: 27, label: 'AI 任务', icon: scene.value === 27 ? 'settings' : 'sparkles' },
 ])
@@ -106,13 +106,14 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
       <template v-if="![1, 29].includes(scene)">
         <aside class="r-sidebar" :class="{ 'r-sidebar-mini': scene === 9 }">
           <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)"><RBrand :variant="scene" /></a>
+          <div v-if="scene === 18" class="r-brand-rule" aria-hidden="true" />
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
-              <RIcon :name="item.icon" :size="scene === 9 ? 34 : 28" /><span>{{ item.label }}</span>
+              <RIcon :name="item.icon" :size="scene === 9 ? 34 : scene === 18 ? 30 : 28" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
               <div class="r-nav-separator" />
-              <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)"><RIcon :name="item.icon" :size="27" /><span>{{ item.label }}</span></a>
+              <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)"><RIcon :name="item.icon" :size="scene === 18 ? 30 : 27" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span></a>
             </template>
           </nav>
           <button class="r-sidebar-avatar" title="设置与数据" @click="navigate(28)"><span class="r-avatar">林</span></button>
@@ -225,9 +226,27 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-17 .r-nav-item { height: 58px; padding-left: 21px; font-size: 22px; }
 .r-scene-17 .r-nav-separator { margin-top: 17px; margin-bottom: 13px; }
 .r-scene-17 .r-nav-item.r-secondary { font-size: 21px; height: 54px; }
-.r-scene-18 .r-sidebar { top: 8px; bottom: 8px; width: 230px; border-radius: 22px; }
-.r-scene-18 .r-sidebar nav { top: 162px; left: 18px; right: 18px; gap: 4px; }
-.r-scene-18 .r-nav-item { height: 59px; padding-left: 20px; }
+.r-scene-18 .r-sidebar { top: 8px; bottom: 8px; width: 229px; border-radius: 22px; background: linear-gradient(150deg, #171411, #241b13); border-color: #342b22; }
+.r-scene-18 .r-sidebar nav { top: 159px; left: 17px; right: 18px; gap: 3px; }
+.r-scene-18 .r-nav-item { height: 59px; padding-left: 16px; }
+.r-scene-18 .r-nav-item.r-selected { height: 57px; margin-bottom: 2px; border-color: transparent; background: linear-gradient(100deg, #986331, #372b2080); box-shadow: none; }
+.r-scene-18 .r-nav-item.r-secondary { height: 57px; font-size: 24px; }
+.r-scene-18 .r-nav-separator { margin: 19px 11px 18px; }
+.r-scene-18 .r-brand-rule { position: absolute; left: 29px; top: 137px; right: 29px; height: 1px; background: #ffffff16; }
+.r-scene-18 .r-sidebar .r-brand { top: 38px; gap: 10px; }
+.r-scene-18 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; }
+.r-scene-18 .r-sidebar :deep(.r-emblem) { width: 44px; height: 52px; transform: translateY(4px); }
+.r-scene-18 .r-sidebar-avatar { bottom: 29px; }
+.r-scene-18 .r-sidebar-avatar .r-avatar { width: 61px; height: 64px; background: linear-gradient(130deg, #9b6b3c, #6e4423); }
+.r-scene-18 .r-topbar { top: 16px; left: 254px; right: 36px; }
+.r-scene-18 .r-breadcrumb { font-size: 26px; position: relative; top: -1px; }
+.r-scene-18 .r-top-search { left: 490px !important; top: 6px; height: 64px; font-size: 21px; }
+.r-scene-18 .r-top-search > .r-icon { width: 32px; height: 32px; }
+.r-scene-18 .r-top-status { gap: 32px; }
+.r-scene-18 .r-saved { font-size: 24px; color: #64b76f; }
+.r-scene-18 .r-saved svg { fill: #64b76f; background: #64b76f; }
+.r-scene-18 .r-top-status .r-avatar { width: 50px; height: 54px; }
+.r-scene-18 .r-top-status .r-icon-btn > .r-icon { width: 32px; height: 32px; }
 .r-scene-19 .r-sidebar { top: 20px; left: 20px; width: 205px; bottom: 28px; border-radius: 22px; }
 .r-scene-19 .r-sidebar nav { top: 146px; left: 6px; right: 6px; gap: 3px; }
 .r-scene-19 .r-nav-item { height: 59px; padding: 0 24px; font-size: 22px; }

@@ -604,7 +604,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
