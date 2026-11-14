@@ -733,31 +733,34 @@ watch(() => props.scene, () => {
 .follow-title { position: absolute; left: 23px; top: 115px; }
 .follow-title h1 { font-size: 34px; line-height: 1.4; font-weight: 650; }
 .follow-title h1 > span { font-size: 30px; color: #b7b2aa; margin-left: 10px; font-weight: 500; }
-.follow-end { position: absolute; top: 111px; left: 1089px; width: 194px; height: 64px; border-radius: 36px; color: #edaa6c !important; font-size: 25px; font-weight: 600; gap: 12px; }
+.follow-end.ts-button { position: absolute; top: 111px; left: 1089px; width: 194px; height: 64px; border-radius: 36px; color: #edaa6c !important; font-size: 24px; font-weight: 600; gap: 10px; }
 .follow-end .r-icon { fill: #a5784a77; }
 .follow-original { left: 23px; top: 195px; width: 695px; height: 713px; border-radius: 19px; padding: 20px 29px; }
-.follow-original h2, .follow-candidate h2 { display: flex; align-items: center; gap: 18px; font-size: 32px; font-weight: 600; }
+.follow-original, .follow-candidate { background: #181411; border-color: #342b22; }
+.follow-original h2, .follow-candidate h2 { display: flex; align-items: center; gap: 13px; font-size: 30px; line-height: 44.8px; font-weight: 600; }
 .follow-original h2 .r-icon { fill: #e4e2dc; color: #24231f; }
 .follow-rule { height: 1px; background: #5b514244; margin-top: 19px; margin-bottom: 21px; }
-.follow-original p { font-size: 26px; line-height: 1.62; font-weight: 450; }
+.follow-original .follow-rule { margin-bottom: 23px; }
+.follow-original p { font-size: 23.5px; line-height: 42px; font-weight: 450; color: #d2cec5; }
 .follow-original .original-second { margin-top: 38px; }
 .original-second span { border-bottom: 3px solid #b68b39; padding-bottom: 4px; }
 .original-second.located { background: #b87a2620; border-radius: 8px; outline: 1px solid #b68b396b; }
-.original-citation { position: absolute; right: 32px; top: 330px; height: 45px; border-radius: 11px; padding: 6px 12px !important; background: linear-gradient(#fce4b3, #e8c58b) !important; color: #211704 !important; font-size: 20px !important; font-weight: 600; }
-.follow-candidate { left: 731px; top: 195px; width: 552px; height: 713px; padding: 20px 29px; }
-.follow-candidate h2 { gap: 15px; }
-.follow-candidate h2 > .r-icon { color: #e4a94d; fill: #ca8c2755; }
-.candidate-badge { padding: 4px 14px; border-radius: 21px; background: #906513; color: #fff0c0; font-size: 22px; line-height: 32px; }
-.follow-candidate h3 { margin-top: 20px; font-size: 31px; line-height: 1.55; font-weight: 600; }
-.candidate-evidence { display: flex; align-items: center; gap: 19px; width: 100%; height: 83px; margin-top: 28px; border-radius: 23px; padding: 15px 22px !important; background: #2c282180 !important; text-align: left; }
+.original-citation { position: absolute; right: 32px; top: 330px; height: 45px; border-radius: 11px; padding: 6px 12px !important; background: linear-gradient(#fce4b3, #e8c58b) !important; color: #211704 !important; font-size: 19px !important; font-weight: 600; }
+.follow-candidate { left: 731px; top: 195px; width: 552px; height: 713px; padding: 20px 29px 20px 36px; }
+.follow-candidate h2 { gap: 9px; }
+.follow-candidate h2 > .r-icon { width: 32px; height: 32px; color: #e4a94d; fill: #ca8c2755; }
+.follow-candidate .follow-rule { margin-bottom: 20px; }
+.candidate-badge { padding: 4px 10px; border-radius: 21px; background: #906513; color: #fff0c0; font-size: 21px; line-height: 32px; }
+.follow-candidate h3 { margin-top: 20px; font-size: 30px; line-height: 47px; font-weight: 600; }
+.candidate-evidence { display: flex; align-items: center; gap: 19px; width: 100%; height: 83px; margin-top: 31px; border-radius: 23px; padding: 15px 22px 15px 15px !important; background: #2c282180 !important; text-align: left; }
 .candidate-evidence .r-icon { color: #d8d4cb; fill: #d0cec5; stroke: #3d3a32; }
-.candidate-evidence span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 23px; }
-.candidate-notice { display: flex; align-items: center; gap: 14px; margin-top: 28px !important; color: #beb8ad; font-size: 24px; white-space: nowrap; }
+.candidate-evidence span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
+.candidate-notice { display: flex; align-items: center; gap: 10px; margin-top: 25px !important; color: #beb8ad; font-size: 21px; line-height: 39.6px; white-space: nowrap; }
 .candidate-notice .r-icon { fill: #b1afa5; stroke: #27251e; }
 .candidate-actions { display: flex; align-items: center; gap: 15px; margin-top: 44px; }
-.candidate-actions .ts-button { height: 71px; border-radius: 28px; font-size: 26px; font-weight: 600; flex: 1; }
+.candidate-actions .ts-button { height: 71px; border-radius: 28px; font-size: 24px; font-weight: 600; flex: 1; }
 .candidate-actions .primary { flex: 1.07; }
-.candidate-disclaimer { display: flex; align-items: center; gap: 10px; padding-top: 23px; margin-top: 29px !important; border-top: 1px solid #584c3b55; color: #b8b0a5; font-size: 21px; white-space: nowrap; }
+.candidate-disclaimer { display: flex; align-items: center; gap: 10px; padding-top: 24px; margin-top: 29px !important; border-top: 1px solid #584c3b55; color: #b8b0a5; font-size: 20px; white-space: nowrap; }
 .candidate-disclaimer .r-icon { fill: #a5a79d; stroke: #272923; }
 .follow-candidate.ignored h3 { opacity: .55; }
 .report-title { position: absolute; left: 24px; top: 119px; }

@@ -253,6 +253,43 @@ try {
         await assertFrame(captured, '06页码、缩放、筛选和折叠后刷新未恢复初态')
         checks.push({ check: 'attachment-pagination-zoom-filter-collapse-refresh', scene: scene.id, passed: true })
       }
+      if (scene.id === '18') {
+        const original = page.locator('.follow-original')
+        const before = await original.locator('p').allTextContents()
+        const lines = await original.locator('p').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) {
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+          }
+          return [...rows.values()]
+        }))
+        ensure(JSON.stringify(lines) === JSON.stringify([
+          ['在缓存一致性场景中，发生超时后需要结合业务语义判断是否', '继续重试。如果是幂等操作，可以安全重试；如果涉及副作', '用，则需要谨慎评估。'],
+          ['补偿机制可以作为兜底方案，但也要考虑补偿的幂等性和成', '本，避免因重复补偿带来数据不一致。'],
+        ]), '18原答逐行换行与参考不符')
+        const candidate = page.locator('.follow-candidate')
+        ensure((await candidate.locator('.candidate-badge').textContent()).trim() === '候选', '18初态不是候选')
+        const evidence = candidate.locator('.candidate-evidence span')
+        ensure(await evidence.evaluate(node => node.scrollWidth <= node.clientWidth), '18依据文字被额外截断')
+        await candidate.getByRole('button', { name: '依据：原答第 2 段 — 补偿失败后再次确认...', exact: true }).click()
+        ensure(await original.locator('.original-second.located').count() === 1, '18依据未定位第2段')
+        await candidate.getByRole('button', { name: '作为正式追问', exact: true }).click()
+        ensure((await candidate.locator('.candidate-badge').textContent()).trim() === '已采用', '18未更新采用状态')
+        ensure(await candidate.getByRole('button', { name: '忽略', exact: true }).isDisabled(), '18采用后仍可重复决策')
+        ensure(JSON.stringify(await original.locator('p').allTextContents()) === JSON.stringify(before), '18采用改写了原答')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await page.locator('.follow-candidate').getByRole('button', { name: '忽略', exact: true }).click()
+        ensure((await page.locator('.candidate-badge').textContent()).trim() === '已忽略', '18未更新忽略状态')
+        ensure(JSON.stringify(await original.locator('p').allTextContents()) === JSON.stringify(before), '18忽略改写了原答')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '18定位、采用、忽略后刷新未恢复初态')
+        checks.push({ check: 'follow-up-lines-evidence-adopt-ignore-refresh', scene: scene.id, lines, passed: true, scope: 'fixed-reference-state-only' })
+      }
       if (scene.id === '10') {
         const geometry = await page.locator('.kl-table').evaluate(table => {
           const headers = [...table.querySelectorAll('th')].map(cell => ({ text: cell.textContent, height: cell.getBoundingClientRect().height }))
