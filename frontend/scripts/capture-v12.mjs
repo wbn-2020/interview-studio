@@ -740,13 +740,20 @@ try {
           } finally { mirror.remove() }
         })
         ensure(JSON.stringify(actionLines) === JSON.stringify(['下一次说明恢复判据及', '验证步骤']), '21改进动作未保持两行')
+        const tabText = await page.locator('.rv21-tabs button').evaluateAll(nodes => nodes.map(node => {
+          const text = [...node.childNodes].find(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim())
+          const range = document.createRange(); range.selectNodeContents(text)
+          const rects = [...range.getClientRects()], box = node.getBoundingClientRect()
+          return { text: text.textContent, lines: rects.length, inside: rects.every(rect => rect.x >= box.x && rect.right <= box.right) }
+        }))
+        ensure(tabText.every(tab => tab.lines === 1 && tab.inside), '21页签文字换行或超出按钮边界')
         ensure(JSON.stringify(await page.locator('.rv21-decision').allTextContents()) === JSON.stringify(['有异议', '接受', '接受'])
           && await page.locator('.rv21-observation.selected .rv21-observation-number').textContent() === '1'
           && await page.locator('.rv21-tabs button[aria-current="page"]').textContent() === '回答与反馈', '21反馈、选择或页签初态不符')
         const lastObservation = await page.locator('.observation-3').boundingBox()
         ensure(lastObservation && lastObservation.y + lastObservation.height === 894, '21第三项观察未延伸至面板底部')
         checks.push({ check: 'review-original-five-lines-three-decisions-two-line-action-fixed-geometry', scene: scene.id,
-          geometry, originalLines, actionLines, passed: true })
+          geometry, originalLines, actionLines, tabText, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)

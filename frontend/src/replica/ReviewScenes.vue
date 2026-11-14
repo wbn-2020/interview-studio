@@ -367,12 +367,12 @@ watch(() => props.scene, () => {
 .rv21-actions .r-btn { height: 63px; border-radius: 21px; font-size: 23px; font-weight: 500; padding: 12px 23px !important; }
 .rv21-knowledge { width: 172px; background: linear-gradient(120deg, #2d2822, #211d18) !important; border-color: #3e352d !important; }
 .rv21-practice { width: 204px; font-size: 22px !important; }
-.rv21-practice, .rv21-add { background: linear-gradient(130deg, #dca074, #d99b6e 50%, #a66b45) !important; }
+.rv21 .rv21-practice, .rv21 .rv21-add { background: linear-gradient(130deg, #dca074, #d99b6e 50%, #a66b45) !important; }
 .rv21-practice .r-icon { fill: #1b1108; }
 .rv21-tabs { position: absolute; top: 246px; left: 28px; right: 26px; height: 64px; display: flex; align-items: stretch; gap: 10px; border-bottom: 1px solid #ffffff08; }
-.rv21-tabs button { display: flex; align-items: center; gap: 12px; padding: 0 22px; font-size: 25px; color: #aaa39b; position: relative; }
-.rv21-tabs button:first-child { width: 214px; padding-inline: 29px; flex: none; }
-.rv21-tabs button:nth-child(2) { width: 177px; padding-inline: 20px; flex: none; }
+.rv21-tabs button { display: flex; align-items: center; gap: 12px; padding: 0 22px; font-size: 25px; color: #aaa39b; position: relative; white-space: nowrap; }
+.rv21-tabs button:first-child { width: 214px; padding: 0 11px 0 30px; flex: none; }
+.rv21-tabs button:nth-child(2) { width: 177px; padding: 0 10px 0 20px; flex: none; }
 .rv21-tabs button:nth-child(3) { padding-inline: 17px; }
 .rv21-tabs button .r-icon { color: #8f877d; }
 .rv21-tabs button.selected { background: linear-gradient(105deg, #241c138c, #211c1644); border-radius: 17px 17px 0 0; color: #f6f0e8; font-weight: 600; }
