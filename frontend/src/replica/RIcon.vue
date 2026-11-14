@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -213,10 +213,26 @@ const routePaths: Record<string, string[]> = {
   'credit-card': ['M4 3h15l3 4v15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 7h14v5H5ZM7 16h3v3H7ZM13 16h2M18 16h1M16 3v4h6'],
   sparkles: ['M8 22v-6H4v-5c0-6 4-10 9-10 5 0 8 4 8 9v7h-6v5', 'm8 12 8-8M11 5h5v5'],
 }
+// 回忆页的剪贴板、叠层训练和三柱复盘分别保留参考中的轮廓。
+const recallPaths: Record<string, string[]> = {
+  house: ['M2 10.5 12 1.8l10 8.7h-3V22h-5v-8h-4v8H5V10.5Z'],
+  clipboard: ['M8 3H5a2 2 0 0 0-2 2v16h18V5a2 2 0 0 0-2-2h-3', 'M8 2h8v4H8ZM7 13l3 3 7-8'],
+  layers: ['m4 5 8-3 8 3c2 1 2 3 0 4l-8 3-8-3c-2-1-2-3 0-4Z', 'M2 10v4l10 4 10-4v-4M2 16v4l10 4 10-4v-4'],
+  'book-open': libraryPaths['book-open']!,
+  'chart-no-axes-column': ['M3 13h4v9H3ZM10 3h4v19h-4ZM17 8h4v14h-4Z'],
+  sprout: ['M12 23V12', 'M12 14C4 14 2 9 2 4c7 0 10 3 10 10ZM12 13C12 5 15 3 22 3c0 7-3 10-10 10ZM8 23h8'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M2 7h20M16 12h3v4h-3'],
+  sparkles: ['m11 3 2.5 6.5L20 12l-6.5 2.5L11 21l-2.5-6.5L2 12l6.5-2.5Z', 'M20 1v5M17.5 3.5h5M3 20v3M1.5 21.5h3'],
+  calendar: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z', 'M7 2v5M17 2v5M3 10h18M7 14h.01M13 17h.01'],
+  'file-text': notePaths['file-text']!,
+  history: ['M4 10a8.5 8.5 0 1 1 .7 7', 'M4 3v7h6M12 6v6l4 2'],
+  'refresh-cw': ['M3 10a9 9 0 0 1 15-6l3 3M21 2v6h-6M21 14A9 9 0 0 1 6 20l-3-3M3 22v-6h6'],
+  bell: notePaths.bell!,
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0

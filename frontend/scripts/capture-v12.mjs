@@ -362,6 +362,80 @@ try {
         checks.push({ check: 'route-stage-checkpoint-keyboard-tabs-navigation-refresh', scene: scene.id, passed: true,
           limitations: '其他路线正文、题单列表内容、新建、筛选和调整顺序流程未在参考图定义，仍为待确认，不视为业务验收通过' })
       }
+      if (scene.id === '16') {
+        const geometry = {}
+        const panels = { '.r-sidebar': [0, 0, 220, 1024], '.recall-queue': [230, 258, 325, 692],
+          '.recall-workspace': [565, 258, 624, 692], '.recall-workspace textarea': [593, 529, 568, 266],
+          '.recall-card-details': [1199, 258, 314, 692] }
+        for (const [selector, expected] of Object.entries(panels)) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '16面板或输入框几何不符：' + selector)
+        }
+        const heading = page.locator('.recall-workspace h2')
+        const lines = await heading.evaluate(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) {
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+          }
+          return [...rows.values()]
+        })
+        ensure(JSON.stringify(lines) === JSON.stringify(['缓存删除失败后，如何确认系统', '已经恢复？']), '16题面未保持参考两行')
+        const titles = await page.locator('.recall-queue-item strong').allTextContents()
+        ensure(JSON.stringify(titles) === JSON.stringify(['缓存一致性', '分布式事务', 'JVM 内存模型', '索引优化', '消息队列']), '16五张卡片或顺序不符')
+        ensure(await page.locator('.recall-queue-item[aria-current="true"] strong').textContent() === '缓存一致性', '16当前卡身份不符')
+        ensure(JSON.stringify(await page.locator('.recall-card-details strong').allTextContents()) === JSON.stringify(['11.13', '11.08 · 困难', '11.20']), '16固定复习日期不符')
+        ensure((await page.locator('.r-breadcrumb').textContent()).trim() === '回忆卡 / 今日队列', '16面包屑不符')
+        checks.push({ check: 'recall-five-cards-two-lines-fixed-dates-panel-geometry', scene: scene.id, geometry, lines, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        const draft = page.getByRole('textbox', { name: '回忆内容', exact: true })
+        ensure(await draft.inputValue() === '' && await draft.isEditable(), '16初始输入框应为空且可编辑')
+        await draft.fill('只检查当前页面的回忆输入，不提交业务数据。')
+        await page.getByRole('button', { name: '仅浏览', exact: true }).click()
+        ensure(await draft.getAttribute('readonly') !== null && !await draft.isEditable(), '16仅浏览未切换只读')
+        await page.getByRole('button', { name: '返回回忆', exact: true }).click()
+        ensure(await draft.isEditable() && await draft.inputValue() === '只检查当前页面的回忆输入，不提交业务数据。', '16切回丢失当前草稿')
+        const tabs = page.getByRole('navigation', { name: '回忆队列' })
+        await tabs.getByRole('button', { name: '到期', exact: true }).click()
+        ensure(await tabs.getByRole('button', { name: '到期', exact: true }).getAttribute('aria-pressed') === 'true', '16到期标签未切换')
+        await tabs.getByRole('button', { name: '新卡', exact: true }).click()
+        ensure(await page.locator('.recall-queue-item').count() === 0 && await page.locator('.recall-empty').textContent() === '新卡队列待确认', '16新卡应保留内容待确认边界')
+        await tabs.getByRole('button', { name: '全部', exact: true }).focus()
+        await page.keyboard.press('Enter')
+        ensure(await page.locator('.recall-queue-item').count() === 5 && await tabs.getByRole('button', { name: '全部', exact: true }).getAttribute('aria-pressed') === 'true', '16键盘未切回全部')
+        for (const [selector, message] of [
+          ['.recall-workspace footer .primary', '提示答案内容待确认'],
+          ['.recall-workspace footer .ts-button:last-child', '下一张回忆卡待确认'],
+          ['.recall-source button', '来源笔记入口待确认'],
+          ['.recall-next button', '记忆历史待确认'],
+          ['.recall-tools .ts-icon-button', '回忆设置待确认'],
+          ['.recall-queue-item:nth-of-type(2)', '分布式事务回忆卡正文待确认'],
+        ]) {
+          await page.locator(selector).click()
+          ensure(await page.getByRole('status').textContent() === message, '16待确认操作提示不符：' + selector)
+          ensure(await page.locator('.recall-workspace header span:last-child').textContent() === '第 4 / 12 张'
+            && await page.locator('.recall-queue-item[aria-current="true"] strong').textContent() === '缓存一致性'
+            && await draft.inputValue() === '只检查当前页面的回忆输入，不提交业务数据。', '16待确认操作不应伪造学习进度或修改草稿')
+        }
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '16固定态操作不应写入业务接口')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '16输入、浏览、队列及待确认操作后刷新未恢复参考初态')
+        await page.locator('.r-top-search').click()
+        await page.getByRole('dialog', { name: '全局命令面板' }).waitFor({ state: 'visible' })
+        ensure(new URL(page.url()).searchParams.get('scene') === '25', '16搜索入口未同步地址')
+        ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '16返回后加载失败')
+        await ready(); await assertFrame(captured, '16搜索返回后初态未恢复')
+        checks.push({ check: 'recall-draft-readonly-tabs-keyboard-pending-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
+          limitations: '到期标签仅检查状态切换；其他卡正文、答案、跳过、来源身份、记忆历史与设置仍待确认，不视为真实筛选或学习业务验收通过' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -790,7 +864,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

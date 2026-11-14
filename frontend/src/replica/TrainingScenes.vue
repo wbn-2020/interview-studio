@@ -337,29 +337,29 @@ watch(() => props.scene, () => {
 
     <template v-else-if="scene === 16">
       <div class="recall-horizon" aria-hidden="true"></div>
-      <div class="recall-title"><h1>回忆卡</h1><p><RIcon name="calendar" :size="27" />今日 4 / 12 · 预计 9 分钟</p></div>
+      <div class="recall-title"><h1>回忆卡</h1><p><RIcon name="calendar" variant="recall" :size="27" />今日 4 / 12 · 预计 9 分钟</p></div>
       <div class="recall-tools"><button type="button" class="ts-button" :aria-pressed="browseOnly" @click="browseOnly = !browseOnly"><RIcon name="eye" :size="26" />{{ browseOnly ? '返回回忆' : '仅浏览' }}</button><span></span><button type="button" class="ts-icon-button" aria-label="回忆设置" @click="pending('回忆设置')"><RIcon name="settings" :size="29" /></button></div>
       <aside class="ts-panel recall-queue">
-        <nav class="recall-tabs" aria-label="回忆队列"><button v-for="tab in ['全部', '到期', '新卡']" :key="tab" type="button" :class="{ active: recallTab === tab }" @click="recallTab = tab">{{ tab }}</button></nav>
+        <nav class="recall-tabs" aria-label="回忆队列"><button v-for="tab in ['全部', '到期', '新卡']" :key="tab" type="button" :class="{ active: recallTab === tab }" :aria-pressed="recallTab === tab" @click="recallTab = tab">{{ tab }}</button></nav>
         <template v-if="recallTab !== '新卡'">
-          <button v-for="(card, index) in recallCards" :key="card.title" type="button" class="recall-queue-item" :class="{ current: index === 0 }" @click="index === 0 ? undefined : pending(`${card.title}回忆卡正文`)">
+          <button v-for="(card, index) in recallCards" :key="card.title" type="button" class="recall-queue-item" :class="{ current: index === 0 }" :aria-current="index === 0 ? 'true' : undefined" @click="index === 0 ? undefined : pending(`${card.title}回忆卡正文`)">
             <i :class="card.color"></i><span><strong>{{ card.title }}</strong><small>今天 · 到期</small></span><span v-if="card.badge" class="recall-card-badge">{{ card.badge }}</span>
           </button>
         </template>
         <p v-else class="recall-empty">新卡队列待确认</p>
       </aside>
       <section class="ts-panel recall-workspace">
-        <header><span><RIcon name="file-text" :size="26" />缓存一致性 / 笔记 v3</span><span>第 4 / 12 张</span></header>
+        <header><span><RIcon name="file-text" variant="recall" :size="26" />缓存一致性 / 笔记 v3</span><span>第 4 / 12 张</span></header>
         <h2>缓存删除失败后，如何确认系统<br />已经恢复？</h2>
         <textarea v-model="recallDraft" :readonly="browseOnly" placeholder="先写下你的回忆，再提示答案" aria-label="回忆内容"></textarea>
         <footer><button type="button" class="ts-button primary" @click="pending('提示答案内容')"><RIcon name="lightbulb" :size="29" />提示答案</button><button type="button" class="ts-button" @click="pending('下一张回忆卡')"><RIcon name="skip-forward" :size="28" />跳过</button></footer>
       </section>
       <aside class="ts-panel recall-card-details">
         <h3>这张卡</h3>
-        <section class="recall-source"><div><RIcon name="file-text" :size="29" /><span>来源</span></div><button type="button" @click="pending('来源笔记入口')">缓存一致性 / 笔记 v3</button></section>
-        <section class="recall-schedule"><div><RIcon name="calendar" :size="29" /><span>计划复习<strong>11.13</strong></span></div><div><RIcon name="clock" :size="29" /><span>上次复习<strong>11.08 · <em>困难</em></strong></span></div></section>
-        <section class="recall-next"><div><RIcon name="refresh-cw" :size="29" /><span>下次复习<strong>11.20</strong></span></div><button type="button" class="ts-button" @click="pending('记忆历史')"><RIcon name="history" :size="23" />查看记忆历史</button></section>
-        <section class="recall-note"><div><RIcon name="file-text" :size="29" /><span>备注</span></div><p>自评不会成为能力结论。</p></section>
+        <section class="recall-source"><div><RIcon name="file-text" variant="recall" :size="29" /><span>来源</span></div><button type="button" @click="pending('来源笔记入口')">缓存一致性 / 笔记 v3</button></section>
+        <section class="recall-schedule"><div><RIcon name="calendar" variant="recall" :size="29" /><span>计划复习<strong>11.13</strong></span></div><div><RIcon name="clock" :size="29" /><span>上次复习<strong>11.08 · <em>困难</em></strong></span></div></section>
+        <section class="recall-next"><div><RIcon name="refresh-cw" variant="recall" :size="29" /><span>下次复习<strong>11.20</strong></span></div><button type="button" class="ts-button" @click="pending('记忆历史')"><RIcon name="history" variant="recall" :size="23" />查看记忆历史</button></section>
+        <section class="recall-note"><div><RIcon name="file-text" variant="recall" :size="29" /><span>备注</span></div><p>自评不会成为能力结论。</p></section>
       </aside>
     </template>
 
@@ -640,19 +640,20 @@ watch(() => props.scene, () => {
 .linked-question-lists button { width: 100%; height: 47px; display: flex; align-items: center; gap: 13px; font-size: 18px; white-space: nowrap; }
 .linked-question-lists button > .r-icon:last-child { margin-left: auto; }
 .route-reorder { width: 100%; height: 49px; margin-top: 8px; border-radius: 19px; padding: 5px; font-size: 20px; }
-.recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 245px; width: 1600px; height: 1120px; border-top: 1px solid #bd803b6b; border-radius: 50%; box-shadow: 0 -9px 30px #c7803120; }
+.recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 245px; width: 1600px; height: 1120px; border-top: 1px solid #9c6b445c; border-radius: 50%; box-shadow: 0 -8px 28px #c7803126, inset 0 14px 35px #c7803122; }
 .recall-title { position: absolute; top: 118px; left: 34px; }
 .recall-title h1 { font-size: 50px; }
-.recall-title p { display: flex; gap: 10px; align-items: center; margin-top: 3px; color: #bdb6ad; font-size: 24px; }
-.recall-tools { position: absolute; right: 30px; top: 160px; display: flex; align-items: center; gap: 15px; }
-.recall-tools > .ts-button { min-width: 145px; height: 54px; border-radius: 29px; font-size: 22px; }
+.recall-title p { display: flex; gap: 10px; align-items: center; margin-top: 6px; color: #bdb6ad; font-size: 24px; }
+.recall-tools { position: absolute; right: 34px; top: 160px; display: flex; align-items: center; gap: 14px; }
+.recall-tools > .ts-button { min-width: 145px; height: 54px; border-radius: 29px; font-size: 22px; background: linear-gradient(125deg, #211d1b, #191614) !important; border-color: #3c3530 !important; }
 .recall-tools > span { height: 44px; width: 1px; background: #5f5447; margin: 0 0 0 1px; }
 .recall-tools .ts-icon-button { margin-left: 0; }
-.recall-queue { left: 10px; top: 258px; width: 325px; height: 692px; padding: 20px 17px; }
+.recall-queue { left: 10px; top: 258px; width: 325px; height: 692px; padding: 20px 17px; background: radial-gradient(ellipse at 90% 40%, #36322f22, transparent 70%), linear-gradient(125deg, #191513, #191614 78%); border-color: #302a26; }
 .recall-tabs { display: flex; justify-content: space-between; gap: 18px; height: 61px; margin-bottom: 24px; }
 .recall-tabs button { position: relative; flex: 1; color: #9b958f; font-size: 22px; white-space: nowrap; }
+.recall-tabs button:first-child { transform: translateX(7px); }
 .recall-tabs .active { color: #fff2e0; font-weight: 600; }
-.recall-tabs .active::after { content: ''; position: absolute; bottom: 1px; left: 5px; right: 5px; height: 2px; background: #f1b773; box-shadow: 0 0 10px #ffb15977; }
+.recall-tabs .active::after { content: ''; position: absolute; bottom: 1px; left: 0; right: 0; height: 2px; background: #f1b773; box-shadow: 0 0 10px #ffb15977; }
 .recall-queue-item { position: relative; display: flex; width: 100%; gap: 16px; align-items: flex-start; height: 103px; margin-bottom: 1px; padding: 17px 13px !important; text-align: left; border: 1px solid transparent !important; border-radius: 13px; }
 .recall-queue-item.current { height: 103px; border-color: #c78c50 !important; background: linear-gradient(110deg, #84532f47, #32261c73) !important; box-shadow: inset 1px 0 2px #efb074, -4px 0 13px #ee9c4c33; margin-bottom: 5px; }
 .recall-queue-item i { width: 15px; height: 15px; border-radius: 50%; flex: none; margin-top: 10px; }
@@ -664,32 +665,32 @@ watch(() => props.scene, () => {
 .recall-card-badge { position: absolute; right: 10px; top: 20px; border-radius: 19px; padding: 1px 12px; line-height: 31px; font-size: 18px; background: #ffffff13; white-space: nowrap; }
 .recall-queue-item.current .recall-card-badge { background: #9f683cb5; color: #ffe0bf; }
 .recall-empty { color: #a69e93; padding: 24px; text-align: center; }
-.recall-workspace { left: 345px; top: 258px; width: 624px; height: 692px; padding: 33px 30px; }
-.recall-workspace header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 20px; border-bottom: 1px solid #ffffff0b; font-size: 22px; }
+.recall-workspace { left: 345px; top: 258px; width: 624px; height: 692px; padding: 33px 30px; background: linear-gradient(115deg, #1b1715, #181413 70%); border-color: #39312c; }
+.recall-workspace header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 22px; border-bottom: 1px solid #ffffff0b; font-size: 22px; }
 .recall-workspace header span:first-child { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
 .recall-workspace header span:last-child { color: #aaa297; white-space: nowrap; }
-.recall-workspace h2 { margin-top: 30px; font-size: 35px; line-height: 1.45; font-weight: 650; }
-.recall-workspace textarea { position: absolute; top: 270px; left: 28px; width: 568px; height: 267px; padding: 20px 18px; resize: none; border: 1px solid #5e5345; border-radius: 14px; background: linear-gradient(110deg, #211e1a45, #30292124); font-size: 26px; line-height: 1.65; color: #f3eadc; }
+.recall-workspace h2 { margin-top: 29px; margin-left: 6px; font-size: 36px; line-height: 1.45; font-weight: 500; }
+.recall-workspace textarea { position: absolute; top: 270px; left: 27px; width: 568px; height: 266px; padding: 20px 18px; resize: none; border: 2px solid #48413c; border-radius: 14px; background: linear-gradient(135deg, #1e1c1b, #1b1918); font-size: 26px; line-height: 1.65; color: #f3eadc; }
 .recall-workspace textarea::placeholder { color: #7c756a; }
-.recall-workspace footer { position: absolute; left: 30px; right: 30px; bottom: 28px; padding-top: 28px; border-top: 1px solid #ffffff0b; display: flex; gap: 15px; }
+.recall-workspace footer { position: absolute; left: 33px; right: 40px; bottom: 29px; padding-top: 28px; border-top: 1px solid #ffffff0b; display: flex; gap: 15px; }
 .recall-workspace footer .ts-button { height: 65px; border-radius: 36px; font-size: 24px; font-weight: 600; }
-.recall-workspace footer .primary { width: 307px; }
-.recall-workspace footer .ts-button:last-child { flex: 1; border: 2px solid #4d4439 !important; }
-.recall-card-details { left: 979px; top: 258px; width: 314px; height: 692px; padding: 31px 31px; }
-.recall-card-details h3 { font-size: 25px; }
+.recall-workspace footer .primary { width: 305px; }
+.recall-workspace footer .ts-button:last-child { flex: 1; border: 2px solid #4c4641 !important; background: linear-gradient(125deg, #24211f, #1c1917) !important; }
+.recall-card-details { left: 979px; top: 258px; width: 314px; height: 692px; padding: 31px 31px; background: linear-gradient(125deg, #191614, #181413 78%); border-color: #302a26; }
+.recall-card-details h3 { font-size: 25px; font-weight: 500; }
 .recall-card-details section > div { display: flex; gap: 17px; color: #ada59a; align-items: flex-start; }
-.recall-card-details section strong { display: block; font-size: 23px; line-height: 1.7; color: #f3eee7; font-weight: 500; }
+.recall-card-details section strong { display: block; font-size: 23px; line-height: 1.5; color: #f3eee7; font-weight: 400; }
 .recall-card-details section em { color: #e47c3c; font-style: normal; }
 .recall-card-details section > div > .r-icon { flex: none; margin-top: 3px; }
 .recall-card-details section > div > span { font-size: 22px; }
-.recall-source { margin-top: 23px; padding-bottom: 25px; border-bottom: 1px solid #ffffff0b; }
+.recall-source { margin-top: 23px; padding-bottom: 28px; border-bottom: 1px solid #ffffff0b; }
 .recall-source button { margin-top: 8px; white-space: nowrap; font-size: 22px; text-align: left; }
-.recall-schedule { padding: 27px 0 17px; border-bottom: 1px solid #ffffff0b; }
-.recall-schedule > div + div { margin-top: 12px; }
-.recall-next { margin-top: 14px; }
+.recall-schedule { padding: 29px 0 14px; border-bottom: 1px solid #ffffff0b; }
+.recall-schedule > div + div { margin-top: 16px; }
+.recall-next { margin-top: 18px; }
 .recall-next .ts-button { width: 100%; font-size: 20px; gap: 8px; color: #bfb6a9; border-radius: 28px; margin-top: 14px; height: 52px; padding: 5px; }
 .recall-note { margin-top: 27px; }
-.recall-note p { margin-top: 13px; color: #bfb6a9; font-size: 21px; white-space: nowrap; }
+.recall-note p { margin-top: 9px; color: #bfb6a9; font-size: 21px; white-space: nowrap; }
 .training-frame { position: absolute; top: 24px; left: 0; width: 1292px; height: 926px; border: 1px solid #514338; border-radius: 23px; background: linear-gradient(120deg, #201b1621, #17140f44); }
 .writing-header { position: absolute; left: 0; top: 24px; width: 1292px; height: 79px; display: flex; align-items: center; border-bottom: 1px solid #ffffff03; background: linear-gradient(110deg, #25211c5e, #221d176b); border-radius: 23px 23px 0 0; font-size: 18px; white-space: nowrap; }
 .writing-back { position: absolute; left: 8px; top: 20px; }
