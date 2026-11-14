@@ -581,6 +581,117 @@ try {
         checks.push({ check: 'report-expand-keyboard-pending-boundaries-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
           limitations: '只验证固定参考态；详细观察、AI重试、逐题报告和导出仍待确认。导航不代表正式训练或复盘业务验收，不创建或保存示例数据' })
       }
+      if (scene.id === '20') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [0, 10, 216, 996], '.design-canvas': [234, 259, 866, 699],
+          '.design-details': [1111, 253, 402, 705], '.design-actions': [1143, 107, 365, 57],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '20面板或操作组几何不符：' + selector)
+        }
+        const initialNodes = await page.locator('.architecture-node').evaluateAll(nodes => nodes.map(node => ({
+          id: node.getAttribute('data-node'), label: node.querySelector('text').textContent,
+          transform: node.getAttribute('transform'), width: node.querySelector('rect').getAttribute('width'),
+          height: node.querySelector('rect').getAttribute('height'),
+        })))
+        ensure(JSON.stringify(initialNodes) === JSON.stringify([
+          { id: 'entry', label: '入口', transform: 'translate(137, 62)', width: '173', height: '69' },
+          { id: 'inventory', label: '库存服务', transform: 'translate(121, 225)', width: '177', height: '69' },
+          { id: 'order', label: '订单服务', transform: 'translate(355, 225)', width: '176', height: '69' },
+          { id: 'reward', label: '奖励服务', transform: 'translate(589, 225)', width: '171', height: '69' },
+          { id: 'config', label: '配置中心', transform: 'translate(46, 400)', width: '171', height: '69' },
+          { id: 'queue', label: '消息队列', transform: 'translate(355, 400)', width: '176', height: '69' },
+          { id: 'reconcile', label: '对账任务', transform: 'translate(355, 549)', width: '176', height: '69' },
+          { id: 'monitor', label: '监控', transform: 'translate(629, 549)', width: '150', height: '69' },
+        ]), '20节点文字、坐标或尺寸不符')
+        const descriptionLines = await page.locator('.design-description p').evaluate(node => {
+          const rows = new Map(), text = node.firstChild
+          for (let index = 0; index < text.textContent.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const y = range.getBoundingClientRect().y
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+          }
+          return [...rows.values()]
+        })
+        ensure(JSON.stringify(descriptionLines) === JSON.stringify([
+          '设计一个秒杀发奖系统的整体架构，需考虑', '高并发下的发奖一致性、容错恢复以及可观',
+          '测性。请画出核心服务、数据流和关键异步', '链路，并说明设计思路。',
+        ]), '20题目说明换行与参考不符')
+        ensure(JSON.stringify(await page.locator('.design-constraints li').allTextContents())
+          === JSON.stringify(['峰值 5k QPS', '不重复发奖', '允许最终一致', '必须可验证恢复']), '20约束文字或顺序不符')
+        ensure(await page.locator('.architecture-links > path').count() === 7
+          && await page.locator('.architecture-svg > path[stroke-dasharray]').count() === 2
+          && await page.locator('.architecture-node.selected').count() === 0, '20连线数或选中初态不符')
+        ensure(await page.locator('.design-title > span').textContent() === '图 v2 · 未提交'
+          && await page.locator('.r-top-status .r-icon-btn').count() === 2, '20版本状态或双通知按钮不符')
+        checks.push({ check: 'design-eight-nodes-seven-links-four-constraints-fixed-geometry-text-lines', scene: scene.id,
+          geometry, nodes: initialNodes, descriptionLines, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        const entryNode = page.locator('[data-node="entry"]')
+        const entryLink = page.locator('.architecture-links > path').first()
+        const beforeEntryLink = await entryLink.getAttribute('d')
+        await entryNode.focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowDown')
+        ensure(await entryNode.getAttribute('transform') === 'translate(145, 70)'
+          && await entryLink.getAttribute('d') !== beforeEntryLink, '20方向键移动或连线跟随失败')
+        const queue = page.locator('[data-node="queue"]'), box = await queue.boundingBox()
+        ensure(box, '20消息队列节点不可见')
+        const beforeQueueLink = await page.locator('.architecture-links > path').nth(3).getAttribute('d')
+        await page.mouse.move(box.x + 80, box.y + 34); await page.mouse.down()
+        await page.mouse.move(box.x + 112, box.y + 50, { steps: 4 }); await page.mouse.up()
+        const movedQueue = await queue.evaluate(node => {
+          const matrix = node.transform.baseVal.consolidate().matrix
+          return [matrix.e, matrix.f]
+        })
+        ensure(Math.abs(movedQueue[0] - 387) < .05 && Math.abs(movedQueue[1] - 416) < .05
+          && await page.locator('.architecture-links > path').nth(3).getAttribute('d') !== beforeQueueLink,
+          '20拖动坐标转换或连线跟随失败')
+        await page.getByRole('button', { name: '保存修改后的架构图和说明', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '图与说明已在本次页面内保留；持久保存待确认'
+          && await page.getByRole('button', { name: '保存草稿', exact: true }).isVisible(), '20保存应明确仅本次页面保留')
+        const mainTabs = page.getByRole('navigation', { name: '系统设计视图', exact: true })
+        const asideTabs = page.getByRole('navigation', { name: '设计条件视图', exact: true })
+        await mainTabs.getByRole('button', { name: '说明', exact: true }).click()
+        await page.getByRole('textbox', { name: '系统设计说明', exact: true }).fill('补偿链路需验证恢复结果。')
+        await asideTabs.getByRole('button', { name: '说明', exact: true }).click()
+        ensure(await page.getByRole('textbox', { name: '图文说明', exact: true }).inputValue() === '补偿链路需验证恢复结果。', '20两处说明未共享页面草稿')
+        await page.getByRole('textbox', { name: '图文说明', exact: true }).fill('图与说明仅在本次页面保留。')
+        ensure(await page.getByRole('textbox', { name: '系统设计说明', exact: true }).inputValue() === '图与说明仅在本次页面保留。', '20说明反向编辑未同步')
+        await mainTabs.getByRole('button', { name: '版本', exact: true }).click()
+        await page.locator('.design-version-list .design-version').click()
+        ensure(await page.getByRole('status').textContent() === '图 v2 版本详情待确认', '20版本详情不应伪造')
+        await asideTabs.getByRole('button', { name: '版本', exact: true }).click()
+        await page.locator('.design-aside-note .design-version').click()
+        ensure(await page.getByRole('status').textContent() === '版本记录待确认', '20版本记录不应伪造')
+        await asideTabs.getByRole('button', { name: '约束', exact: true }).click()
+        await page.locator('.design-fixed').click()
+        ensure(await page.getByRole('status').textContent() === '图与说明固定规则待确认', '20固定规则边界不符')
+        await page.locator('.design-actions .primary').click()
+        ensure(await page.getByRole('status').textContent() === '图文答案提交待确认', '20提交不能伪装成真实业务完成')
+        for (const [title, message] of [['通知', '暂无新通知'], ['提醒', '暂无新提醒']]) {
+          await page.getByTitle(title, { exact: true }).click()
+          ensure(await page.getByRole('status').textContent() === message, '20通知按钮不可操作')
+        }
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '20拖动、键盘、说明或页签操作后刷新未恢复固定参考初态')
+        ensure(JSON.stringify(await page.locator('.architecture-node').evaluateAll(nodes => nodes.map(node => node.getAttribute('transform'))))
+          === JSON.stringify(initialNodes.map(node => node.transform)), '20刷新后节点漂移')
+        for (const [selector, target] of [['.r-sidebar > a', '02'], ['.r-top-search', '25']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '20导航未同步地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '20导航返回加载失败'); await ready()
+        }
+        await assertFrame(captured, '20导航返回后参考初态不符')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '20固定参考态不应写入业务接口')
+        checks.push({ check: 'design-drag-keyboard-linked-paths-tabs-draft-pending-navigation-refresh', scene: scene.id,
+          movedQueue, businessWrites: writes, passed: true,
+          limitations: '仅固定参考状态；说明与图的持久保存、图文答案提交及版本详情待确认，未写入正式业务数据' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()

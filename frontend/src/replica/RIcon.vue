@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -261,12 +261,31 @@ const reportPaths: Record<string, string[]> = {
   robot: ['M7 6h10a4 4 0 0 1 4 4v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8a4 4 0 0 1 4-4Z', 'M12 2v4M1 12v5M23 12v5M8 12h.01M16 12h.01M9 17h6'],
   'file-text': notePaths['file-text']!,
 }
+// 架构图的实心服务节点与侧栏线性图标分别保留，避免共用轮廓抹平参考差异。
+const designPaths: Record<string, string[]> = {
+  clipboard: ['M8 3H5a2 2 0 0 0-2 2v16h17V5a2 2 0 0 0-2-2h-3', 'M8 2h7v4H8ZM7 9h7M7 13h.01M10 13h7M7 17h5M16 19h2'],
+  zap: ['M13 2 5 13h6l-1 9 9-13h-6Z'],
+  'chart-no-axes-column': ['M3 13h4v9H3ZM10 8h4v14h-4ZM17 3h4v19h-4Z'],
+  'chart-no-axes-combined': ['M3 21h18M3 15l5-6 5 3 8-9M16 3h5v5'],
+  'credit-card': ['M5 2h14a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z', 'M5 7h14M5 11h8M6 17h.01M10 17h.01M14 17h.01'],
+  sparkles: ['M12 2c1.5 6 3 8.5 9 10-6 1.5-7.5 4-9 10-1.5-6-3-8.5-9-10 6-1.5 7.5-4 9-10Z', 'M4 3v5M1.5 5.5h5M19 18v4M17 20h4'],
+  bell: ['M12 2a2 2 0 0 1 2 1 6 6 0 0 1 4 6c0 6 2 6 2 9H4c0-3 2-3 2-9a6 6 0 0 1 4-6 2 2 0 0 1 2-1Z', 'M10 21h4'],
+  user: ['M17 6a5 5 0 1 1-10 0 5 5 0 0 1 10 0ZM2 23c0-11 20-11 20 0Z'],
+  database: ['M22 4.6c0 5.1-20 5.1-20 0s20-5.1 20 0ZM2 8.5c5 3.1 15 3.1 20 0v4.3c0 5.1-20 5.1-20 0ZM2 16.4c5 3.1 15 3.1 20 0v3c0 5.1-20 5.1-20 0Z'],
+  'shopping-cart': ['M6 6h16l-2.5 9h-11ZM11 21a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0ZM20.5 21a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0Z', 'M1 3h3l4 14h12'],
+  gift: ['M2 8h8v5H2ZM14 8h8v5h-8ZM4 15h6v8H4ZM14 15h6v8h-6Z', 'M12 8v15M12 8C1 8 6-5 12 8c6-13 11 0 0 0Z'],
+  'bar-chart-3': ['M1 6h2v13H1ZM6 6h2v13H6ZM11 6h2v13h-2ZM16 6h3v13h-3ZM22 6h1v13h-1Z'],
+  'calendar-check': ['M5 4h14a2 2 0 0 1 2 2v15H3V6a2 2 0 0 1 2-2Z', 'M7 1v6M17 1v6M3 9h18M8 15l3 3 6-7'],
+  monitor: ['M3 1h18a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2h-7v2h4v2H6v-2h4v-2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2ZM5 13l5-6 4 4 4-6 2 2-6 8-4-4-3 4Z'],
+  'file-text': ['M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z', 'M14 2v6h5M8 12h7M8 17h4'],
+}
+const designFilled = new Set(['user', 'database', 'shopping-cart', 'gift', 'bar-chart-3', 'monitor'])
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
-const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : undefined)
+const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
-const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
+const fillOpacity = computed(() => props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
     : props.variant === 'route' ? ({ play: .65, 'book-open': .5, 'chart-no-axes-combined': .65 } as Record<string, number>)[props.name] ?? 0
     : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9
@@ -274,6 +293,6 @@ const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[pr
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="outlineWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
-    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'detail' && name === 'shield' ? 'evenodd' : undefined" />
+    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="(variant === 'detail' && name === 'shield') || (variant === 'design' && name === 'monitor') ? 'evenodd' : undefined" />
   </svg>
 </template>
