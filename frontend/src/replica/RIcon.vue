@@ -185,10 +185,18 @@ const detailPaths: Record<string, string[]> = {
   'refresh-cw': ['M3 10a9 9 0 0 1 15-6l3 3M21 2v6h-6M21 14A9 9 0 0 1 6 20l-3-3M3 22v-6h6'],
   'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M2 8h20M6 13h5M16 12v5h3'],
   link: ['m9.5 14.5 5-5', 'm10.5 7.5 2-2a4 4 0 0 1 6 6l-2 2M13.5 16.5l-2 2a4 4 0 0 1-6-6l2-2'],
-  shield: ['M12 2 3 6v7c0 5 9 9 9 9s9-4 9-9V6ZM12 6l5 2v5c0 2-3 5-5 6-2-1-5-4-5-6V8Z'],
+  shield: ['M12 2.3c-2.3 2-5 2.9-8 3.3v6c0 5.2 3.2 8.2 8 10.2 4.8-2 8-5 8-10.2v-6c-3-.4-5.7-1.3-8-3.3ZM12 5.6c1.5 1 3.2 1.8 5 2.2v3.8c0 3.3-1.9 5.4-5 7-3.1-1.6-5-3.7-5-7V7.8c1.8-.4 3.5-1.2 5-2.2Z'],
+  pencil: ['M3 17.5 16.8 3.7l3.5 3.5L6.5 21H2Z', 'm16.8 3.7 1.5-1.5a1.3 1.3 0 0 1 1.8 0l1.7 1.7a1.3 1.3 0 0 1 0 1.8l-1.5 1.5M3 17.5l3.5 3.5'],
+  'file-text': ['M14 2H5v20h14V7Z', 'M14 2v6h5M8 12h8M8 16h8'],
+  'message-square': ['M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-7l-6 4v-4H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z', 'M7 11h.01M12 11h.01M17 11h.01'],
+  'circle-check': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm6 12 4 4 8-9'],
+  list: ['M3 5h.01M3 12h.01M3 19h.01', 'M9 5h12M9 12h12M9 19h12'],
   bell: notePaths.bell!,
 }
-const detailFills: Record<string, number> = { layers: .98, play: .94, 'chart-no-axes-column': .9, 'book-open': .65, shield: .98 }
+const detailFills: Record<string, number> = { layers: .98, play: .4, 'chart-no-axes-column': .9, 'book-open': .65, shield: .98, pencil: .95, 'file-text': .85, 'message-square': .95 }
+// 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
+const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
+const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
 const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
@@ -196,7 +204,7 @@ const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[pr
     : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
 </script>
 <template>
-  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="strokeWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
+  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="outlineWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
     <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'detail' && name === 'shield' ? 'evenodd' : undefined" />
   </svg>
 </template>

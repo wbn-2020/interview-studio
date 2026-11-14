@@ -115,9 +115,9 @@ function endDrag(event: PointerEvent) {
   </section>
 
   <section v-else-if="scene === 12" class="knowledge-detail-page">
-    <header class="kd-heading"><div class="kd-symbol"><RIcon name="layers" variant="detail" :size="52" /></div><div><h1>缓存一致性</h1><div class="r-row"><span class="r-pill">概念 v4</span><span class="r-pill">分布式系统</span><span class="kd-confirmed"><RIcon name="check" :size="21" />8 条已确认关系</span></div></div></header><div class="kd-actions r-row"><button class="r-btn" @click="emit('navigate', 11)"><RIcon name="pencil" />编辑知识</button><button class="r-btn r-primary" @click="emit('navigate', 17)"><RIcon name="play" variant="detail" />练这一点</button></div>
-    <div class="kd-left"><section class="r-panel kd-definition"><h3 class="r-row"><RIcon name="book-open" />定义</h3><p>缓存一致性是指在分布式系统中，如何保证多个节点（缓存、数据库、<br>服务）看到的数据保持一致，避免出现脏数据、旧数据或不一致的情况。<br>常见的策略包括：超时失效、主动更新、删除重建，以及基于版本号的<br>一致性控制。</p></section><section class="r-panel kd-main-note"><h3 class="r-row"><RIcon name="square-pen" />主笔记</h3><p>缓存一致性问题通常出现在多级缓存或分布式部署场景中，需要结合业<br>务场景选择合适的策略......</p><button class="r-pill" @click="emit('navigate', 11)">打开完整笔记 ↗</button></section><section class="r-panel kd-path"><h3 class="r-row"><RIcon name="link" />关系路径</h3><div class="r-row"><button class="r-pill" @click="emit('navigate', 9)">缓存一致性</button><RIcon name="arrow-right" /><button class="r-pill" @click="emit('navigate', 9)">重试与补偿</button><RIcon name="arrow-right" /><button class="r-pill" @click="emit('navigate', 9)">幂等</button></div></section><section class="r-panel kd-practice"><h3 class="r-row"><RIcon name="list" />关联练习</h3><button v-for="(row, i) in [['缓存一致性有哪些常见策略?', '未作答'], ['如何保证分布式环境下的数据一致性?', '已提交'], ['缓存击穿的解决方案有哪些?', '待复练']]" :key="row[0]" class="r-between" @click="emit('navigate', i === 1 ? 21 : 17)"><span class="r-row"><RIcon :name="i === 1 ? 'circle-check' : 'circle'" :size="23" :class="i === 1 ? 'r-success' : 'r-muted'" />{{ row[0] }}</span><span class="r-pill" :class="i === 1 ? 'teal' : i === 2 ? 'amber' : ''">{{ row[1] }}</span></button></section><section class="r-panel kd-recent"><h3 class="r-row"><RIcon name="clock" />最近证据</h3><button class="r-between" @click="emit('navigate', 22)"><span>2025-11-10</span><span>独立复练 · 先确认删除结果，再判断是否需要补偿</span><RIcon name="chevron-right" /></button></section></div>
-    <aside class="r-panel kd-evidence"><h2 class="r-row"><RIcon name="shield" variant="detail" :size="29" />证据与出处</h2><div class="kd-evidence-tabs"><button v-for="(t, i) in ['全部 6', '回答 2', '事实 2', '回忆 2']" :key="t" :class="{ selected: evidence === i }" @click="evidence = i">{{ t }}</button></div><div v-for="row in evidenceRows" :key="row.scene" class="kd-evidence-row"><span class="evidence-icon" :class="row.colour"><RIcon :name="row.icon" :size="24" /></span><div><h3>{{ row.title }}</h3><p>{{ row.excerpt }}</p><span class="r-pill r-muted">{{ row.version }}</span><span v-if="row.colour === 'amber'" class="r-pill amber">不确定性</span></div><button class="r-pill" @click="emit('navigate', row.scene)">查看原文 ↗</button></div><footer class="r-row r-muted"><RIcon name="info" :size="21" />证据不构成掌握分。</footer></aside>
+    <header class="kd-heading"><div class="kd-symbol"><RIcon name="layers" variant="detail" :size="52" /></div><div><h1>缓存一致性</h1><div class="r-row"><span class="r-pill">概念 v4</span><span class="r-pill">分布式系统</span><span class="kd-confirmed"><RIcon name="check" :size="21" />8 条已确认关系</span></div></div></header><div class="kd-actions r-row"><button class="r-btn" @click="emit('navigate', 11)"><RIcon name="pencil" variant="detail" />编辑知识</button><button class="r-btn r-primary" @click="emit('navigate', 17)"><RIcon name="play" variant="detail" />练这一点</button></div>
+    <div class="kd-left"><section class="r-panel kd-definition"><h3 class="r-row"><RIcon name="book-open" :stroke-width="2.1" />定义</h3><p tabindex="0" aria-label="定义正文">缓存一致性是指在分布式系统中，如何保证多个节点（缓存、数据库、<br>服务）看到的数据保持一致，避免出现脏数据、旧数据或不一致的情况。<br>常见的策略包括：超时失效、主动更新、删除重建，以及基于版本号的<br>一致性控制。</p></section><section class="r-panel kd-main-note"><h3 class="r-row"><RIcon name="square-pen" :stroke-width="2.1" />主笔记</h3><p>缓存一致性问题通常出现在多级缓存或分布式部署场景中，需要结合业<br>务场景选择合适的策略......</p><button class="r-pill" @click="emit('navigate', 11)">打开完整笔记 ↗</button></section><section class="r-panel kd-path"><h3 class="r-row"><RIcon name="link" variant="detail" :stroke-width="2.4" />关系路径</h3><div class="r-row"><button class="r-pill" @click="emit('navigate', 9)">缓存一致性</button><RIcon name="arrow-right" /><button class="r-pill" @click="emit('navigate', 9)">重试与补偿</button><RIcon name="arrow-right" /><button class="r-pill" @click="emit('navigate', 9)">幂等</button></div></section><section class="r-panel kd-practice"><h3 class="r-row"><RIcon name="list" variant="detail" :stroke-width="2.4" />关联练习</h3><button v-for="(row, i) in [['缓存一致性有哪些常见策略?', '未作答'], ['如何保证分布式环境下的数据一致性?', '已提交'], ['缓存击穿的解决方案有哪些?', '待复练']]" :key="row[0]" class="r-between" @click="emit('navigate', i === 1 ? 21 : 17)"><span class="r-row"><RIcon :name="i === 1 ? 'circle-check' : 'circle'" variant="detail" :size="23" :class="i === 1 ? 'r-success' : 'r-muted'" />{{ row[0] }}</span><span class="r-pill" :class="i === 1 ? 'teal' : i === 2 ? 'amber' : ''">{{ row[1] }}</span></button></section><section class="r-panel kd-recent"><h3 class="r-row"><RIcon name="clock" :stroke-width="2.1" />最近证据</h3><button class="r-between" @click="emit('navigate', 22)"><span>2025-11-10</span><span>独立复练 · 先确认删除结果，再判断是否需要补偿</span><RIcon name="chevron-right" /></button></section></div>
+    <aside class="r-panel kd-evidence"><h2 class="r-row"><RIcon name="shield" variant="detail" :size="29" />证据与出处</h2><div class="kd-evidence-tabs"><button v-for="(t, i) in [['全部', 6], ['回答', 2], ['事实', 2], ['回忆', 2]]" :key="i" :class="{ selected: evidence === i }" @click="evidence = i">{{ t[0] }} <span class="kd-evidence-count">{{ t[1] }}</span></button></div><div v-for="row in evidenceRows" :key="row.scene" class="kd-evidence-row"><span class="evidence-icon" :class="row.colour"><RIcon :name="row.icon" variant="detail" :size="24" /></span><div><h3>{{ row.title }}</h3><p>{{ row.excerpt }}</p><span class="r-pill r-muted">{{ row.version }}</span><span v-if="row.colour === 'amber'" class="r-pill amber">不确定性</span></div><button class="r-pill" @click="emit('navigate', row.scene)">查看原文 ↗</button></div><footer class="r-row r-muted"><RIcon name="info" :size="21" />证据不构成掌握分。</footer></aside>
   </section>
 
   <section v-else-if="scene === 13" class="knowledge-board-page">
@@ -204,38 +204,67 @@ function endDrag(event: PointerEvent) {
 .kl-backlinks { font-size: 19px; }
 .kl-detail > .r-btn { font-size: 20px; margin-top: 37px; }
 .kd-heading { top: 107px; left: 33px; gap: 22px; }
-.kd-heading h1 { font-size: 40px; line-height: 56px; margin-bottom: 12px; }
+.kd-heading h1 { position: relative; left: 3px; top: -4px; font-size: 39px; line-height: 56px; margin-bottom: 12px; }
+.kd-heading > div > .r-row { position: relative; left: 1px; top: -2px; gap: 11px; }
+.kd-heading .r-pill { height: 32px; padding: 0; }
+.kd-heading .r-pill:first-child { width: 90px; }
+.kd-heading .r-pill:nth-child(2) { width: 112px; }
 .kd-symbol { height: 91px; }
 .kd-confirmed { display: inline-flex; align-items: center; gap: 8px; }
 .kd-confirmed svg { padding: 3px; border-radius: 50%; background: #736d5c; color: #f1eddf; }
 .kd-actions { top: 129px; right: 27px; gap: 15px; }
 .kd-actions .r-btn { width: 156px; min-height: 54px; font-size: 20px; padding-inline: 18px !important; background: linear-gradient(140deg, #2b2723, #211e1a) !important; border-color: #3a322b !important; }
 .kd-actions .r-btn.r-primary { width: 155px; color: #fff1e2; font-weight: 600; background: linear-gradient(135deg, #e2b082, #bd855b 72%, #976440) !important; border-color: #dba576 !important; }
+.kd-actions .r-primary :deep(path) { fill-opacity: 1; }
 .kd-left > section { padding-inline: 23px; background: linear-gradient(180deg, #1c1916, #1b1815); }
 .kd-left .kd-main-note { background: linear-gradient(180deg, #1c1916, #1c1916); }
-.kd-left h3 { font-size: 21px; line-height: 32px; }
-.kd-definition h3 { gap: 10px; }
+.kd-left h3 { font-size: 20px; line-height: 32px; }
+.kd-left .kd-definition { height: 218px; margin-bottom: 13px; padding-top: 14px; }
+.kd-definition h3 { gap: 15px; }
 .kd-left p { font-size: 19.5px; line-height: 35px; margin-top: 7px; }
+.kd-definition p { height: 146px; padding: 0 10px 8px 0; overflow-y: scroll; overscroll-behavior: contain; }
+.kd-definition p::-webkit-scrollbar { width: 5px; }
+.kd-definition p::-webkit-scrollbar-track { background: transparent; }
+.kd-definition p::-webkit-scrollbar-thumb { border-radius: 5px; background: #82776b66; }
+.kd-left .kd-main-note { height: 138px; margin-bottom: 12px; }
 .kd-path { background: linear-gradient(180deg, #191714, #1b1815) !important; }
 .kd-path > h3.r-row { margin-top: 0; gap: 10px; }
-.kd-path .r-pill { font-size: 18px; }
+.kd-path > div.r-row { margin-top: 5px; margin-left: -2px; }
+.kd-path .r-pill { height: 39px; padding: 0; border: 1px solid #51473a33; font-size: 18px; font-weight: 600; background: linear-gradient(180deg, #2e2a25, #25221f); }
+.kd-path .r-pill:nth-of-type(1) { width: 133px; }
+.kd-path .r-pill:nth-of-type(2) { width: 136px; }
+.kd-path .r-pill:nth-of-type(3) { width: 91px; }
+.kd-left .kd-practice { height: 168px; }
 .kd-practice h3.r-row { gap: 10px; }
 .kd-practice button { font-size: 19px; }
-.kd-practice .r-pill { font-size: 17px; }
+.kd-practice .r-pill { height: 32px; width: 82px; padding: 0; border: 1px solid #6b62512b; font-size: 17px; background: linear-gradient(150deg, #39332c, #28231e); }
+.kd-practice .r-pill.teal { color: #72dab0; border-color: #49765555; background: linear-gradient(150deg, #233f32, #142f24); }
+.kd-practice .r-pill.amber { border-color: #a3793c55; background: linear-gradient(150deg, #46331e, #2d2519); }
+.kd-practice .r-success { border-radius: 50%; background: linear-gradient(140deg, #4ca889, #1d5845); color: #398468; }
+.kd-practice .r-success :deep(path:last-child) { stroke: #c0f0d8; stroke-width: 2.2; }
 .kd-recent button { justify-content: flex-start; gap: 40px; font-size: 18px; }
 .kd-recent button span:first-child { font-size: 20px; }
 .kd-recent button > svg { margin-left: auto; flex: none; }
-.kd-evidence { padding-inline: 23px; background: linear-gradient(180deg, #201b17, #1a1715 75%); }
-.kd-evidence h2 { font-size: 22px; line-height: 34px; }
+.kd-evidence { padding-inline: 23px; background: linear-gradient(130deg, #1c1916, #1b1815 70%, #1a1715); }
+.kd-evidence h2 { font-size: 21.5px; font-weight: 500; -webkit-text-stroke: .15px currentColor; line-height: 34px; gap: 11px; }
 .kd-evidence-tabs { gap: 12px; margin-top: 20px; margin-bottom: 10px; }
-.kd-evidence-tabs button { width: 100px; height: 42px; padding-inline: 12px !important; }
-.kd-evidence-row { gap: 18px; min-height: 152px; padding-bottom: 29px; }
+.kd-evidence-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100px; height: 42px; padding-inline: 12px !important; border-color: #4f413033 !important; background: linear-gradient(130deg, #1e1a16, #15120f) !important; }
+.kd-evidence-tabs button.selected { background: radial-gradient(ellipse at 65% 130%, #dfae83, transparent 70%), linear-gradient(110deg, #89582f, #a26c45) !important; box-shadow: inset 0 1px 8px #f7c49299, 0 0 15px #e49c5533; border-color: #d49c6c !important; font-weight: 600; }
+.kd-evidence-tabs .selected .kd-evidence-count { display: grid; place-items: center; width: 24px; height: 24px; margin-right: -7px; margin-left: -3px; border-radius: 50%; background: #56361c55; }
+.kd-evidence-row { gap: 19px; min-height: 152px; padding-bottom: 29px; }
 .kd-evidence-row + .kd-evidence-row { min-height: 148px; padding-bottom: 25px; }
-.evidence-icon { width: 47px; }
-.kd-evidence-row h3 { font-size: 19px; line-height: 29px; }
-.kd-evidence-row p { font-size: 18px; line-height: 30px; }
-.kd-evidence-row > button { top: 25px; }
-.kd-evidence footer { bottom: 29px; }
+.evidence-icon { width: 47px; margin-left: 1px; background: linear-gradient(135deg, #83b5aa, #548783); box-shadow: inset 1px 1px 2px #d1f0df33; }
+.evidence-icon.blue { background: linear-gradient(135deg, #82a5b2, #476b82); }
+.evidence-icon.amber { background: linear-gradient(135deg, #ce965e, #a15f2e); }
+.evidence-icon :deep(path:not(:first-child)) { stroke: #668f8b; stroke-width: 1.4; }
+.evidence-icon.blue :deep(path:not(:first-child)) { stroke: #5c8195; }
+.evidence-icon.amber :deep(path:last-child) { stroke: #ac743f; stroke-width: 2.3; }
+.kd-evidence-row h3 { font-size: 19px; line-height: 29px; margin-top: 1px; }
+.kd-evidence-row p { font-size: 18px; line-height: 30px; margin-top: 3px; }
+.kd-evidence-row div > .r-pill { height: 31px; margin-top: 10px; border: 1px solid #ffffff04; }
+.kd-evidence-row > button { top: 22px; height: 41px; }
+.kd-evidence-row + .kd-evidence-row > button { top: 23px; }
+.kd-evidence footer { bottom: 26px; }
 /* 白板提示须保留参考两行；控件行高固定，避免字号调整挤动下方设置。 */
 .kb-heading p { margin-top: 6px; font-size: 18.5px; }
 .kb-group-label { top: 131px; font-size: 20.5px; line-height: 33px; }

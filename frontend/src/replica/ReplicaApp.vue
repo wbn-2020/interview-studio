@@ -241,8 +241,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-11 .r-top-status .r-avatar { width: 42px; height: 46px; font-size: 22px; }
 .r-scene-11 .r-saved { position: absolute; left: 930px; font-size: 16px; color: #bdb5ac; gap: 12px; }
 .r-scene-11 .r-saved svg { width: 23px; height: 24px; background: #64bf8c; fill: #64bf8c; }
-.r-scene-12 { background: #0d0b0a; will-change: transform; }
-.r-scene-12 .r-sidebar { width: 222px; border-color: #30282166; background: radial-gradient(ellipse 150px 240px at 5% 0, #79533322, transparent), #171412; }
+.r-scene-12 { background: radial-gradient(ellipse 250px 650px at 12% 55%, #2c241a33, transparent), linear-gradient(115deg, #0e0c0b, #0b0907 72%, #0e0c0a); will-change: transform; }
+.r-scene-12 .r-sidebar { width: 222px; border-color: #30282166; background: radial-gradient(ellipse 150px 240px at 5% 0, #79533322, transparent), linear-gradient(160deg, #151310, #161412 60%, #161311); }
 .r-scene-12 .r-sidebar :deep(.r-brand) { left: 26px; top: 44px; }
 .r-scene-12 .r-sidebar :deep(.r-emblem) { width: 49px; height: 50px; color: #d89c69; }
 .r-scene-12 .r-sidebar :deep(.r-brand-word) { font-size: 26px; line-height: 31px; }

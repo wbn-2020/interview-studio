@@ -350,6 +350,31 @@ try {
         ensure(detailChrome.primaryColor === 'rgb(255, 241, 226)' && detailChrome.primaryFilled && detailChrome.symbolFilled && detailChrome.confirmed === 21, '12实心图标、白色按钮或确认标记不符')
         ensure(detailChrome.tabs.every((tab, index) => tab.width === 100 && tab.height === 42 && tab.x === 986 + 112 * index), '12证据页签宽度或间距不符')
         checks.push({ check: 'detail-icons-white-practice-search-sidebar-tabs', scene: scene.id, detailChrome, passed: true })
+        const detailSurface = await page.evaluate(() => {
+          const sections = [...document.querySelectorAll('.kd-left > section')].map(node => {
+            const { y, height } = node.getBoundingClientRect()
+            return { y, height }
+          })
+          const definition = document.querySelector('.kd-definition p')
+          const count = document.querySelector('.kd-evidence-tabs .selected .kd-evidence-count')
+          const submitted = document.querySelector('.kd-practice .r-success')
+          return {
+            sections, definitionScroll: { client: definition.clientHeight, scroll: definition.scrollHeight, top: definition.scrollTop, overflow: getComputedStyle(definition).overflowY },
+            selectedCount: count?.textContent, countRadius: getComputedStyle(count).borderRadius,
+            submittedBackground: getComputedStyle(submitted).backgroundImage,
+            documentFilled: document.querySelector('.evidence-icon.teal path')?.getAttribute('fill'),
+            memoryPaths: document.querySelectorAll('.evidence-icon.amber path').length,
+          }
+        })
+        ensure(JSON.stringify(detailSurface.sections) === JSON.stringify([{ y: 229, height: 218 }, { y: 460, height: 138 }, { y: 610, height: 100 }, { y: 721, height: 168 }, { y: 900, height: 102 }]), '12左栏面板累计位置不符')
+        ensure(detailSurface.definitionScroll.overflow === 'scroll' && detailSurface.definitionScroll.scroll > detailSurface.definitionScroll.client && detailSurface.definitionScroll.top === 0, '12定义正文不是可操作的固定初态滚动区')
+        ensure(detailSurface.selectedCount === '6' && detailSurface.countRadius === '50%' && detailSurface.submittedBackground.includes('gradient') && detailSurface.documentFilled === 'currentColor' && detailSurface.memoryPaths === 2, '12计数徽标、已提交状态或来源图标不符')
+        const definitionScroll = page.getByLabel('定义正文', { exact: true })
+        await definitionScroll.evaluate(node => { node.scrollTop = node.scrollHeight })
+        ensure(await definitionScroll.evaluate(node => node.scrollTop > 0), '12定义滚动操作无效')
+        await definitionScroll.evaluate(node => { node.scrollTop = 0 })
+        await page.mouse.move(0, 0)
+        checks.push({ check: 'detail-panel-geometry-native-scroll-source-icons-count-status', scene: scene.id, detailSurface, passed: true })
         const paragraphs = await page.locator('.kd-definition p, .kd-main-note p').evaluateAll(nodes => nodes.map(node => {
           const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
           while (walker.nextNode()) {
