@@ -284,6 +284,53 @@ try {
         await assertFrame(captured, '12筛选与原文导航后刷新未恢复参考初态')
         checks.push({ check: 'knowledge-definition-lines-evidence-source-identity-navigation-refresh', scene: scene.id, paragraphs, passed: true })
       }
+      if (scene.id === '13') {
+        const nodes = page.locator('.kb-node'), canvas = page.locator('.kb-canvas')
+        const inspector = page.locator('.kb-inspector'), switches = inspector.getByRole('switch')
+        const positions = await nodes.evaluateAll(items => items.map(node => ({ x: parseFloat(node.style.left), y: parseFloat(node.style.top) })))
+        ensure(JSON.stringify(positions) === JSON.stringify([
+          { x: 133, y: 404 }, { x: 310, y: 404 }, { x: 488, y: 404 }, { x: 666, y: 404 },
+          { x: 843, y: 404 }, { x: 497, y: 613 }, { x: 770, y: 613 },
+        ]), '13节点初始坐标不符')
+        const warningLines = await page.locator('.kb-warning > span').evaluate(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
+          while (walker.nextNode()) {
+            const text = walker.currentNode
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const rect = range.getBoundingClientRect()
+              if (rect.width) lines.set(rect.top, (lines.get(rect.top) ?? '') + text.textContent[index])
+            }
+          }
+          return [...lines.values()]
+        })
+        ensure(JSON.stringify(warningLines) === JSON.stringify(['预算扣减超时，', '结果未知']), '13黄色提示没有保持参考两行')
+        ensure(await switches.count() === 3
+          && JSON.stringify(await switches.evaluateAll(items => items.map(node => node.getAttribute('aria-checked')))) === JSON.stringify(['true', 'true', 'false']),
+          '13网格、吸附或边界初态不符')
+        await switches.nth(0).click()
+        ensure(!await canvas.evaluate(node => node.classList.contains('grid')), '13网格开关未生效')
+        await switches.nth(0).click()
+        await switches.nth(2).click()
+        ensure(await canvas.evaluate(node => node.classList.contains('boundary')), '13边界开关未生效')
+        await switches.nth(2).click()
+        await page.getByRole('button', { name: '放大', exact: true }).click()
+        ensure(await page.locator('.kb-zoom > span').textContent() === '110%', '13放大未更新比例')
+        await page.getByRole('button', { name: '适应画布', exact: true }).click()
+        const originalPaths = await page.locator('.kb-lines > path').evaluateAll(paths => paths.map(node => node.getAttribute('d')))
+        const first = await nodes.first().boundingBox()
+        ensure(first, '13首节点不可见')
+        await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(first.x + first.width / 2 + 20, first.y + first.height / 2 + 20, { steps: 2 })
+        await page.mouse.up()
+        const moved = await nodes.first().evaluate(node => ({ x: parseFloat(node.style.left), y: parseFloat(node.style.top) }))
+        ensure(moved.x === 150 && moved.y === 420, '13节点拖动或吸附坐标不符')
+        ensure(JSON.stringify(originalPaths) !== JSON.stringify(await page.locator('.kb-lines > path').evaluateAll(paths => paths.map(node => node.getAttribute('d')))), '13节点移动未更新连线')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '13拖动、缩放与设置交互后刷新未恢复参考初态')
+        checks.push({ check: 'whiteboard-positions-warning-lines-grid-boundary-zoom-drag-refresh', scene: scene.id, positions, warningLines, passed: true })
+      }
       if (scene.id === '11') {
         const prose = page.locator('.kn-prose p').first(), initialText = await prose.textContent()
         const lines = await prose.evaluate(node => {
@@ -406,6 +453,20 @@ try {
           '30初始行数或首项选择不符')
         ensure(await detail.locator('.sp-inbox-excerpt').textContent() === '缓存删除失败通常有三种情况：1. key 不存在，删除返回 0；2. 网络超时，客户端误判；3. 连接池耗尽，导致删除请求被拒绝。需要根据业务场景选择合适的重试策略...',
           '30初始摘录不符')
+        const excerptRows = await detail.locator('.sp-inbox-excerpt').evaluate(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Set()
+          let right = 0
+          while (walker.nextNode()) {
+            const text = walker.currentNode
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const rect = range.getBoundingClientRect()
+              if (rect.width) { rows.add(rect.top); right = Math.max(right, rect.right) }
+            }
+          }
+          return { count: rows.size, right, panelRight: node.getBoundingClientRect().right }
+        })
+        ensure(excerptRows.count === 5 && excerptRows.right < excerptRows.panelRight, '30摘录行数不符或横向截断')
         await rows.first().getByRole('checkbox').check()
         ensure(await all.evaluate(node => node.indeterminate && !node.checked), '30部分勾选没有同步全选中间状态')
         await all.check()
@@ -437,7 +498,7 @@ try {
           await ready()
         }
         await assertFrame(captured, '30操作入口返回后初态与截图不符')
-        checks.push({ check: 'inbox-source-selection-sort-checkbox-read-navigation-refresh', scene: scene.id, passed: true })
+        checks.push({ check: 'inbox-source-selection-sort-checkbox-read-navigation-refresh', scene: scene.id, excerptRows, passed: true })
       }
       } catch (error) {
         interactionError = error.message
@@ -477,7 +538,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

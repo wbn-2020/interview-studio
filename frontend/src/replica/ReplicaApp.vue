@@ -198,6 +198,9 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-12 .r-saved { position: absolute; right: 224px; top: 18px; font-size: 19px; }
 .r-scene-13 .r-sidebar nav { top: 143px; left: 15px; right: 15px; gap: 8px; }
 .r-scene-13 .r-nav-item { height: 59px; padding: 0 22px; font-size: 22px; }
+.r-scene-13 .r-top-search { top: 2px; font-size: 18px; }
+.r-scene-13 .r-breadcrumb { position: relative; top: -11px; }
+.r-scene-13 .r-saved { position: relative; top: -12px; font-size: 18px; }
 .r-scene-14 .r-sidebar { top: 7px; bottom: 8px; width: 230px; }
 .r-scene-14 .r-sidebar nav { top: 140px; left: 22px; right: 20px; gap: 4px; }
 .r-scene-14 .r-nav-item { height: 55px; padding-left: 17px; font-size: 22px; }
@@ -261,5 +264,6 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-30 .r-nav-item { height: 59px; padding: 0 19px; }
 .r-scene-30 .r-topbar { top: 25px; }
 .r-scene-30 .r-top-search { height: 62px; }
+.r-scene-30 .r-saved { position: relative; left: 14px; font-size: 20px; }
 .r-inbox-breadcrumb { height: 62px; width: 336px; margin-left: -6px; padding: 0 12px !important; justify-content: space-between; border: 1px solid #332a20 !important; border-radius: 20px; font-size: 23px; }
 </style>

@@ -219,4 +219,31 @@ onUnmounted(() => {
 .sp-inbox-list .r-checkbox:indeterminate::after { content: ""; width: 11px; height: 2px; background: #fff; }
 .sp-inbox-list { position: absolute; top: 233px; left: 258px; bottom: 90px; width: 514px; border-radius: 20px; padding: 9px 5px; border-color: #3d3125; }.sp-inbox-list header { padding: 8px 13px 18px 18px; color: #c9bfb2; font-size: 23px; }.sp-inbox-list header select { background: #ffffff08; border: 0; border-radius: 23px; padding: 4px 13px; font-size: 21px; color-scheme: dark; width: 146px; outline: none; }.sp-inbox-list header label { gap: 14px; }.sp-inbox-list article { display: flex; position: relative; align-items: center; min-height: 110px; margin: 0 13px; padding: 18px 7px 16px 4px; border-bottom: 1px solid #3a3025; gap: 20px; }.sp-inbox-list article.selected { padding: 18px 18px; margin: 0; border: 1px solid #dbab6e; border-radius: 18px; min-height: 114px; background: linear-gradient(100deg, #8e603585, #6e4e2f45); }.sp-inbox-list .r-checkbox { margin: 0 0 0 0; flex: none; }.sp-inbox-entry { flex: 1; min-width: 0; text-align: left; align-self: stretch; }.sp-inbox-entry strong { display: block; font-size: 24px; font-weight: 550; white-space: nowrap; }.sp-inbox-entry small { font-size: 21px; color: #b4a795; margin-top: 7px; gap: 10px; white-space: nowrap; }.sp-inbox-list article > .r-pill { position: absolute; right: 17px; top: 29px; font-size: 19px; padding: 3px 15px; }.sp-inbox-list article.selected > .r-pill { top: 22px; }.sp-inbox-list article.selected .sp-inbox-entry { padding-right: 65px; }.sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 23px; }.sp-inbox-list article:nth-child(n+3) { padding-right: 80px; }
 .sp-inbox-detail { position: absolute; top: 233px; left: 783px; right: 24px; bottom: 90px; padding: 15px 23px 22px; border-radius: 20px; border-color: #3d3125; }.sp-inbox-detail header { border-bottom: 1px solid #30281f; padding-bottom: 11px; }.sp-inbox-detail h2 { font-size: 25px; }.sp-excerpt-heading { position: relative; margin-top: 17px !important; padding-left: 18px; font-size: 23px !important; }.sp-excerpt-heading::before { content: ""; width: 3px; height: 27px; background: #e7b77e; position: absolute; left: 0; top: 5px; }.sp-inbox-excerpt { padding: 14px 18px 15px; margin-top: 5px; border-radius: 15px; background: #ffffff02; }.sp-inbox-excerpt p { font-size: 22px; line-height: 1.75; white-space: nowrap; }.sp-inbox-excerpt h3 { font-size: 22px; margin-bottom: 10px; }.sp-inbox-detail .r-rule { margin: 21px 0 16px; }.sp-suggestions-title { color: #f2d7af; font-size: 23px !important; gap: 12px; }.sp-inbox-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 21px; }.sp-inbox-buttons .r-btn { min-height: 68px; padding: 10px 14px !important; font-size: 23px; border-radius: 14px; background: #ffffff02 !important; border-color: #44372a !important; gap: 14px; }.sp-inbox-note { background: #ffffff03; border-radius: 14px; margin-top: 26px !important; min-height: 56px; padding: 10px 13px; font-size: 18px; white-space: nowrap; gap: 10px; }
+/* 收件箱保留四条参考记录的独立行距，详情摘录保持五行。 */
+.sp-inbox-heading { left: 28px; }
+.sp-inbox-heading p { font-size: 22px; }
+.sp-inbox-actions .r-btn { font-size: 21.5px; }
+.sp-inbox-sources, .sp-inbox-list { background: #15120f; }
+.sp-inbox-sources h2 { font-size: 22.5px; line-height: 35px; }
+.sp-inbox-sources > button { min-height: 63px; font-size: 21px; line-height: 34px; }
+.sp-inbox-sources small { margin-right: 6px; font-size: 22px; }
+.sp-inbox-list header { font-size: 22px; line-height: 34.5px; }
+.sp-inbox-list article { gap: 24px; }
+.sp-inbox-list article.selected { gap: 22px; }
+.sp-inbox-list article:nth-of-type(2) { min-height: 112px; }
+.sp-inbox-list article:nth-of-type(3) { min-height: 107px; }
+.sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; line-height: 36px; }
+.sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; }
+.sp-inbox-list article > .r-pill { right: 11px; top: 23px; font-size: 18px; }
+.sp-inbox-list article.selected > .r-pill { right: 22px; top: 22px; }
+.sp-inbox-detail { background: #1a1612; }
+.sp-inbox-detail h2 { font-size: 22.5px; line-height: 35px; }
+.sp-excerpt-heading { font-size: 21.5px !important; line-height: 33.35px; }
+.sp-inbox-excerpt { padding-top: 13px; background: #1d1915; }
+.sp-inbox-excerpt p { font-size: 20.5px; line-height: 39px; }
+.sp-inbox-detail .r-rule { margin-bottom: 18px; }
+.sp-suggestions-title { font-size: 21.5px !important; line-height: 33.35px; }
+.sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 20px; padding-left: 46px !important; padding-right: 10px !important; }
+.sp-inbox-buttons .r-btn:nth-child(even) { padding-left: 36px !important; }
+.sp-inbox-buttons .r-icon { width: 30px; }
 </style>

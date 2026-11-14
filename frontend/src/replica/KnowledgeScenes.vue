@@ -204,4 +204,24 @@ function endDrag(event: PointerEvent) {
 .kd-evidence-row h3 { font-size: 19px; line-height: 29px; }
 .kd-evidence-row p { font-size: 17px; line-height: 30px; }
 .kd-evidence-row > button { top: 25px; }
+/* 白板提示须保留参考两行；控件行高固定，避免字号调整挤动下方设置。 */
+.kb-heading p { margin-top: 6px; font-size: 18.5px; }
+.kb-group-label { font-size: 20.5px; line-height: 33px; }
+.kb-node strong { font-size: 19.5px; }
+.kb-node-lower strong { font-size: 20px; }
+.kb-event-label { font-size: 19px; line-height: 31.5px; }
+.kb-warning { font-size: 19.5px; line-height: 31px; text-align: left; }
+.kb-warning > span { white-space: nowrap; }
+.kb-inspector { padding-left: 20px; padding-right: 20px; background: #1b1712; }
+.kb-inspector .r-tabs { margin-left: -20px; margin-right: -20px; margin-bottom: 13px; }
+.kb-inspector label { font-size: 17.5px; line-height: 27px; }
+.kb-inspector > label + label { margin-top: 15px; }
+.kb-inspector > label:nth-of-type(3) { margin-top: 3px; }
+.kb-inspector input, .kb-inspector select, .kb-inspector textarea { font-size: 17.5px; padding-left: 14px; padding-right: 14px; border-color: #342d25; background: #1e1a15; }
+.kb-inspector input { height: 45px; line-height: 25px; }
+.kb-inspector select { height: 44px; }
+.kb-inspector textarea { line-height: 27px; }
+.kb-inspector .r-rule { margin: 23px 0 17px; }
+.kb-inspector h3 { font-size: 17.5px; line-height: 28px; }
+.kb-inspector h3 + label.r-between { margin-top: 15px; }
 </style>
