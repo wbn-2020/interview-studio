@@ -63,6 +63,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .r-nav-separator { height: 1px; background: #ffffff10; margin: 24px 13px 22px; }
 .r-nav-item.r-secondary { font-size: 22px; height: 51px; }
 .r-sidebar-avatar { position: absolute; left: 38px; bottom: 33px; }
+.r-scene-10::before { content: ""; position: absolute; pointer-events: none; top: 21px; right: 6px; bottom: 34px; left: 220px; border: 1px solid #302920; border-radius: 22px; }
+.r-scene-10 .r-sidebar .r-brand { top: 24px; left: 27px; gap: 14px; }
+.r-scene-10 .r-sidebar .r-emblem { width: 37px; height: 47px; color: #bdb2a0; filter: none; }
+.r-scene-10 .r-sidebar .r-brand-word { font-size: 26px; line-height: 32px; }
+.r-scene-10 .r-sidebar .r-brand-word small { margin-top: 0; font-size: 14px; line-height: 20px; }
 .r-avatar { width: 53px; height: 57px; display: inline-grid; place-items: center; border-radius: 50%; color: #faf4e9; background: linear-gradient(130deg, #7a6b5e, #403930); font-size: 26px; border: 1px solid #a28c7344; }
 .r-topbar { position: absolute; z-index: 5; top: 19px; left: calc(var(--sidebar) + 20px); right: 22px; height: 75px; display: flex; align-items: center; gap: 21px; }
 .r-breadcrumb { display: flex; align-items: center; gap: 13px; font-size: 20px; white-space: nowrap; }

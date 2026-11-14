@@ -40,7 +40,7 @@ const nav = computed(() => {
     { id: 24, label: '成长', icon: 'trending-up' },
   ]
   const ordinary = [
-    { id: 2, label: '今日', icon: scene.value === 2 ? 'calendar-days' : 'house' },
+    { id: 2, label: '今日', icon: [2, 10].includes(scene.value) ? 'calendar-days' : 'house' },
     { id: 3, label: '准备', icon: scene.value === 18 ? 'square-check-rounded' : scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: 'book-open' },
     { id: 17, label: '训练', icon: scene.value === 18 ? 'circle-play' : [17, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },

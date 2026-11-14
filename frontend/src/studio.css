@@ -12,7 +12,8 @@ html[data-studio-theme="light"] {
 }
 body { background: var(--bg); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.studio-product { --sidebar: 240px; display: block; min-height: 100dvh; color: var(--ink); font-size: 18px; background: radial-gradient(ellipse at 0 67%, #2d211832, transparent 37%), radial-gradient(ellipse at 80% 100%, #30211628, transparent 55%), var(--bg); }
+/* 组件库会给body注入默认字体；业务工作区须显式保留项目的中文回退栈。 */
+.studio-product { --sidebar: 240px; display: block; min-height: 100dvh; color: var(--ink); font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 18px; background: radial-gradient(ellipse at 0 67%, #2d211832, transparent 37%), radial-gradient(ellipse at 80% 100%, #30211628, transparent 55%), var(--bg); }
 .studio-product * { letter-spacing: 0; }
 .studio-product .studio-sidebar { position: fixed; z-index: 20; left: 16px; top: 20px; bottom: 20px; width: calc(var(--sidebar) - 28px); padding: 0; display: block; border: 1px solid var(--line); border-radius: 24px; background: linear-gradient(115deg, #221c1690, #1b1814ba); }
 .studio-brand { position: absolute; top: 28px; left: 20px; }.studio-brand .r-brand { display: flex; align-items: center; gap: 9px; white-space: nowrap; }.studio-brand .r-emblem { width: 46px; height: 55px; color: #d9a474; filter: drop-shadow(0 0 9px #dda36b44); }.studio-brand .r-brand-word { font-size: 28px; font-weight: 600; line-height: 1.2; }.studio-brand .r-brand-word small { display: block; margin-top: 5px; font-size: 14px; font-weight: 400; color: #c2bbb2; }
@@ -33,6 +34,30 @@ body { background: var(--bg); }
 .screen-prepare { --sidebar: 208px; }.screen-facts { --sidebar: 240px; }.screen-expression { --sidebar: 250px; }.screen-tasks { --sidebar: 260px; }.screen-schedule { --sidebar: 236px; }.screen-library { --sidebar: 220px; }.screen-boards { --sidebar: 212px; }.screen-collections { --sidebar: 220px; }.screen-training { --sidebar: 226px; }.screen-review { --sidebar: 222px; }.screen-recollection { --sidebar: 244px; }.screen-growth { --sidebar: 208px; }.screen-ai { --sidebar: 216px; }
 .screen-prepare .studio-sidebar, .screen-boards .studio-sidebar, .screen-growth .studio-sidebar, .screen-ai .studio-sidebar { left: 0; top: 0; bottom: 0; width: var(--sidebar); }.screen-prepare .studio-brand, .screen-boards .studio-brand, .screen-growth .studio-brand, .screen-ai .studio-brand { left: 22px; }.screen-prepare .studio-nav-item, .screen-boards .studio-nav-item, .screen-growth .studio-nav-item, .screen-ai .studio-nav-item { gap: 16px; padding: 0 14px; font-size: 22px; }
 .screen-library .studio-sidebar { left: 7px; width: 213px; }.screen-library .studio-primary-nav { top: 113px; }
+@media(min-width:1251px) {
+  .screen-library::before { content: ""; position: fixed; pointer-events: none; top: 21px; right: 6px; bottom: 34px; left: 220px; border: 1px solid #302920; border-radius: 22px; }
+  .studio-product.screen-library .studio-sidebar { top: 21px; bottom: 34px; border-color: #44372a; border-radius: 22px; }
+  .screen-library .studio-brand { top: 24px; left: 27px; }
+  .screen-library .studio-brand .r-brand { gap: 14px; }
+  .screen-library .studio-brand .r-emblem { width: 37px; height: 47px; color: #bdb2a0; filter: none; }
+  .screen-library .studio-brand .r-brand-word { font-size: 26px; line-height: 32px; }
+  .screen-library .studio-brand .r-brand-word small { margin-top: 0; font-size: 14px; line-height: 20px; }
+  .studio-product.screen-library .studio-primary-nav { top: 114px; left: 13px; right: 13px; gap: 4px; }
+  .studio-product.screen-library .studio-nav-item { height: 60px; min-height: 60px; padding-inline: 18px; gap: 18px; font-size: 22px; border-radius: 16px; }
+  .studio-product.screen-library .studio-nav-item.studio-selected { background: linear-gradient(110deg, #a36d3c85, #603d2390); }
+  .screen-library .studio-nav-rule { margin: 33px 14px 20px; }
+  .studio-product.screen-library .studio-secondary { height: 56px; min-height: 56px; font-size: 21px; }
+  .screen-library .studio-avatar { width: 47px; height: 53px; border: 1px solid #827b8b66; background: linear-gradient(130deg, #6a6577, #4d4857); font-size: 25px; }
+  .screen-library .studio-sidebar-avatar { left: 27px; bottom: 24px; }
+  .screen-library .studio-topbar { top: 37px; left: 253px; right: 35px; height: 54px; }
+  .screen-library .studio-breadcrumb { gap: 16px; font-size: 21px; }
+  .screen-library .studio-global-search { position: absolute; left: 396px; top: 1px; width: 492px; height: 53px; font-size: 20px; }
+  .screen-library .studio-global-search kbd { padding: 1px 8px; border-radius: 10px; background: #ffffff08; }
+  .screen-library .studio-top-status { gap: 31px; }
+  .screen-library .studio-saved { gap: 10px; color: #b1d7bd; }
+  .screen-library .studio-saved svg { width: 22px; height: 25px; background: #4da46c; }
+  .studio-product.screen-library .studio-main { padding: 127px 18px 70px 12px; }
+}
 @media(min-width:1001px) {
   .screen-note { --sidebar: 240px; }.studio-product.screen-note .studio-sidebar { left: 21px; top: 25px; bottom: 41px; width: 215px; border-radius: 22px; }.screen-note .studio-topbar { top: 41px; left: 270px; right: 45px; }.screen-note .studio-global-search { width: 356px; height: 47px; font-size: 17px; }.screen-note .studio-top-status { gap: 34px; }.screen-note .studio-avatar { width: 44px; height: 46px; }.screen-note .studio-sidebar-avatar { width: 56px; height: 58px; }.screen-note .studio-primary-nav { top: 119px; gap: 4px; }.screen-note .studio-nav-item { min-height: 56px; height: 56px; font-size: 22px; }.screen-note .studio-nav-rule { margin-block: 55px 20px; }.studio-product.screen-note .studio-main { padding: 145px 28px 40px 2px; }
 }

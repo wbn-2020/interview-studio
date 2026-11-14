@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
-import { NButton, NCheckbox, NInput, NModal, NSelect } from 'naive-ui'
+import { NButton, NCheckbox, NInput, NModal, NPopover, NSelect } from 'naive-ui'
 import { currentTrainingAccessEpoch, errorText, read } from '../api/client'
 import type { GraphResponse, ItemDetail, Schema, Topic } from '../api/client'
 import type { OpenKnowledge, TextImport } from '../api/knowledge'
@@ -212,7 +212,7 @@ function addTopic() {
   <KnowledgeDetail v-if="mode === 'detail' && selectedId" :key="selectedId" :item-id="selectedId" :topics="topics" @open="openItem" @edit="router.push({ name: 'knowledge', query: { view: 'list', item: selectedId, edit: '1' } })" />
   <p v-else-if="mode === 'detail'" class="notice">请从知识目录选择一个对象。<RouterLink class="text-link" :to="{ name: 'knowledge', query: { view: 'list' } }">打开目录</RouterLink></p>
   <template v-else>
-  <header v-if="mode !== 'graph'" class="page-heading"><div><h1>知识</h1><p class="muted">沉淀技术知识，构建你的面试知识体系</p></div><div class="row-actions"><NButton :disabled="!createReadable || createWriter.locked.value" @click="openCreate('NOTE')"><RIcon name="file-plus" />新建笔记</NButton><NButton type="primary" :disabled="!createReadable || createWriter.locked.value" @click="openCreate('CONCEPT')"><RIcon name="plus" />新增知识点</NButton></div></header>
+  <header v-if="mode !== 'graph'" class="page-heading"><div><h1>知识</h1><p class="muted">沉淀技术知识，构建你的面试知识体系</p></div><div class="row-actions"><NButton :disabled="!createReadable || createWriter.locked.value" @click="openCreate('NOTE')"><RIcon name="file-plus" />新建笔记</NButton><NButton type="primary" :disabled="!createReadable || createWriter.locked.value" @click="openCreate('CONCEPT')"><RIcon name="plus" />新建知识点</NButton></div></header>
   <div class="knowledge-toolbar"><div class="view-switch" role="group" aria-label="知识视图"><button :aria-pressed="mode === 'graph'" :class="{ active: mode === 'graph' }" @click="changeMode('graph')"><RIcon name="star" />星图</button><button :aria-pressed="mode === 'list'" :class="{ active: mode === 'list' }" @click="changeMode('list')"><RIcon name="list" />列表</button><RouterLink :to="{ name: 'boards' }"><RIcon name="square" />白板</RouterLink></div></div>
   <p v-if="createdItem" class="creation-result" role="status">已创建「{{ createdItem.title }}」<button class="text-link" @click="openItem(createdItem.id)">打开</button><button class="icon-button" aria-label="关闭创建提示" @click="createdItem = undefined">×</button></p>
   <div class="workspace-grid" :class="{ 'with-detail': selectedId, 'list-mode': mode === 'list', 'graph-mode': mode === 'graph' }">
@@ -249,7 +249,18 @@ function addTopic() {
       <template v-else-if="mode === 'graph'"><p v-if="graphQuery.error.value" class="notice error graph-load-error" role="alert">{{ errorText(graphQuery.error.value) }}<NButton text @click="graphQuery.refetch()">重试读取</NButton></p><KnowledgeGraph v-if="graphSnapshot" ref="graphController" :graph="graphSnapshot" :selected-id="selectedId" :selected-kind="selectedKind" :topic-ids="graphTopics" :relation-types="relationTypes" :title-query="query" overlay @select="openItem" @saved="refresh" @reload="graphQuery.refetch()" /><div v-else class="loading-block galaxy-loading" role="status">正在读取知识星图…</div></template>
       <KnowledgeSearch v-else-if="mode === 'search'" :topics="topics" @open="openTarget" />
       <template v-else>
-        <form class="library-table-filters" @submit.prevent="submitSearch"><RIcon name="search" /><NInput v-model:value="search" :maxlength="100" placeholder="筛选已发布标题" aria-label="按标题筛选" clearable /><NButton attr-type="submit">筛选</NButton><span class="muted">更新时间</span></form>
+        <div class="library-table-filters">
+          <NPopover trigger="click" placement="bottom-start" :width="340" :show-arrow="false">
+            <template #trigger><NButton class="library-filter-trigger"><RIcon name="filter" :size="22" />筛选<RIcon name="chevron-down" :size="18" /></NButton></template>
+            <form class="library-filter-form" @submit.prevent="submitSearch">
+              <NInput v-model:value="search" :maxlength="100" placeholder="筛选已发布标题" aria-label="按标题筛选" clearable />
+              <NSelect v-model:value="filter" :options="filters" aria-label="筛选知识类型与状态" />
+              <NSelect v-model:value="collection" :options="collections" aria-label="知识收藏与访问分类" />
+              <NButton attr-type="submit">应用筛选</NButton>
+            </form>
+          </NPopover>
+          <span class="library-order muted">更新时间</span>
+        </div>
         <table class="library-table"><thead><tr><th>标题</th><th>主题</th><th>类型</th><th>版本</th><th>更新</th></tr></thead><tbody><tr v-for="item in displayedItems" :key="item.id" :class="{ selected: selectedId === item.id }" @click="openItem(item.id)"><td><button @click.stop="openItem(item.id)">{{ item.title }}</button></td><td><span v-for="topicId in item.topicIds.slice(0, 2)" :key="topicId" class="library-topic">{{ topics.find(topic => topic.id === topicId)?.name ?? '主题' }}</span></td><td>{{ item.kind === 'CONCEPT' ? '概念' : '笔记' }}</td><td>v{{ item.versionNumber }}</td><td>{{ new Date(item.updatedAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }}</td></tr></tbody></table>
         <div v-if="!displayedItems.length" class="list-empty-detail"><RIcon name="book-open" :size="42" /><h2>{{ query ? '没有匹配的笔记' : '给思考留一个安静的位置' }}</h2><p>概念、笔记与出处，留在你的知识库。</p><NButton type="primary" :disabled="!createReadable" @click="openCreate('NOTE')">新建笔记</NButton></div>
       </template>
@@ -290,6 +301,36 @@ function addTopic() {
 .knowledge-product .workspace-grid { margin-top: 24px; display: grid; max-width: none; min-height: 675px; border: 0; gap: 12px; background: transparent; overflow: visible; grid-template-columns: 248px minmax(0, 1fr); }.knowledge-product .workspace-grid.with-detail { grid-template-columns: 248px minmax(0, 1fr) 374px; }.knowledge-product .knowledge-catalog, .knowledge-product .knowledge-stage, .knowledge-product :deep(.item-editor) { border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(120deg, #25211c90, #18161280 70%); min-width: 0; }
 .knowledge-product .knowledge-catalog { padding: 24px 7px; }.knowledge-product .knowledge-stage { display: block; overflow: hidden; }.knowledge-product .workspace-grid.list-mode.with-detail .knowledge-stage { display: block; }.knowledge-product :deep(.item-editor) { padding: 35px 22px; }.knowledge-product .knowledge-list { max-height: 280px; }.knowledge-product .knowledge-row { font-size: 16px; }.knowledge-product .knowledge-row small { font-size: 13px; }
 .knowledge-library .knowledge-toolbar { position: absolute; top: 20px; left: 40%; transform: translateX(-50%); }.knowledge-product .list-empty-detail { min-height: 450px; padding: 50px 22px; }.knowledge-product .list-empty-detail p { font-size: 17px; }
+.library-filter-form { display: grid; gap: 12px; }
+.library-filter-trigger :deep(.n-button__content) { gap: 9px; }
+.library-order { padding: 8px 16px; border: 1px solid var(--line); border-radius: 24px; }
+@media(min-width:1251px) {
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading { height: 100px; margin-bottom: 0; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading h1 { font-size: 50px; line-height: 65px; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading > div > .muted { font-size: 20px; line-height: 33px; margin-top: 2px; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading .row-actions { gap: 16px; padding-right: 7px; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button) { height: 58px; min-width: 156px; font-size: 21px; border-radius: 20px; padding-inline: 21px; }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button--primary-type) { min-width: 173px; color: #1a1008; background: linear-gradient(150deg, #e7b37f, #c78e5d); }
+  .knowledge-library:not(.knowledge-editor-open) > .page-heading :deep(.n-button__content) { gap: 10px; }
+  .knowledge-library:not(.knowledge-editor-open) > .knowledge-toolbar { left: 502px; top: 13px; transform: none; }
+  .knowledge-library:not(.knowledge-editor-open) > .knowledge-toolbar .view-switch { height: 58px; }
+  .knowledge-library:not(.knowledge-editor-open) > .knowledge-toolbar .view-switch > :is(button,a) { font-size: 21px; min-width: 116px; }
+  .knowledge-library:not(.knowledge-editor-open) .workspace-grid { margin-top: 24px; min-height: 675px; }
+  .knowledge-library:not(.knowledge-editor-open) :is(.knowledge-catalog,.knowledge-stage) { border-color: #2d271f; border-radius: 18px; }
+  .knowledge-library:not(.knowledge-editor-open) .knowledge-catalog { background: linear-gradient(180deg, #181511, #151310); }
+  .knowledge-library:not(.knowledge-editor-open) .knowledge-stage { background: linear-gradient(180deg, #14110e, #0f0d0b 70%); }
+  .knowledge-library:not(.knowledge-editor-open) .library-folder { height: 57px; min-height: 57px; font-size: 20px; padding-inline: 14px 21px; gap: 11px; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table-filters { height: 76px; padding: 14px 18px; gap: 12px; border-color: #29231d; }
+  .knowledge-library:not(.knowledge-editor-open) .library-filter-trigger { height: 46px; font-size: 20px; }
+  .knowledge-library:not(.knowledge-editor-open) .library-order { font-size: 19px; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table { table-layout: fixed; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table th { font-size: 18.5px; line-height: 30px; white-space: nowrap; padding: 12px 20px 18px; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table th:first-child { width: 29.8%; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table th:nth-child(2) { width: 19.6%; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table th:nth-child(3) { width: 18.2%; }
+  .knowledge-library:not(.knowledge-editor-open) .library-table th:nth-child(4) { width: 14.1%; }
+  .knowledge-library:not(.knowledge-editor-open) > .workspace-footnote { display: none; }
+}
 .library-table-filters { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line); }.library-table-filters .n-input { flex: 1; min-width: 0; }.library-table-filters > span { font-size: 16px; white-space: nowrap; }.library-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 18px; text-align: left; }.library-table th { font-size: 18px; color: var(--muted); font-weight: 400; padding: 16px 14px; }.library-table td { padding: 20px 14px; border-block: 1px solid #ffffff09; }.library-table td:first-child { width: 38%; }.library-table td > button { padding: 0; text-align: left; font-size: 20px; line-height: 1.5; }.library-table tr { cursor: pointer; }.library-table tr.selected td { background: #985c2a33; border-block-color: #ac7949; }.library-table tr.selected td:first-child { border-left: 1px solid #ac7949; border-radius: 12px 0 0 12px; }.library-table tr.selected td:last-child { border-right: 1px solid #ac7949; border-radius: 0 12px 12px 0; }.library-topic { display: inline-block; margin: 2px; border-radius: 20px; padding: 3px 11px; color: #acd5d5; background: #365f5c77; white-space: nowrap; }
 .knowledge-graph .knowledge-toolbar { position: absolute; left: 440px; top: 0; z-index: 5; }.knowledge-graph .workspace-grid { margin-top: 10px; min-height: 890px; grid-template-columns: 254px minmax(0, 1fr); }.knowledge-graph .workspace-grid.with-detail { grid-template-columns: 254px minmax(0, 1fr) 415px; }.knowledge-graph .knowledge-stage { border: 0; border-radius: 0; background: transparent; padding-top: 65px; }.knowledge-graph .knowledge-catalog { align-self: start; padding: 20px; }.knowledge-graph .knowledge-list { display: none; }.knowledge-graph .topic-create { margin-top: 20px; }.graph-title-filter { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #ffffff0c; border-radius: 24px; background: #ffffff03; margin-bottom: 20px; color: var(--muted); }.graph-title-filter input { min-width: 0; width: 100%; background: transparent; border: 0; color: inherit; font-size: 18px; outline: 0; }.knowledge-product .knowledge-catalog h3 { font-size: 20px; margin: 12px 0; }.graph-check { display: flex; align-items: center; gap: 12px; margin: 12px 0; font-size: 19px; }.graph-check input { accent-color: #cc914b; width: 23px; height: 23px; margin: 0; }.knowledge-graph :deep(.item-editor) { margin-top: 10px; align-self: start; min-height: 775px; }
 .knowledge-graph :deep(.item-editor.item-graph-overview) { padding: 0; overflow: hidden; height: 777px; }
