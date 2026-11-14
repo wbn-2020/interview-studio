@@ -134,6 +134,7 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
 }
 @media (min-width: 1251px) {
   .studio-product.screen-recent { --sidebar: 224px; }
+  html:not([data-studio-theme="light"]) .studio-product.screen-recent { background: radial-gradient(ellipse at 0 63%, #402a193b, transparent 35%), #0b0a09; }
   .screen-recent::before { content: ""; position: absolute; left: 21px; right: 21px; top: 14px; height: 94px; border: 1px solid #5e514233; border-radius: 23px; background: linear-gradient(110deg, #10101044, #1e17113d); pointer-events: none; }
   .studio-product.screen-recent .studio-sidebar { left: 21px; top: 130px; bottom: 27px; width: 201px; border-radius: 22px; border-color: #62584b55; background: radial-gradient(ellipse at 0 65%, #3a281c70, transparent 80%), linear-gradient(115deg, #191818de, #181411ed); }
   .screen-recent .studio-brand { position: fixed; left: 41px; top: 32px; height: 57px; display: flex; align-items: center; }
@@ -158,10 +159,15 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
   .screen-recent .studio-top-status > .studio-avatar { width: 52px; height: 54px; font-size: 25px; border-color: #7184da66; background: linear-gradient(120deg, #5474da, #3c50b2); }
   .studio-product.screen-recent .studio-main { padding: 144px 21px 32px 15px; }
   .screen-recent .recent-workspace { position: relative; }
-  .screen-recent .recent-workspace > .page-heading { min-height: 116px; padding: 0 25px; margin-bottom: 27px; }
+  .studio-product.screen-recent .recent-workspace > :not(.recent-product-horizon) { position: relative; z-index: 1; }
+  .studio-product.screen-recent .recent-workspace > .page-heading { min-height: 116px; padding: 0 25px; margin-bottom: 27px; align-items: flex-start; line-height: 1.5; }
+  .studio-product.screen-recent .recent-workspace > .page-heading::before { content: none; }
+  .screen-recent .recent-product-horizon { display: block; position: fixed; left: 224px; top: 0; width: calc(100vw - 224px); height: 1024px; pointer-events: none; z-index: 0; }
+  html[data-studio-theme="light"] .screen-recent .recent-product-horizon { display: none; }
   .screen-recent .recent-workspace .page-heading h1 { font-size: 54px; font-weight: 500; }
   .screen-recent .recent-workspace .page-heading > div > .muted { margin-top: 5px; font-size: 22px; }
 }
+.recent-product-horizon { display: none; }
 @media (max-height: 900px) and (min-width: 901px) { .studio-product .studio-primary-nav { gap: 1px; top: 115px; }.studio-product .studio-nav-item { height: 48px; min-height: 48px; }.studio-product .studio-secondary { height: 42px; min-height: 42px; }.studio-nav-rule { margin: 12px 13px; }.studio-product.screen-galaxy .studio-primary-nav { top: 25px; gap: 3px; }.studio-product.screen-galaxy .studio-nav-item { min-height: 76px; height: 76px; } }
 @media (max-width: 1250px) { .studio-topbar { gap: 16px; right: 22px; }.studio-breadcrumb { font-size: 17px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }.studio-top-status { gap: 16px; }.studio-global-search { width: 320px !important; }.studio-product .studio-main { padding-right: 22px; }.studio-saved { font-size: 17px; }.studio-product .page-heading h1 { font-size: 40px; } }
 @media (max-width: 900px) { .studio-product { --sidebar: 88px; }.studio-product .studio-sidebar { left: 0; top: 0; bottom: 0; width: 88px; border-radius: 0; }.studio-brand { left: 20px !important; top: 22px !important; }.studio-brand .r-brand-word { display: none; }.studio-product .studio-primary-nav { left: 8px; right: 8px; top: 112px; }.studio-product .studio-nav-item { padding: 0; justify-content: center; }.studio-product .studio-nav-item span, .studio-product .studio-secondary, .studio-nav-rule { display: none; }.studio-sidebar-avatar { left: 17px; }.studio-topbar, .screen-galaxy .studio-topbar { left: 110px; right: 20px; }.studio-breadcrumb { display: none; }.studio-global-search { margin-left: 0; width: auto !important; flex: 1; }.studio-top-status { gap: 12px; }.studio-saved { font-size: 15px; }.studio-top-status .studio-avatar { display: none; }.studio-product .studio-main, .studio-product.screen-galaxy .studio-main { padding: 105px 20px 30px; margin-left: 88px; }.studio-product .page-heading h1 { font-size: 34px; } }

@@ -9,8 +9,10 @@ import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import { useRecentStore } from '../state/recent'
 import RIcon from '../replica/RIcon.vue'
+import { drawRecentHorizon } from '../replica/recentHorizon'
 
 const workspace = useWorkspaceStore(), access = useTrainingAccessStore(), recent = useRecentStore()
+const horizonCanvas = ref<HTMLCanvasElement | null>(null)
 const route = useRoute(), router = useRouter()
 const kind = ref<RecentKind>(), page = shallowRef<RecentPage>(), cursor = ref<string>(), previous = ref<(string | undefined)[]>([])
 function selectKind(value: RecentKind | null) {
@@ -60,6 +62,7 @@ watch(listAddress, () => { clear(); paused.value = false; if (readable.value && 
 watch(() => route.query.kind, value => { kind.value = recentKindValid(value) ? value : undefined }, { immediate: true, flush: 'sync' })
 function visibilityChanged() { visible.value = document.visibilityState === 'visible' }
 onMounted(() => {
+  drawRecentHorizon(horizonCanvas.value)
   document.addEventListener('visibilitychange', visibilityChanged)
   if (firstRead && readable.value && !routeProblem.value) { firstRead = false; loadAddress() }
 })
@@ -120,6 +123,7 @@ async function open(entry: RecentEntry) {
 
 <template>
   <section class="recent-workspace" aria-labelledby="recent-title">
+    <canvas ref="horizonCanvas" class="recent-product-horizon" aria-hidden="true" />
     <header class="page-heading"><div><h1 id="recent-title">最近访问</h1><p class="muted">回到你已打开的内容，继续准备与思考。</p></div><NButton :disabled="!readable || loading || !!routeProblem" :loading="loading" @click="refresh">刷新最近访问</NButton></header>
     <section v-if="recent.pendingCount || recent.message" class="recent-pending" aria-label="访问记录保存状态">
       <div><strong v-if="recent.pendingCount">{{ recent.pendingCount }} 条访问记录待确认</strong><p v-if="recent.message" role="status">{{ recent.message }}</p><p class="field-help">待确认请求只保留在本页所在的浏览器实例中，关闭后无法继续恢复。正常保存和页面切换不受影响。</p></div>
