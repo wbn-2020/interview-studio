@@ -289,6 +289,21 @@ try {
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '18定位、采用、忽略后刷新未恢复初态')
         checks.push({ check: 'follow-up-lines-evidence-adopt-ignore-refresh', scene: scene.id, lines, passed: true, scope: 'fixed-reference-state-only' })
+        const shell = await page.evaluate(() => {
+          const rect = selector => { const b = document.querySelector(selector).getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height } }
+          return { sidebar: rect('.r-sidebar'), search: rect('.r-top-search'), selected: document.querySelector('.r-nav-item.r-selected')?.textContent.trim() }
+        })
+        ensure(shell.sidebar.x === 0 && shell.sidebar.y === 8 && shell.sidebar.width === 229 && shell.sidebar.height === 1008
+          && shell.search.x === 744 && shell.search.y === 22 && shell.search.width === 445 && shell.search.height === 64
+          && shell.selected === '训练', '18侧栏、搜索栏或导航选中态不符')
+        await page.locator('.r-top-search').click()
+        ensure(await page.getByRole('dialog', { name: '全局命令面板' }).isVisible(), '18顶栏搜索未打开命令面板')
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await page.getByRole('link', { name: '问阶今日', exact: true }).click()
+        ensure(await page.locator('.r-canvas').getAttribute('data-scene') === '02', '18品牌入口未进入今日')
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '18搜索及品牌入口返回后初态不一致')
+        checks.push({ check: 'follow-up-shell-geometry-search-brand-return', scene: scene.id, shell, passed: true, scope: 'fixed-reference-state-only' })
       }
       if (scene.id === '10') {
         const geometry = await page.locator('.kl-table').evaluate(table => {

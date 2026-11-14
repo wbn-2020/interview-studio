@@ -249,7 +249,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-18 .r-nav-item.r-secondary { height: 57px; font-size: 24px; }
 .r-scene-18 .r-nav-separator { margin: 19px 11px 18px; }
 .r-scene-18 .r-brand-rule { position: absolute; left: 29px; top: 137px; right: 29px; height: 1px; background: #ffffff16; }
-.r-scene-18 .r-sidebar .r-brand { top: 38px; gap: 10px; }
+.r-scene-18 .r-sidebar > a { position: absolute; left: 28px; top: 38px; display: block; }
+.r-scene-18 .r-sidebar .r-brand { position: static; gap: 10px; }
 .r-scene-18 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; }
 .r-scene-18 .r-sidebar :deep(.r-emblem) { width: 44px; height: 52px; transform: translateY(4px); }
 .r-scene-18 .r-sidebar-avatar { bottom: 29px; }
