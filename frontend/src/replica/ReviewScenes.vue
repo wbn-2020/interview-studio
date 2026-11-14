@@ -80,7 +80,7 @@ function switchReviewTab(tab: string) {
 
 function addToday() {
   addedToToday.value = !addedToToday.value
-  emit('notify', addedToToday.value ? '改进动作已加入今日' : '已取消加入今日')
+  emit('notify', addedToToday.value ? '本次页面已标记加入今日；持久安排待确认' : '本次页面已取消标记；持久安排待确认')
 }
 
 function togglePriority(index: number) {
@@ -117,25 +117,25 @@ watch(() => props.scene, () => {
 </script>
 
 <template>
-  <section v-if="scene === 21" class="rv-scene rv21" aria-label="复盘">
+  <section v-if="scene === 21" class="rv-scene rv21" aria-label="复盘" @keydown.esc="feedbackMenu = null">
     <div class="rv-heading">
       <h1>复盘</h1>
-      <p class="rv-subheading"><RIcon name="calendar-days" :size="24" />提交于 11.10 14:32<span>·</span>独立专项</p>
+      <p class="rv-subheading"><RIcon name="calendar-days" variant="review" :size="24" />提交于 11.10 14:32<span>·</span>独立专项</p>
     </div>
     <div class="rv-actions rv21-actions">
-      <button class="r-btn rv21-knowledge" @click="emit('navigate', 10)"><RIcon name="book-open" :size="27" />沉淀知识</button>
-      <button class="r-btn r-primary rv21-practice" @click="emit('navigate', 17)"><RIcon name="play" :size="25" />开始独立复练</button>
+      <button class="r-btn rv21-knowledge" @click="emit('navigate', 10)"><RIcon name="book-open" variant="review" :size="27" />沉淀知识</button>
+      <button class="r-btn r-primary rv21-practice" @click="emit('navigate', 17)"><RIcon name="play" variant="review" :size="25" />开始独立复练</button>
     </div>
     <nav class="rv21-tabs" aria-label="复盘视图">
       <button v-for="(tab, index) in ['回答与反馈', '新旧对照', '来源']" :key="tab" :class="{ selected: reviewTab === tab }" :aria-current="reviewTab === tab ? 'page' : undefined" @click="switchReviewTab(tab)">
-        <RIcon :name="['message-square', 'git-compare', 'file-text'][index]!" :size="27" />{{ tab }}
+        <RIcon :name="['message-square', 'git-compare', 'file-text'][index]!" variant="review" :size="27" />{{ tab }}
       </button>
     </nav>
 
     <template v-if="reviewTab === '回答与反馈'">
       <article class="r-panel rv-panel rv21-original">
-        <h2><RIcon name="file-text" :size="31" />原答</h2>
-        <button class="rv21-quote-tag" @click="selectedObservation = 0">原文 02</button>
+        <h2><RIcon name="file-text" variant="review" :size="31" />原答</h2>
+        <button class="rv21-quote-tag" aria-label="原文 02，定位观察 01" @click="selectedObservation = 0">原文 02</button>
         <div class="rv21-answer">
           <p>在删除缓存时，<span class="rv21-highlight">如果出现缓存未命中</span><span class="rv21-highlight-comma">，</span><br>会直接返回，不需要额外处理。</p>
           <p>为了保证数据一致性，我考虑在删除<br>缓存前先检查数据是否存在，如果不<br>存在则跳过删除操作。</p>
@@ -147,27 +147,27 @@ watch(() => props.scene, () => {
         <circle cx="54" cy="15" r="5.5" fill="#dc9662" />
       </svg>
       <section class="r-panel rv-panel rv21-observations" aria-label="逐项观察">
-        <h2><RIcon name="eye" :size="32" />逐项观察</h2>
+        <h2><RIcon name="eye" variant="review" :size="32" />逐项观察</h2>
         <article v-for="index in 3" :key="index" class="rv21-observation" :class="[{ selected: selectedObservation === index - 1 }, `observation-${index}`]">
-          <button class="rv21-observation-number" :aria-label="`选中观察 ${index}`" @click="selectedObservation = index - 1">{{ index }}</button>
+          <button class="rv21-observation-number" :aria-label="`选中观察 ${index}`" :aria-pressed="selectedObservation === index - 1" @click="selectedObservation = index - 1">{{ index }}</button>
           <button class="rv21-observation-copy" @click="selectedObservation = index - 1">
             <strong v-if="index === 1">条件是否讲清 /<br>区分已知条件与待核实条件</strong>
             <strong v-else-if="index === 2">恢复判据是否明确</strong>
             <strong v-else>职责边界 /<br>区分负责与参与</strong>
             <span>{{ ['引用 原文 02', '原文未提及恢复验证', '引用 原文 03'][index - 1] }}</span>
           </button>
-          <button class="rv21-decision" :class="{ disputed: feedbackDecisions[index - 1] === '有异议', undecided: feedbackDecisions[index - 1] === '暂不判断' }" :aria-expanded="feedbackMenu === index - 1" @click="feedbackMenu = feedbackMenu === index - 1 ? null : index - 1">{{ feedbackDecisions[index - 1] }}</button>
+          <button class="rv21-decision" :class="{ disputed: feedbackDecisions[index - 1] === '有异议', undecided: feedbackDecisions[index - 1] === '暂不判断' }" :aria-label="`观察 ${index}：${feedbackDecisions[index - 1]}`" :aria-expanded="feedbackMenu === index - 1" @click="feedbackMenu = feedbackMenu === index - 1 ? null : index - 1">{{ feedbackDecisions[index - 1] }}</button>
           <div v-if="feedbackMenu === index - 1" class="rv-feedback-menu" role="group" :aria-label="`观察 ${index} 的反馈决定`">
             <button v-for="decision in (['接受', '有异议', '暂不判断'] as const)" :key="decision" @click="decideFeedback(index - 1, decision)">{{ decision }}</button>
           </div>
         </article>
       </section>
       <aside class="r-panel rv-panel rv21-improvement">
-        <h2><RIcon name="lightbulb" :size="31" />改进动作</h2>
+        <h2><RIcon name="lightbulb" variant="review" :size="31" />改进动作</h2>
         <textarea v-model="improvement" class="rv21-improvement-input" aria-label="改进动作" spellcheck="false" />
         <p class="rv21-source-label">来源</p>
         <div class="rv21-source-tags">
-          <button v-for="index in 2" :key="index" @click="selectedObservation = index - 1">观察 {{ String(index).padStart(2, '0') }}</button>
+          <button v-for="index in 2" :key="index" :aria-pressed="selectedObservation === index - 1" @click="selectedObservation = index - 1">观察 {{ String(index).padStart(2, '0') }}</button>
         </div>
         <button class="r-btn r-primary rv21-add" :aria-pressed="addedToToday" @click="addToday"><RIcon :name="addedToToday ? 'check' : 'plus'" :size="27" />{{ addedToToday ? '已加入今日' : '加入今日' }}</button>
       </aside>
@@ -364,24 +364,28 @@ watch(() => props.scene, () => {
 .rv21 .rv-heading h1 { font-size: 49px; }
 .rv21 .rv-subheading { margin-top: 7px; font-size: 22px; gap: 10px; }
 .rv21-actions { top: 143px; right: 25px; gap: 18px; }
-.rv21-actions .r-btn { height: 63px; border-radius: 21px; font-size: 23px; padding: 12px 23px !important; }
+.rv21-actions .r-btn { height: 63px; border-radius: 21px; font-size: 23px; font-weight: 500; padding: 12px 23px !important; }
 .rv21-knowledge { width: 172px; background: linear-gradient(120deg, #2d2822, #211d18) !important; border-color: #3e352d !important; }
 .rv21-practice { width: 204px; font-size: 22px !important; }
+.rv21-practice, .rv21-add { background: linear-gradient(130deg, #dca074, #d99b6e 50%, #a66b45) !important; }
 .rv21-practice .r-icon { fill: #1b1108; }
 .rv21-tabs { position: absolute; top: 246px; left: 28px; right: 26px; height: 64px; display: flex; align-items: stretch; gap: 10px; border-bottom: 1px solid #ffffff08; }
 .rv21-tabs button { display: flex; align-items: center; gap: 12px; padding: 0 22px; font-size: 25px; color: #aaa39b; position: relative; }
+.rv21-tabs button:first-child { width: 214px; padding-inline: 29px; flex: none; }
+.rv21-tabs button:nth-child(2) { width: 177px; padding-inline: 20px; flex: none; }
+.rv21-tabs button:nth-child(3) { padding-inline: 17px; }
 .rv21-tabs button .r-icon { color: #8f877d; }
 .rv21-tabs button.selected { background: linear-gradient(105deg, #241c138c, #211c1644); border-radius: 17px 17px 0 0; color: #f6f0e8; font-weight: 600; }
 .rv21-tabs button.selected .r-icon { fill: #c99f7c; color: #c99f7c; }
 .rv21-tabs button.selected::after { content: ""; position: absolute; height: 2px; left: 1px; right: 1px; bottom: 0; border-radius: 50%; background: #da9a67; }
 .rv21-original { position: absolute; left: 27px; top: 331px; width: 441px; height: 564px; padding: 23px 24px; border-radius: 17px; }
-.rv21-original h2 { font-size: 28px; }
+.rv21-original h2 { font-size: 28px; gap: 8px; }
 .rv21-quote-tag { position: absolute; top: 49px; right: 22px; height: 46px; min-width: 104px; border-radius: 11px; background: linear-gradient(110deg, #59412b88, #48382c99) !important; font-size: 22px; }
 .rv21-quote-tag::before { content: ""; position: absolute; top: 45px; left: 47px; border: 8px solid transparent; border-top: 11px solid #60442e; }
 .rv21-quote-tag::after { content: ""; position: absolute; top: 56px; left: 50px; width: 8px; height: 8px; border-radius: 50%; background: #d99765; }
 .rv21-answer { margin-top: 47px; font-size: 24px; color: #e7dfd1; }
 .rv21-answer p { line-height: 1.72; white-space: nowrap; }
-.rv21-answer p + p { margin-top: 29px; }
+.rv21-answer p + p { margin-top: 31px; }
 .rv21-highlight { color: #e6a779; text-decoration: underline; text-decoration-color: #cf8447; text-decoration-thickness: 1px; text-underline-offset: 8px; }
 .rv21-highlight-comma { color: #e6a779; }
 .rv21-evidence-link { position: absolute; z-index: 2; left: 440px; top: 446px; overflow: visible; pointer-events: none; }
@@ -391,14 +395,14 @@ watch(() => props.scene, () => {
 .rv21-observation.selected { border-color: #8763459c; background: linear-gradient(105deg, #3e30238c, #2c251c8c); }
 .rv21-observation.observation-1 { top: 91px; height: 151px; }
 .rv21-observation.observation-2 { top: 251px; height: 113px; }
-.rv21-observation.observation-3 { top: 362px; height: 181px; border-bottom-color: transparent; }
+.rv21-observation.observation-3 { top: 362px; height: 200px; border-bottom-color: transparent; }
 .rv21-observation-number { position: absolute; top: 21px; left: 23px; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(140deg, #aa7a54, #5e4634) !important; font-size: 23px; }
 .rv21-observation-copy { display: block; position: absolute; top: 22px; left: 80px; text-align: left; }
-.rv21-observation-copy strong { display: block; font-weight: 500; font-size: 24px; line-height: 1.47; }
-.rv21-observation-copy > span { display: block; color: #a49a8f; font-size: 21px; line-height: 1.65; margin-top: 3px; }
-.rv21-observation.observation-2 .rv21-observation-copy { top: 20px; left: 87px; }
+.rv21-observation-copy strong { display: block; font-weight: 500; font-size: 23px; line-height: 1.53; }
+.rv21-observation-copy > span { display: block; color: #a49a8f; font-size: 21px; line-height: 1.65; margin-top: 5px; }
+.rv21-observation.observation-2 .rv21-observation-copy { top: 20px; left: 86px; }
 .rv21-observation.observation-2 .rv21-observation-number { top: 20px; }
-.rv21-observation.observation-3 .rv21-observation-copy { top: 21px; left: 87px; }
+.rv21-observation.observation-3 .rv21-observation-copy { top: 21px; left: 86px; }
 .rv21-decision { position: absolute; z-index: 3; top: 19px; right: 21px; min-width: 76px; height: 42px; padding: 0 15px !important; border-radius: 24px; font-size: 23px; background: linear-gradient(130deg, #67977e, #395949) !important; }
 .rv21-decision.disputed { color: #241208; background: linear-gradient(120deg, #ce8b66, #ad6044) !important; }
 .rv21-decision.undecided { color: #ded2bd; background: #5c5040 !important; font-size: 19px; }
@@ -407,11 +411,11 @@ watch(() => props.scene, () => {
 .rv-feedback-menu button:hover { background: #725036; }
 .rv21-improvement { position: absolute; top: 331px; left: 990px; width: 299px; height: 564px; border-radius: 17px; padding: 23px 22px; background: linear-gradient(125deg, #2a251ec9, #1b1712bb 80%); }
 .rv21-improvement h2 { font-size: 28px; gap: 12px; }
-.rv21-improvement-input { display: block; position: absolute; top: 104px; left: 22px; width: 254px; height: 114px; padding: 14px 13px; resize: none; background: #ffffff02; border: 1px solid #5e4b3a8c; border-radius: 13px; color: #f5eee4; font-size: 23px; line-height: 1.55; overflow: hidden; }
+.rv21-improvement-input { display: block; position: absolute; top: 104px; left: 22px; width: 254px; height: 114px; padding: 14px 13px; resize: none; background: #ffffff02; border: 1px solid #5e4b3a8c; border-radius: 13px; color: #f5eee4; font-size: 22px; line-height: 1.6; overflow: hidden; }
 .rv21-source-label { position: absolute; left: 22px; top: 242px; color: #c5bdb2; font-size: 22px; }
 .rv21-source-tags { position: absolute; left: 22px; top: 286px; display: flex; gap: 9px; }
 .rv21-source-tags button { padding: 6px 16px !important; background: #4b3b2c66 !important; border-radius: 25px; font-size: 21px; }
-.rv21-add { position: absolute; left: 22px; bottom: 63px; width: 254px; height: 63px; border-radius: 16px; font-size: 25px; }
+.rv21-add { position: absolute; left: 22px; bottom: 63px; width: 254px; height: 63px; border-radius: 16px; font-size: 25px; font-weight: 500; }
 .rv21-note { position: absolute; top: 923px; left: 27px; right: 25px; height: 63px; display: flex; align-items: center; gap: 17px; padding: 0 25px; color: #999186; border: 1px solid #4a3d2e9c; border-radius: 16px; background: linear-gradient(100deg, #29231ba0, #17130f50); font-size: 20px; }
 .rv21-source-view { position: absolute; left: 27px; right: 25px; top: 331px; height: 564px; padding: 26px; }
 .rv21-source-view p { margin-top: 22px; }

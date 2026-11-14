@@ -56,6 +56,11 @@ withDefaults(defineProps<{ large?: boolean; variant?: number }>(), { large: fals
         <circle cx="73" cy="28" r="4" fill="#cf8b51" />
         <circle cx="29" cy="73" r="3" fill="#e1a575" />
       </template>
+      <template v-else-if="variant === 21">
+        <path d="m51 0 9 37 35 13-35 10-9 40-11-38L0 51l39-12Z" fill="currentColor" />
+        <path d="m51 0-1 46-35-24 28 29-21 25 28-18 1 42 5-44 39-6-40-3 24-28-22 23Z" fill="#e4ad80" />
+        <path d="m50 43 8 8-8 8-8-8Z" fill="#6d492f" />
+      </template>
       <template v-else>
         <circle v-if="variant % 3 === 0" cx="50" cy="50" r="39" stroke="currentColor" stroke-width="1.4" />
         <path d="M50 2 57 40 98 50 57 58 50 98 42 58 2 50 42 40Z" fill="currentColor" />

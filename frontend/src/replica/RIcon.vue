@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -280,12 +280,29 @@ const designPaths: Record<string, string[]> = {
   'file-text': ['M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z', 'M14 2v6h5M8 12h7M8 17h4'],
 }
 const designFilled = new Set(['user', 'database', 'shopping-cart', 'gift', 'bar-chart-3', 'monitor'])
+// 复盘原图采用双向横箭头、三点反馈气泡和折线成长，限定本页以保留其他参考差异。
+const reviewPaths: Record<string, string[]> = {
+  house: reportPaths.house!,
+  dumbbell: reportPaths.dumbbell!,
+  'book-open': libraryPaths['book-open']!,
+  play: ['M7 3.5 20 12 7 20.5Z'],
+  'refresh-cw': writingPaths['refresh-cw']!,
+  'chart-no-axes-combined': ['M3 20 10 12l4 5 7-11M16 6h5v5'],
+  database: ['M21 5c0 5.3-18 5.3-18 0s18-5.3 18 0Z', 'M3 5v6c0 5.3 18 5.3 18 0V5M3 12v6c0 5.3 18 5.3 18 0v-6'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M6 7h.01M11 10h.01M16 16h.01'],
+  sparkles: ['M12 2c1.5 6 3 8.5 9 10-6 1.5-7.5 4-9 10-1.5-6-3-8.5-9-10 6-1.5 7.5-4 9-10Z'],
+  'message-square': detailPaths['message-square']!,
+  'git-compare': ['M3 7h18M17 3l4 4-4 4M21 17H3M7 13l-4 4 4 4'],
+  'file-text': ['M14 2H5v20h14V7Z', 'M14 2v6h5M8 12h7M8 16h7'],
+  'calendar-days': ['M5 4h14a2 2 0 0 1 2 2v15H3V6a2 2 0 0 1 2-2Z', 'M7 2v5M17 2v5M3 9h18M8 13h.01M13 13h.01M8 17h.01'],
+  bell: notePaths.bell!,
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
-const fillOpacity = computed(() => props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
+const fillOpacity = computed(() => props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
     : props.variant === 'route' ? ({ play: .65, 'book-open': .5, 'chart-no-axes-combined': .65 } as Record<string, number>)[props.name] ?? 0
     : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9

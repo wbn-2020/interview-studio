@@ -692,6 +692,111 @@ try {
           movedQueue, businessWrites: writes, passed: true,
           limitations: '仅固定参考状态；说明与图的持久保存、图文答案提交及版本详情待确认，未写入正式业务数据' })
       }
+      if (scene.id === '21') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [0, 0, 221, 1022], '.rv21-original': [249, 331, 441, 564],
+          '.rv21-observations': [709, 331, 485, 564], '.rv21-improvement': [1212, 331, 299, 564],
+          '.rv21-improvement-input': [1235, 436, 254, 114],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '21面板或输入框几何不符：' + selector)
+        }
+        const original = page.locator('.rv21-answer'), originalText = await original.locator('p').allTextContents()
+        const originalLines = await original.locator('p').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) {
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+          }
+          return [...rows.values()]
+        }))
+        ensure(JSON.stringify(originalLines) === JSON.stringify([
+          ['在删除缓存时，如果出现缓存未命中，', '会直接返回，不需要额外处理。'],
+          ['为了保证数据一致性，我考虑在删除', '缓存前先检查数据是否存在，如果不', '存在则跳过删除操作。'],
+        ]), '21原答逐行文字与参考不符')
+        const actionLines = await page.getByRole('textbox', { name: '改进动作', exact: true }).evaluate(node => {
+          const style = getComputedStyle(node), mirror = document.createElement('div')
+          for (const name of ['font', 'width', 'padding', 'border', 'box-sizing', 'letter-spacing', 'word-break', 'overflow-wrap']) {
+            mirror.style.setProperty(name, style.getPropertyValue(name))
+          }
+          Object.assign(mirror.style, { position: 'fixed', visibility: 'hidden', whiteSpace: 'pre-wrap' })
+          mirror.textContent = node.value
+          document.body.append(mirror)
+          try {
+            const text = mirror.firstChild, rows = new Map()
+            for (let index = 0; index < text.textContent.length; index++) {
+              if (text.textContent[index] === '\n') continue
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+            return [...rows.values()]
+          } finally { mirror.remove() }
+        })
+        ensure(JSON.stringify(actionLines) === JSON.stringify(['下一次说明恢复判据及', '验证步骤']), '21改进动作未保持两行')
+        ensure(JSON.stringify(await page.locator('.rv21-decision').allTextContents()) === JSON.stringify(['有异议', '接受', '接受'])
+          && await page.locator('.rv21-observation.selected .rv21-observation-number').textContent() === '1'
+          && await page.locator('.rv21-tabs button[aria-current="page"]').textContent() === '回答与反馈', '21反馈、选择或页签初态不符')
+        const lastObservation = await page.locator('.observation-3').boundingBox()
+        ensure(lastObservation && lastObservation.y + lastObservation.height === 894, '21第三项观察未延伸至面板底部')
+        checks.push({ check: 'review-original-five-lines-three-decisions-two-line-action-fixed-geometry', scene: scene.id,
+          geometry, originalLines, actionLines, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        for (const [index, decision] of [[0, '接受'], [1, '有异议'], [2, '暂不判断']]) {
+          await page.locator('.rv21-decision').nth(index).click()
+          await page.getByRole('group', { name: `观察 ${index + 1} 的反馈决定`, exact: true }).getByRole('button', { name: decision, exact: true }).click()
+          ensure(await page.locator('.rv21-decision').nth(index).textContent() === decision
+            && await page.locator('.rv-feedback-menu').count() === 0, '21反馈决定未更新或菜单未关闭')
+        }
+        await page.locator('.rv21-decision').first().focus(); await page.keyboard.press('Enter')
+        ensure(await page.locator('.rv-feedback-menu').count() === 1, '21键盘未打开反馈菜单')
+        await page.keyboard.press('Escape')
+        ensure(await page.locator('.rv-feedback-menu').count() === 0, '21 Escape未关闭反馈菜单')
+        await page.getByRole('button', { name: '选中观察 3', exact: true }).click()
+        ensure(await page.locator('.observation-3').getAttribute('class').then(value => value.includes('selected')), '21观察数字未切换选择')
+        await page.locator('.rv21-source-tags').getByRole('button', { name: '观察 02', exact: true }).click()
+        ensure(await page.getByRole('button', { name: '选中观察 2', exact: true }).getAttribute('aria-pressed') === 'true', '21来源未定位观察02')
+        await page.getByRole('button', { name: '原文 02，定位观察 01', exact: true }).click()
+        ensure(await page.getByRole('button', { name: '选中观察 1', exact: true }).getAttribute('aria-pressed') === 'true', '21原文浮标未定位观察01')
+        const input = page.getByRole('textbox', { name: '改进动作', exact: true })
+        await input.fill('补充重试上限及恢复验证步骤')
+        await page.getByRole('button', { name: '加入今日', exact: true }).click()
+        ensure(await page.getByRole('button', { name: '已加入今日', exact: true }).getAttribute('aria-pressed') === 'true'
+          && await page.getByRole('status').textContent() === '本次页面已标记加入今日；持久安排待确认', '21加入动作未明确页面状态边界')
+        await page.getByRole('button', { name: '已加入今日', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '本次页面已取消标记；持久安排待确认', '21未取消本次页面标记')
+        ensure(JSON.stringify(await original.locator('p').allTextContents()) === JSON.stringify(originalText), '21反馈交互改写了原答')
+        const tabs = page.getByRole('navigation', { name: '复盘视图', exact: true })
+        await tabs.getByRole('button', { name: '来源', exact: true }).click()
+        ensure(await page.locator('.rv21-source-view > p').first().textContent() === '缓存删除失败以后 / 第 2 次提交', '21来源身份不符')
+        await page.getByRole('button', { name: '返回回答与反馈', exact: true }).click()
+        ensure(await input.inputValue() === '补充重试上限及恢复验证步骤', '21切换来源丢失页面动作草稿')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '21反馈、动作、定位及页签操作后刷新未恢复固定初态')
+        for (const [selector, target] of [
+          ['.rv21-tabs button:nth-child(2)', '22'], ['.rv21-knowledge', '10'],
+          ['.rv21-practice', '17'], ['.r-top-search', '25'], ['.r-sidebar > a', '02'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '21导航未同步地址：' + selector)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '21导航返回加载失败'); await ready()
+        }
+        await assertFrame(captured, '21导航返回后未恢复参考初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '21固定参考状态不应写入业务接口')
+        checks.push({ check: 'review-decisions-keyboard-evidence-action-draft-tabs-navigation-refresh', scene: scene.id,
+          businessWrites: writes, passed: true,
+          limitations: '仅固定参考状态；反馈决定与改进动作只保留本次页面，持久安排、知识沉淀和正式复练业务待确认，未写入正式数据' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -1127,7 +1232,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
