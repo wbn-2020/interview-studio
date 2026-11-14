@@ -8,7 +8,7 @@ import { parseArgs } from 'node:util'
 
 const { values } = parseArgs({ options: {
   'base-url': { type: 'string' }, references: { type: 'string' }, output: { type: 'string' },
-  manifest: { type: 'string' }, 'runtime-modules': { type: 'string' },
+  manifest: { type: 'string' }, 'runtime-modules': { type: 'string' }, scenes: { type: 'string' },
   channel: { type: 'string', default: 'chromium' }, 'allow-self-signed': { type: 'boolean', default: false },
 } })
 const ensure = (condition, message) => { if (!condition) throw new Error(message) }
@@ -64,6 +64,10 @@ const scenes = sceneArray.elements.map((row, index) => {
   return { id, name, title, breadcrumb, initial, file: `${name}.png`, screenshot: `${name}_replica.png` }
 })
 const referenceNames = (await fs.readdir(values.references)).filter(name => /^(?:0[1-9]|[12]\d|30)_.*\.png$/.test(name))
+const requestedIds = values.scenes?.split(',') ?? scenes.map(scene => scene.id)
+ensure(new Set(requestedIds).size === requestedIds.length && requestedIds.every(id => scenes.some(scene => scene.id === id)),
+  '--scenes 只接受不重复的两位编号，例如09,25,30')
+const selectedScenes = scenes.filter(scene => requestedIds.includes(scene.id))
 ensure(referenceNames.length === 30 && scenes.every(scene => referenceNames.filter(name => name.startsWith(`${scene.id}_`)).length === 1
   && referenceNames.includes(scene.file)), '01至30参考图存在缺失、重复或文件名不符')
 for (const scene of scenes) {
@@ -81,7 +85,7 @@ let browser
 const startedAt = new Date().toISOString()
 try {
   browser = await chromium.launch({ headless: true, ...(values.channel === 'chromium' ? {} : { channel: values.channel }),
-    args: ['--force-color-profile=srgb'] })
+    args: ['--force-color-profile=srgb', '--force-device-scale-factor=1', '--disable-gpu'] })
   const context = await browser.newContext({ viewport: { width: 1536, height: 1024 }, deviceScaleFactor: 1,
     colorScheme: 'dark', reducedMotion: 'reduce', ignoreHTTPSErrors: values['allow-self-signed'] })
   // 先核对真实线上入口字节；不拦截网络、不注入候选HTML或本地静态资源。
@@ -95,7 +99,7 @@ try {
       sha256, expectedSha256, passed })
     ensure(passed, `${name} 与候选制品不一致，停止取证`)
   }
-  for (const scene of scenes) {
+  for (const scene of selectedScenes) {
     const page = await context.newPage(), pageErrors = [], resourceTasks = []
     page.on('pageerror', error => pageErrors.push(error.message))
     page.on('response', response => {
@@ -108,8 +112,11 @@ try {
       })().then(() => null, error => error.message))
     })
     const entry = new URL(`replica.html?scene=${scene.id}`, base).href
+    let measuredViewport
+    let frameCheck = 0
     async function ready() {
       await page.locator(`.r-canvas[data-scene="${scene.id}"]`).waitFor({ state: 'visible' })
+      await page.mouse.move(0, 0)
       await page.evaluate(async () => {
         await document.fonts.ready
         await Promise.all([...document.images].map(image => image.decode()))
@@ -117,10 +124,34 @@ try {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       })
       const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio, zoom: visualViewport?.scale }))
-      ensure(viewport.width === 1536 && viewport.height === 1024 && viewport.dpr === 1 && viewport.zoom === 1, `${scene.id} 视口或缩放不符`)
+      measuredViewport = viewport
+      ensure(viewport.width === 1536 && viewport.height === 1024 && viewport.dpr === 1
+        && viewport.zoom === 1, `${scene.id} 视口或缩放不符：${JSON.stringify(viewport)}`)
       ensure(new URL(page.url()).origin === base.origin, `${scene.id} 已离开指定服务器`)
     }
     const screenshot = () => page.screenshot({ fullPage: false, animations: 'disabled', caret: 'hide', type: 'png' })
+    async function assertFrame(expected, message) {
+      const actual = await screenshot()
+      frameCheck++
+      if (!expected.equals(actual)) {
+        const prefix = path.join(values.output, 'records', `${scene.id}-frame-${frameCheck}`)
+        await fs.writeFile(`${prefix}-expected.png`, expected, { flag: 'wx' })
+        await fs.writeFile(`${prefix}-actual.png`, actual, { flag: 'wx' })
+        const first = await sharp(expected).removeAlpha().raw().toBuffer()
+        const second = await sharp(actual).removeAlpha().raw().toBuffer()
+        let changedPixels = 0, maxChannelDelta = 0, minX = 1536, minY = 1024, maxX = -1, maxY = -1
+        for (let offset = 0; offset < first.length; offset += 3) {
+          const delta = Math.max(...[0, 1, 2].map(channel => Math.abs(first[offset + channel] - second[offset + channel])))
+          if (!delta) continue
+          const point = offset / 3, x = point % 1536, y = Math.floor(point / 1536)
+          changedPixels++; maxChannelDelta = Math.max(maxChannelDelta, delta)
+          minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y)
+        }
+        await writeJson(`${prefix}.json`, { message, changedPixels, maxChannelDelta, bounds: { minX, minY, maxX, maxY },
+          activeElement: await page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id })) })
+      }
+      ensure(expected.equals(actual), message)
+    }
     try {
       ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), `${scene.id} 页面加载失败`)
       await ready()
@@ -130,10 +161,13 @@ try {
       }
       if (scene.id === '29') ensure(await page.locator('.mobile-phone').count() === 3, '29未保持三手机并列构图')
       const captured = await screenshot()
-      ensure(captured.equals(await screenshot()), `${scene.id} 连续画面不稳定，不能作为静止验收截图`)
+      await assertFrame(captured, `${scene.id} 连续画面不稳定，不能作为静止验收截图`)
       await page.reload({ waitUntil: 'networkidle' })
       await ready()
-      ensure(captured.equals(await screenshot()), `${scene.id} 刷新后的参考初态不能恢复`)
+      await assertFrame(captured, `${scene.id} 刷新后的参考初态不能恢复`)
+      let interactionError = null
+      // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
+      try {
       if (scene.id === '25') {
         const dialog = page.getByRole('dialog', { name: '全局命令面板' })
         const input = dialog.getByRole('combobox', { name: '搜索命令' })
@@ -191,7 +225,7 @@ try {
           ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '25页面导航返回后加载失败')
           await ready()
         }
-        ensure(captured.equals(await screenshot()), '25交互后重新访问没有恢复静止初态')
+        await assertFrame(captured, '25交互后重新访问没有恢复静止初态')
         checks.push({ check: 'command-geometry-domains-ime-keyboard-focus-shortcuts-navigation-refresh', scene: scene.id, passed: true })
       }
       if (scene.id === '09') {
@@ -217,7 +251,7 @@ try {
         ensure(new URL(page.url()).searchParams.get('scene') === '06', '09证据没有进入附件资料')
         ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '09附件返回后加载失败')
         await ready()
-        ensure(captured.equals(await screenshot()), '09交互后重新访问的初态与原截图不符')
+        await assertFrame(captured, '09交互后重新访问的初态与原截图不符')
         checks.push({ check: 'graph-candidates-zoom-whiteboard-attachment', scene: scene.id, passed: true })
       }
       if (scene.id === '30') {
@@ -252,7 +286,7 @@ try {
           '30已读操作没有保持待整理语义')
         await page.reload({ waitUntil: 'networkidle' })
         await ready()
-        ensure(captured.equals(await screenshot()), '30筛选、排序、勾选和已读交互后刷新未恢复参考初态')
+        await assertFrame(captured, '30筛选、排序、勾选和已读交互后刷新未恢复参考初态')
         for (const [name, target] of [['转为笔记', '11'], ['新建概念', '12'], ['创建回忆卡', '16'], ['关联已有知识', '09']]) {
           await page.getByRole('button', { name, exact: true }).click()
           await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
@@ -260,8 +294,14 @@ try {
           ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), `30${name}返回后加载失败`)
           await ready()
         }
-        ensure(captured.equals(await screenshot()), '30操作入口返回后初态与截图不符')
+        await assertFrame(captured, '30操作入口返回后初态与截图不符')
         checks.push({ check: 'inbox-source-selection-sort-checkbox-read-navigation-refresh', scene: scene.id, passed: true })
+      }
+      } catch (error) {
+        interactionError = error.message
+        failures.push({ scene: scene.id, phase: 'interaction', error: interactionError })
+        console.error(`${scene.id} 交互检查失败：${interactionError}`)
+        process.exitCode = 1
       }
       const resourceErrors = (await Promise.all(resourceTasks)).filter(Boolean)
       ensure(!pageErrors.length && !resourceErrors.length, [...pageErrors, ...resourceErrors].join('\n'))
@@ -294,6 +334,8 @@ try {
       const record = { ...scene, entry, source: 'deployed-browser-render', width: 1536, height: 1024, dpr: 1, colourSpace: 'sRGB',
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
+        measuredViewport,
+        interactionStatus: interactionError ? '失败' : ['09', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
@@ -301,7 +343,8 @@ try {
       console.log(JSON.stringify({ scene: scene.id, screenshot: scene.screenshot, comparison: record.comparison }))
     } catch (error) {
       failures.push({ scene: scene.id, error: error.message })
-      throw error
+      console.error(`${scene.id} 取证失败：${error.message}`)
+      process.exitCode = 1
     } finally { await page.close() }
   }
 } catch (error) {
@@ -311,7 +354,7 @@ try {
 } finally {
   try { await browser?.close() } catch (error) { failures.push({ error: `浏览器关闭失败：${error.message}` }); process.exitCode = 1 }
   await writeJson(path.join(values.output, 'results.json'), { startedAt, finishedAt: new Date().toISOString(), baseUrl: base.origin,
-    candidateInputSha256: manifest.inputSha256, expected: 30, captured: results.length, checks, failures,
-    status: results.length === 30 && !failures.length ? '截图与自动检查完成，待人工逐页复核' : '取证未完成',
+    candidateInputSha256: manifest.inputSha256, expected: selectedScenes.length, referenceCount: 30, captured: results.length, checks, failures,
+    status: results.length === selectedScenes.length && !failures.length ? '本次范围截图与自动检查完成，待人工逐页复核' : '本次范围取证未完成',
     scenes: results })
 }
