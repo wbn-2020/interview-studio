@@ -171,11 +171,11 @@ function endDrag(event: PointerEvent) {
 .kl-table .r-table th:nth-child(2) { width: 19.6%; }
 .kl-table .r-table th:nth-child(3) { width: 18.2%; }
 .kl-table .r-table th:nth-child(4) { width: 14.1%; }
-.kl-table th { font-size: 18.5px; line-height: 30px; white-space: nowrap; }
+.kl-table th { font-size: 18.5px; line-height: 30px; white-space: nowrap; padding-top: 12px; padding-bottom: 18px; }
 .kl-table td { font-size: 18.4px; line-height: 30px; padding: 8px 20px; }
 .kl-table td:first-child { line-height: 30px; }
-.kl-table tbody tr:first-child td { height: 81px; }
-.kl-table tbody tr:first-child td:first-child { padding-top: 6px; padding-bottom: 14px; }
+.kl-table tbody tr:first-child td { height: 77px; padding-bottom: 16px; }
+.kl-table tbody tr:first-child td:first-child { padding-top: 6px; padding-bottom: 10px; }
 .kl-table .r-pill { font-size: 18px; }
 .kl-detail { background: linear-gradient(180deg, #1b1713, #171511); }
 .kl-detail h2 { font-size: 27px; }
