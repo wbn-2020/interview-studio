@@ -980,6 +980,131 @@ try {
           businessWrites: writes, passed: true,
           limitations: '仅本次页面内确定度和片段编辑；持久保存、提交、创建及正式非空回忆业务待确认／服务器验收' })
       }
+      if (scene.id === '24') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [0, 106, 208, 918], '.r-top-search': [715, 32, 399, 56],
+          '.rv24-directions': [231, 270, 226, 617], '.rv24-evidence': [472, 270, 672, 617],
+          '.rv24-suggestions': [1159, 270, 353, 617], '.rv24-note': [231, 923, 1281, 65],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '24面板或框架几何不符：' + selector)
+        }
+        const matrix = page.locator('.rv24-evidence-table')
+        const expectedRows = [
+          ['异常与恢复', ['11.10', '11.09', '11.11', '- -- -']],
+          ['职责边界', ['11.08', '11.10', '- -- -', '11.11']],
+          ['缓存一致性', ['- -- -', '11.09', '11.11', '- -- -']],
+          ['系统设计取舍', ['11.07', '- -- -', '11.10', '- -- -']],
+        ]
+        const rows = await matrix.locator('tbody tr').evaluateAll(nodes => nodes.map(node => [
+          node.querySelector('th').textContent, [...node.querySelectorAll('td')].map(cell => cell.textContent.trim()),
+        ]))
+        ensure(JSON.stringify(rows) === JSON.stringify(expectedRows)
+          && JSON.stringify(await matrix.locator('thead th > span').allTextContents()) === JSON.stringify(['回忆', '独立作答', '复练', '受审观察'])
+          && await matrix.locator('.rv24-evidence-date').count() === 10 && await matrix.locator('.rv24-no-evidence').count() === 6,
+          '24四行证据、日期、十项来源或六项无记录不符')
+        const sidebarLines = await page.locator('.r-nav-item > span').evaluateAll(nodes => nodes.map(node => {
+          const range = document.createRange(); range.selectNodeContents(node)
+          return { text: node.textContent, lines: new Set([...range.getClientRects()].map(box => box.y)).size, fits: node.scrollWidth <= node.clientWidth }
+        }))
+        ensure(sidebarLines.every(item => item.lines === 1 && item.fits)
+          && sidebarLines.some(item => item.text === '最近访问')
+          && await page.locator('.r-nav-item.r-selected').textContent() === '成长'
+          && await page.locator('.r-nav-item.r-selected').evaluate(node => getComputedStyle(node).borderRadius === '32px')
+          && await page.locator('.r-avatar').allTextContents().then(items => items.length === 2 && items.every(text => text === '林')),
+          '24侧栏应全部单行、成长胶囊选中且保留林头像')
+        const suggestionLines = await page.locator('.rv24-suggestion-text').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
+          let text
+          while ((text = walker.nextNode())) for (let i = 0; i < text.textContent.length; i++) {
+            if (text.textContent[i] === '\n') continue
+            const range = document.createRange(); range.setStart(text, i); range.setEnd(text, i + 1)
+            const y = range.getBoundingClientRect().y
+            lines.set(y, (lines.get(y) ?? '') + text.textContent[i])
+          }
+          return [...lines.values()]
+        }))
+        ensure(JSON.stringify(suggestionLines) === JSON.stringify([
+          ['梳理异常恢复的判定标准', '（重试、降级、告警）。'],
+          ['明确核心服务与周边服务的', '职责边界与协作方式。'],
+          ['围绕高并发、高可用场景进行', '系统设计复练。'],
+        ]), '24建议文字与两行换行不符')
+        ensure((await page.locator('.rv24-note').textContent()).replace(/\s/g, '') === '证据可追溯·不输出能力总分'
+          && await page.locator('.rv24-evidence-filters input:checked').count() === 4
+          && await page.locator('.rv24-suggestion .priority[aria-pressed="false"]').count() === 3,
+          '24证据开关、建议初态或不输出能力总分边界不符')
+        checks.push({ check: 'growth-four-row-ten-source-matrix-two-line-suggestions-single-line-sidebar-fixed-geometry',
+          scene: scene.id, geometry, sidebarLines, rows, suggestionLines, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        const directions = page.getByRole('radiogroup', { name: '目标方向', exact: true })
+        for (const label of ['技术深度', '工程实践', '系统设计', '项目经验']) {
+          await directions.getByRole('radio', { name: label, exact: true }).click()
+          ensure(await directions.locator('[aria-checked="true"]').count() === 1
+            && await directions.getByRole('radio', { name: label, exact: true }).getAttribute('tabindex') === '0', '24方向选择未保持单选或唯一焦点入口')
+        }
+        for (const [key, label] of [['Home', '技术深度'], ['ArrowUp', '项目经验'], ['ArrowDown', '技术深度'], ['End', '项目经验'], ['ArrowLeft', '系统设计'], ['ArrowRight', '项目经验']]) {
+          await page.keyboard.press(key)
+          ensure(await directions.getByRole('radio', { name: label, exact: true }).evaluate(node => node === document.activeElement && node.getAttribute('aria-checked') === 'true'),
+            '24方向键盘或焦点不符：' + key)
+        }
+        ensure(await page.getByRole('status').textContent() === '项目经验的证据分类规则待确认；当前保留固定参考数据', '24不能伪装为已实现其他方向的真实分类')
+        const filters = page.locator('.rv24-evidence-filters')
+        for (const [index, name] of ['回忆', '作答', '复练', '受审观察'].entries()) {
+          await filters.getByRole('checkbox', { name, exact: true }).uncheck()
+          ensure(await matrix.locator('thead th').count() === 4 - index, '24取消证据类型未同步表格列')
+        }
+        await page.locator('.rv24-filter').click()
+        ensure(await page.locator('.rv24-filter-menu input:checked').count() === 0, '24两处筛选未共享选择')
+        for (const name of ['回忆', '作答', '复练', '受审观察']) await page.locator('.rv24-filter-menu').getByRole('checkbox', { name, exact: true }).check()
+        ensure(await filters.locator('input:checked').count() === 4 && await matrix.locator('thead th').count() === 5, '24菜单筛选未恢复完整证据矩阵')
+        await page.keyboard.press('Escape')
+        ensure(await page.locator('.rv24-filter-menu').count() === 0
+          && await page.locator('.rv24-filter').evaluate(node => node === document.activeElement), '24筛选Escape关闭或焦点恢复失败')
+        await page.locator('.rv24-target').click()
+        ensure(await page.locator('.rv24-target-menu').isVisible(), '24目标菜单未打开')
+        await page.keyboard.press('Escape')
+        ensure(await page.locator('.rv24-target-menu').count() === 0
+          && await page.locator('.rv24-target').evaluate(node => node === document.activeElement), '24目标菜单Escape关闭或焦点恢复失败')
+        await page.locator('.rv24-target').click()
+        await page.locator('.rv24-target-menu button').click()
+        ensure(await page.getByRole('status').textContent() === '固定参考目标：Java 后端 · 技术一面；其他目标待确认', '24固定目标边界不符')
+        for (let index = 0; index < 3; index++) {
+          const button = page.locator('.rv24-suggestion .priority').nth(index)
+          await button.click()
+          ensure(await button.getAttribute('aria-pressed') === 'true'
+            && await page.getByRole('status').textContent() === '优先级标记仅在本次页面内保留；持久安排待确认', '24建议优先级或持久边界不符')
+          await button.click()
+        }
+        await page.locator('.rv24-suggestion').first().getByRole('button', { name: '忽略', exact: true }).click()
+        ensure(await page.locator('.rv24-suggestion').count() === 2, '24忽略建议未隐藏')
+        await page.getByRole('button', { name: '恢复已隐藏建议', exact: true }).click()
+        ensure(await page.locator('.rv24-suggestion').count() === 3, '24建议未恢复')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '24选择、筛选和建议操作后刷新未恢复参考初态')
+        for (const [name, target] of [['异常与恢复，回忆，11.10', '23'], ['异常与恢复，独立作答，11.09', '17'],
+          ['异常与恢复，复练，11.11', '22'], ['职责边界，受审观察，11.11', '21']]) {
+          await page.getByRole('button', { name, exact: true }).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '24证据身份导航不符')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '24来源导航返回加载失败'); await ready()
+        }
+        for (const [selector, target] of [['.r-top-search', '25'], ['.r-sidebar > a', '02']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '24框架导航未同步地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '24框架导航返回加载失败'); await ready()
+        }
+        await assertFrame(captured, '24来源和框架导航返回后未恢复固定初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '24固定状态不应写入业务接口')
+        checks.push({ check: 'growth-direction-keyboard-shared-column-filters-suggestion-boundary-source-navigation-refresh',
+          scene: scene.id, businessWrites: writes, passed: true,
+          limitations: '固定参考方向与证据数据；其他方向分类、优先级持久化及正式非空成长业务待确认／服务器验收' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()

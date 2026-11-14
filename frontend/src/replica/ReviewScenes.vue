@@ -122,7 +122,32 @@ function togglePriority(index: number) {
   prioritySuggestions.value = prioritySuggestions.value.includes(index)
     ? prioritySuggestions.value.filter((item) => item !== index)
     : [...prioritySuggestions.value, index]
-  emit('notify', prioritySuggestions.value.includes(index) ? '已优先安排这项建议' : '已恢复原优先级')
+  emit('notify', prioritySuggestions.value.includes(index) ? '优先级标记仅在本次页面内保留；持久安排待确认' : '本次页面已恢复原优先级；持久安排待确认')
+}
+
+function selectDirection(value: string) {
+  direction.value = value
+  if (value !== '技术深度') emit('notify', `${value}的证据分类规则待确认；当前保留固定参考数据`)
+}
+
+function directionKeydown(event: KeyboardEvent) {
+  const index = directions.findIndex(item => item.label === direction.value)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? directions.length - 1
+    : ['ArrowRight', 'ArrowDown'].includes(event.key) ? (index + 1) % directions.length
+      : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? (index + directions.length - 1) % directions.length : -1
+  if (next < 0) return
+  event.preventDefault()
+  selectDirection(directions[next]!.label)
+  const group = (event.currentTarget as HTMLElement).parentElement
+  group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+}
+
+async function closeGrowthMenu() {
+  const selector = targetMenu.value ? '.rv24-target' : filterMenu.value ? '.rv24-filter' : ''
+  targetMenu.value = false
+  filterMenu.value = false
+  await nextTick()
+  if (selector) document.querySelector<HTMLButtonElement>(selector)?.focus()
 }
 
 // 这些判断与记录仅用于复现页交互；切换场景时恢复原图初态，不写入业务数据。
@@ -314,16 +339,16 @@ watch(() => props.scene, () => {
     </aside>
   </section>
 
-  <section v-else-if="scene === 24" class="rv-scene rv24" aria-label="成长">
+  <section v-else-if="scene === 24" class="rv-scene rv24" aria-label="成长" @keydown.esc="closeGrowthMenu">
     <div class="rv-heading">
       <h1>成长</h1>
       <p class="rv-subheading"><span class="rv24-shield"><RIcon name="check" :size="15" /></span>证据目录 · 按当前目标筛选</p>
     </div>
     <div class="rv24-actions">
-      <button class="rv24-target" :aria-expanded="targetMenu" @click="targetMenu = !targetMenu; filterMenu = false"><RIcon name="target" :size="29" /><span>Java 后端 · 技术一面</span><RIcon name="chevron-down" :size="22" /></button>
-      <button class="rv24-filter" :aria-expanded="filterMenu" @click="filterMenu = !filterMenu; targetMenu = false"><RIcon name="filter" :size="26" />筛选</button>
-      <div v-if="targetMenu" class="rv24-target-menu"><button @click="targetMenu = false; emit('notify', '已选择 Java 后端 · 技术一面')"><RIcon name="check" :size="20" />Java 后端 · 技术一面</button></div>
-      <fieldset v-if="filterMenu" class="rv24-filter-menu">
+      <button class="rv24-target" aria-controls="rv24-target-menu" :aria-expanded="targetMenu" @click="targetMenu = !targetMenu; filterMenu = false"><RIcon name="target" variant="growth" :size="29" /><span>Java 后端 · 技术一面</span><RIcon name="chevron-down" :size="22" /></button>
+      <button class="rv24-filter" aria-controls="rv24-filter-menu" :aria-expanded="filterMenu" @click="filterMenu = !filterMenu; targetMenu = false"><RIcon name="filter" :size="26" />筛选</button>
+      <div v-if="targetMenu" id="rv24-target-menu" class="rv24-target-menu"><button @click="targetMenu = false; emit('notify', '固定参考目标：Java 后端 · 技术一面；其他目标待确认')"><RIcon name="check" :size="20" />Java 后端 · 技术一面</button></div>
+      <fieldset v-if="filterMenu" id="rv24-filter-menu" class="rv24-filter-menu">
         <legend>证据类型</legend>
         <label v-for="kind in evidenceTypes" :key="kind.key"><input v-model="evidenceEnabled[kind.key]" class="r-checkbox" type="checkbox">{{ kind.label }}</label>
       </fieldset>
@@ -331,8 +356,8 @@ watch(() => props.scene, () => {
     <div class="rv24-heading-rule" />
     <aside class="r-panel rv-panel rv24-directions">
       <h2>目标方向</h2>
-      <nav aria-label="目标方向">
-        <button v-for="item in directions" :key="item.label" :class="{ selected: direction === item.label }" :aria-pressed="direction === item.label" @click="direction = item.label"><RIcon :name="item.icon" :size="25" /><span>{{ item.label }}</span><RIcon name="chevron-right" :size="21" /></button>
+      <nav role="radiogroup" aria-label="目标方向">
+        <button v-for="item in directions" :key="item.label" role="radio" :class="{ selected: direction === item.label }" :aria-checked="direction === item.label" :tabindex="direction === item.label ? 0 : -1" @click="selectDirection(item.label)" @keydown="directionKeydown"><RIcon :name="item.icon" variant="growth" :size="25" /><span>{{ item.label }}</span><RIcon name="chevron-right" :size="21" /></button>
       </nav>
       <div class="rv24-direction-rule" />
       <fieldset class="rv24-evidence-filters">
@@ -346,7 +371,7 @@ watch(() => props.scene, () => {
         <table class="rv24-evidence-table">
           <colgroup><col class="rv24-requirement-col"><col v-for="kind in visibleEvidence" :key="kind.key"></colgroup>
           <thead>
-            <tr><th aria-label="要求" /><th v-for="kind in visibleEvidence" :key="kind.key" scope="col"><RIcon :name="kind.icon" :size="31" /><span>{{ kind.heading }}</span></th></tr>
+            <tr><th aria-label="要求" /><th v-for="kind in visibleEvidence" :key="kind.key" scope="col"><RIcon :name="kind.icon" variant="growth" :size="31" /><span>{{ kind.heading }}</span></th></tr>
           </thead>
           <tbody>
             <tr v-for="row in evidenceRows" :key="row.title">
@@ -362,7 +387,7 @@ watch(() => props.scene, () => {
       </div>
     </section>
     <aside class="r-panel rv-panel rv24-suggestions" aria-label="下一步建议">
-      <h2><RIcon name="lightbulb" :size="28" />下一步建议</h2>
+      <h2><RIcon name="lightbulb" variant="growth" :size="28" />下一步建议</h2>
       <template v-for="(suggestion, index) in suggestions" :key="suggestion.title">
         <article v-if="!hiddenSuggestions.includes(index)" class="rv24-suggestion" :class="{ prioritized: prioritySuggestions.includes(index) }">
           <h3><span class="rv24-dot" :class="suggestion.tone" />{{ suggestion.title }}</h3>
@@ -370,7 +395,7 @@ watch(() => props.scene, () => {
           <p class="rv24-suggestion-text">{{ suggestion.text }}</p>
           <div class="rv24-suggestion-actions">
             <button @click="hiddenSuggestions = [...hiddenSuggestions, index]">忽略</button>
-            <button class="priority" :aria-pressed="prioritySuggestions.includes(index)" @click="togglePriority(index)">{{ prioritySuggestions.includes(index) ? '已优先安排' : '调整优先级' }}</button>
+            <button class="priority" :aria-pressed="prioritySuggestions.includes(index)" @click="togglePriority(index)">{{ prioritySuggestions.includes(index) ? '已标记优先' : '调整优先级' }}</button>
           </div>
         </article>
       </template>
@@ -553,6 +578,7 @@ watch(() => props.scene, () => {
 .rv23-tags button.amber { border-color: #a16937; color: #edb46e; background: #89542520; }
 .rv23-tags button.cyan { border-color: #4f8e88; color: #9eddd7; background: #397a7418; }
 .rv24 .rv-heading { left: 36px; top: 124px; }
+.rv24 .rv-panel { background: linear-gradient(110deg, #191613, #151311); border-color: #302a23; }
 .rv24 .rv-heading h1 { font-size: 54px; }
 .rv24 .rv-subheading { margin-top: 8px; font-size: 23px; color: #d5c9b7; gap: 11px; }
 .rv24-shield { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 25px; color: #fff8eb; background: linear-gradient(120deg, #9d5526, #bf8752); clip-path: polygon(50% 0, 95% 14%, 95% 57%, 83% 82%, 50% 100%, 17% 82%, 5% 57%, 5% 14%); }
@@ -574,6 +600,7 @@ watch(() => props.scene, () => {
 .rv24-directions nav button { display: flex; align-items: center; gap: 11px; height: 59px; padding: 0 11px !important; border-radius: 14px; font-size: 21px; text-align: left; color: #d3c7b7; }
 .rv24-directions nav button > span { flex: 1; white-space: nowrap; }
 .rv24-directions nav button > .r-icon:last-child { color: #877867; }
+.rv24-directions nav button:last-child > .r-icon:last-child { visibility: hidden; }
 .rv24-directions nav button.selected { color: #fff2df; background: linear-gradient(110deg, #8b5c2b70, #6a482a99); }
 .rv24-directions nav button.selected > .r-icon { color: #e6c19a; }
 .rv24-direction-rule { height: 1px; margin: 22px 11px 23px; background: #7354342a; }
@@ -603,16 +630,16 @@ watch(() => props.scene, () => {
 .rv24-dot.blue { background: linear-gradient(130deg, #60a9e5, #2d83d0); }
 .rv24-dot.amber { background: linear-gradient(130deg, #dfa973, #ac7449); }
 .rv24-no-evidence { font-size: 23px; color: #777062; white-space: nowrap; word-spacing: 3px; }
-.rv24-suggestions { position: absolute; top: 270px; left: 951px; width: 353px; height: 617px; padding: 20px 13px 0; border-radius: 17px; background: linear-gradient(115deg, #25201888, #18140f77); }
+.rv24 .rv24-suggestions { position: absolute; top: 270px; left: 951px; width: 353px; height: 617px; padding: 20px 13px 0; border-radius: 17px; background: linear-gradient(115deg, #1c1813, #14120f); }
 .rv24-suggestions > h2 { font-size: 22px; gap: 8px; margin: 0 6px 26px; }
-.rv24-suggestion { position: relative; height: 180px; padding: 14px 14px 8px; margin-bottom: 8px; border: 1px solid #5e4a3255; border-radius: 17px; background: #17130e33; }
+.rv24-suggestion { position: relative; height: 180px; padding: 11px 14px 8px; margin-bottom: 8px; border: 1px solid #353029; border-radius: 17px; background: linear-gradient(110deg, #171512, #121210); }
 .rv24-suggestion h3 { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
 .rv24-suggestion h3 .rv24-dot { width: 15px; height: 16px; }
 .rv24-suggestion-source { padding-left: 26px; color: #d5c1a7; margin-top: 5px !important; font-size: 16px; line-height: 1.6 !important; }
-.rv24-suggestion-text { padding-left: 26px; color: #bfb3a3; margin-top: 5px !important; white-space: pre-line; font-size: 15px; line-height: 1.5 !important; }
+.rv24-suggestion-text { padding-left: 26px; color: #c2b7a7; margin-top: 5px !important; white-space: pre-line; font-size: 16px; line-height: 1.4 !important; }
 .rv24-suggestion-actions { position: absolute; display: flex; justify-content: flex-end; gap: 10px; bottom: 7px; right: 7px; }
-.rv24-suggestion-actions button { height: 37px; padding: 0 20px !important; border: 1px solid #78634d55 !important; border-radius: 21px; background: #ffffff08 !important; font-size: 15px; font-weight: 600; }
-.rv24-suggestion-actions button.priority { padding: 0 15px !important; color: #fff0d9; border-color: #a6713f !important; background: linear-gradient(110deg, #92633970, #b1774099) !important; }
+.rv24-suggestion-actions button { height: 37px; padding: 0 20px !important; border: 1px solid #78634d55 !important; border-radius: 21px; background: #ffffff08 !important; font-size: 15px; font-weight: 500; }
+.rv24-suggestion-actions button.priority { padding: 0 15px !important; color: #fff0d9; border-color: #a6713f !important; background: linear-gradient(110deg, #6a563a, #947046) !important; }
 .rv24-suggestion:nth-of-type(2) { height: 171px; }
 .rv24-suggestion:nth-of-type(3) { height: 173px; margin-bottom: 0; }
 .rv24-suggestion.prioritized { border-color: #bc894b; }
