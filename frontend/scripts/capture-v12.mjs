@@ -1547,6 +1547,89 @@ try {
         checks.push({ check: 'recent-category-type-keyboard-preview-clear-boundary-navigation-refresh', scene: scene.id, passed: true,
           businessWrites: writes, limitations: '固定条目均可访问，开关未验证真实权限差异；清除仅当前页面内存，不代替正式历史删除；原行星素材与字体未获得' })
       }
+      if (scene.id === '27') {
+        const layout = await page.evaluate(() => {
+          const box = selector => { const rect = document.querySelector(selector).getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height] }
+          const singleLine = selector => [...document.querySelectorAll(selector)].every(node => {
+            const range = document.createRange(); range.selectNodeContents(node)
+            return new Set([...range.getClientRects()].filter(rect => rect.width > 0).map(rect => Math.round(rect.y))).size === 1
+          })
+          return {
+            sidebar: box('.r-sidebar'), search: box('.r-top-search'), queue: box('.task-queue'),
+            detail: box('.task-detail'), authorization: box('.task-authorization'), title: box('.task-heading h1'),
+            navigation: [...document.querySelectorAll('.r-nav-item')].map(node => node.textContent.trim()),
+            selected: [...document.querySelectorAll('.r-nav-item.r-selected')].map(node => node.textContent.trim()),
+            steps: [...document.querySelectorAll('.task-step > span:last-child')].map(node => node.textContent),
+            singleLine: singleLine('.r-nav-item > span') && singleLine('.task-step > span:last-child'),
+            taskNames: [...document.querySelectorAll('.task-item-name')].map(node => node.textContent),
+            statuses: [...document.querySelectorAll('.task-queue-item > .task-status')].map(node => node.textContent),
+            sources: [...document.querySelectorAll('.task-input-list > div')].map(node => node.textContent),
+            times: [...document.querySelectorAll('.task-item-time')].map(node => node.textContent),
+            brandDisc: document.querySelector('.r-brand circle')?.getAttribute('fill'),
+            topAvatar: getComputedStyle(document.querySelector('.r-top-status > .r-avatar')).backgroundImage,
+            bottomAvatar: getComputedStyle(document.querySelector('.r-sidebar-avatar .r-avatar')).backgroundImage,
+          }
+        })
+        ensure(JSON.stringify(layout.sidebar) === '[0,0,216,1024]' && JSON.stringify(layout.search) === '[713,27,449,55]'
+          && JSON.stringify(layout.queue) === '[235,236,334,709]' && JSON.stringify(layout.detail) === '[587,236,516,709]'
+          && JSON.stringify(layout.authorization) === '[1121,236,386,709]' && layout.title[0] === 252 && layout.title[1] === 114
+          && layout.title[2] === 210 && layout.singleLine, '27外壳／三栏／标题几何或导航／阶段单行不符')
+        ensure(layout.navigation.join(',') === '今日,准备,知识,训练,AI 任务,复盘,成长,题库,回忆卡,最近访问,AI 任务'
+          && layout.selected.join(',') === 'AI 任务' && layout.steps.join(',') === '任务接收,校验引用,发送中'
+          && layout.taskNames.join(',') === '知识整理,出题候选,来源问答,关系候选'
+          && layout.statuses.join(',') === '处理中,成功,失败,费用待核对'
+          && layout.sources.join(',') === '知识v4,笔记v3' && layout.times.join(',') === '今天 20:18,今天 19:47,今天 19:32,'
+          && layout.brandDisc === '#27231f' && layout.topAvatar.includes('61, 125, 184')
+          && layout.bottomAvatar.includes('80, 91, 131'), '27固定文案／版本／顺序／重复导航或品牌／头像不符')
+        checks.push({ check: 'ai-authorization-three-panels-single-line-stages-shell-and-initial-data', scene: scene.id, ...layout, passed: true })
+        const writes = []
+        const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) writes.push({ method: request.method(), path: new URL(request.url()).pathname }) }
+        page.on('request', onWrite)
+        const filter = page.locator('.task-filter-button'), tasks = page.locator('.task-queue-item')
+        const continuous = page.getByRole('switch', { name: '持续授权', exact: true })
+        ensure(await filter.getAttribute('aria-expanded') === 'false' && await continuous.getAttribute('aria-checked') === 'false'
+          && await tasks.first().getAttribute('aria-pressed') === 'true' && await page.locator('.task-detail h2').innerText() === '知识整理 · 缓存一致性', '27初始筛选／授权／选择不符')
+        await filter.click()
+        await page.getByRole('menuitemradio', { name: '成功', exact: true }).focus()
+        await page.keyboard.press('Escape')
+        ensure(!await page.getByRole('menu').count() && await filter.evaluate(node => node === document.activeElement), '27 Esc未关闭筛选或归还焦点')
+        for (const [status, title] of [['成功', '出题候选 · 算法与并发'], ['失败', '来源问答 · Spring 源码'], ['费用待核对', '关系候选 · 微服务架构']]) {
+          await filter.click()
+          await page.getByRole('menuitemradio', { name: status, exact: true }).click()
+          ensure(await tasks.count() === 1 && await page.locator('.task-detail h2').innerText() === title
+            && !await page.locator('.task-input-list').count() && await page.locator('.task-confirm').isDisabled(), `27 ${status}筛选或详情边界不符`)
+        }
+        await filter.click(); await page.getByRole('menuitemradio', { name: '全部状态', exact: true }).click()
+        await tasks.nth(2).click()
+        ensure(await page.locator('.task-detail h2').innerText() === '来源问答 · Spring 源码', '27点击任务未切换详情')
+        await tasks.first().click(); await continuous.click()
+        ensure(await continuous.getAttribute('aria-checked') === 'true', '27持续授权开关未打开')
+        await continuous.click()
+        await page.getByRole('button', { name: '刷新', exact: true }).click()
+        ensure(await tasks.count() === 4 && await tasks.first().getAttribute('aria-pressed') === 'true', '27刷新破坏当前选择')
+        await page.getByRole('button', { name: '取消任务', exact: true }).click()
+        ensure(await tasks.first().locator('.task-status').innerText() === '已取消' && await page.locator('.task-confirm').isDisabled(), '27页面内取消状态未同步')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '27取消与筛选后刷新未恢复参考初态')
+        await page.getByRole('button', { name: '确认并发送', exact: true }).click()
+        ensure(await tasks.first().locator('.task-status').innerText() === '已确认发送'
+          && await page.getByRole('button', { name: '取消任务', exact: true }).isDisabled(), '27页面内发送确认未同步或取消未锁定')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '27发送确认后刷新未恢复参考初态')
+        await page.getByRole('button', { name: '查看任务记录', exact: true }).click()
+        ensure(await page.getByRole('status').innerText() === '知识整理 · 缓存一致性 · 处理中', '27任务记录提示未使用当前身份')
+        await page.locator('.r-top-search').click()
+        await page.getByRole('dialog', { name: '全局命令面板' }).waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await page.getByRole('link', { name: '问阶今日', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="02"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '27导航返回未恢复初态')
+        page.off('request', onWrite)
+        ensure(!writes.length, '27固定参考态出现意外业务写入')
+        checks.push({ check: 'ai-authorization-filter-escape-focus-selection-toggle-cancel-send-boundary-navigation-refresh', scene: scene.id,
+          passed: true, businessWrites: writes, limitations: '筛选、取消、发送确认与持续授权仅页面内存；未调用真实AI或写入任务／授权；不可辨认小字留空，原字体和品牌素材未取得' })
+      }
       if (scene.id === '09') {
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
         ensure(await candidates.getAttribute('aria-checked') === 'true', '09初始候选关系未打开')

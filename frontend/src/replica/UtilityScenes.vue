@@ -74,6 +74,7 @@ const taskItems = [
 const selectedTask = ref(0)
 const taskFilter = ref('全部状态')
 const taskMenuOpen = ref(false)
+const taskFilterButton = ref<HTMLButtonElement>()
 const continuousAuthorization = ref(false)
 const taskCancelled = ref(false)
 const sendConfirmed = ref(false)
@@ -89,6 +90,14 @@ function chooseTaskFilter(status: string) {
   taskMenuOpen.value = false
   const first = visibleTasks.value[0]
   if (first) selectedTask.value = first.index
+}
+function closeTaskMenu() {
+  taskMenuOpen.value = false
+  taskFilterButton.value?.focus({ preventScroll: true })
+}
+function taskMenuFocusout(event: FocusEvent) {
+  if (event.currentTarget instanceof HTMLElement
+    && !(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) taskMenuOpen.value = false
 }
 function cancelTask() {
   taskCancelled.value = true
@@ -242,8 +251,8 @@ onMounted(drawHorizon)
     <template v-else-if="scene === 27">
       <div class="task-heading"><h1>任务与授权</h1><p><RIcon name="shield-check" :size="25" />所有外发都由你确认</p></div>
       <div class="task-actions">
-        <div class="utility-dropdown">
-          <button class="utility-button task-filter-button" :aria-expanded="taskMenuOpen" @click="taskMenuOpen = !taskMenuOpen"><RIcon name="filter" :size="23" />{{ taskFilter }}<RIcon name="chevron-down" :size="17" /></button>
+        <div class="utility-dropdown" @keydown.esc.stop="closeTaskMenu" @focusout="taskMenuFocusout">
+          <button ref="taskFilterButton" class="utility-button task-filter-button" aria-haspopup="menu" :aria-expanded="taskMenuOpen" @click="taskMenuOpen = !taskMenuOpen"><RIcon name="filter" :size="23" />{{ taskFilter }}<RIcon name="chevron-down" :size="17" /></button>
           <div v-if="taskMenuOpen" class="utility-menu" role="menu">
             <button v-for="status in ['全部状态', ...taskItems.map(item => item.status)]" :key="status" role="menuitemradio" :aria-checked="taskFilter === status" @click="chooseTaskFilter(status)">{{ status }}<RIcon v-if="taskFilter === status" name="check" :size="17" /></button>
           </div>
@@ -251,7 +260,7 @@ onMounted(drawHorizon)
         <button class="utility-button task-refresh-button" @click="emit('notify', '当前任务状态已刷新，仅使用页面内数据')"><RIcon name="refresh-cw" :size="23" />刷新</button>
       </div>
 
-      <aside class="utility-panel task-queue">
+      <aside class="utility-panel task-queue" aria-label="任务队列">
         <h2>任务队列 (4)</h2>
         <button v-for="task in visibleTasks" :key="task.name" class="task-queue-item" :class="{ selected: selectedTask === task.index }" :aria-pressed="selectedTask === task.index" @click="selectedTask = task.index">
           <span class="task-dot" :class="task.color" />
@@ -263,7 +272,7 @@ onMounted(drawHorizon)
         </button>
       </aside>
 
-      <section class="utility-panel task-detail">
+      <section class="utility-panel task-detail" aria-label="任务详情">
         <div class="task-detail-heading">
           <span class="task-progress-ring" :class="{ finished: sendConfirmed, cancelled: taskCancelled }" aria-hidden="true" />
           <div><h2>{{ currentTask.name }} · {{ currentTask.subject }}</h2><p>{{ selectedTask === 0 && !taskCancelled && !sendConfirmed ? '当前阶段：校验引用中 · 预计 1–2 分钟' : currentTaskStatus }}</p></div>
@@ -277,7 +286,7 @@ onMounted(drawHorizon)
           </div>
           <div class="task-input-section">
             <h3>输入清单</h3>
-            <div class="task-input-list"><p>将发送 2 条固定原文</p><div><RIcon name="file-text" :size="27" /><span>知识</span><span class="task-version">v4</span></div><div><RIcon name="file-text" :size="27" /><span>笔记</span><span class="task-version">v3</span></div></div>
+            <div class="task-input-list"><p>将发送 2 条固定原文</p><div><RIcon name="file-text" variant="authorization" :size="27" /><span>知识</span><span class="task-version">v4</span></div><div><RIcon name="file-text" variant="authorization" :size="27" /><span>笔记</span><span class="task-version">v3</span></div></div>
           </div>
           <div class="task-preview-section"><h3>结果预览 <RIcon name="info" :size="19" /></h3><div class="task-preview-chips"><span><RIcon name="file-text" :size="21" />知识 <b>v4</b> · 1 条引用</span><span><RIcon name="file-text" :size="21" />笔记 <b>v3</b> · 1 条引用</span></div></div>
           <div class="task-cost-note"><span>!</span><p><strong>费用待核对</strong> · 不按 0 显示</p></div>
@@ -286,12 +295,12 @@ onMounted(drawHorizon)
         <div v-else class="task-alternate-summary"><h3>当前状态</h3><span class="task-status" :class="currentTask.color">{{ currentTaskStatus }}</span><p>{{ currentTask.subject }}</p><button class="utility-button" @click="emit('notify', `${currentTask.name} · ${currentTask.subject} · ${currentTaskStatus}`)">查看任务记录</button></div>
       </section>
 
-      <aside class="utility-panel task-authorization">
-        <h2><RIcon name="shield-check" :size="33" />本次授权</h2>
+      <aside class="utility-panel task-authorization" aria-label="本次授权">
+        <h2><RIcon name="shield" variant="authorization" :size="33" />本次授权</h2>
         <div class="task-configured"><span><RIcon name="check" :size="20" /></span>已配置 · 服务端保管</div>
         <dl class="task-authorization-list">
-          <div><dt><RIcon name="layout-grid" :size="27" />用途</dt><dd>{{ currentTask.name }}</dd></div>
-          <template v-if="selectedTask === 0"><div><dt><RIcon name="database" :size="27" />来源</dt><dd>知识 v4 · 笔记 v3</dd></div><div><dt><RIcon name="scan" :size="27" />范围</dt><dd>2 条原文</dd></div></template>
+          <div><dt><RIcon name="layout-grid" variant="authorization" :size="27" />用途</dt><dd>{{ currentTask.name }}</dd></div>
+          <template v-if="selectedTask === 0"><div><dt><RIcon name="database" :size="27" />来源</dt><dd>知识 v4 · 笔记 v3</dd></div><div><dt><RIcon name="scan" variant="authorization" :size="27" />范围</dt><dd>2 条原文</dd></div></template>
         </dl>
         <div class="task-authorization-rule" />
         <div class="task-continuous"><h3>持续授权</h3><button class="utility-switch" role="switch" :aria-checked="continuousAuthorization" aria-label="持续授权" @click="continuousAuthorization = !continuousAuthorization" /></div>
@@ -415,65 +424,67 @@ onMounted(drawHorizon)
 
 /* 27：坐标均从原图 x 减去 216。 */
 .task-heading { position: absolute; top: 114px; left: 36px; }
-.task-heading h1 { font-size: 45px; font-weight: 650; line-height: 1.3; }
+.task-heading h1 { width: max-content; font-size: 42px; font-weight: 600; line-height: 1.3; }
 .task-heading p { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 21px; color: #bdb9b3; }
 .task-actions { position: absolute; top: 140px; left: 1006px; z-index: 2; display: flex; gap: 15px; }
 .task-actions .utility-button { height: 51px; border-radius: 16px; border-color: #ffffff04 !important; }
 .task-filter-button { width: 164px; gap: 8px; font-weight: 550 !important; }
 .task-refresh-button { width: 105px; }
-.task-queue { top: 235px; left: 19px; width: 334px; height: 710px; background: linear-gradient(120deg, #25211bc4, #1b1713db); }
-.task-queue h2 { margin: 23px 21px 11px; font-size: 25px; font-weight: 550; }
+.task-queue { top: 236px; left: 19px; width: 334px; height: 709px; padding-top: 70px; background: linear-gradient(120deg, #211d19c4, #1b1713db); }
+.task-queue h2 { position: absolute; left: 21px; top: 23px; margin: 0; font-size: 24px; font-weight: 500; }
 .task-queue-item { position: relative; display: block; width: 332px; height: 109px; text-align: left; padding: 15px 21px 12px 45px !important; border: 1px solid transparent !important; color: #f2eeea; }
 .task-queue-item::after { content: ""; position: absolute; left: 21px; right: 21px; bottom: 0; height: 1px; background: #ffffff14; }
 .task-queue-item:last-child::after { display: none; }
-.task-queue-item.selected { height: 107px; border-color: #e4aa6b !important; border-radius: 16px; background: linear-gradient(120deg, #825a3378, #533c2582) !important; }
+.task-queue-item.selected { height: 106px; border-color: #e4aa6b !important; border-radius: 16px; background: linear-gradient(120deg, #825a335c, #533c255e) !important; }
 .task-queue-item.selected::after { display: none; }
 .task-queue-item:hover { background-color: #ffffff05; }
-.task-dot { position: absolute; left: 21px; top: 27px; width: 12px; height: 12px; border-radius: 50%; }
+.task-dot { position: absolute; left: 21px; top: 26px; width: 12px; height: 12px; border-radius: 50%; }
 .task-dot.amber { background: #f2b54d; }
 .task-dot.green { background: #46d16a; }
 .task-dot.red { background: #ef453c; }
 .task-dot.blue { background: #509ad2; }
-.task-item-name { font-size: 21px; font-weight: 600; }
-.task-status { display: inline-flex; justify-content: center; align-items: center; padding: 3px 12px; border-radius: 22px; font-size: 17px; line-height: 1.5; white-space: nowrap; }
+.task-item-name { position: absolute; top: 15px; left: 44px; font-size: 20px; font-weight: 600; }
+.task-status { display: inline-flex; justify-content: center; align-items: center; padding: 3px 11px; border-radius: 22px; font-size: 17px; line-height: 1.5; white-space: nowrap; }
 .task-queue-item > .task-status { position: absolute; right: 21px; top: 17px; }
 .task-status.amber { color: #fff2db; background: linear-gradient(120deg, #986515df, #69430ebf); }
 .task-status.green { color: #dcffe4; background: #255a2fd9; }
 .task-status.red { color: #ffe6e0; background: #81271fd9; }
 .task-status.blue { color: #d7eaff; background: #304454de; }
-.task-item-subject { display: block; margin-top: 4px; font-size: 17px; color: #bcb6ae; }
+.task-item-subject { position: absolute; top: 50px; left: 44px; display: block; font-size: 17px; color: #bcb6ae; }
 .task-item-time { position: absolute; right: 21px; bottom: 9px; color: #c2bbb2; font-size: 17px; }
 .task-item-time.dim { color: #76674f6e; }
-.task-detail { top: 235px; left: 371px; width: 516px; height: 710px; padding: 27px 23px 22px; background: linear-gradient(125deg, #211d17cb, #1a1712e8); }
-.task-detail-heading { display: flex; align-items: flex-start; gap: 20px; }
-.task-detail-heading h2 { font-size: 26px; font-weight: 650; white-space: nowrap; }
+.task-detail { top: 236px; left: 371px; width: 516px; height: 709px; padding: 27px 23px 22px; background: linear-gradient(125deg, #1d1916cb, #1c1814e8); }
+.task-detail-heading { display: flex; align-items: flex-start; gap: 21px; }
+.task-detail-heading h2 { font-size: 26px; font-weight: 600; white-space: nowrap; }
 .task-detail-heading p { margin-top: 6px; font-size: 18px; white-space: nowrap; color: #bcb7b0; }
-.task-progress-ring { flex: none; width: 47px; height: 47px; margin-top: 2px; border: 7px solid #6b4b2c; border-top-color: #f6bc73; border-right-color: #f6bc73; border-bottom-color: #d49a52; border-radius: 50%; transform: rotate(19deg); }
+.task-progress-ring { flex: none; width: 46px; height: 47px; margin-top: 2px; margin-left: 2px; border: 7px solid #6b4b2c; border-top-color: #f6bc73; border-right-color: #f6bc73; border-bottom-color: #d49a52; border-radius: 50%; transform: rotate(19deg); }
 .task-progress-ring.finished { border-color: #7cc99e; }
 .task-progress-ring.cancelled { border-color: #74675b; }
-.task-steps { position: absolute; top: 135px; left: 23px; width: 469px; display: flex; justify-content: space-between; padding: 0 0; }
+.task-steps { position: absolute; top: 134px; left: 23px; width: 469px; display: flex; justify-content: space-between; padding: 0 0; }
 .task-step-line { position: absolute; top: 15px; left: 38px; right: 38px; height: 4px; background: linear-gradient(90deg, #6c655a 0%, #7c6448 49%, #3a342d 50%, #28251f 100%); }
 .task-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: 76px; color: #bcb7b0; font-size: 20px; }
+.task-step > span:last-child { white-space: nowrap; }
 .task-step-marker { display: inline-flex; align-items: center; justify-content: center; width: 33px; height: 33px; border-radius: 50%; background: linear-gradient(130deg, #67655f, #393630); color: #c6c2bb; }
 .task-step.current { color: #faf4ec; font-weight: 600; }
 .task-step.current .task-step-marker { border: 3px solid #f0ad68; background: #39291b; }
 .task-step.current .task-step-marker > span { width: 19px; height: 19px; border-radius: 50%; background: #efb57b; }
-.task-input-section { position: absolute; left: 23px; right: 23px; top: 244px; }
+.task-input-section { position: absolute; left: 23px; right: 23px; top: 243px; }
 .task-detail h3 { font-size: 21px; font-weight: 600; }
 .task-input-list { height: 161px; margin-top: 5px; padding: 12px 17px; border: 1px solid #ffffff02; border-radius: 16px; background: linear-gradient(110deg, #342f2882, #302b2563); }
 .task-input-list > p { font-size: 19px; }
 .task-input-list > div { display: flex; align-items: center; gap: 12px; height: 50px; font-size: 21px; }
+.task-input-list > div:first-of-type { margin-top: 8px; }
 .task-input-list .r-icon { color: #d8d5ce; }
 .task-version { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 31px; margin-left: 7px; border-radius: 20px; font-size: 18px; background: #ffffff10; }
-.task-preview-section { position: absolute; top: 456px; left: 23px; right: 23px; }
+.task-preview-section { position: absolute; top: 455px; left: 23px; right: 23px; }
 .task-preview-section h3 { display: flex; align-items: center; gap: 8px; }
 .task-preview-section h3 .r-icon { color: #79756c; }
-.task-preview-chips { display: flex; gap: 8px; margin-top: 5px; }
+.task-preview-chips { display: flex; gap: 8px; margin-top: 8px; }
 .task-preview-chips > span { display: inline-flex; align-items: center; gap: 5px; width: 219px; height: 45px; padding: 0 16px; border-radius: 24px; background: #ffffff08; font-size: 18px; color: #c3bdb4; white-space: nowrap; }
 .task-preview-chips > span:last-child { width: 218px; }
 .task-preview-chips .r-icon { color: #dedad2; }
 .task-preview-chips b { font-size: 17px; font-weight: 400; padding: 1px 5px; border-radius: 10px; background: #ffffff08; color: #f0ebe4; }
-.task-cost-note { position: absolute; top: 551px; left: 23px; right: 23px; display: flex; align-items: center; gap: 14px; height: 59px; padding: 0 17px; border: 1px solid #6b4c242e; border-radius: 14px; background: linear-gradient(110deg, #7044164d, #62422557); }
+.task-cost-note { position: absolute; top: 550px; left: 23px; right: 23px; display: flex; align-items: center; gap: 14px; height: 59px; padding: 0 17px; border: 1px solid #6b4c242e; border-radius: 14px; background: linear-gradient(110deg, #7044164d, #62422557); }
 .task-cost-note > span { display: inline-grid; place-items: center; width: 24px; height: 25px; border-radius: 50%; background: #f1b777; color: #3c2612; font-size: 21px; font-weight: 650; }
 .task-cost-note p { font-size: 19px; color: #ddc9b4; white-space: nowrap; }
 .task-cost-note strong { color: #efb66e; font-weight: 600; }
@@ -485,8 +496,8 @@ onMounted(drawHorizon)
 .task-alternate-summary .task-status { margin-top: 18px; }
 .task-alternate-summary p { margin-top: 20px; color: #c5beb4; }
 .task-alternate-summary .utility-button { margin-top: 30px; }
-.task-authorization { top: 235px; left: 905px; width: 386px; height: 710px; padding: 25px 23px; background: linear-gradient(125deg, #211d17c9, #1a1612e8); }
-.task-authorization h2 { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 600; }
+.task-authorization { top: 236px; left: 905px; width: 386px; height: 709px; padding: 25px 23px; background: radial-gradient(ellipse at 100% 100%, #54301b30, transparent 70%), linear-gradient(125deg, #1e1a17c9, #1a1612e8); }
+.task-authorization h2 { display: flex; align-items: center; gap: 10px; font-size: 25px; font-weight: 500; }
 .task-authorization h2 .r-icon { color: #d6d5d0; }
 .task-configured { display: flex; align-items: center; gap: 12px; height: 69px; margin-top: 29px; padding: 0 15px; border: 1px solid #31552b24; border-radius: 15px; color: #cef3d0; background: #2844215e; font-size: 21px; white-space: nowrap; }
 .task-configured > span { display: inline-grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; color: #11371b; background: #7dde7c; }
@@ -499,7 +510,7 @@ onMounted(drawHorizon)
 .task-continuous h3 { font-size: 23px; font-weight: 550; }
 .task-authorization-note { position: absolute; top: 500px; left: 23px; right: 23px; display: flex; align-items: center; gap: 9px; white-space: nowrap; font-size: 18px; color: #a9a299; }
 .task-authorization-note .r-icon { color: #7b746b; }
-.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; }
+.utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(110deg, #d4a071, #be8253 60%, #a46b42) !important; }
 
 /* 28：坐标均从原图 x 减去 240；分段设置只改变当前组件内存。 */
 .settings-heading { position: absolute; top: 116px; left: 24px; }
