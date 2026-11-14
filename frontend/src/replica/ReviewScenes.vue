@@ -83,6 +83,18 @@ function addToday() {
   emit('notify', addedToToday.value ? '本次页面已标记加入今日；持久安排待确认' : '本次页面已取消标记；持久安排待确认')
 }
 
+function judgmentKeydown(event: KeyboardEvent) {
+  const index = judgments.indexOf(judgment.value)
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? judgments.length - 1
+    : ['ArrowRight', 'ArrowDown'].includes(event.key) ? (index + 1) % judgments.length
+      : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? (index + judgments.length - 1) % judgments.length : -1
+  if (next < 0) return
+  event.preventDefault()
+  judgment.value = judgments[next]!
+  const group = (event.currentTarget as HTMLElement).parentElement
+  group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+}
+
 function togglePriority(index: number) {
   prioritySuggestions.value = prioritySuggestions.value.includes(index)
     ? prioritySuggestions.value.filter((item) => item !== index)
@@ -185,11 +197,11 @@ watch(() => props.scene, () => {
   <section v-else-if="scene === 22" class="rv-scene rv22" aria-label="新旧对照">
     <div class="rv-heading">
       <h1>新旧对照</h1>
-      <p class="rv-subheading"><RIcon name="file-text" :size="27" />同一来源动作 · 题干未变</p>
+      <p class="rv-subheading"><RIcon name="file-text" variant="compare" :size="27" />同一来源动作 · 题干未变</p>
     </div>
     <button class="r-btn rv22-source" @click="emit('navigate', 21)"><RIcon name="external-link" :size="23" />查看固定来源</button>
     <article class="r-panel rv-panel rv22-old rv22-answer-panel">
-      <h2 class="rv22-panel-heading"><span class="rv22-history-icons"><RIcon name="history" :size="18" /><RIcon name="history" :size="25" /></span>上次回答 · 11.08</h2>
+      <h2 class="rv22-panel-heading"><span class="rv22-history-icons"><RIcon name="history" :size="18" /><RIcon name="history" variant="compare" :size="25" /></span>上次回答 · 11.08</h2>
       <h3 class="rv22-answer-heading">我的回答</h3>
       <p class="rv22-answer-intro">可以通过重试机制来恢复连接，具体方案:</p>
       <ol class="rv22-answer-list">
@@ -198,13 +210,13 @@ watch(() => props.scene, () => {
         <li>设置最大重试次数，防止无限重试。</li>
       </ol>
       <div class="rv22-answer-rule" />
-      <h3 class="rv22-detail-heading"><RIcon name="lightbulb" :size="25" />思路要点</h3>
+      <h3 class="rv22-detail-heading"><RIcon name="lightbulb" variant="compare" :size="25" />思路要点</h3>
       <div class="rv22-keywords">
         <button v-for="keyword in ['重试机制', '退避策略', '最大次数']" :key="keyword" @click="emit('notify', keyword)">{{ keyword }}</button>
       </div>
     </article>
     <section class="r-panel rv-panel rv22-conditions" aria-label="条件变化">
-      <h2 class="rv22-panel-heading"><RIcon name="sliders-horizontal" :size="27" />条件变化</h2>
+      <h2 class="rv22-panel-heading"><RIcon name="sliders-horizontal" variant="compare" :size="27" />条件变化</h2>
       <dl>
         <div><dt>题干</dt><dd>未变</dd></div>
         <div><dt>辅助</dt><dd>已看参考 →<br>未开启</dd></div>
@@ -213,7 +225,7 @@ watch(() => props.scene, () => {
       </dl>
     </section>
     <article class="r-panel rv-panel rv22-new rv22-answer-panel">
-      <h2 class="rv22-panel-heading"><RIcon name="refresh-cw" :size="29" />本次复练 · 11.11</h2>
+      <h2 class="rv22-panel-heading"><RIcon name="refresh-cw" variant="compare" :size="29" />本次复练 · 11.11</h2>
       <h3 class="rv22-answer-heading">我的回答</h3>
       <p class="rv22-answer-intro">可以通过重试机制来恢复连接:</p>
       <ol class="rv22-answer-list">
@@ -221,20 +233,20 @@ watch(() => props.scene, () => {
         <li>设置合理的最大重试次数，避免无限重试。</li>
       </ol>
       <div class="rv22-answer-rule" />
-      <h3 class="rv22-detail-heading"><RIcon name="pencil" :size="25" />主要差异</h3>
+      <h3 class="rv22-detail-heading"><RIcon name="pencil" variant="compare" :size="25" />主要差异</h3>
       <p class="rv22-difference">补充了退避策略，但未说明重试上限。</p>
     </article>
     <section class="r-panel rv-panel rv22-judgment" aria-label="我的判断">
-      <h2><RIcon name="scale" :size="29" />我的判断</h2>
+      <h2><RIcon name="scale" variant="compare" :size="29" />我的判断</h2>
       <div class="rv22-judgment-options" role="radiogroup" aria-label="处理情况">
-        <button v-for="option in judgments" :key="option" role="radio" :aria-checked="judgment === option" :class="{ selected: judgment === option }" @click="judgment = option">
+        <button v-for="option in judgments" :key="option" role="radio" :aria-checked="judgment === option" :tabindex="judgment === option ? 0 : -1" :class="{ selected: judgment === option }" @click="judgment = option" @keydown="judgmentKeydown">
           <RIcon v-if="option === '已处理'" name="check" :size="23" />
           <span v-else class="rv22-radio" :class="{ checked: judgment === option }" />
           {{ option }}
         </button>
       </div>
       <label class="rv22-basis"><strong>依据:</strong><input v-model="judgmentBasis" aria-label="判断依据" spellcheck="false"></label>
-      <button class="r-btn r-primary rv22-save" @click="emit('notify', `已保存判断：${judgment}`)">保存判断</button>
+      <button class="r-btn r-primary rv22-save" @click="emit('notify', '判断已在本次页面内保留；持久保存待确认')">保存判断</button>
     </section>
   </section>
 
@@ -427,6 +439,7 @@ watch(() => props.scene, () => {
 .rv22-old { left: 28px; width: 442px; }
 .rv22-conditions { left: 490px; width: 288px; padding-left: 26px; padding-right: 24px; }
 .rv22-new { left: 798px; width: 481px; }
+.rv22-new h2, .rv22-new h3 { font-weight: 500; }
 .rv22-panel-heading { height: 54px; border-bottom: 1px solid #64544366; font-size: 24px; gap: 15px !important; white-space: nowrap; align-items: flex-start !important; padding-top: 1px; }
 .rv22-panel-heading > .r-icon { margin-top: 4px; color: #e3bc90 !important; }
 .rv22-history-icons { display: flex; align-items: center; gap: 5px; height: 35px; color: #d0ab83; }
@@ -442,7 +455,7 @@ watch(() => props.scene, () => {
 .rv22-keywords button { font-size: 21px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff12, #ffffff0b) !important; }
 .rv22-conditions dl { margin: 16px 0 0; }
 .rv22-conditions dl > div { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 18px; }
-.rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 600; line-height: 50px; white-space: nowrap; }
+.rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 500; line-height: 50px; white-space: nowrap; }
 .rv22-conditions dd { margin: 0; padding: 9px 14px; border-radius: 16px; background: #ffffff0c; font-size: 22px; line-height: 1.5; white-space: nowrap; }
 .rv22-conditions dl > div:nth-child(2) { margin-bottom: 18px; }
 .rv22-conditions dl > div:nth-child(3) dd { padding-left: 13px; padding-right: 13px; }
@@ -467,7 +480,7 @@ watch(() => props.scene, () => {
 .rv22-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #625e52; }
 .rv22-radio.checked { background: #e3a56d; border-color: #edb985; }
 .rv22-basis { display: flex; align-items: center; gap: 10px; position: absolute; top: 59px; left: 644px; width: 434px; height: 69px; border: 1px solid #554b3e; border-radius: 15px; padding: 0 17px; font-size: 19px; background: #ffffff02; white-space: nowrap; }
-.rv22-basis strong { flex: none; font-weight: 600; }
+.rv22-basis strong { flex: none; font-weight: 500; }
 .rv22-basis input { min-width: 0; flex: 1; background: transparent; padding: 0; border: 0; color: #d7d0c6; font-size: 19px; outline-offset: 6px; }
 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; }
 .rv22-save::before { content: ""; position: absolute; left: -22px; top: 0; bottom: -10px; width: 1px; background: #4a3d2c66; }

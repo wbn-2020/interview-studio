@@ -804,6 +804,84 @@ try {
           businessWrites: writes, passed: true,
           limitations: '仅固定参考状态；反馈决定与改进动作只保留本次页面，持久安排、知识沉淀和正式复练业务待确认，未写入正式数据' })
       }
+      if (scene.id === '22') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [17, 24, 205, 973], '.r-top-search': [636, 34, 522, 59],
+          '.rv22-old': [250, 259, 442, 525], '.rv22-conditions': [712, 259, 288, 525],
+          '.rv22-new': [1020, 259, 481, 525], '.rv22-judgment': [250, 812, 1251, 156],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '22面板或框架几何不符：' + selector)
+        }
+        const answerLines = await page.locator('.rv22-answer-list li').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) {
+            for (let index = 0; index < text.textContent.length; index++) {
+              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+              const y = range.getBoundingClientRect().y
+              rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+            }
+          }
+          return [...rows.values()]
+        }))
+        ensure(JSON.stringify(answerLines) === JSON.stringify([
+          ['监听连接异常，触发重试逻辑；'],
+          ['使用指数退避策略，避免频繁重试；'],
+          ['设置最大重试次数，防止无限重试。'],
+          ['监听异常并触发重试，建议使用指数', '退避；'],
+          ['设置合理的最大重试次数，避免无限重试。'],
+        ]), '22新旧回答逐行内容不符')
+        const conditionValues = await page.locator('.rv22-conditions dd').evaluateAll(nodes => nodes.map(node => node.innerText))
+        ensure(JSON.stringify(conditionValues) === JSON.stringify(['未变', '已看参考 →\n未开启', '12 → 9 分钟', '有 → 无']), '22条件变化内容不符')
+        const radios = page.getByRole('radiogroup', { name: '处理情况', exact: true })
+        ensure(await radios.getByRole('radio').count() === 4
+          && await radios.getByRole('radio', { name: '未处理', exact: true }).getAttribute('aria-checked') === 'true'
+          && await page.getByRole('textbox', { name: '判断依据', exact: true }).inputValue() === '说明了恢复判据，但未说明重试上限',
+          '22判断或依据初态不符')
+        ensure(await page.locator('.r-top-search span').textContent() === '⌘K 搜索题目、知识点...'
+          && await page.locator('.rv22-old .rv22-panel-heading').textContent() === '上次回答 · 11.08'
+          && await page.locator('.rv22-new .rv22-panel-heading').textContent() === '本次复练 · 11.11', '22搜索文案或固定日期不符')
+        checks.push({ check: 'compare-two-native-lists-five-items-conditions-judgment-fixed-geometry', scene: scene.id,
+          geometry, answerLines, conditionValues, passed: true })
+        const beforeAnswers = await page.locator('.rv22-answer-panel').allTextContents(), writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        for (const option of ['已处理', '部分处理', '未处理', '无法判断']) {
+          await radios.getByRole('radio', { name: option, exact: true }).click()
+          ensure(await radios.locator('[aria-checked="true"]').count() === 1
+            && await radios.getByRole('radio', { name: option, exact: true }).getAttribute('aria-checked') === 'true', '22四项判断未保持单选')
+        }
+        await radios.getByRole('radio', { name: '无法判断', exact: true }).focus()
+        for (const [key, expected] of [['ArrowRight', '已处理'], ['ArrowLeft', '无法判断'], ['Home', '已处理'], ['End', '无法判断'], ['ArrowUp', '未处理'], ['ArrowDown', '无法判断']]) {
+          await page.keyboard.press(key)
+          ensure(await radios.getByRole('radio', { name: expected, exact: true }).evaluate(node => node === document.activeElement && node.getAttribute('aria-checked') === 'true'), '22判断键盘状态或焦点不符：' + key)
+        }
+        await page.getByRole('textbox', { name: '判断依据', exact: true }).fill('恢复判据与重试上限需分别验证')
+        await page.getByRole('button', { name: '保存判断', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '判断已在本次页面内保留；持久保存待确认', '22保存不能伪装为持久业务完成')
+        for (const keyword of ['重试机制', '退避策略', '最大次数']) {
+          await page.locator('.rv22-keywords').getByRole('button', { name: keyword, exact: true }).click()
+          ensure(await page.getByRole('status').textContent() === keyword, '22关键词不可操作')
+        }
+        ensure(JSON.stringify(await page.locator('.rv22-answer-panel').allTextContents()) === JSON.stringify(beforeAnswers), '22判断操作改写了新旧回答')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '22判断、键盘、依据及保存后刷新未恢复参考初态')
+        for (const [selector, target] of [['.rv22-source', '21'], ['.r-top-search', '25'], ['.r-sidebar > a', '02']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '22来源或框架导航未同步地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '22导航返回加载失败'); await ready()
+        }
+        await assertFrame(captured, '22导航返回后未恢复固定初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '22固定状态不应写入业务接口')
+        checks.push({ check: 'compare-four-judgments-keyboard-basis-save-boundary-source-navigation-refresh', scene: scene.id,
+          businessWrites: writes, passed: true,
+          limitations: '仅固定参考态；判断与依据只在本次页面保留，正式持久保存及非空复练业务待服务器验收，未写入示例数据' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -1239,7 +1317,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

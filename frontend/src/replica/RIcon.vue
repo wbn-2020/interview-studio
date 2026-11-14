@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -297,10 +297,25 @@ const reviewPaths: Record<string, string[]> = {
   'calendar-days': ['M5 4h14a2 2 0 0 1 2 2v15H3V6a2 2 0 0 1 2-2Z', 'M7 2v5M17 2v5M3 9h18M8 13h.01M13 13h.01M8 17h.01'],
   bell: notePaths.bell!,
 }
+const comparePaths: Record<string, string[]> = {
+  house: reportPaths.house!,
+  'book-open': libraryPaths['book-open']!,
+  dumbbell: reportPaths.dumbbell!,
+  'refresh-cw': ['M20 10a8.5 8.5 0 1 0-2 8M20 3v7h-7'],
+  'chart-no-axes-combined': ['M3 15h3v7H3ZM10 10h3v12h-3ZM17 7h3v15h-3Z', 'M3 10l7-5 5 3 6-6M17 2h4v4'],
+  database: reviewPaths.database!,
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 7h14v10H5ZM8 11h3M13 11h3M8 14h8'],
+  sparkles: ['M10 2c1 5 2.5 7 7 8-4.5 1-6 3-7 8-1-5-2.5-7-7-8 4.5-1 6-3 7-8Z', 'M19 11c.5 3 1.5 4 4 4.5-2.5.5-3.5 1.5-4 4.5-.5-3-1.5-4-4-4.5 2.5-.5 3.5-1.5 4-4.5Z'],
+  bell: notePaths.bell!,
+  'file-text': notePaths['file-text']!,
+  history: ['M3.5 10a9 9 0 1 1 1.7 7.7', 'M3.5 3v7H10M12 6v6l4 2'],
+  'sliders-horizontal': ['M2 5h20M2 12h20M2 19h20', 'm7 2 3 3-3 3-3-3ZM16 9l3 3-3 3-3-3ZM9 16l3 3-3 3-3-3Z'],
+  scale: ['M12 2v19M5 22h14M3 6h18', 'm5 6-4 10h8Zm14 0-4 10h8Z'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
