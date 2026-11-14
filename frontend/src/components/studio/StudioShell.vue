@@ -27,6 +27,8 @@ const galaxyIcons: Record<string, string> = {
 const inboxIcons: Record<string, string> = { '/review': 'chart-no-axes-column', '/growth': 'leaf' }
 const noteIcons: Record<string, string> = { '/today': 'house', '/prepare': 'book-open', '/knowledge': 'layers', '/practice/sessions': 'play', '/review': 'chart-no-axes-column', '/growth': 'sprout', '/practice/questions': 'layout-grid', '/ai': 'zap' }
 const conceptIcons: Record<string, string> = { '/practice/sessions': 'chart-no-axes-column', '/growth': 'sprout' }
+const bankIcons: Record<string, string> = { '/prepare': 'briefcase' }
+const iconVariant = computed(() => screen.value === 'library' ? 'library' : screen.value === 'note' ? 'note' : screen.value === 'concept' ? 'detail' : screen.value === 'bank' ? 'bank' : undefined)
 const secondary = [
   { path: '/practice/questions', label: '题库', icon: 'database' }, { path: '/knowledge/cards', label: '回忆卡', icon: 'credit-card' },
   { path: '/recent', label: '最近访问', icon: 'clock' }, { path: '/ai', label: 'AI 任务', icon: 'sparkles' },
@@ -38,7 +40,8 @@ const breadcrumb = computed(() => {
 const saveLabel = computed(() => props.unresolved ? '保存待确认' : props.unsaved ? `${props.unsaved} 处未保存` : '已保存')
 function active(item: { path: string; prefix?: string }) {
   if (item.path === '/knowledge' && ['/knowledge/cards', '/knowledge/recall', '/knowledge/cram'].includes(route.path)) return false
-  if (item.path === '/practice/sessions' && ['/practice/questions', '/practice/collections'].includes(route.path)) return false
+  if (item.path === '/practice/sessions' && route.path === '/practice/questions') return true
+  if (item.path === '/practice/sessions' && route.path === '/practice/collections') return false
   return route.path === item.path || Boolean(item.prefix && route.path.startsWith(item.prefix))
     || (['/prepare', '/review', '/knowledge'].includes(item.path) && route.path.startsWith(`${item.path}/`))
 }
@@ -47,10 +50,10 @@ watch(() => route.fullPath, () => { userMenu.value = false })
 <template>
   <div class="app-shell studio-product" :class="[`screen-${screen}`, { 'studio-compact': compact }]">
     <aside class="app-nav studio-sidebar">
-      <RouterLink class="studio-brand" to="/today" aria-label="问阶 · 今日"><RBrand :variant="compact ? 9 : screen === 'inbox' ? 30 : screen === 'library' ? 10 : screen === 'note' ? 11 : screen === 'concept' ? 12 : 2" /></RouterLink>
+      <RouterLink class="studio-brand" to="/today" aria-label="问阶 · 今日"><RBrand :variant="compact ? 9 : screen === 'inbox' ? 30 : screen === 'library' ? 10 : screen === 'note' ? 11 : screen === 'concept' ? 12 : screen === 'bank' ? 14 : 2" /></RouterLink>
       <nav class="studio-primary-nav" aria-label="主导航">
-        <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" class="studio-nav-item" :class="{ 'studio-selected': active(item) }" :aria-current="active(item) ? 'page' : undefined"><RIcon :name="compact ? galaxyIcons[item.path]! : screen === 'note' ? noteIcons[item.path] ?? item.icon : screen === 'concept' ? conceptIcons[item.path] ?? item.icon : screen === 'inbox' ? inboxIcons[item.path] ?? item.icon : ['today', 'library'].includes(screen) && item.path === '/today' ? 'calendar-days' : item.icon" :variant="screen === 'library' ? 'library' : screen === 'note' ? 'note' : screen === 'concept' ? 'detail' : undefined" :size="compact ? 34 : 28" /><span>{{ item.label }}</span></RouterLink>
-        <template v-if="!compact"><div class="studio-nav-rule" /><RouterLink v-for="item in secondary" :key="item.path" :to="item.path" class="studio-nav-item studio-secondary" :class="{ 'studio-selected': route.path === item.path }"><RIcon :name="screen === 'note' ? noteIcons[item.path] ?? item.icon : screen === 'inbox' && item.path === '/practice/questions' ? 'layers' : item.icon" :variant="screen === 'library' ? 'library' : screen === 'note' ? 'note' : screen === 'concept' ? 'detail' : undefined" :size="27" /><span>{{ item.label }}</span></RouterLink></template>
+        <RouterLink v-for="item in navigation" :key="item.path" :to="item.path" class="studio-nav-item" :class="{ 'studio-selected': active(item) }" :aria-current="active(item) ? 'page' : undefined"><RIcon :name="compact ? galaxyIcons[item.path]! : screen === 'note' ? noteIcons[item.path] ?? item.icon : screen === 'concept' ? conceptIcons[item.path] ?? item.icon : screen === 'bank' ? bankIcons[item.path] ?? item.icon : screen === 'inbox' ? inboxIcons[item.path] ?? item.icon : ['today', 'library'].includes(screen) && item.path === '/today' ? 'calendar-days' : item.icon" :variant="iconVariant" :size="compact ? 34 : 28" :stroke-width="screen === 'bank' ? 2.1 : 1.7" /><span>{{ item.label }}</span></RouterLink>
+        <template v-if="!compact"><div class="studio-nav-rule" /><RouterLink v-for="item in secondary" :key="item.path" :to="item.path" class="studio-nav-item studio-secondary" :class="{ 'studio-selected': route.path === item.path && screen !== 'bank' }"><RIcon :name="screen === 'note' ? noteIcons[item.path] ?? item.icon : screen === 'inbox' && item.path === '/practice/questions' ? 'layers' : item.icon" :variant="iconVariant" :size="27" :stroke-width="screen === 'bank' ? 2.1 : 1.7" /><span>{{ item.label }}</span></RouterLink></template>
       </nav>
       <button class="studio-avatar studio-sidebar-avatar" title="账户与设置" aria-label="账户与设置" :aria-expanded="userMenu" @click="userMenu = !userMenu">林</button>
     </aside>

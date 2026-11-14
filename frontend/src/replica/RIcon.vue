@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -194,14 +194,23 @@ const detailPaths: Record<string, string[]> = {
   bell: notePaths.bell!,
 }
 const detailFills: Record<string, number> = { layers: .98, play: .4, 'chart-no-axes-column': .9, 'book-open': .65, shield: .98, pencil: .95, 'file-text': .85, 'message-square': .95 }
+// 题库的公文包、环形复盘和圆角卡片限定在该页，保留其他参考页各自轮廓。
+const bankPaths: Record<string, string[]> = {
+  briefcase: ['M4 6h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z', 'M8 6V3h8v3M2 12c6 3 14 3 20 0M10 12v3h4v-3'],
+  'refresh-cw': ['M21 10a9 9 0 1 0-2 8M21 3v7h-7', 'm3 15 3 3 4-5'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM2 8h20', 'M6 12h.01M10 12h.01M14 12h.01M18 12h.01M6 16h.01M10 16h.01M14 16h.01M18 16h.01M6 19h12'],
+  'arrow-up-down': ['m12 3 5 5H7ZM7 16h10l-5 5Z'],
+  play: ['M7 3 21 12 7 21Z'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
-    : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
+    : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9
+      : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="outlineWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">

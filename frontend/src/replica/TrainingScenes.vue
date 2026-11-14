@@ -260,7 +260,7 @@ watch(() => props.scene, () => {
       <section class="ts-panel bank-list" :class="{ expanded: !showFilters }" aria-label="题目列表">
         <table>
           <colgroup><col class="question-column" /><col class="topic-column" /><col class="standard-column" /><col class="source-column" /><col /></colgroup>
-          <thead><tr><th>题目</th><th>主题</th><th>标准</th><th>来源</th><th><button type="button" @click="reverseQuestions = !reverseQuestions">最近<RIcon name="arrow-up-down" :size="15" /></button></th></tr></thead>
+          <thead><tr><th>题目</th><th>主题</th><th>标准</th><th>来源</th><th><button type="button" :aria-pressed="reverseQuestions" @click="reverseQuestions = !reverseQuestions">最近<RIcon name="arrow-up-down" variant="bank" :size="15" /></button></th></tr></thead>
           <tbody>
             <tr v-for="item in visibleQuestions" :key="item.title" :class="{ selected: item.index === selectedQuestion }" tabindex="0" :aria-selected="item.index === selectedQuestion" @click="selectQuestion(item.index)" @keydown.enter="selectQuestion(item.index)" @keydown.space.prevent="selectQuestion(item.index)">
               <td>{{ item.title }}</td><td>{{ item.topic }}</td><td><span class="standard-badge" :class="item.standard === '已审' ? 'reviewed' : item.standard === '待审' ? 'pending' : 'unreviewed'">{{ item.standard }}</span></td><td>{{ item.source }}</td><td>{{ item.recent }}</td>
@@ -270,7 +270,7 @@ watch(() => props.scene, () => {
         </table>
       </section>
       <aside class="ts-panel bank-detail">
-        <h2>{{ question.title }}</h2>
+        <h2><template v-if="selectedQuestion === 0">缓存删除失败后<br>如何恢复？</template><template v-else>{{ question.title }}</template></h2>
         <div class="bank-tags"><span>{{ question.topic }}</span><span v-if="selectedQuestion === 0">缓存</span><span v-if="selectedQuestion === 0">故障恢复</span></div>
         <template v-if="selectedQuestion === 0">
           <h3>题干</h3><p>在分布式系统中，缓存删除失败可能导致数据不一致，请分析可能的原因，并给出恢复方案。</p>
@@ -494,16 +494,17 @@ watch(() => props.scene, () => {
 .bank-title { position: absolute; left: 24px; top: 99px; }
 .bank-title h1 { font-size: 44px; line-height: 1.25; }
 .bank-tabs { position: absolute; top: 162px; left: 20px; display: flex; width: 310px; height: 47px; border-radius: 13px; background: #18161382; }
-.bank-tabs button { flex: 1; color: #c8c3bd; font-size: 21px; border-radius: 13px; }
+.bank-tabs button { flex: 1; color: #ded9d3; font-size: 21px; border-radius: 13px; }
 .bank-tabs button.active { position: relative; color: #fff3e4; font-weight: 600; background: linear-gradient(#3a3128a1, #332b2380); }
-.bank-tabs button.active::after { content: ''; position: absolute; bottom: 0; left: 7px; right: 7px; height: 2px; background: #e6ab72; box-shadow: 0 0 7px #d7965266; }
+.bank-tabs button.active { flex: 0 0 100px; }
+.bank-tabs button.active::after { content: ''; position: absolute; bottom: 0; left: 6px; right: 6px; height: 2px; background: #e6ab72; box-shadow: 0 0 7px #d7965266; }
 .bank-tools { position: absolute; top: 112px; right: 30px; display: flex; gap: 13px; align-items: center; }
 .bank-search { display: flex; align-items: center; gap: 14px; height: 54px; width: 324px; padding: 0 17px; border: 1px solid #39342d; border-radius: 16px; background: #211e19b0; }
 .bank-search input { min-width: 0; width: 100%; background: transparent; border: 0; outline: none; font-size: 18px; }
 .bank-search input::placeholder { color: #948e86; }
-.bank-tools .ts-button { height: 54px; min-width: 123px; font-size: 20px; border-radius: 16px; }
-.bank-tools .primary { min-width: 115px; }
-.bank-filters { left: 8px; top: 230px; width: 204px; height: 750px; border-radius: 14px; padding: 32px 21px; }
+.bank-tools .ts-button { height: 54px; min-width: 0; width: 128px; padding-inline: 14px; gap: 9px; font-size: 20px; border-radius: 16px; }
+.bank-tools .primary { width: 116px; font-weight: 500; }
+.bank-filters { left: 8px; top: 230px; width: 204px; height: 750px; border-radius: 14px; padding: 32px 23px; background: linear-gradient(160deg, #1d1a17, #1b1815 80%); }
 .bank-filter-group { margin-bottom: 30px; }
 .bank-filter-group:nth-child(2) { margin-bottom: 23px; }
 .bank-filter-group:nth-child(3) { padding-top: 10px; margin-top: -11px; margin-bottom: 15px; border-top: 1px solid #ffffff08; }
@@ -525,19 +526,19 @@ watch(() => props.scene, () => {
 .filter-state-dot.orange { background: #d78739; }
 .filter-state-dot.gray { background: #69655f; }
 .reset-filters { position: absolute; left: 21px; right: 20px; bottom: 29px; height: 48px; font-size: 18px; border-radius: 13px; }
-.bank-list { left: 218px; top: 230px; width: 709px; height: 750px; border-radius: 14px; padding: 6px 11px; }
+.bank-list { left: 218px; top: 230px; width: 709px; height: 750px; border-radius: 14px; padding: 6px 17px 6px 11px; background: linear-gradient(140deg, #191714, #171513 70%, #191613); }
 .bank-list.expanded { left: 8px; width: 919px; }
 .bank-list table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 18px; text-align: left; }
-.bank-list .question-column { width: 39%; }
-.bank-list .topic-column { width: 17.5%; }
-.bank-list .standard-column { width: 13%; }
-.bank-list .source-column { width: 15.5%; }
-.bank-list th { height: 54px; font-weight: 600; padding: 0 11px; white-space: nowrap; }
+.bank-list .question-column { width: 265px; }
+.bank-list .topic-column { width: 118px; }
+.bank-list .standard-column { width: 90px; }
+.bank-list .source-column { width: 105px; }
+.bank-list th { height: 55px; font-weight: 500; padding: 0 11px; white-space: nowrap; }
 .bank-list th button { display: flex; align-items: center; gap: 9px; }
 .bank-list td { height: 59px; border-bottom: 1px solid #ffffff04; padding: 0 11px; white-space: nowrap; }
 .bank-list tr { cursor: pointer; }
 .bank-list tbody tr:hover td { background: #ffffff04; }
-.bank-list tr.selected td { background: #3c352d8c; }
+.bank-list tr.selected td { background: linear-gradient(180deg, #302923e0, #2c2621e0); }
 .bank-list tr.selected td:first-child { border-radius: 7px 0 0 7px; box-shadow: inset 2px 0 #dfa467; }
 .bank-list tr.selected td:last-child { border-radius: 0 7px 7px 0; }
 .standard-badge { display: inline-block; min-width: 58px; text-align: center; padding: 3px 8px; border-radius: 12px; line-height: 28px; }
@@ -545,13 +546,15 @@ watch(() => props.scene, () => {
 .standard-badge.pending { background: #7d542ebd; color: #ffe1bb; }
 .standard-badge.unreviewed { background: #ffffff13; color: #e8e4df; }
 .bank-list .empty-row { color: #aaa49b; text-align: center; height: 100px; }
-.bank-detail { left: 934px; top: 230px; width: 350px; height: 614px; padding: 16px 18px; border-radius: 14px; }
-.bank-detail h2 { max-width: 300px; font-size: 28px; line-height: 1.3; font-weight: 650; min-height: 74px; }
+.bank-detail { left: 934px; top: 230px; width: 350px; height: 614px; padding: 16px 19px; border-radius: 14px; }
+.bank-detail h2 { max-width: 300px; font-size: 28px; line-height: 1.3; font-weight: 600; min-height: 76px; }
 .bank-tags { display: flex; gap: 7px; margin-top: 12px; margin-bottom: 24px; }
 .bank-tags span { font-size: 16px; padding: 4px 12px; line-height: 24px; border-radius: 15px; background: #ffffff0b; }
 .bank-tags span:first-child { background: #68452278; }
 .bank-detail h3 { font-size: 20px; margin-top: 14px; margin-bottom: 3px; }
 .bank-detail p { font-size: 16px; line-height: 1.55; }
+.scene-14 .bank-condition, .scene-14 .bank-hidden-answer { font-size: 16px; }
+.scene-14 .bank-start, .scene-14 .bank-add { font-size: 17px; }
 .bank-condition { position: absolute; left: 18px; right: 18px; top: 381px; height: 46px; min-height: 0; justify-content: flex-start; gap: 7px; padding: 6px 10px; border-radius: 11px; font-size: 16px; }
 .bank-condition > .r-icon:last-child { margin-left: auto; }
 .bank-hidden-answer { position: absolute; left: 18px; right: 18px; top: 439px; height: 45px; min-height: 0; justify-content: flex-start; padding: 6px 14px; border-radius: 11px; color: #928b81 !important; font-size: 16px; }
@@ -560,7 +563,9 @@ watch(() => props.scene, () => {
 .bank-start .r-icon { fill: #68431d; }
 .bank-add { position: absolute; left: 18px; right: 18px; top: 553px; height: 43px; min-height: 0; border-color: #dda36b !important; border-radius: 12px; font-size: 17px; }
 .bank-unknown { display: flex; gap: 10px; color: #aaa299; font-size: 17px; margin-top: 40px; }
-.bank-route { left: 934px; top: 842px; width: 350px; height: 138px; border-radius: 15px; padding: 12px 28px; background: linear-gradient(120deg, #2b251ed6, #29231dd0); }
+.bank-route { left: 934px; top: 842px; width: 350px; height: 138px; border-radius: 15px; padding: 12px 29px; background: #1b1815; }
+.bank-route::before { content: ''; position: absolute; inset: 0 10px 1px; border: 1px solid #4c40323d; border-radius: 18px; background: linear-gradient(120deg, #2b251ed6, #29231dd0); pointer-events: none; }
+.bank-route > * { position: relative; }
 .bank-route-head { display: flex; width: 100%; align-items: center; gap: 7px; white-space: nowrap; }
 .bank-route-head strong { font-size: 18px; }
 .bank-route-head span { font-size: 16px; color: #c5beb5; }

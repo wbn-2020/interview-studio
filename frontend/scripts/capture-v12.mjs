@@ -253,6 +253,75 @@ try {
         await assertFrame(captured, '06页码、缩放、筛选和折叠后刷新未恢复初态')
         checks.push({ check: 'attachment-pagination-zoom-filter-collapse-refresh', scene: scene.id, passed: true })
       }
+      if (scene.id === '14') {
+        const table = page.locator('.bank-list'), rows = table.locator('tbody tr')
+        const geometry = await page.evaluate(() => {
+          const rect = selector => {
+            const node = document.querySelector(selector), r = node?.getBoundingClientRect()
+            return r ? [r.x, r.y, r.width, r.height] : null
+          }
+          return {
+            titleLines: document.querySelector('.bank-detail h2')?.innerText.split('\n'),
+            headings: [...document.querySelectorAll('.bank-list th')].map(node => node.textContent?.trim()),
+            filters: rect('.bank-filters'), table: rect('.bank-list'), detail: rect('.bank-detail'),
+            search: rect('.bank-search'), filterButton: rect('.bank-tools > .ts-button'), create: rect('.bank-tools > .primary'),
+            separator: rect('.r-nav-separator'),
+            selected: document.querySelector('.r-sidebar .r-selected')?.textContent?.trim(),
+            sidebarLabels: [...document.querySelectorAll('.r-nav-item')].map(node => node.textContent?.trim()),
+            selectedRow: document.querySelector('.bank-list tr.selected')?.textContent?.trim(),
+            brandPaths: document.querySelectorAll('.r-brand path').length,
+            briefcasePaths: [...document.querySelectorAll('.r-nav-item')].find(node => node.textContent?.trim() === '准备')?.querySelectorAll('path').length,
+          }
+        })
+        const closeBox = (actual, expected) => actual?.length === 4 && actual.every((value, index) => Math.abs(value - expected[index]) <= 1)
+        ensure(JSON.stringify(geometry.titleLines) === JSON.stringify(['缓存删除失败后', '如何恢复？'])
+          && JSON.stringify(geometry.headings) === JSON.stringify(['题目', '主题', '标准', '来源', '最近'])
+          && await rows.count() === 5 && geometry.selected === '训练' && geometry.selectedRow.startsWith('缓存删除失败后如何恢复？'),
+          '14标题换行、五列五题或选中状态不符')
+        ensure(closeBox(geometry.filters, [238, 230, 204, 750]) && closeBox(geometry.table, [448, 230, 709, 750])
+          && closeBox(geometry.detail, [1164, 230, 350, 614]) && closeBox(geometry.search, [912, 112, 324, 54])
+          && closeBox(geometry.filterButton, [1249, 112, 128, 54]) && closeBox(geometry.create, [1390, 112, 116, 54])
+          && Math.abs(geometry.separator?.[1] - 513) <= 1 && geometry.brandPaths === 2 && geometry.briefcasePaths === 2,
+          '14面板、工具组、侧栏分隔或专用图标几何不符')
+        checks.push({ check: 'question-bank-five-rows-columns-title-lines-shell-tools-geometry', scene: scene.id, geometry, passed: true })
+        const search = page.getByRole('textbox', { name: '搜索题目', exact: true })
+        await search.fill('ThreadLocal')
+        ensure(await rows.count() === 1 && (await rows.first().textContent()).includes('ThreadLocal'), '14标题搜索未筛选')
+        await page.getByRole('button', { name: '重置', exact: true }).click()
+        const groups = page.locator('.bank-filter-group')
+        await groups.nth(0).getByRole('button', { name: /^分布式\s*8$/ }).click()
+        ensure(await rows.count() === 1 && (await rows.first().textContent()).startsWith('缓存删除失败后'), '14主题筛选未生效')
+        await page.getByRole('button', { name: '重置', exact: true }).click()
+        await groups.nth(2).getByRole('button', { name: '已审', exact: true }).click()
+        ensure(await rows.count() === 3, '14标准状态筛选未生效')
+        await groups.nth(3).getByRole('button', { name: '导入', exact: true }).click()
+        ensure(await table.getByText('没有匹配的题目', { exact: true }).isVisible(), '14组合筛选空态不符')
+        await page.getByRole('button', { name: '重置', exact: true }).click()
+        await groups.first().getByRole('button', { name: '主题', exact: true }).click()
+        ensure(await groups.first().locator('.filter-options').count() === 0, '14主题未收起')
+        await groups.first().getByRole('button', { name: '主题', exact: true }).click()
+        await page.locator('.bank-tools').getByRole('button', { name: '筛选', exact: true }).click()
+        ensure(await page.locator('.bank-filters').count() === 0 && (await table.boundingBox()).x === 238, '14筛选栏未收起')
+        await page.locator('.bank-tools').getByRole('button', { name: '筛选', exact: true }).click()
+        const sort = table.getByRole('button', { name: '最近', exact: true })
+        await sort.click()
+        ensure(await sort.getAttribute('aria-pressed') === 'true' && (await rows.first().textContent()).startsWith('解释一次 GC'), '14排序未反转')
+        await sort.click()
+        await rows.nth(1).focus(); await rows.nth(1).press('Enter')
+        ensure(await page.locator('.bank-detail h2').textContent() === 'ThreadLocal 为什么会泄漏？'
+          && await page.getByText('题干与标准要求待确认', { exact: true }).isVisible(), '14键盘选择没有同步真实已知题目')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '14搜索、筛选、折叠、排序、选择后刷新未恢复')
+        for (const [selector, target] of [['.bank-start', '17'], ['.bank-route-head', '15'], ['.bank-tabs button:nth-child(2)', '15']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor()
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '14题库导航未同步地址')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '14返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '14导航返回后初态发生变化')
+        checks.push({ check: 'question-bank-search-filters-collapse-sort-keyboard-navigation-refresh', scene: scene.id, passed: true, limitations: '考察项关联、条件说明、加入题单、新建流程及其他题目完整正文待确认；未接正式业务' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -681,7 +750,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

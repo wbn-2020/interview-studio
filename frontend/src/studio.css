@@ -105,6 +105,29 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
   .screen-galaxy .studio-global-search { position: absolute; left: 336px; height: 49px; margin-left: 0; }
 }
 .studio-product .preference-save-notice { max-width: none; font-size: 14px; }
+@media (min-width: 1251px) {
+  .studio-product.screen-bank { --sidebar: 230px; }
+  .studio-product.screen-bank .studio-sidebar { left: 0; top: 7px; bottom: 8px; width: 230px; border-radius: 27px; border-color: #62504799; background: radial-gradient(ellipse 180px 560px at -20% 72%, #80563b33, transparent), linear-gradient(150deg, #211c19, #211a17 60%, #191513); }
+  .screen-bank .studio-sidebar::before { content: ""; position: absolute; left: 28px; right: 26px; top: 125px; height: 1px; background: #8d736122; }
+  .screen-bank .studio-brand { top: 40px; left: 28px; }
+  .screen-bank .studio-brand .r-brand { gap: 12px; }
+  .screen-bank .studio-brand .r-emblem { width: 44px; height: 55px; color: #dcb184; filter: none; }
+  .screen-bank .studio-brand .r-brand-word { font-weight: 500; }
+  .screen-bank .studio-brand .r-brand-word small { font-size: 14px; color: #9c9188; }
+  .studio-product.screen-bank .studio-primary-nav { top: 140px; left: 22px; right: 20px; gap: 4px; }
+  .studio-product.screen-bank .studio-nav-item { height: 55px; min-height: 55px; padding-left: 17px; gap: 19px; font-size: 22px; color: #efe8e1; }
+  .studio-product.screen-bank .studio-nav-item.studio-selected { margin-top: 3px; height: 52px; min-height: 52px; border-radius: 15px; background: linear-gradient(110deg, #9c6d47b8, #6a4b35c9); box-shadow: inset 1px 1px 5px #f7c49216; }
+  .screen-bank .studio-nav-rule { margin: 11px 13px; }
+  .studio-product.screen-bank .studio-secondary { height: 49px; min-height: 49px; }
+  .screen-bank .studio-sidebar-avatar { left: 29px; bottom: 30px; width: 57px; height: 57px; }
+  .screen-bank .studio-sidebar-avatar::before { content: ""; position: absolute; left: -1px; top: -25px; width: 174px; height: 1px; background: #8d736122; }
+  .screen-bank .studio-avatar { background: linear-gradient(130deg, #84716d, #645957); border-color: #a28c7333; }
+  .screen-bank .studio-topbar { top: 8px; left: 254px; right: 29px; height: 72px; }
+  .screen-bank .studio-global-search { position: absolute; top: 8px; right: 289px; height: 53px; border-radius: 19px; background: linear-gradient(110deg, #25211fe6, #221e1bd9); }
+  .screen-bank .studio-top-status { gap: 21px; }
+  .screen-bank .studio-top-status > .studio-avatar { width: 47px; height: 49px; font-size: 23px; }
+  .screen-bank .studio-saved { position: absolute; right: 138px; top: 21px; font-size: 20px; color: #8bd398; }
+}
 @media (max-height: 900px) and (min-width: 901px) { .studio-product .studio-primary-nav { gap: 1px; top: 115px; }.studio-product .studio-nav-item { height: 48px; min-height: 48px; }.studio-product .studio-secondary { height: 42px; min-height: 42px; }.studio-nav-rule { margin: 12px 13px; }.studio-product.screen-galaxy .studio-primary-nav { top: 25px; gap: 3px; }.studio-product.screen-galaxy .studio-nav-item { min-height: 76px; height: 76px; } }
 @media (max-width: 1250px) { .studio-topbar { gap: 16px; right: 22px; }.studio-breadcrumb { font-size: 17px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }.studio-top-status { gap: 16px; }.studio-global-search { width: 320px !important; }.studio-product .studio-main { padding-right: 22px; }.studio-saved { font-size: 17px; }.studio-product .page-heading h1 { font-size: 40px; } }
 @media (max-width: 900px) { .studio-product { --sidebar: 88px; }.studio-product .studio-sidebar { left: 0; top: 0; bottom: 0; width: 88px; border-radius: 0; }.studio-brand { left: 20px !important; top: 22px !important; }.studio-brand .r-brand-word { display: none; }.studio-product .studio-primary-nav { left: 8px; right: 8px; top: 112px; }.studio-product .studio-nav-item { padding: 0; justify-content: center; }.studio-product .studio-nav-item span, .studio-product .studio-secondary, .studio-nav-rule { display: none; }.studio-sidebar-avatar { left: 17px; }.studio-topbar, .screen-galaxy .studio-topbar { left: 110px; right: 20px; }.studio-breadcrumb { display: none; }.studio-global-search { margin-left: 0; width: auto !important; flex: 1; }.studio-top-status { gap: 12px; }.studio-saved { font-size: 15px; }.studio-top-status .studio-avatar { display: none; }.studio-product .studio-main, .studio-product.screen-galaxy .studio-main { padding: 105px 20px 30px; margin-left: 88px; }.studio-product .page-heading h1 { font-size: 34px; } }
