@@ -287,6 +287,13 @@ try {
       if (scene.id === '13') {
         const nodes = page.locator('.kb-node'), canvas = page.locator('.kb-canvas')
         const inspector = page.locator('.kb-inspector'), switches = inspector.getByRole('switch')
+        const sidebar = await page.locator('.r-sidebar').boundingBox()
+        const navigation = await page.locator('.r-nav-item > span').evaluateAll(labels => labels.map(node => {
+          const range = document.createRange(); range.selectNodeContents(node)
+          return { text: node.textContent, lines: new Set([...range.getClientRects()].filter(rect => rect.width).map(rect => rect.top)).size }
+        }))
+        ensure(sidebar?.x === 0 && sidebar.y === 0 && sidebar.width === 212 && sidebar.height === 1024
+          && navigation.length === 10 && navigation.every(item => item.lines === 1), '13侧栏范围或导航单行状态不符')
         const positions = await nodes.evaluateAll(items => items.map(node => ({ x: parseFloat(node.style.left), y: parseFloat(node.style.top) })))
         ensure(JSON.stringify(positions) === JSON.stringify([
           { x: 133, y: 404 }, { x: 310, y: 404 }, { x: 488, y: 404 }, { x: 666, y: 404 },
@@ -329,7 +336,7 @@ try {
         ensure(JSON.stringify(originalPaths) !== JSON.stringify(await page.locator('.kb-lines > path').evaluateAll(paths => paths.map(node => node.getAttribute('d')))), '13节点移动未更新连线')
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '13拖动、缩放与设置交互后刷新未恢复参考初态')
-        checks.push({ check: 'whiteboard-positions-warning-lines-grid-boundary-zoom-drag-refresh', scene: scene.id, positions, warningLines, passed: true })
+        checks.push({ check: 'whiteboard-positions-warning-lines-grid-boundary-zoom-drag-refresh', scene: scene.id, positions, warningLines, sidebar, navigation, passed: true })
       }
       if (scene.id === '11') {
         const prose = page.locator('.kn-prose p').first(), initialText = await prose.textContent()

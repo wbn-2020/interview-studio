@@ -197,9 +197,14 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-12 .r-top-search { left: 340px !important; top: 4px; font-size: 17px; }
 .r-scene-12 .r-saved { position: absolute; right: 224px; top: 18px; font-size: 19px; }
 .r-scene-13 .r-sidebar nav { top: 143px; left: 15px; right: 15px; gap: 8px; }
-.r-scene-13 .r-nav-item { height: 59px; padding: 0 22px; font-size: 22px; }
+.r-scene-13 .r-sidebar { width: 212px; bottom: 0; }
+.r-scene-13 .r-sidebar .r-brand { left: 25px; top: 38px; }
+.r-scene-13 .r-nav-item { height: 59px; padding: 0 24px; gap: 16px; font-size: 18.5px; white-space: nowrap; }
+.r-scene-13 .r-nav-item.r-secondary { height: 47px; }
+.r-scene-13 .r-nav-separator { margin: 11px 13px 24px; }
+.r-scene-13 .r-sidebar-avatar { left: 27px; }
 .r-scene-13 .r-top-search { top: -4px; font-size: 18px; }
-.r-scene-13 .r-breadcrumb { position: relative; top: -11px; }
+.r-scene-13 .r-breadcrumb { position: relative; left: 10px; top: -11px; }
 .r-scene-13 .r-saved { position: relative; top: -12px; font-size: 18px; }
 .r-scene-14 .r-sidebar { top: 7px; bottom: 8px; width: 230px; }
 .r-scene-14 .r-sidebar nav { top: 140px; left: 22px; right: 20px; gap: 4px; }
