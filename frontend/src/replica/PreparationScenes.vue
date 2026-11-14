@@ -160,13 +160,16 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .facts-tabs button { font-size: 24px; }
 .prep-facts .fact-body { padding-inline: 23px; background: #171513; }
 .prep-facts .fact-heading h3 { gap: 16px; font-size: 21.5px; }
-.prep-facts .fact-body .r-rule { margin-bottom: 29px; }
-.prep-facts .fact-body dl { grid-template-columns: 139px 1fr; }
+.prep-facts .fact-body .r-rule { margin-bottom: 28px; }
+.prep-facts .fact-body dl { grid-template-columns: 139px 1fr; row-gap: 24.5px; }
 .prep-facts .fact-body dt, .prep-facts .fact-body dd { font-size: 21px; line-height: 35px; }
 .prep-facts .expressions { padding-top: 29px; }
 .prep-facts .expressions > .r-rule { margin: 17px 0 18px; }
-.prep-facts .expression-preview p { font-size: 20px; line-height: 35px; }
-.prep-facts .fact-foot { font-size: 20px; }
+.prep-facts .expression-preview { padding-top: 15px; }
+.prep-facts .expression-preview p { font-size: 20px; line-height: 34px; margin-top: 12px; margin-bottom: 25px; }
+.prep-facts .expression-actions { margin-top: 22px; }
+.prep-facts .expression-actions .r-btn { font-size: 21px; }
+.prep-facts .fact-foot { font-size: 20px; margin-top: 34px !important; }
 .prep-expression .expression-editor { background: #1c1815; }
 .prep-expression .expression-directory { padding-top: 20px; }
 .prep-expression .expression-directory > button { padding-block: 12px !important; }
@@ -174,12 +177,13 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-expression .expression-directory > button:nth-last-child(-n+2) { padding-block: 10.5px !important; }
 .prep-expression .expression-directory > button:nth-last-child(2) { margin-top: 6px; }
 .prep-expression .expression-text { padding-left: 30px; }
-.prep-expression .expression-text .r-rule { margin-bottom: 16px; }
-.prep-expression .expression-prose p { line-height: 32px; }
+.prep-expression .expression-text .r-rule { margin-bottom: 15px; }
+.prep-expression .expression-prose p { line-height: 32px; margin-bottom: 30.5px; }
 .prep-expression .expression-outline { padding-top: 7px; padding-left: 27px; }
-.prep-expression .expression-outline > div { margin-bottom: 23px; }
+.prep-expression .expression-outline > div { margin-bottom: 25px; }
 .prep-expression .expression-outline strong { display: block; line-height: 27px; }
-.prep-expression .expression-outline p { font-size: 16px; line-height: 27px; }
+.prep-expression .expression-outline p { font-size: 16px; line-height: 27px; margin-top: 2px; }
+.prep-expression .diff-columns .added { padding-left: 4px; gap: 13px; }
 .prep-expression .history-item:first-of-type { height: 106px; }
 .prep-expression .history-item:nth-of-type(2) { height: 91px; }
 .prep-expression .history-item p:first-of-type { font-size: 17.5px; line-height: 27.2px; }
