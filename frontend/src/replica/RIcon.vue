@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -177,13 +177,26 @@ const notePaths: Record<string, string[]> = {
   copy: ['M9 8h10a2 2 0 0 1 2 2v11H9Z', 'M15 4V2H3v14h2'],
   ellipsis: ['M4 12h.2M12 12h.2M20 12h.2'],
 }
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : undefined)
+// 详情页保留实心叠层、播放及盾牌；不将它们应用到使用线性轮廓的其他参考页。
+const detailPaths: Record<string, string[]> = {
+  layers: ['M2 6 12 1l10 5-10 5ZM2 10.5l10 5 10-5v3L12 19l-10-5.5ZM2 16l10 5 10-5v2.5L12 23 2 18.5Z'],
+  play: ['M6 3 21 12 6 21Z'],
+  'chart-no-axes-column': ['M3 13h3v9H3ZM10 3h3v19h-3ZM17 8h3v14h-3Z'],
+  'refresh-cw': ['M3 10a9 9 0 0 1 15-6l3 3M21 2v6h-6M21 14A9 9 0 0 1 6 20l-3-3M3 22v-6h6'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M2 8h20M6 13h5M16 12v5h3'],
+  link: ['m9.5 14.5 5-5', 'm10.5 7.5 2-2a4 4 0 0 1 6 6l-2 2M13.5 16.5l-2 2a4 4 0 0 1-6-6l2-2'],
+  shield: ['M12 2 3 6v7c0 5 9 9 9 9s9-4 9-9V6ZM12 6l5 2v5c0 2-3 5-5 6-2-1-5-4-5-6V8Z'],
+  bell: notePaths.bell!,
+}
+const detailFills: Record<string, number> = { layers: .98, play: .94, 'chart-no-axes-column': .9, 'book-open': .65, shield: .98 }
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
-  : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
+  : props.variant === 'detail' ? detailFills[props.name] ?? 0
+    : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="strokeWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
-    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" />
+    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'detail' && name === 'shield' ? 'evenodd' : undefined" />
   </svg>
 </template>

@@ -332,6 +332,24 @@ try {
         checks.push({ check: 'knowledge-table-lines-selection-keyboard-navigation-refresh', scene: scene.id, geometry, passed: true })
       }
       if (scene.id === '12') {
+        const detailChrome = await page.evaluate(() => {
+          const primary = document.querySelector('.kd-actions .r-primary')
+          const tabs = [...document.querySelectorAll('.kd-evidence-tabs button')].map(node => node.getBoundingClientRect().toJSON())
+          return {
+            sidebarWidth: document.querySelector('.r-sidebar').getBoundingClientRect().width,
+            navigationFont: getComputedStyle(document.querySelector('.r-nav-item')).fontSize,
+            keyboardHint: document.querySelector('.r-top-search kbd')?.textContent,
+            primaryColor: getComputedStyle(primary).color,
+            primaryFilled: primary.querySelector('path')?.getAttribute('fill') === 'currentColor',
+            symbolFilled: document.querySelector('.kd-symbol path')?.getAttribute('fill') === 'currentColor',
+            confirmed: document.querySelector('.kd-confirmed svg')?.getBoundingClientRect().width,
+            tabs,
+          }
+        })
+        ensure(detailChrome.sidebarWidth === 222 && detailChrome.navigationFont === '22px' && detailChrome.keyboardHint === '⌘K', '12侧栏或搜索提示不符')
+        ensure(detailChrome.primaryColor === 'rgb(255, 241, 226)' && detailChrome.primaryFilled && detailChrome.symbolFilled && detailChrome.confirmed === 21, '12实心图标、白色按钮或确认标记不符')
+        ensure(detailChrome.tabs.every((tab, index) => tab.width === 100 && tab.height === 42 && tab.x === 986 + 112 * index), '12证据页签宽度或间距不符')
+        checks.push({ check: 'detail-icons-white-practice-search-sidebar-tabs', scene: scene.id, detailChrome, passed: true })
         const paragraphs = await page.locator('.kd-definition p, .kd-main-note p').evaluateAll(nodes => nodes.map(node => {
           const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
           while (walker.nextNode()) {

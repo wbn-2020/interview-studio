@@ -48,7 +48,7 @@ const nav = computed(() => {
     { id: 2, label: '今日', icon: [2, 10].includes(scene.value) ? 'calendar-days' : 'house' },
     { id: 3, label: '准备', icon: scene.value === 18 ? 'square-check-rounded' : scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: 'book-open' },
-    { id: 17, label: '训练', icon: scene.value === 18 ? 'circle-play' : [17, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },
+    { id: 17, label: '训练', icon: scene.value === 12 ? 'chart-no-axes-column' : scene.value === 18 ? 'circle-play' : [17, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },
     { id: 21, label: '复盘', icon: [5, 13, 18, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
     { id: 24, label: '成长', icon: [5, 30].includes(scene.value) ? 'leaf' : [3, 7, 12, 13, 16, 18, 20, 23, 26, 27].includes(scene.value) ? 'sprout' : 'chart-no-axes-combined' },
   ]
@@ -127,13 +127,13 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-              <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : undefined" :size="scene === 9 ? 34 : scene === 18 ? 30 : 28" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+              <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : undefined" :size="scene === 9 ? 34 : scene === 18 ? 30 : 28" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
               <div class="r-nav-separator" />
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-                <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : undefined" :size="scene === 18 ? 30 : 27" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+                <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : undefined" :size="scene === 18 ? 30 : 27" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
             </template>
           </nav>
@@ -145,10 +145,10 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
             <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :size="25" />
             {{ page.breadcrumb }}
           </div>
-          <button class="r-top-search" :style="{ left: `${headerBox.left - 20}px`, width: `${headerBox.width}px` }" @click="navigate(25)"><RIcon name="search" :size="25" /><span>{{ searchHint }}</span><kbd v-if="![3, 7, 9, 12, 13, 16, 18, 19, 21, 22, 24, 26].includes(scene)">⌘K</kbd></button>
+          <button class="r-top-search" :style="{ left: `${headerBox.left - 20}px`, width: `${headerBox.width}px` }" @click="navigate(25)"><RIcon name="search" :size="25" /><span>{{ searchHint }}</span><kbd v-if="![3, 7, 9, 13, 16, 18, 19, 21, 22, 24, 26].includes(scene)">⌘K</kbd></button>
           <div class="r-top-status">
             <span class="r-saved"><RIcon name="check" /><span>已保存<span v-if="scene === 5" class="r-muted"> 10:24</span><span v-if="scene === 11" class="r-muted"> 14:32</span></span></span>
-            <button class="r-icon-btn" title="通知" @click="notify('暂无新通知')"><RIcon name="bell" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : undefined" :size="28" /></button>
+            <button class="r-icon-btn" title="通知" @click="notify('暂无新通知')"><RIcon name="bell" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : undefined" :size="28" /></button>
             <button title="设置与数据" class="r-avatar" @click="navigate(28)">林</button>
           </div>
         </header>
@@ -241,11 +241,29 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-11 .r-top-status .r-avatar { width: 42px; height: 46px; font-size: 22px; }
 .r-scene-11 .r-saved { position: absolute; left: 930px; font-size: 16px; color: #bdb5ac; gap: 12px; }
 .r-scene-11 .r-saved svg { width: 23px; height: 24px; background: #64bf8c; fill: #64bf8c; }
-.r-scene-12 .r-sidebar nav { top: 130px; left: 23px; right: 10px; }
-.r-scene-12 { background-color: #0f0d0b; }
+.r-scene-12 { background: #0d0b0a; will-change: transform; }
+.r-scene-12 .r-sidebar { width: 222px; border-color: #30282166; background: radial-gradient(ellipse 150px 240px at 5% 0, #79533322, transparent), #171412; }
+.r-scene-12 .r-sidebar :deep(.r-brand) { left: 26px; top: 44px; }
+.r-scene-12 .r-sidebar :deep(.r-emblem) { width: 49px; height: 50px; color: #d89c69; }
+.r-scene-12 .r-sidebar :deep(.r-brand-word) { font-size: 26px; line-height: 31px; }
+.r-scene-12 .r-sidebar :deep(.r-brand-word small) { font-size: 15.5px; line-height: 23px; margin-top: 0; }
+.r-scene-12 .r-sidebar nav { top: 130px; left: 23px; right: 8px; gap: 6.5px; }
+.r-scene-12 .r-nav-item { font-size: 22px; gap: 15px; }
+.r-scene-12 .r-nav-item.r-selected { background: linear-gradient(120deg, #ac784cbb, #60422dc9); border-color: #a7774eaa; }
+.r-scene-12 .r-nav-item.r-secondary { height: 49px; font-size: 21px; }
+.r-scene-12 .r-nav-separator { margin: 24px 19px 27px; }
+.r-scene-12 .r-sidebar-avatar { left: 43px; bottom: 31px; }
+.r-scene-12 .r-sidebar-avatar .r-avatar { width: 54px; height: 54px; }
+.r-scene-12 .r-avatar { background: linear-gradient(130deg, #8e7c70, #6c625b); border-color: #a38c7944; }
+.r-scene-12 .r-topbar { top: 16px; right: 28px; }
 .r-scene-12 .r-breadcrumb { position: relative; left: 14px; top: -6px; }
-.r-scene-12 .r-top-search { left: 340px !important; top: 4px; font-size: 17px; }
-.r-scene-12 .r-saved { position: absolute; right: 224px; top: 18px; font-size: 19px; }
+.r-scene-12 .r-top-search { left: 341px !important; top: 7px; font-size: 17px; background: #25211eee !important; border-color: #3a332b77 !important; }
+.r-scene-12 .r-top-search kbd { background: transparent; font-size: 17px; padding: 0; }
+.r-scene-12 .r-top-status { gap: 46px; }
+.r-scene-12 .r-top-status::before { content: ""; position: absolute; right: 178px; top: 23px; height: 29px; width: 1px; background: #5b4d3d44; }
+.r-scene-12 .r-top-status > .r-avatar { width: 52px; height: 54px; }
+.r-scene-12 .r-saved { position: absolute; right: 218px; top: 24px; font-size: 19px; }
+.r-scene-12 .r-saved svg { width: 24px; height: 24px; }
 .r-scene-13 .r-sidebar nav { top: 143px; left: 15px; right: 15px; gap: 8px; }
 .r-scene-13 .r-sidebar { width: 212px; bottom: 0; }
 .r-scene-13 .r-sidebar .r-brand { left: 25px; top: 38px; }
