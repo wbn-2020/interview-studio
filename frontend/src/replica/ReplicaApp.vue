@@ -198,7 +198,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-12 .r-saved { position: absolute; right: 224px; top: 18px; font-size: 19px; }
 .r-scene-13 .r-sidebar nav { top: 143px; left: 15px; right: 15px; gap: 8px; }
 .r-scene-13 .r-nav-item { height: 59px; padding: 0 22px; font-size: 22px; }
-.r-scene-13 .r-top-search { top: 2px; font-size: 18px; }
+.r-scene-13 .r-top-search { top: -4px; font-size: 18px; }
 .r-scene-13 .r-breadcrumb { position: relative; top: -11px; }
 .r-scene-13 .r-saved { position: relative; top: -12px; font-size: 18px; }
 .r-scene-14 .r-sidebar { top: 7px; bottom: 8px; width: 230px; }

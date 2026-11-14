@@ -206,12 +206,15 @@ function endDrag(event: PointerEvent) {
 .kd-evidence-row > button { top: 25px; }
 /* 白板提示须保留参考两行；控件行高固定，避免字号调整挤动下方设置。 */
 .kb-heading p { margin-top: 6px; font-size: 18.5px; }
-.kb-group-label { font-size: 20.5px; line-height: 33px; }
-.kb-node strong { font-size: 19.5px; }
+.kb-group-label { top: 131px; font-size: 20.5px; line-height: 33px; }
+.kb-node { background: linear-gradient(130deg, #2b2927, #242321) !important; }
+.kb-node strong { position: relative; top: 2px; font-size: 19.5px; }
 .kb-node-lower strong { font-size: 20px; }
-.kb-event-label { font-size: 19px; line-height: 31.5px; }
-.kb-warning { font-size: 19.5px; line-height: 31px; text-align: left; }
+.kb-event-label { top: 356px; font-size: 19px; line-height: 31.5px; }
+.kb-warning { top: 412px; font-size: 19.5px; line-height: 31px; text-align: left; }
 .kb-warning > span { white-space: nowrap; }
+.kb-actions .r-btn, .kb-actions .r-segmented button { font-size: 20px; }
+.kb-canvas { background-color: #130f0b; }
 .kb-inspector { padding-left: 20px; padding-right: 20px; background: #1b1712; }
 .kb-inspector .r-tabs { margin-left: -20px; margin-right: -20px; margin-bottom: 13px; }
 .kb-inspector label { font-size: 17.5px; line-height: 27px; }

@@ -221,29 +221,37 @@ onUnmounted(() => {
 .sp-inbox-detail { position: absolute; top: 233px; left: 783px; right: 24px; bottom: 90px; padding: 15px 23px 22px; border-radius: 20px; border-color: #3d3125; }.sp-inbox-detail header { border-bottom: 1px solid #30281f; padding-bottom: 11px; }.sp-inbox-detail h2 { font-size: 25px; }.sp-excerpt-heading { position: relative; margin-top: 17px !important; padding-left: 18px; font-size: 23px !important; }.sp-excerpt-heading::before { content: ""; width: 3px; height: 27px; background: #e7b77e; position: absolute; left: 0; top: 5px; }.sp-inbox-excerpt { padding: 14px 18px 15px; margin-top: 5px; border-radius: 15px; background: #ffffff02; }.sp-inbox-excerpt p { font-size: 22px; line-height: 1.75; white-space: nowrap; }.sp-inbox-excerpt h3 { font-size: 22px; margin-bottom: 10px; }.sp-inbox-detail .r-rule { margin: 21px 0 16px; }.sp-suggestions-title { color: #f2d7af; font-size: 23px !important; gap: 12px; }.sp-inbox-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 21px; }.sp-inbox-buttons .r-btn { min-height: 68px; padding: 10px 14px !important; font-size: 23px; border-radius: 14px; background: #ffffff02 !important; border-color: #44372a !important; gap: 14px; }.sp-inbox-note { background: #ffffff03; border-radius: 14px; margin-top: 26px !important; min-height: 56px; padding: 10px 13px; font-size: 18px; white-space: nowrap; gap: 10px; }
 /* 收件箱保留四条参考记录的独立行距，详情摘录保持五行。 */
 .sp-inbox-heading { left: 28px; }
-.sp-inbox-heading p { font-size: 22px; }
+.sp-inbox-heading p { margin-top: 5px; font-size: 22px; }
 .sp-inbox-actions .r-btn { font-size: 21.5px; }
+.sp-inbox-actions > .r-btn:first-child { padding-right: 19px !important; }
 .sp-inbox-sources, .sp-inbox-list { background: #15120f; }
 .sp-inbox-sources h2 { font-size: 22.5px; line-height: 35px; }
 .sp-inbox-sources > button { min-height: 63px; font-size: 21px; line-height: 34px; }
 .sp-inbox-sources small { margin-right: 6px; font-size: 22px; }
 .sp-inbox-list header { font-size: 22px; line-height: 34.5px; }
+.sp-inbox-list header select { line-height: 31.5px; }
 .sp-inbox-list article { gap: 24px; }
-.sp-inbox-list article.selected { gap: 22px; }
-.sp-inbox-list article:nth-of-type(2) { min-height: 112px; }
-.sp-inbox-list article:nth-of-type(3) { min-height: 107px; }
+.sp-inbox-list article.selected { min-height: 115px; gap: 22px; }
+.sp-inbox-list article:nth-of-type(2) { min-height: 113px; }
+.sp-inbox-list article:nth-of-type(3) { min-height: 107px; padding-bottom: 13px; }
+.sp-inbox-entry { position: relative; top: -2px; }
 .sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; line-height: 36px; }
 .sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; }
 .sp-inbox-list article > .r-pill { right: 11px; top: 23px; font-size: 18px; }
 .sp-inbox-list article.selected > .r-pill { right: 22px; top: 22px; }
+.sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
+.sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
 .sp-inbox-detail { background: #1a1612; }
 .sp-inbox-detail h2 { font-size: 22.5px; line-height: 35px; }
+.sp-inbox-detail header h2 { position: relative; top: -2px; }
 .sp-excerpt-heading { font-size: 21.5px !important; line-height: 33.35px; }
-.sp-inbox-excerpt { padding-top: 13px; background: #1d1915; }
+.sp-inbox-excerpt { padding-top: 11px; background: #1d1915; }
 .sp-inbox-excerpt p { font-size: 20.5px; line-height: 39px; }
-.sp-inbox-detail .r-rule { margin-bottom: 18px; }
+.sp-inbox-detail .r-rule { margin-bottom: 20px; }
 .sp-suggestions-title { font-size: 21.5px !important; line-height: 33.35px; }
+.sp-inbox-buttons { margin-top: 18px; }
 .sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 20px; padding-left: 46px !important; padding-right: 10px !important; }
 .sp-inbox-buttons .r-btn:nth-child(even) { padding-left: 36px !important; }
 .sp-inbox-buttons .r-icon { width: 30px; }
+.sp-inbox-note { margin-top: 28px !important; }
 </style>
