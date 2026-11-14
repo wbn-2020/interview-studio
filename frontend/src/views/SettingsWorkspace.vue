@@ -187,7 +187,7 @@ function displayTime(value: string) { return preferences.formatDate(value) }
           </div>
           <div class="preference-reading-sample" :style="{ fontSize: `${draft.fontSize ?? 14}px` }"><strong>阅读预览</strong><p>把面试中的问题整理为自己的知识，在下一次回答中验证理解。</p></div>
           <div class="preference-timezone">
-            <label for="preference-timezone"><span>个人显示时区</span><NInput id="preference-timezone" :value="draft.timeZone" :disabled="!editable" placeholder="例如 Asia/Shanghai 或 UTC" :input-props="{ spellcheck: false, maxlength: 64 }" @update:value="updateZone" /></label>
+            <label for="preference-timezone"><span>时区</span><NInput id="preference-timezone" :value="draft.timeZone" :disabled="!editable" placeholder="例如 Asia/Shanghai 或 UTC" :input-props="{ spellcheck: false, maxlength: 64 }" @update:value="updateZone" /></label>
             <NButton :disabled="!editable" @click="chooseBrowserZone">使用浏览器时区</NButton>
             <p class="field-help">用于设置与用量记录的时间显示；不会移动历史 UTC 时刻。回忆排程的复习日时区请在回忆设置中单独维护。</p>
           </div>
@@ -223,11 +223,19 @@ function displayTime(value: string) { return preferences.formatDate(value) }
 
 <style scoped>
 .preferences-heading-identity > p { display: flex; align-items: center; gap: 15px; margin: 0 0 6px; color: var(--muted); font-size: 19px; line-height: 1.65; }
+/* 工作台为单列设置表单，不能继承旧设置页的两列字段和四列用量网格。 */
+.preferences-workspace .preference-fields { grid-template-columns: minmax(0,1fr); gap: 36px; }
+.preferences-workspace .preference-usage-grid { display: block; }
+.preferences-workspace .preference-usage-grid dt { font-size: 18px; }
+.preferences-workspace .preference-timezone { grid-template-columns: minmax(0,1fr); }
+.preferences-workspace .preference-timezone > .n-button { justify-self: end; }
+.preferences-workspace .preference-control { grid-template-columns: 117px minmax(0,1fr); }
+.preferences-workspace .settings-segment { min-height: 53px; }
 @media(min-width:1351px) {
   .preferences-workspace > .page-heading { padding: 0; margin-bottom: 22px; }
   .preferences-workspace > .page-heading h1 { font-size: 54px; }
   .preferences-workspace .preferences-content { grid-template-columns: 230px minmax(0,1fr) 352px; gap: 0; }
-  .preferences-workspace .preference-appearance { margin: 0 12px 0 14px; }
+  .preferences-workspace .preference-appearance { margin: 0 12px 0 14px; padding: 23px 28px 26px; }
   .preferences-workspace .settings-directory { margin-top: 2px; padding: 13px 9px; }
   .preferences-workspace .settings-directory a { min-height: 58px; padding: 0 18px; gap: 20px; font-weight: 400; }
   .preferences-workspace .settings-directory a:first-child { min-height: 64px; margin-bottom: 7px; }

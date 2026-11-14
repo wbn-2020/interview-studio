@@ -1698,7 +1698,7 @@ try {
         await directory.getByRole('button', { name: '安全', exact: true }).click()
         ensure(await page.getByRole('status').innerText() === '安全设置的详细状态尚待补充参考', '28安全边界未明确')
         for (const format of ['完整导出','Markdown 导出','JSON Canvas 导出']) {
-          await page.getByRole('button', { name: format, exact: true }).click()
+          await page.locator('.settings-export-section > button').filter({ hasText: format }).click()
           ensure(await page.getByRole('status').innerText() === `已选择${format}，当前复刻页面不生成或导出数据`, '28导出边界不符')
         }
         await page.reload({ waitUntil: 'networkidle' }); await ready()
