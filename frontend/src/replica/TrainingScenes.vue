@@ -491,7 +491,7 @@ watch(() => props.scene, () => {
 .ts-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 8px 20px; border: 1px solid #453c32 !important; border-radius: 17px; background: linear-gradient(125deg, #29251f9c, #211d18b5) !important; white-space: nowrap; line-height: 1.3; }
 .ts-button.primary { color: #241407; background: linear-gradient(135deg, #f3c28d, #dfaa73 45%, #b77d4d) !important; border-color: #edbd89 !important; font-weight: 600; }
 .ts-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
-.bank-title { position: absolute; left: 24px; top: 99px; }
+.bank-title { position: absolute; left: 24px; top: 95px; }
 .bank-title h1 { font-size: 44px; line-height: 1.25; }
 .bank-tabs { position: absolute; top: 162px; left: 20px; display: flex; width: 310px; height: 47px; border-radius: 13px; background: #18161382; }
 .bank-tabs button { flex: 1; color: #ded9d3; font-size: 21px; border-radius: 13px; }
@@ -507,7 +507,7 @@ watch(() => props.scene, () => {
 .bank-filters { left: 8px; top: 230px; width: 204px; height: 750px; border-radius: 14px; padding: 32px 23px; background: linear-gradient(160deg, #1d1a17, #1b1815 80%); }
 .bank-filter-group { margin-bottom: 30px; }
 .bank-filter-group:nth-child(2) { margin-bottom: 23px; }
-.bank-filter-group:nth-child(3) { padding-top: 10px; margin-top: -11px; margin-bottom: 15px; border-top: 1px solid #ffffff08; }
+.bank-filter-group:nth-child(3) { padding-top: 6px; margin-top: -11px; margin-bottom: 15px; border-top: 1px solid #ffffff08; }
 .bank-filter-group:nth-child(4) { margin-bottom: 0; }
 .filter-heading { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 19px !important; font-weight: 600; line-height: 28px; }
 .filter-heading .r-icon { color: #8a8279; }

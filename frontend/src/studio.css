@@ -107,6 +107,8 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
 .studio-product .preference-save-notice { max-width: none; font-size: 14px; }
 @media (min-width: 1251px) {
   .studio-product.screen-bank { --sidebar: 230px; }
+  /* 将题库控件放在同一合成层，保持筛选往返与刷新时的文字及圆角绘制稳定。 */
+  .screen-bank .bank-product { transform: translateZ(0); }
   .studio-product.screen-bank .studio-sidebar { left: 0; top: 7px; bottom: 8px; width: 230px; border-radius: 27px; border-color: #62504799; background: radial-gradient(ellipse 180px 560px at -20% 72%, #80563b33, transparent), linear-gradient(150deg, #211c19, #211a17 60%, #191513); }
   .screen-bank .studio-sidebar::before { content: ""; position: absolute; left: 28px; right: 26px; top: 125px; height: 1px; background: #8d736122; }
   .screen-bank .studio-brand { top: 40px; left: 28px; }
