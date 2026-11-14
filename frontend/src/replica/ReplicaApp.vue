@@ -182,6 +182,10 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-11 .r-sidebar nav { top: 117px; left: 12px; right: 12px; gap: 2px; }
 .r-scene-11 .r-nav-item { font-size: 22px; height: 59px; padding: 0 20px; }
 .r-scene-11 .r-nav-separator { margin: 42px 10px 20px; }
+.r-scene-11 .r-topbar { top: 33px; left: 270px; }
+.r-scene-11 .r-breadcrumb { font-size: 18px; }
+.r-scene-11 .r-top-search { left: 527px !important; font-size: 16px; }
+.r-scene-11 .r-saved { position: absolute; left: 930px; font-size: 16px; }
 .r-scene-12 .r-sidebar nav { top: 130px; left: 23px; right: 10px; }
 .r-scene-13 .r-sidebar nav { top: 143px; left: 15px; right: 15px; gap: 8px; }
 .r-scene-13 .r-nav-item { height: 59px; padding: 0 22px; font-size: 22px; }
