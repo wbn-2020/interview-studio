@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -242,10 +242,29 @@ const writingPaths: Record<string, string[]> = {
   'circle-check': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm7 12 3 3 7-8'],
   clock: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 6v6l4 2'],
 }
+// 结束报告采用书本准备、立方体知识和历史复盘，与作答页的图标分别保留。
+const reportPaths: Record<string, string[]> = {
+  house: ['M2 10.5 12 2l10 8.5', 'M5 9v13h5v-8h4v8h5V9'],
+  'book-open': libraryPaths['book-open']!,
+  box: ['m12 2 9 5v11l-9 5-9-5V7Z', 'm3 7 9 5 9-5M12 12v11'],
+  dumbbell: ['M7 4v16M17 4v16M4 8H2v8h2M20 8h2v8h-2M4 6h3v12H4ZM17 6h3v12h-3ZM7 12h10'],
+  'refresh-cw': ['M3 10a9 9 0 1 1 1 7', 'M3 3v7h6M12 6v6l4 2'],
+  'chart-no-axes-combined': routePaths['chart-no-axes-combined']!,
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 8h2M10 8h9M5 12h2M10 12h2M15 12h4M5 16h2M10 16h9'],
+  sparkles: ['M12 2c1.5 6 3 8.5 9 10-6 1.5-7.5 4-9 10-1.5-6-3-8.5-9-10 6-1.5 7.5-4 9-10Z'],
+  bell: notePaths.bell!,
+  'eye-off': ['m3 3 18 18', 'M6 7c4-4 8-4 13 4M18 17c-4 4-8 4-13-4', 'M16 12a4 4 0 0 0-4-4M8 12a4 4 0 0 0 4 4M4 13l-1 3M20 11l1-3'],
+  'circle-check': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm7 12 3 3 7-7'],
+  'circle-x': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm8 8 8 8M16 8l-8 8'],
+  'circle-pause': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M10 8v8M14 8v8'],
+  bookmark: ['M13 2H4a2 2 0 0 0-2 2v9l9 9 11-11Z', 'M7 7h.01'],
+  robot: ['M7 6h10a4 4 0 0 1 4 4v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8a4 4 0 0 1 4-4Z', 'M12 2v4M1 12v5M23 12v5M8 12h.01M16 12h.01M9 17h6'],
+  'file-text': notePaths['file-text']!,
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0

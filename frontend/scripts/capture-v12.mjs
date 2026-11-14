@@ -442,6 +442,7 @@ try {
           '.r-sidebar': [19, 23, 198, 946], '.training-frame': [226, 24, 1292, 926],
           '.writing-topic': [241, 116, 949, 61], '.writing-editor': [249, 318, 941, 542],
           '.writing-conditions': [1209, 114, 302, 368], '.writing-footer': [250, 875, 943, 57],
+          '.writing-condition-button': [841, 875, 181, 57],
         })) {
           const box = await page.locator(selector).boundingBox()
           geometry[selector] = box && [box.x, box.y, box.width, box.height]
@@ -507,6 +508,78 @@ try {
         ensure(writes.length === 0, '17固定态不应写入业务接口')
         checks.push({ check: 'writing-draft-pause-conditions-keyboard-empty-submit-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
           limitations: '只验证固定参考态的内存输入和场景切换；不将静态自动保存标签当作持久化，不验证真实训练提交、计时、结束、通知或个人菜单业务' })
+      }
+      if (scene.id === '19') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [20, 20, 205, 976], '.r-topbar': [244, 20, 1270, 71],
+          '.report-summary': [261, 258, 1247, 112], '.report-question-panel': [261, 398, 775, 491],
+          '.report-end-conditions': [1061, 398, 447, 325], '.report-ai': [1061, 742, 447, 139],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '19面板几何不符：' + selector)
+        }
+        const title = await page.locator('.report-title h1').evaluate(node => ({
+          text: node.textContent, size: getComputedStyle(node).fontSize, weight: getComputedStyle(node).fontWeight,
+        }))
+        ensure(title.text === '本次训练' && title.size === '60px' && title.weight === '600', '19标题不符')
+        ensure((await page.locator('.report-title p').textContent()).trim() === '独立专项 · 11.10 14:32–14:50', '19固定训练时间不符')
+        ensure(JSON.stringify((await page.locator('.report-stat strong').allTextContents()).map(value => value.trim()))
+          === JSON.stringify(['2 题', '1 题', '1 题']), '19提交、跳过与草稿计数不符')
+        ensure(JSON.stringify(await page.locator('.report-question-copy strong').allTextContents())
+          === JSON.stringify(['缓存删除失败后如何恢复？', '发奖接口如何保证幂等？', '系统设计取舍']), '19三道题内容或顺序不符')
+        ensure(JSON.stringify(await page.locator('.report-question-copy small').allTextContents())
+          === JSON.stringify(['已提交 / 2 条观察', '已提交 / 1 条观察', '跳过']), '19逐题状态不符')
+        ensure(JSON.stringify(await page.locator('.report-end-conditions dd').allTextContents())
+          === JSON.stringify(['18 分钟', '1 次', '无', '部分完成']), '19结束条件不符')
+        ensure(await page.locator('.report-question-row > button[aria-expanded="false"]').count() === 3
+          && await page.locator('.report-expanded-copy').count() === 0
+          && await page.locator('.r-brand path').count() === 3 && await page.locator('.r-brand circle').count() === 0,
+          '19品牌或折叠初态不符')
+        checks.push({ check: 'report-three-questions-counts-fixed-time-conditions-geometry', scene: scene.id, geometry, title, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        const rows = page.locator('.report-question-row > button')
+        await rows.nth(0).click()
+        ensure(await rows.nth(0).getAttribute('aria-expanded') === 'true'
+          && await page.locator('.report-expanded-copy p').textContent() === '已提交 / 2 条观察'
+          && await page.getByRole('status').textContent() === '题目 01 的详细观察待确认', '19展开未保持已知状态与待确认边界')
+        await page.getByRole('button', { name: '查看观察', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '详细观察待确认', '19详细观察不应伪造评价')
+        await rows.nth(1).focus(); await page.keyboard.press('Enter')
+        ensure(await rows.nth(0).getAttribute('aria-expanded') === 'false'
+          && await rows.nth(1).getAttribute('aria-expanded') === 'true'
+          && await page.locator('.report-expanded-copy').count() === 1, '19键盘切换题目未保持单项展开')
+        await rows.nth(1).press('Enter')
+        ensure(await page.locator('.report-expanded-copy').count() === 0, '19题目未收起')
+        for (const [selector, message] of [
+          ['.report-ai button', 'AI 评价重试待确认'],
+          ['.report-bottom-actions .ts-button:not(.primary)', '逐题报告入口待确认'],
+          ['.report-bottom-actions .primary', '导出摘要格式与内容待确认'],
+        ]) {
+          await page.locator(selector).click()
+          ensure(await page.getByRole('status').textContent() === message
+            && new URL(page.url()).searchParams.get('scene') === '19', '19未定义业务不应伪装完成：' + selector)
+        }
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '19展开、键盘或待确认操作后刷新未恢复参考初态')
+        for (const [selector, target] of [
+          ['.report-top-actions .ts-button:not(.primary)', '02'], ['.report-top-actions .primary', '21'],
+          ['.report-draft', '17'], ['.r-sidebar > a', '02'], ['.r-top-search', '25'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '19导航未同步地址：' + selector)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '19导航返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '19导航返回后未恢复参考初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '19固定态不应写入业务接口')
+        checks.push({ check: 'report-expand-keyboard-pending-boundaries-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
+          limitations: '只验证固定参考态；详细观察、AI重试、逐题报告和导出仍待确认。导航不代表正式训练或复盘业务验收，不创建或保存示例数据' })
       }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
@@ -943,7 +1016,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

@@ -411,26 +411,26 @@ watch(() => props.scene, () => {
 
     <template v-else-if="scene === 19">
       <div class="report-title"><h1>本次训练</h1><p><RIcon name="clock" :size="27" />独立专项 · 11.10 14:32–14:50</p></div>
-      <div class="report-top-actions"><button type="button" class="ts-button" @click="pending('返回今日入口')"><RIcon name="arrow-left" :size="25" />返回今日</button><button type="button" class="ts-button primary" @click="pending('复盘入口')"><RIcon name="play" :size="24" />开始复盘</button></div>
+      <div class="report-top-actions"><button type="button" class="ts-button" @click="go(2)"><RIcon name="arrow-left" :size="25" />返回今日</button><button type="button" class="ts-button primary" @click="go(21)"><RIcon name="play" :size="24" />开始复盘</button></div>
       <section class="ts-panel report-summary">
         <div class="report-stat"><span class="stat-emblem submitted"><RIcon name="check" :size="42" /></span><span>已提交<strong>2 <small>题</small></strong></span></div>
-        <div class="report-stat"><span class="stat-emblem skipped"><RIcon name="eye-off" :size="38" /></span><span>跳过<strong>1 <small>题</small></strong></span></div>
-        <div class="report-stat"><span class="stat-emblem draft"><RIcon name="file-text" :size="37" /></span><span>未提交草稿<strong>1 <small>题</small></strong></span></div>
+        <div class="report-stat"><span class="stat-emblem skipped"><RIcon name="eye-off" variant="report" :size="38" /></span><span>跳过<strong>1 <small>题</small></strong></span></div>
+        <div class="report-stat"><span class="stat-emblem draft"><RIcon name="file-text" variant="report" :size="37" /></span><span>未提交草稿<strong>1 <small>题</small></strong></span></div>
         <p><RIcon name="info" :size="24" />不把缺答算作失败</p>
       </section>
       <section class="ts-panel report-question-panel">
         <h2><RIcon name="list" :size="29" />题目报告</h2>
         <div class="report-question-list">
           <section v-for="(item, index) in reportQuestions" :key="item.title" class="report-question-row" :class="{ expanded: expandedReport === index }">
-            <button type="button" :aria-expanded="expandedReport === index" @click="toggleReport(index)"><span class="report-question-number">题目 {{ String(index + 1).padStart(2, '0') }}</span><span class="report-question-copy"><strong>{{ item.title }}</strong><small><RIcon :name="item.submitted ? 'circle-check' : 'circle'" :size="27" />{{ item.status }}</small></span><RIcon :name="expandedReport === index ? 'chevron-up' : 'chevron-down'" :size="24" /></button>
-            <div v-if="expandedReport === index" class="report-expanded-copy"><p v-if="index === 0">{{ firstOriginal }}</p><p v-else>{{ item.status }}</p><button type="button" @click="pending('详细观察')">查看观察<RIcon name="chevron-right" :size="18" /></button></div>
+            <button type="button" :aria-expanded="expandedReport === index" @click="toggleReport(index)"><span class="report-question-number">题目 {{ String(index + 1).padStart(2, '0') }}</span><span class="report-question-copy"><strong>{{ item.title }}</strong><small><RIcon :name="item.submitted ? 'circle-check' : 'circle-x'" variant="report" :size="27" />{{ item.status }}</small></span><RIcon :name="expandedReport === index ? 'chevron-up' : 'chevron-down'" :size="24" /></button>
+            <div v-if="expandedReport === index" class="report-expanded-copy"><p>{{ item.status }}</p><button type="button" @click="pending('详细观察')">查看观察<RIcon name="chevron-right" :size="18" /></button></div>
           </section>
         </div>
-        <button type="button" class="report-draft" @click="go(17)"><span class="report-draft-icon"><RIcon name="file-text" :size="29" /></span><span>未提交草稿</span><span>草稿仍可查看与另存</span><RIcon name="chevron-right" :size="24" /></button>
+        <button type="button" class="report-draft" @click="go(17)"><span class="report-draft-icon"><RIcon name="file-text" variant="report" :size="29" /></span><span>未提交草稿</span><span>草稿仍可查看与另存</span><RIcon name="chevron-right" :size="24" /></button>
       </section>
-      <aside class="ts-panel report-end-conditions"><h2><RIcon name="flag" :size="30" />结束条件</h2><dl><div><dt><RIcon name="clock" :size="29" />用时</dt><dd>18 分钟</dd></div><div><dt><RIcon name="circle" :size="29" />暂停</dt><dd>1 次</dd></div><div><dt><RIcon name="eye" :size="29" />参考暴露</dt><dd>无</dd></div><div class="report-evaluation"><dt><RIcon name="bookmark" :size="29" />评价状态</dt><dd><span>部分完成</span></dd></div></dl></aside>
-      <aside class="ts-panel report-ai"><h3><RIcon name="robot" :size="29" />AI 评价</h3><button type="button" @click="pending('AI 评价重试')"><RIcon name="circle-alert" :size="29" />失败提示：可重试，原答不受影响</button></aside>
-      <div class="report-bottom-actions"><button type="button" class="ts-button" @click="pending('逐题报告入口')"><RIcon name="file-text" :size="27" />查看逐题报告</button><button type="button" class="ts-button primary" @click="pending('导出摘要格式与内容')"><RIcon name="download" :size="26" />导出摘要</button></div>
+      <aside class="ts-panel report-end-conditions"><h2><RIcon name="flag" :size="30" />结束条件</h2><dl><div><dt><RIcon name="clock" :size="29" />用时</dt><dd>18 分钟</dd></div><div><dt><RIcon name="circle-pause" variant="report" :size="29" />暂停</dt><dd>1 次</dd></div><div><dt><RIcon name="eye" :size="29" />参考暴露</dt><dd>无</dd></div><div class="report-evaluation"><dt><RIcon name="bookmark" variant="report" :size="29" />评价状态</dt><dd><span>部分完成</span></dd></div></dl></aside>
+      <aside class="ts-panel report-ai"><h3><RIcon name="robot" variant="report" :size="29" />AI 评价</h3><button type="button" @click="pending('AI 评价重试')"><RIcon name="circle-alert" :size="29" />失败提示：可重试，原答不受影响</button></aside>
+      <div class="report-bottom-actions"><button type="button" class="ts-button" @click="pending('逐题报告入口')"><RIcon name="file-text" variant="report" :size="27" />查看逐题报告</button><button type="button" class="ts-button primary" @click="pending('导出摘要格式与内容')"><RIcon name="download" :size="26" />导出摘要</button></div>
     </template>
 
     <template v-else-if="scene === 20">
@@ -735,7 +735,7 @@ watch(() => props.scene, () => {
 .writing-count strong { margin-left: -1px; font-size: 18px; font-weight: 400; color: #76c8ad; }
 .writing-footer > div:last-child { display: flex; gap: 12px; }
 .writing-footer .ts-button { height: 57px; font-size: 18px; border-radius: 25px; padding: 8px 20px; }
-.writing-condition-button { min-width: 181px; }
+.writing-condition-button { width: 181px; padding-inline: 18px; }
 .writing-footer .primary { min-width: 159px; background: radial-gradient(ellipse at 50% 10%, #f9b26f88, transparent 70%), linear-gradient(170deg, #efb779, #ca8b55) !important; border-color: #ffd0a0 !important; box-shadow: inset 0 0 7px #ffcc8855; }
 .follow-title { position: absolute; left: 23px; top: 115px; }
 .follow-title h1 { font-size: 34px; line-height: 1.4; font-weight: 650; }
@@ -771,14 +771,15 @@ watch(() => props.scene, () => {
 .candidate-disclaimer .r-icon { fill: #a5a79d; stroke: #272923; }
 .follow-candidate.ignored h3 { opacity: .55; }
 .report-title { position: absolute; left: 24px; top: 119px; }
-.report-title h1 { font-size: 56px; font-weight: 650; line-height: 1.3; }
-.report-title p { display: flex; align-items: center; gap: 13px; color: #c5b9a9; margin-top: 8px; font-size: 23px; }
+.report-title h1 { font-size: 60px; font-weight: 600; line-height: 1.3; }
+.report-title p { display: flex; align-items: center; gap: 17px; color: #c5b9a9; margin-top: 3px; font: 24px/1.65 "Microsoft YaHei", sans-serif; }
 .report-top-actions { position: absolute; left: 927px; top: 139px; display: flex; gap: 16px; }
 .report-top-actions .ts-button { height: 58px; font-size: 20px; min-width: 159px; border-radius: 32px; }
 .report-top-actions .primary { min-width: 166px; }
 .report-top-actions .primary .r-icon { fill: #4b2c12; }
 .report-summary { left: 21px; top: 258px; width: 1247px; height: 112px; display: flex; align-items: center; border-radius: 19px; background: linear-gradient(105deg, #30271e9e, #322a218a 85%); padding: 17px 0; }
 .report-stat { height: 68px; display: flex; align-items: center; width: 320px; padding-left: 44px; gap: 35px; border-right: 1px solid #746652; }
+.report-stat:first-child { gap: 32px; }
 .report-stat:nth-child(2) { width: 321px; padding-left: 52px; gap: 27px; }
 .report-stat:nth-child(3) { width: 336px; padding-left: 50px; gap: 26px; }
 .stat-emblem { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; border: 3px solid currentColor; flex: none; }
@@ -790,17 +791,21 @@ watch(() => props.scene, () => {
 .report-stat strong small { font-size: 24px; font-weight: 400; }
 .report-summary > p { display: flex; align-items: center; justify-content: center; flex: 1; gap: 12px; font-size: 20px; color: #b9ae9e; white-space: nowrap; }
 .report-question-panel { left: 21px; top: 398px; width: 775px; height: 491px; background: linear-gradient(125deg, #29231caf, #231c158c); }
-.report-question-panel > h2, .report-end-conditions > h2 { display: flex; align-items: center; gap: 20px; height: 69px; padding: 0 28px; border-bottom: 1px solid #594b395c; font-size: 23px; font-weight: 600; }
+.report-question-panel > h2, .report-end-conditions > h2 { display: flex; align-items: center; gap: 20px; height: 69px; padding: 0 28px; border-bottom: 1px solid #594b395c; font-size: 23px; font-weight: 500; }
 .report-question-list { max-height: 321px; overflow: auto; margin: 0 24px; scrollbar-width: thin; scrollbar-color: #68533c transparent; }
 .report-question-row { border-bottom: 1px solid #604e3740; }
 .report-question-row:last-child { border-bottom: 0; }
 .report-question-row > button { width: 100%; height: 105px; display: flex; align-items: flex-start; text-align: left; padding: 19px 7px !important; }
 .report-question-number { display: inline-block; width: 138px; flex: none; color: #bcb0a2; font-size: 21px; padding-top: 3px; }
 .report-question-copy { display: block; }
-.report-question-copy strong { font-size: 24px; font-weight: 600; }
+.report-question-copy strong { font: 500 25px/1.5 "Microsoft YaHei", sans-serif; }
 .report-question-copy small { display: flex; align-items: center; gap: 14px; font-size: 21px; color: #cbbfb0; margin-top: 5px; }
 .report-question-copy small > .r-icon { color: #6dc7a0; fill: #32694d; }
+.report-question-copy small > .r-icon :deep(path:first-child) { fill: #4eaa84; stroke: #4eaa84; }
+.report-question-copy small > .r-icon :deep(path:not(:first-child)) { stroke: #143d2f; stroke-width: 2.7; }
 .report-question-row:nth-child(3) .report-question-copy small > .r-icon { fill: none; color: #a9bdc8; }
+.report-question-row:nth-child(3) .report-question-copy small > .r-icon :deep(path:first-child) { fill: none; stroke: currentColor; }
+.report-question-row:nth-child(3) .report-question-copy small > .r-icon :deep(path:not(:first-child)) { stroke: currentColor; stroke-width: 1.8; }
 .report-question-row > button > .r-icon:last-child { margin: 23px 0 0 auto; color: #d3c9bc; }
 .report-expanded-copy { margin: 0 15px 20px 145px; font-size: 17px; color: #c9bdaa; }
 .report-expanded-copy p { font-size: 17px; }
@@ -816,7 +821,7 @@ watch(() => props.scene, () => {
 .report-end-conditions dl > div { display: flex; align-items: center; justify-content: space-between; height: 48px; }
 .report-end-conditions dt { display: flex; align-items: center; gap: 23px; color: #bfb2a2; font-size: 22px; }
 .report-end-conditions dt > .r-icon { color: #b7c6ce; }
-.report-end-conditions dd { margin: 0; font-size: 25px; font-weight: 550; }
+.report-end-conditions dd { margin: 0; font-size: 25px; font-weight: 400; }
 .report-end-conditions .report-evaluation { height: 81px; margin-top: 8px; padding-top: 3px; border-top: 1px solid #59452f55; }
 .report-evaluation dd > span { padding: 5px 18px; border: 1px solid #a2602d77; border-radius: 24px; background: #86471d73; color: #f2b277; font-size: 20px; }
 .report-ai { left: 821px; top: 742px; width: 447px; height: 139px; padding: 14px 17px; background: linear-gradient(120deg, #33271d9c, #231b157d); }
@@ -824,7 +829,7 @@ watch(() => props.scene, () => {
 .report-ai button { width: 100%; display: flex; align-items: center; gap: 17px; min-height: 65px; padding: 10px 17px !important; margin-top: 9px; border: 1px solid #9a53403b !important; border-radius: 13px; background: #78382b55 !important; color: #f1b181; font-size: 18px !important; white-space: nowrap; }
 .report-ai button .r-icon { fill: #cf6751; color: #5d291e; }
 .report-bottom-actions { position: absolute; top: 909px; left: 823px; display: flex; gap: 18px; }
-.report-bottom-actions .ts-button { height: 62px; border-radius: 32px; font-size: 22px; font-weight: 600; min-width: 231px; padding: 10px 23px; }
+.report-bottom-actions .ts-button { height: 62px; border-radius: 32px; font-size: 21px; font-weight: 500; min-width: 231px; padding: 10px 23px; }
 .report-bottom-actions .primary { min-width: 194px; }
 .design-title { position: absolute; top: 102px; left: 29px; display: flex; align-items: center; gap: 27px; }
 .design-title h1 { font-size: 47px; font-weight: 650; line-height: 1.4; }
