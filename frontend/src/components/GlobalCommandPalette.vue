@@ -64,6 +64,9 @@ function open() {
   visible.value = true
   consumedEntry = route.fullPath
 }
+function openFromEntry() {
+  if (route.name === 'today' && route.query.command === '1' && route.fullPath !== consumedEntry && canOpen.value) void nextTick().then(() => open())
+}
 function close(restore = true) {
   if (!visible.value) return
   restoreOnClose = restore
@@ -160,7 +163,7 @@ async function execute(command: WorkspaceCommand) {
 }
 function leavePage() { close(false); trigger = undefined; restoreOnClose = false }
 function visibilityChanged() { if (document.visibilityState !== 'visible') leavePage() }
-defineExpose({ open })
+defineExpose({ open, openFromEntry })
 
 watch([input, searchRestricted], () => { selectedIndex.value = firstEnabledIndex(); message.value = '' })
 watch([() => props.enabled, () => workspace.sessionActive, () => workspace.sessionEpoch], ([enabled, active], previous) => {
@@ -170,9 +173,7 @@ watch([() => access.challenge, accessCommandLocked], ([challenge, locked], previ
   if (locked || challenge && previous && !previous[0]) close(false)
 }, { flush: 'sync' })
 watch(() => route.fullPath, () => { if (visible.value) close(false) }, { flush: 'sync' })
-watch([canOpen, () => route.fullPath], () => {
-  if (route.name === 'today' && route.query.command === '1' && route.fullPath !== consumedEntry && canOpen.value) void nextTick().then(() => open())
-}, { immediate: true, flush: 'post' })
+watch([canOpen, () => route.fullPath], openFromEntry, { immediate: true, flush: 'post' })
 onMounted(() => {
   window.addEventListener('keydown', shortcut)
   window.addEventListener('pagehide', leavePage)

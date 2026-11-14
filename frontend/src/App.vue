@@ -161,7 +161,8 @@ onUnmounted(() => {
           </div>
       </StudioShell>
       <GlobalCommandPalette ref="commandPalette" :show-trigger="false" :enabled="Boolean(session?.authenticated && workspace.sessionActive && !loading && !busy)" />
-      <NModal :show="!session?.authenticated" :mask-closable="false" :close-on-esc="false" :z-index="50" aria-labelledby="login-title">
+      <!-- 登录弹层完全离场后再恢复地址初态，避免命令面板被并存弹层守卫拦下。 -->
+      <NModal :show="!session?.authenticated" :mask-closable="false" :close-on-esc="false" :z-index="50" aria-labelledby="login-title" @after-leave="commandPalette?.openFromEntry()">
         <StudioLogin v-model:username="username" v-model:password="password" :busy="busy" :loading="loading" :error="error" @submit="signIn" @reconnect="refreshSession" />
       </NModal>
       <div v-if="session?.authenticated && error" class="global-notice" role="alert">{{ error }} <button @click="error = ''">关闭</button></div>
