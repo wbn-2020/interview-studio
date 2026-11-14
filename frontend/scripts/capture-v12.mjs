@@ -168,6 +168,49 @@ try {
       let interactionError = null
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
+      if (scene.id === '04') {
+        const preview = page.locator('.expression-preview p')
+        const lines = await preview.evaluate(node => {
+          const text = node.firstChild, rows = new Map()
+          if (!text || text.nodeType !== Node.TEXT_NODE) throw new Error('04预览文本节点缺失')
+          for (let index = 0; index < text.textContent.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const y = range.getBoundingClientRect().top
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+          }
+          return [...rows.values()]
+        })
+        ensure(lines.length === 2 && lines[0] === '营销交易平台致力于为用户提供', '04预览未保持参考两行')
+        const tree = page.locator('.project-tree'), root = tree.getByRole('button', { name: '营销交易平台', exact: true })
+        ensure(await root.getAttribute('aria-expanded') === 'true' && await tree.locator('.project-leaf').count() === 3, '04项目目录初态不符')
+        await root.click()
+        ensure(await root.getAttribute('aria-expanded') === 'false' && await tree.locator('.project-leaf').count() === 0, '04项目目录未收起')
+        await root.click()
+        await tree.getByRole('button', { name: '缓存治理', exact: true }).click()
+        ensure(await page.locator('.fact-heading h3').textContent() === '缓存更新失败后的排查', '04选择事实未同步标题')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '04目录或事实切换后刷新未恢复参考初态')
+        checks.push({ check: 'fact-preview-two-lines-directory-selection-refresh', scene: scene.id, lines, passed: true })
+      }
+      if (scene.id === '05') {
+        const directory = page.locator('.expression-directory'), heading = page.locator('.expression-text h2')
+        const root = directory.getByRole('button', { name: '项目介绍 3', exact: true })
+        ensure(await root.getAttribute('aria-expanded') === 'true' && await directory.locator('.version-link').count() === 3, '05目录初态不符')
+        await root.click()
+        ensure(await directory.locator('.version-link').count() === 0, '05项目介绍未收起')
+        await root.click()
+        await directory.getByRole('button', { name: '项目介绍 · v2', exact: true }).click()
+        ensure(await heading.textContent() === '项目介绍 v2' && (await page.locator('.history-item.selected strong').textContent()).trim() === 'v2', '05目录选择未同步正文及历史')
+        await page.locator('.history-item').first().click()
+        ensure(await heading.textContent() === '项目介绍 v3' && await directory.locator('.version-link.selected').textContent() === '项目介绍 · v3', '05历史选择未同步正文及目录')
+        await page.locator('.diff-heading').click()
+        ensure(await page.locator('.diff-columns').count() === 0, '05版本对比未收起')
+        await page.getByRole('button', { name: '对比上一版', exact: true }).click()
+        ensure(await page.locator('.diff-columns').isVisible(), '05版本对比未重新展开')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '05目录、版本及对比切换后刷新未恢复参考初态')
+        checks.push({ check: 'expression-directory-versions-comparison-refresh', scene: scene.id, passed: true })
+      }
       if (scene.id === '06') {
         const library = page.locator('.file-library'), viewer = page.locator('.pdf-viewer')
         ensure(await library.locator('.file-item:visible').count() === 5, '06初始文件行数不符')
@@ -381,7 +424,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['06', '09', '11', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '11', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

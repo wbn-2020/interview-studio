@@ -120,7 +120,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
         <header v-if="scene !== 17" class="r-topbar">
           <button v-if="scene === 30" class="r-breadcrumb r-inbox-breadcrumb" @click="navigate(10)">知识 / 收件箱<RIcon name="chevron-down" :size="23" /></button>
           <div v-else-if="scene !== 2 && scene !== 28" class="r-breadcrumb">
-            <RIcon v-if="![3, 5, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :size="25" />
+            <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :size="25" />
             {{ page.breadcrumb }}
           </div>
           <button class="r-top-search" :style="{ left: `${headerBox.left - 20}px`, width: `${headerBox.width}px` }" @click="navigate(25)"><RIcon name="search" :size="25" /><span>{{ searchHint }}</span><kbd v-if="![3, 7, 9, 12, 13, 16, 18, 19, 21, 22, 24, 26].includes(scene)">⌘K</kbd></button>
@@ -151,9 +151,12 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-03 .r-sidebar nav { left: 15px; right: 15px; top: 149px; gap: 9px; }
 .r-scene-03 .r-nav-item { padding: 0 23px; }
 .r-scene-04 .r-sidebar nav { top: 162px; }
+.r-scene-04 .r-topbar { left: 267px; top: 14px; }
 .r-scene-05 .r-sidebar { left: 16px; top: 19px; bottom: 30px; width: 228px; }
 .r-scene-05 .r-sidebar nav { left: 11px; right: 15px; top: 153px; gap: 4px; }
 .r-scene-05 .r-sidebar .r-brand { left: 23px; }
+.r-scene-05 .r-topbar { top: 8px; left: 274px; }
+.r-scene-05 .r-breadcrumb { font-size: 19px; }
 .r-scene-06 .r-sidebar { left: 14px; top: 20px; bottom: 44px; width: 219px; border-radius: 20px; }
 .r-scene-06 .r-sidebar nav { top: 118px; left: 10px; right: 15px; gap: 0; }
 .r-scene-06 .r-nav-item { height: 56px; padding-left: 21px; }
