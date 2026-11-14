@@ -162,7 +162,7 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .pdf-paper ul { position: absolute; left: 37px; padding-left: 31px; font-size: 14.5px; line-height: 32px; }.pdf-paper ul:nth-of-type(1) { top: 256px; }.pdf-paper ul:nth-of-type(2) { top: 519px; }
 .pdf-paper mark { position: absolute; left: 37px; top: 436px; margin: 0; font-size: 14.5px; line-height: 24px; }
 .parsing { background: #1c1915; }.parsing h3 { line-height: 33.35px; }.parsing-status { font-size: 17px; }
-.parsing-content { position: absolute; top: 134px; left: 17px; right: 17px; padding: 0; }
+.parsing-content { position: absolute; top: 134px; bottom: 174px; left: 17px; right: 17px; padding: 0; }
 .parsing-content section { position: absolute; left: 0; right: 0; margin: 0; padding-left: 36px; }.parsing-content section:nth-child(1) { top: 0; }.parsing-content section:nth-child(2) { top: 113px; }.parsing-content section:nth-child(3) { top: 208px; }.parsing-content section:nth-child(4) { top: 373px; }
 .parsing-content p, .parsing-content ul { margin-top: 3px; font-size: 16px; line-height: 23px; }.parsing-content ul { margin-bottom: 0; padding-left: 22px; line-height: 26px; color: #d3ccc2; }.parsing-content mark { margin-top: 3px; font-size: 15.5px; line-height: 23px; }
 .parsing-warning { font-size: 16px; bottom: 132px; }.parsing footer { bottom: 29px; }.parsing footer p { font-size: 15.5px; }.parsing footer .r-btn { font-size: 16px; }
