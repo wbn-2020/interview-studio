@@ -221,10 +221,21 @@ try {
         })))
         ensure(parsingLists.length === 2 && parsingLists.every(list => list.rows === 2 && !list.overflow
           && list.items.every(item => Math.abs(item.x - 1240) < 1)), '06解析列表行数、悬挂缩进或换行范围不符')
+        const resultLines = await page.locator('.parsing-content section').nth(3).locator('li').nth(1).evaluate(item => {
+          const text = item.firstChild, rows = new Map()
+          for (let index = 0; index < text.textContent.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const top = range.getBoundingClientRect().top
+            rows.set(top, (rows.get(top) ?? '') + text.textContent[index])
+          }
+          return [...rows.values()].map(line => line.trim())
+        })
+        ensure(resultLines.length === 2 && resultLines[0] === '支持了 5 大营销活动，交易额同比增长'
+          && resultLines[1] === '80%。', '06解析结果第二项换行未匹配参考')
         const libraryBox = await library.boundingBox()
         ensure(libraryBox && libraryBox.x === 253 && libraryBox.y === 196 && libraryBox.width === 323
           && libraryBox.height === 784, '06文件库外框不符')
-        checks.push({ check: 'attachment-library-box-and-semantic-lists', scene: scene.id, parsingLists, libraryBox, passed: true })
+        checks.push({ check: 'attachment-library-box-and-semantic-lists', scene: scene.id, parsingLists, resultLines, libraryBox, passed: true })
         await viewer.getByRole('button', { name: '下一页', exact: true }).click()
         ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible(), '06下一页未更新')
         await viewer.getByRole('button', { name: '上一页', exact: true }).click()
