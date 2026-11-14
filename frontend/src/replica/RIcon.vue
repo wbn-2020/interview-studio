@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -202,13 +202,25 @@ const bankPaths: Record<string, string[]> = {
   'arrow-up-down': ['m12 3 5 5H7ZM7 16h10l-5 5Z'],
   play: ['M7 3 21 12 7 21Z'],
 }
+// 路线页使用日历、实心准备和头部侧影，保留题库等页面的独立图标。
+const routePaths: Record<string, string[]> = {
+  'calendar-days': ['M4 4h16a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z', 'M7 1v6M17 1v6M3 9h18M7 13h.01M12 13h.01M17 13h.01M7 17h.01M12 17h.01'],
+  play: ['M5 3.5a1 1 0 0 1 1.5-.9l14 8.5a1 1 0 0 1 0 1.8l-14 8.5a1 1 0 0 1-1.5-.9Z'],
+  'book-open': libraryPaths['book-open']!,
+  'refresh-cw': ['M20.5 7.5A9 9 0 1 1 5 5L2 8M2 3v5h5', 'M12 8v4l3 2'],
+  'chart-no-axes-combined': ['M3 15h4v7H3ZM10 10h4v12h-4ZM17 5h4v17h-4Z', 'm3 10 6-6 5 3 7-6M16 1h5v5'],
+  'file-text': ['M6 2h11l3 3v17H4V2Z', 'M8 6h8M8 11h8M8 16h8'],
+  'credit-card': ['M4 3h15l3 4v15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 7h14v5H5ZM7 16h3v3H7ZM13 16h2M18 16h1M16 3v4h6'],
+  sparkles: ['M8 22v-6H4v-5c0-6 4-10 9-10 5 0 8 4 8 9v7h-6v5', 'm8 12 8-8M11 5h5v5'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
+    : props.variant === 'route' ? ({ play: .65, 'book-open': .5, 'chart-no-axes-combined': .65 } as Record<string, number>)[props.name] ?? 0
     : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9
       : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
 </script>

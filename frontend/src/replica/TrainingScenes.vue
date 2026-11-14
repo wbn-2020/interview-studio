@@ -304,7 +304,7 @@ watch(() => props.scene, () => {
       </aside>
       <section class="ts-panel route-map" aria-label="Java 后端路线阶段">
         <div class="route-track"></div>
-        <button v-for="(stage, index) in stages" :key="stage.title" type="button" class="route-stage" :class="[stage.state, { selected: selectedStage === index }]" :style="{ top: `${[29, 127, 224, 320, 415][index]}px` }" @click="selectStage(index)">
+        <button v-for="(stage, index) in stages" :key="stage.title" type="button" class="route-stage" :class="[stage.state, { selected: selectedStage === index }]" :aria-pressed="selectedStage === index" :style="{ top: `${[28, 126, 223, 319, 414][index]}px` }" @click="selectStage(index)">
           <span class="stage-orbit"><span><RIcon :name="stage.icon" :size="28" /></span></span>
           <span class="stage-copy"><strong>{{ stage.title }}</strong><small>{{ stage.meta }}</small></span>
           <RIcon v-if="index === 0" name="check" :size="24" class="stage-end done" />
@@ -574,15 +574,15 @@ watch(() => props.scene, () => {
 .bank-route ol::before { position: absolute; content: ''; left: 10px; top: 12px; bottom: 6px; width: 1px; background: #9b7958; }
 .bank-route li::before { content: ''; position: absolute; left: 6px; width: 9px; height: 9px; margin-top: 9px; border-radius: 50%; background: #e6b17d; }
 .route-title { position: absolute; top: 100px; left: 21px; }
-.route-title h1 { font-size: 41px; }
+.route-title h1 { font-size: 39px; }
 .route-tabs { position: absolute; left: 16px; top: 168px; width: 321px; height: 50px; display: flex; border: 1px solid #2b261f; border-radius: 28px; background: #201c178c; }
 .route-tabs button { position: relative; flex: 1; font-size: 21px; color: #a79f96; border-radius: 28px; }
 .route-tabs .active { color: #ffead2; font-weight: 600; background: #49301c29; }
 .route-tabs .active::after { content: ''; position: absolute; bottom: 0; left: 25px; right: 25px; height: 3px; border-radius: 3px; background: #efb072; box-shadow: 0 0 11px #e5a15d6b; }
 .route-actions { position: absolute; right: 28px; top: 168px; display: flex; gap: 14px; }
-.route-actions .ts-button { height: 50px; min-width: 141px; border-radius: 29px; font-size: 20px; gap: 5px; }
+.route-actions .ts-button { height: 50px; min-width: 141px; padding-inline: 16px; border-radius: 29px; font-size: 20px; gap: 5px; }
 .route-actions .primary { background: linear-gradient(135deg, #ffc17d, #e59d57) !important; }
-.route-list { left: 16px; top: 235px; width: 324px; height: 747px; padding: 19px 7px; }
+.route-list { left: 16px; top: 235px; width: 324px; height: 747px; padding: 19px 7px; background: linear-gradient(110deg, #211c19, #1c1917); }
 .route-list::before { content: ''; position: absolute; inset: 9px -1px auto; height: 76px; border-top: 1px solid #393127; border-radius: 20px; pointer-events: none; }
 .route-list-heading { display: flex; align-items: center; justify-content: space-between; height: 45px; padding: 0 12px; margin-bottom: 9px; }
 .route-list-heading h3 { font-size: 20px; }
@@ -593,9 +593,9 @@ watch(() => props.scene, () => {
 .route-list-item strong { display: block; font-size: 20px; font-weight: 500; white-space: nowrap; }
 .route-list-item small { display: block; font-size: 15px; color: #bcb1a3; margin-top: 2px; white-space: nowrap; }
 .route-list-item > .r-icon { margin-left: auto; flex: none; color: #ddd0be; }
-.route-map { left: 351px; top: 235px; width: 613px; height: 513px; }
+.route-map { left: 351px; top: 235px; width: 613px; height: 512px; background: linear-gradient(125deg, #1b1918, #171413 78%); }
 .route-track { position: absolute; left: 59px; width: 4px; top: 61px; bottom: 76px; background: linear-gradient(#d6a260 0 24%, #a6bcc6 24% 100%); }
-.route-stage { position: absolute; left: 28px; width: 311px; height: 75px; display: flex; align-items: center; border: 1px solid #39332b !important; background: linear-gradient(120deg, #2b2a25ba, #24211dc7) !important; border-radius: 32px; text-align: left; }
+.route-stage { position: absolute; left: 28px; width: 311px; height: 74px; display: flex; align-items: center; border: 1px solid #39332b !important; background: linear-gradient(120deg, #2b2a25ba, #24211dc7) !important; border-radius: 32px; text-align: left; }
 .route-stage.done { border-color: #3a4236 !important; }
 .route-stage.selected { border-color: #eaa353 !important; background: linear-gradient(120deg, #72502d55, #452e1b66) !important; box-shadow: inset 0 0 10px #c8832728; }
 .stage-orbit { display: grid; place-items: center; width: 63px; height: 75px; border: 1px solid #ffffff06; border-radius: 50%; flex: none; background: #26252155; }
@@ -604,20 +604,20 @@ watch(() => props.scene, () => {
 .route-stage.done .stage-orbit > span { background: #82b680; color: #edf7e2; width: 30px; height: 30px; }
 .route-stage.current .stage-orbit > span { background: #795032b5; color: #ffe3c3; }
 .stage-copy { padding-left: 18px; }
-.stage-copy strong { display: block; font-size: 21px; font-weight: 550; }
+.stage-copy strong { display: block; font-size: 21px; font-weight: 500; }
 .stage-copy small { display: block; margin-top: 1px; font-size: 16px; color: #c9c3b9; }
 .route-stage.done .stage-copy small { color: #a1cb96; }
 .route-stage.current .stage-copy small { color: #e9c392; }
 .stage-end { position: absolute; right: 18px; color: #efbf87; }
 .stage-end.done { color: #85bf89; background: transparent; }
 .stage-empty { width: 19px; height: 19px; border: 1.5px solid #969084; border-radius: 50%; }
-.route-completion { position: absolute; left: 361px; top: 122px; width: 228px; height: 87px; padding: 10px 16px; border: 1px solid #3c362e; border-radius: 17px; background: #2a2621d4; }
+.route-completion { position: absolute; left: 361px; top: 122px; width: 228px; height: 86px; padding: 10px 16px; border: 1px solid #3c362e; border-radius: 17px; background: #2a2621d4; }
 .route-completion::before { content: ''; position: absolute; width: 25px; height: 22px; left: -26px; top: 29px; border-bottom: 1px solid #594330; border-radius: 0 0 100% 0; }
-.route-completion strong { font-size: 20px; font-weight: 550; }
-.route-completion p { font-size: 18px; margin-top: 2px; white-space: nowrap; }
-.route-overview { left: 351px; top: 759px; width: 613px; height: 223px; padding: 14px 18px; }
+.route-completion strong { font-size: 20px; font-weight: 500; }
+.route-completion p { font-size: 18px; margin-top: 4px; white-space: nowrap; }
+.route-overview { left: 351px; top: 759px; width: 613px; height: 223px; padding: 14px 18px; background: linear-gradient(125deg, #1e1b19, #191716 78%); }
 .route-overview h3 { font-size: 20px; margin-bottom: 10px; }
-.route-overview table { width: 100%; border-collapse: collapse; font-size: 16px; text-align: left; }
+.route-overview table { width: 100%; border-collapse: collapse; font-size: 17px; text-align: left; }
 .route-overview th { font-size: 18px; color: #b4a99c; font-weight: 400; height: 36px; white-space: nowrap; }
 .route-overview td { height: 40px; white-space: nowrap; }
 .route-overview th:first-child { width: 34px; }
@@ -626,8 +626,8 @@ watch(() => props.scene, () => {
 .route-overview th:nth-child(4) { width: 141px; }
 .route-overview td i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
 .route-overview tbody tr { cursor: pointer; }
-.route-details { left: 976px; top: 235px; width: 322px; height: 747px; padding: 9px; }
-.route-details-inner { height: 513px; border: 1px solid #39332b; border-radius: 18px; padding: 17px 10px 12px; background: linear-gradient(130deg, #2a241db5, #24211db5); }
+.route-details { left: 976px; top: 235px; width: 322px; height: 747px; padding: 9px; background: linear-gradient(125deg, #1f1b19, #191615 78%); }
+.route-details-inner { height: 513px; border: 1px solid #39332b; border-radius: 18px; padding: 17px 10px 12px; background: linear-gradient(130deg, #272321, #252120); }
 .route-details h3 { font-size: 20px; }
 .route-detail-title { display: flex; align-items: center; gap: 17px; margin-top: 22px; }
 .route-detail-title > span { display: grid; place-items: center; width: 43px; height: 45px; background: #77512d88; border-radius: 14px; color: #f4bb77; }

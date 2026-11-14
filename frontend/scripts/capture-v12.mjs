@@ -322,6 +322,46 @@ try {
         await assertFrame(captured, '14导航返回后初态发生变化')
         checks.push({ check: 'question-bank-search-filters-collapse-sort-keyboard-navigation-refresh', scene: scene.id, passed: true, limitations: '考察项关联、条件说明、加入题单、新建流程及其他题目完整正文待确认；未接正式业务' })
       }
+      if (scene.id === '15') {
+        const panels = { '.r-sidebar': [18, 22, 202, 973], '.route-list': [236, 235, 324, 747],
+          '.route-map': [571, 235, 613, 512], '.route-overview': [571, 759, 613, 223], '.route-details': [1196, 235, 322, 747] }
+        const geometry = {}
+        for (const [selector, expected] of Object.entries(panels)) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '15面板几何不符：' + selector)
+        }
+        ensure(await page.locator('.r-tools-heading').textContent() === '工具', '15缺少工具分组标签')
+        ensure(await page.locator('.route-list-item').count() === 3 && await page.locator('.route-stage').count() === 5
+          && await page.locator('.route-overview tbody tr').count() === 3, '15路线、阶段或检查点数量不符')
+        const stages = page.locator('.route-stage')
+        ensure(await stages.nth(1).getAttribute('aria-pressed') === 'true'
+          && await page.locator('.route-completion p').textContent() === '独立作答 2 题 + 复练 1 次', '15初始阶段或完成条件不符')
+        const stageTops = await stages.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top))
+        ensure(JSON.stringify(stageTops) === JSON.stringify([264, 362, 459, 555, 650]), '15阶段坐标不符')
+        ensure(await page.locator('.r-brand circle').count() === 2, '15品牌不应使用带外圈的默认图标')
+        checks.push({ check: 'route-five-stages-three-checkpoints-shell-panel-geometry', scene: scene.id, geometry, stageTops, passed: true })
+        await stages.nth(2).click()
+        ensure(await stages.nth(2).getAttribute('aria-pressed') === 'true' && await page.locator('.route-completion').count() === 0, '15选择阶段未更新')
+        await page.locator('.route-overview tbody tr').nth(1).focus()
+        await page.keyboard.press('Enter')
+        ensure(await stages.nth(1).getAttribute('aria-pressed') === 'true' && await page.locator('.route-completion').isVisible(), '15检查点键盘操作未恢复对应阶段')
+        const tabs = page.getByRole('navigation', { name: '题单与路线视图' })
+        await tabs.getByRole('button', { name: '题单', exact: true }).click()
+        ensure((await tabs.getByRole('button', { name: '题单', exact: true }).getAttribute('class'))?.includes('active'), '15题单标签未切换')
+        await tabs.getByRole('button', { name: '路线', exact: true }).click()
+        ensure((await tabs.getByRole('button', { name: '路线', exact: true }).getAttribute('class'))?.includes('active'), '15路线标签未切回')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '15阶段或标签操作后刷新未恢复参考初态')
+        await tabs.getByRole('button', { name: '题目', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="14"]').waitFor({ state: 'visible' })
+        ensure(new URL(page.url()).searchParams.get('scene') === '14', '15题目入口未同步地址')
+        ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '15返回后加载失败')
+        await ready()
+        await assertFrame(captured, '15返回路线后初态未恢复')
+        checks.push({ check: 'route-stage-checkpoint-keyboard-tabs-navigation-refresh', scene: scene.id, passed: true,
+          limitations: '其他路线正文、题单列表内容、新建、筛选和调整顺序流程未在参考图定义，仍为待确认，不视为业务验收通过' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -750,7 +790,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
