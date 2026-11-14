@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -161,9 +161,26 @@ const libraryPaths: Record<string, string[]> = {
   link: ['m9.5 14.5 5-5', 'm10.5 7.5 2-2a4 4 0 0 1 6 6l-2 2M13.5 16.5l-2 2a4 4 0 0 1-6-6l2-2'],
 }
 const libraryFills: Record<string, number> = { calendar: .08, 'calendar-days': .08, play: .8, 'book-open': .9, 'chart-no-axes-combined': .8, database: .8, clock: .8, folder: .75, 'layout-grid': .95, bookmark: .85, inbox: .65, 'file-plus': .8, bell: .4, filter: .65 }
-const iconPaths = computed(() => props.variant === 'library' && libraryPaths[props.name]
-  ? libraryPaths[props.name] : paths[aliases[props.name] ?? props.name] ?? paths.square)
-const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0 : 0)
+// 笔记页的实心主页、柱状复盘和双引号与列表页不同，按页面选择而不改共享默认轮廓。
+const notePaths: Record<string, string[]> = {
+  house: ['M2 10.5 12 2l10 8.5h-3V22h-5v-7h-4v7H5V10.5Z'],
+  layers: ['m12 2 9 5-9 5-9-5Z', 'm3 11 9 5 9-5', 'm3 15 9 5 9-5'],
+  play: ['M6 2.5 21 12 6 21.5Z'],
+  'chart-no-axes-column': ['M3 13h3v9H3ZM10 3h3v19h-3ZM17 8h3v14h-3Z'],
+  'layout-grid': ['M3 3h7v7H3ZM14 3h7v7h-7ZM3 14h7v7H3ZM14 14h7v7h-7Z'],
+  'credit-card': ['M3 3h18v18H3Z', 'M7 7h.01M17 12h.01M8 17h.01'],
+  zap: ['M13.5 2 4 13h7l-.5 9L20 10h-7Z'],
+  'file-text': ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z', 'M14 2v6h6M8 12h8M8 16h8'],
+  history: ['M3.5 10a9 9 0 1 1 1.7 7.7', 'M3.5 3v7H10M12 6v6l4 2'],
+  bell: ['M12 2a2 2 0 0 1 2 1 6 6 0 0 1 4 6c0 6 2 6 2 9H4c0-3 2-3 2-9a6 6 0 0 1 4-6 2 2 0 0 1 2-1Z', 'M10 21h4'],
+  quote: ['M4 5h5v6c0 4-2 6-5 7v-3c2-.5 2-1.5 2-3H3V7a2 2 0 0 1 1-2ZM15 5h5v6c0 4-2 6-5 7v-3c2-.5 2-1.5 2-3h-3V7a2 2 0 0 1 1-2Z'],
+  copy: ['M9 8h10a2 2 0 0 1 2 2v11H9Z', 'M15 4V2H3v14h2'],
+  ellipsis: ['M4 12h.2M12 12h.2M20 12h.2'],
+}
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : undefined)
+  ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
+const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
+  : props.variant === 'note' && ['house', 'chart-no-axes-column', 'quote'].includes(props.name) ? .95 : 0)
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="strokeWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">

@@ -413,6 +413,25 @@ try {
         checks.push({ check: 'whiteboard-positions-warning-lines-grid-boundary-zoom-drag-refresh', scene: scene.id, positions, warningLines, sidebar, navigation, passed: true })
       }
       if (scene.id === '11') {
+        const layout = await page.evaluate(() => {
+          const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON()
+          const chrome = getComputedStyle(document.querySelector('.r-main'), '::before')
+          const inner = getComputedStyle(document.querySelector('.knowledge-note-page'), '::before')
+          return { panels: ['.kn-folders', '.kn-notes', '.kn-editor', '.kn-relations'].map(rect),
+            chrome: { top: chrome.top, right: chrome.right, bottom: chrome.bottom, radius: chrome.borderRadius },
+            inner: { top: inner.top, right: inner.right, bottom: inner.bottom, radius: inner.borderRadius },
+            counts: [...document.querySelectorAll('.kn-folders > button small')].map(node => ({ text: node.textContent, right: node.getBoundingClientRect().right })),
+            tools: document.querySelectorAll('.kn-toolbar button').length,
+            savedCheck: Boolean(document.querySelector('.kn-heading .kn-saved-check path')),
+            version: Boolean(document.querySelector('.kn-current > i')) && document.querySelector('.kn-current > span')?.textContent === 'v4 当前',
+            title: rect('.kn-heading h1'),
+          }
+        })
+        ensure(JSON.stringify(layout.panels.map(({ x, y, width, height }) => [x, y, width, height])) === JSON.stringify([[242,262,177,706],[419,262,248,706],[674,262,537,706],[1217,262,291,706]]), '11四列范围不符')
+        ensure(layout.chrome.top === '25px' && layout.inner.top === '113px' && layout.chrome.radius === '26px' && layout.inner.radius === '26px', '11两层应用外框不符')
+        ensure(layout.title.width === 451 && layout.tools === 10 && layout.savedCheck && layout.version, '11标题、工具栏、保存或版本标记不符')
+        ensure(JSON.stringify(layout.counts.map(item => item.text)) === JSON.stringify(['4','5','6','3']) && Math.max(...layout.counts.map(item => item.right)) - Math.min(...layout.counts.map(item => item.right)) < 1, '11目录计数未靠右对齐')
+        checks.push({ check: 'note-four-columns-chrome-title-counts-tools-saved-version', scene: scene.id, layout, passed: true })
         const prose = page.locator('.kn-prose p').first(), initialText = await prose.textContent()
         const lines = await prose.evaluate(node => {
           const text = node.firstChild, rows = new Map()
