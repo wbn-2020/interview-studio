@@ -370,12 +370,12 @@ watch(() => props.scene, () => {
         <span class="writing-crumb">训练 / 独立专项 / 第 1 题</span>
         <button type="button" class="writing-search" @click="pending('训练中搜索权限')"><RIcon name="search" :size="22" /><span>⌘K 搜索题目、知识点...</span></button>
         <span class="writing-timer"><RIcon name="clock" :size="27" />18:42</span>
-        <span class="writing-header-divider"></span><span class="writing-saved"><RIcon name="circle-check" :size="21" />已保存 14:32</span>
+        <span class="writing-header-divider"></span><span class="writing-saved"><RIcon name="circle-check" variant="writing" :size="21" />已保存 14:32</span>
         <button type="button" class="ts-button writing-pause" :aria-pressed="trainingPaused" @click="trainingPaused = !trainingPaused"><RIcon :name="trainingPaused ? 'play' : 'pause'" :size="19" />{{ trainingPaused ? '继续' : '暂停' }}</button>
         <button type="button" class="ts-button writing-end" @click="go(19)">结束本次</button>
         <button type="button" class="writing-bell ts-icon-button" aria-label="通知" @click="pending('通知列表')"><RIcon name="bell" :size="26" /></button><button type="button" class="writing-avatar" aria-label="个人菜单" @click="pending('个人菜单')">林</button>
       </header>
-      <div class="writing-topic"><span><RIcon name="layers" :size="23" />分布式系统 · 异常恢复</span></div>
+      <div class="writing-topic"><span><RIcon name="layers" variant="writing" :size="23" />分布式系统 · 异常恢复</span></div>
       <div class="writing-question"><h1>缓存删除失败后，你会先确认哪些条件？</h1><p>请先明确问题背景和相关约束。</p></div>
       <div class="writing-editor">
         <textarea v-model="trainingDraft" :disabled="trainingPaused" placeholder="从空白开始作答..." aria-label="本题回答"></textarea>
@@ -384,11 +384,11 @@ watch(() => props.scene, () => {
       </div>
       <aside v-if="conditionsVisible" class="ts-panel writing-conditions">
         <h3>本次条件</h3><dl>
-          <div><dt><RIcon name="target" :size="24" />目标</dt><dd>Java 后端</dd></div><div><dt><RIcon name="shield-check" :size="24" />标准</dt><dd>未审</dd></div><div><dt><RIcon name="wrench" :size="24" />辅助</dt><dd>未开启</dd></div><div><dt><RIcon name="clock" :size="24" />允许用时</dt><dd>30 分钟</dd></div>
-          <div class="condition-warning"><dt><RIcon name="file-text" :size="24" />注意</dt><dd>作答中不可打开参考</dd></div>
+          <div><dt><RIcon name="target" variant="writing" :size="24" />目标</dt><dd>Java 后端</dd></div><div><dt><RIcon name="shield-check" :size="24" />标准</dt><dd>未审</dd></div><div><dt><RIcon name="wrench" :size="24" />辅助</dt><dd>未开启</dd></div><div><dt><RIcon name="clock" :size="24" />允许用时</dt><dd>30 分钟</dd></div>
+          <div class="condition-warning"><dt><RIcon name="file-text" variant="writing" :size="24" />注意</dt><dd>作答中不可打开参考</dd></div>
         </dl>
       </aside>
-      <footer class="writing-footer"><div class="writing-count">{{ trainingDraft.length }} 字<span></span><RIcon name="circle-check" :size="23" /><strong>自动保存已开启</strong></div><div><button type="button" class="ts-button writing-condition-button" :aria-expanded="conditionsVisible" @click="conditionsVisible = !conditionsVisible"><RIcon name="file-text" :size="25" />查看本次条件</button><button type="button" class="ts-button primary" :disabled="trainingPaused" @click="submitTraining"><RIcon name="send" :size="25" />提交本题</button></div></footer>
+      <footer class="writing-footer"><div class="writing-count">{{ trainingDraft.length }} 字<span></span><RIcon name="circle-check" variant="writing" :size="23" /><strong>自动保存已开启</strong></div><div><button type="button" class="ts-button writing-condition-button" :aria-expanded="conditionsVisible" @click="conditionsVisible = !conditionsVisible"><RIcon name="file-text" variant="writing" :size="25" />查看本次条件</button><button type="button" class="ts-button primary" :disabled="trainingPaused" @click="submitTraining"><RIcon name="send" :size="25" />提交本题</button></div></footer>
     </template>
 
     <template v-else-if="scene === 18">
@@ -691,15 +691,16 @@ watch(() => props.scene, () => {
 .recall-next .ts-button { width: 100%; font-size: 20px; gap: 8px; color: #bfb6a9; border-radius: 28px; margin-top: 14px; height: 52px; padding: 5px; }
 .recall-note { margin-top: 27px; }
 .recall-note p { margin-top: 9px; color: #bfb6a9; font-size: 21px; white-space: nowrap; }
-.training-frame { position: absolute; top: 24px; left: 0; width: 1292px; height: 926px; border: 1px solid #514338; border-radius: 23px; background: linear-gradient(120deg, #201b1621, #17140f44); }
-.writing-header { position: absolute; left: 0; top: 24px; width: 1292px; height: 79px; display: flex; align-items: center; border-bottom: 1px solid #ffffff03; background: linear-gradient(110deg, #25211c5e, #221d176b); border-radius: 23px 23px 0 0; font-size: 18px; white-space: nowrap; }
+.training-frame { position: absolute; top: 24px; left: 0; width: 1292px; height: 926px; border: 1px solid #50443c; border-radius: 23px; background: linear-gradient(110deg, #15121055, #211a1655); }
+.writing-header { position: absolute; left: 0; top: 24px; width: 1292px; height: 79px; display: flex; align-items: center; border-bottom: 1px solid #ffffff03; background: linear-gradient(120deg, #29231e88, #211a1566); border-radius: 23px 23px 0 0; font-size: 18px; white-space: nowrap; }
 .writing-back { position: absolute; left: 8px; top: 20px; }
 .writing-crumb { position: absolute; left: 67px; top: 26px; }
 .writing-search { position: absolute; left: 334px; top: 18px; width: 281px; height: 44px; border-radius: 25px; display: flex; align-items: center; gap: 10px; padding: 0 17px !important; background: #34302b9e !important; color: #b9b0a5 !important; font-size: 16px !important; }
 .writing-timer { position: absolute; left: 663px; top: 22px; display: flex; align-items: center; gap: 7px; font-size: 24px; font-weight: 600; }
 .writing-header-divider { position: absolute; left: 779px; top: 25px; width: 1px; height: 31px; background: #9c8c764f; }
 .writing-saved { position: absolute; left: 790px; top: 18px; height: 44px; width: 146px; border: 1px solid #39372b; border-radius: 24px; display: flex; align-items: center; justify-content: center; gap: 9px; font-size: 16px; color: #a4dbc3; background: #24271e38; }
-.writing-saved .r-icon, .writing-count .r-icon { color: #64c89f; fill: #27553e; }
+.writing-saved :deep(path:first-child), .writing-count :deep(path:first-child) { fill: #4bb386; stroke: #4bb386; }
+.writing-saved :deep(path:last-child), .writing-count :deep(path:last-child) { stroke: #173428; stroke-width: 2.2; }
 .writing-pause { position: absolute; left: 951px; top: 18px; width: 92px; height: 44px; min-height: 0; font-size: 18px; border-radius: 22px; padding: 6px 10px; }
 .writing-pause::before, .writing-end::after { content: ''; position: absolute; width: 1px; height: 31px; top: 6px; background: #a9957b4d; }
 .writing-pause::before { left: -11px; }
@@ -707,20 +708,20 @@ watch(() => props.scene, () => {
 .writing-end { position: absolute; left: 1055px; top: 18px; width: 107px; height: 44px; min-height: 0; font-size: 18px; border-radius: 23px; padding: 6px; background: #5242345e !important; }
 .writing-bell { position: absolute; left: 1183px; top: 20px; }
 .writing-avatar { position: absolute; left: 1241px; top: 19px; width: 39px; height: 42px; border-radius: 50%; background: #766453 !important; font-size: 21px !important; }
-.writing-topic { position: absolute; left: 15px; top: 116px; width: 949px; height: 61px; border: 1px solid #463d32; border-radius: 18px; background: #302b238a; padding: 9px; }
-.writing-topic > span { display: inline-flex; align-items: center; gap: 16px; height: 41px; padding: 0 13px; border-radius: 23px; background: #3a342d9c; font-size: 20px; }
+.writing-topic { position: absolute; left: 15px; top: 116px; width: 949px; height: 61px; border: 1px solid #3d3630; border-radius: 18px; background: linear-gradient(120deg, #272320, #211e1b); padding: 9px; }
+.writing-topic > span { display: inline-flex; align-items: center; gap: 16px; height: 41px; padding: 0 13px; border-radius: 23px; background: linear-gradient(120deg, #3d3630, #2e2925); font-size: 20px; }
 .writing-topic .r-icon { color: #eaa060; fill: #a66b3a33; }
-.writing-question { position: absolute; left: 25px; top: 198px; }
-.writing-question h1 { font-size: 34px; line-height: 1.5; font-weight: 650; }
-.writing-question p { margin-top: 7px; font-size: 24px; color: #b6afa4; }
+.writing-question { position: absolute; left: 25px; top: 193px; }
+.writing-question h1 { font-size: 35px; line-height: 1.5; font-weight: 500; }
+.writing-question p { margin-top: 3px; font-size: 24px; color: #aaa5a0; }
 .writing-editor { position: absolute; left: 23px; top: 318px; width: 941px; height: 542px; }
-.writing-editor textarea { height: 100%; width: 100%; padding: 21px 24px; resize: none; border: 1px solid #6e6558; border-bottom-color: #3f382e; border-radius: 15px; outline: none; background: linear-gradient(115deg, #211e193f, #27211a54); color: #f4eee4; font-size: 24px; line-height: 1.7; }
+.writing-editor textarea { height: 100%; width: 100%; padding: 21px 24px; resize: none; border: 1px solid #78736d; border-bottom-color: #3d3732; border-radius: 15px; outline: none; background: linear-gradient(120deg, #191716, #1c1917); color: #f4eee4; font-size: 24px; line-height: 1.7; }
 .writing-editor textarea::placeholder { color: #999287; }
 .writing-editor textarea:disabled { opacity: .45; }
 .fixed-caret { position: absolute; left: 16px; top: 25px; width: 2px; height: 31px; background: #eee8df; pointer-events: none; }
 .writing-paused { position: absolute; inset: 1px; border-radius: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; background: #18140fb5; color: #e6d3ba; }
-.writing-conditions { left: 983px; top: 114px; width: 302px; height: 368px; }
-.writing-conditions h3 { font-size: 23px; padding: 16px 21px; border-bottom: 1px solid #ffffff0c; }
+.writing-conditions { left: 983px; top: 114px; width: 302px; height: 368px; background: linear-gradient(120deg, #211d1a, #1d1916); border-color: #3c342e; }
+.writing-conditions h3 { font-size: 23px; font-weight: 500; padding: 16px 21px; border-bottom: 1px solid #ffffff0c; }
 .writing-conditions dl { margin: 10px 23px 0; font-size: 18px; }
 .writing-conditions dl > div { height: 49px; display: flex; align-items: center; border-bottom: 1px solid #ffffff0b; }
 .writing-conditions dt { display: flex; align-items: center; gap: 16px; color: #bcb4a9; }
@@ -730,12 +731,12 @@ watch(() => props.scene, () => {
 .condition-warning dd { margin: 2px 0 0 40px; color: #dfd6c8; }
 .writing-footer { position: absolute; left: 24px; top: 875px; width: 943px; height: 57px; display: flex; justify-content: space-between; align-items: center; }
 .writing-count { display: flex; align-items: center; gap: 13px; font-size: 19px; color: #bab0a2; }
-.writing-count > span { display: block; margin: 0 16px; height: 30px; width: 1px; background: #786d5e; }
-.writing-count strong { font-weight: 400; color: #76c8ad; }
+.writing-count > span { display: block; margin: 0 16px 0 19px; height: 30px; width: 1px; background: #786d5e; }
+.writing-count strong { margin-left: -1px; font-size: 18px; font-weight: 400; color: #76c8ad; }
 .writing-footer > div:last-child { display: flex; gap: 12px; }
-.writing-footer .ts-button { height: 57px; font-size: 18px; border-radius: 25px; padding: 8px 23px; }
+.writing-footer .ts-button { height: 57px; font-size: 18px; border-radius: 25px; padding: 8px 20px; }
 .writing-condition-button { min-width: 181px; }
-.writing-footer .primary { min-width: 159px; }
+.writing-footer .primary { min-width: 159px; background: radial-gradient(ellipse at 50% 10%, #f9b26f88, transparent 70%), linear-gradient(170deg, #efb779, #ca8b55) !important; border-color: #ffd0a0 !important; box-shadow: inset 0 0 7px #ffcc8855; }
 .follow-title { position: absolute; left: 23px; top: 115px; }
 .follow-title h1 { font-size: 34px; line-height: 1.4; font-weight: 650; }
 .follow-title h1 > span { font-size: 30px; color: #b7b2aa; margin-left: 10px; font-weight: 500; }

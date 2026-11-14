@@ -436,6 +436,78 @@ try {
         checks.push({ check: 'recall-draft-readonly-tabs-keyboard-pending-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
           limitations: '到期标签仅检查状态切换；其他卡正文、答案、跳过、来源身份、记忆历史与设置仍待确认，不视为真实筛选或学习业务验收通过' })
       }
+      if (scene.id === '17') {
+        const geometry = {}
+        for (const [selector, expected] of Object.entries({
+          '.r-sidebar': [19, 23, 198, 946], '.training-frame': [226, 24, 1292, 926],
+          '.writing-topic': [241, 116, 949, 61], '.writing-editor': [249, 318, 941, 542],
+          '.writing-conditions': [1209, 114, 302, 368], '.writing-footer': [250, 875, 943, 57],
+        })) {
+          const box = await page.locator(selector).boundingBox()
+          geometry[selector] = box && [box.x, box.y, box.width, box.height]
+          ensure(JSON.stringify(geometry[selector]) === JSON.stringify(expected), '17面板几何不符：' + selector)
+        }
+        const heading = await page.locator('.writing-question h1').evaluate(node => ({
+          text: node.textContent, size: getComputedStyle(node).fontSize, weight: getComputedStyle(node).fontWeight,
+          overflow: node.scrollWidth > node.clientWidth,
+        }))
+        ensure(heading.text === '缓存删除失败后，你会先确认哪些条件？' && heading.size === '35px'
+          && heading.weight === '500' && !heading.overflow, '17题面文字、字重或溢出不符')
+        ensure(await page.locator('.writing-topic span').textContent() === '分布式系统 · 异常恢复'
+          && (await page.locator('.writing-timer').textContent()).trim() === '18:42'
+          && (await page.locator('.writing-saved').textContent()).trim() === '已保存 14:32', '17固定题目分类、计时或保存状态不符')
+        ensure(JSON.stringify(await page.locator('.writing-conditions dd').allTextContents())
+          === JSON.stringify(['Java 后端', '未审', '未开启', '30 分钟', '作答中不可打开参考']), '17五项条件内容或顺序不符')
+        ensure(await page.locator('.r-brand path').count() === 4 && await page.locator('.r-brand circle').count() === 0
+          && await page.locator('.r-nav-item.r-selected span').textContent() === '训练', '17品牌或侧栏选择不符')
+        checks.push({ check: 'writing-question-fixed-time-five-conditions-panel-geometry', scene: scene.id, geometry, heading, passed: true })
+        const writes = []
+        const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
+        page.on('request', watchWrite)
+        const draft = page.getByRole('textbox', { name: '本题回答', exact: true })
+        ensure(await draft.inputValue() === '' && await draft.isEditable()
+          && await page.locator('.fixed-caret').count() === 1, '17初态应为空白作答且光标静止')
+        await page.getByRole('button', { name: '提交本题', exact: true }).click()
+        ensure(await page.getByRole('status').textContent() === '请先填写本题回答'
+          && new URL(page.url()).searchParams.get('scene') === '17', '17空答不应直接提交')
+        await draft.fill('先明确问题背景')
+        ensure((await page.locator('.writing-count').textContent()).startsWith('7 字')
+          && await page.locator('.fixed-caret').count() === 0, '17输入、字数或静止光标未更新')
+        const conditions = page.getByRole('button', { name: '查看本次条件', exact: true })
+        await conditions.click()
+        ensure(await conditions.getAttribute('aria-expanded') === 'false' && await page.locator('.writing-conditions').count() === 0, '17条件未收起')
+        await conditions.focus(); await page.keyboard.press('Enter')
+        ensure(await conditions.getAttribute('aria-expanded') === 'true' && await page.locator('.writing-conditions').isVisible()
+          && await draft.inputValue() === '先明确问题背景', '17键盘展开条件丢失草稿')
+        await page.getByRole('button', { name: '暂停', exact: true }).click()
+        ensure(await draft.isDisabled() && await page.getByRole('button', { name: '提交本题', exact: true }).isDisabled()
+          && await page.getByRole('button', { name: '继续', exact: true }).getAttribute('aria-pressed') === 'true', '17暂停未阻止输入及提交')
+        await page.getByRole('button', { name: '继续作答', exact: true }).click()
+        ensure(await draft.isEditable() && await draft.inputValue() === '先明确问题背景'
+          && (await page.locator('.writing-timer').textContent()).trim() === '18:42', '17继续作答丢失草稿或改变固定时间')
+        await page.locator('.writing-search').click()
+        ensure(await page.getByRole('status').textContent() === '训练中搜索权限待确认'
+          && await page.getByRole('dialog').count() === 0, '17未定义搜索不应绕过资料访问边界')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '17输入、暂停、条件及提示操作后刷新未恢复初态')
+        for (const [selector, target] of [['.writing-back', '14'], ['.writing-end', '19'], ['.r-sidebar > a', '02']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '17导航未同步地址：' + selector)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '17导航返回后加载失败')
+          await ready()
+        }
+        await draft.fill('先确认删除请求的结果和业务约束')
+        await page.getByRole('button', { name: '提交本题', exact: true }).click()
+        await page.locator('.r-canvas[data-scene="18"]').waitFor({ state: 'visible' })
+        ensure(new URL(page.url()).searchParams.get('scene') === '18', '17固定态提交未进入追问场景')
+        ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '17提交返回后加载失败')
+        await ready(); await assertFrame(captured, '17提交或导航返回后未恢复参考初态')
+        page.off('request', watchWrite)
+        ensure(writes.length === 0, '17固定态不应写入业务接口')
+        checks.push({ check: 'writing-draft-pause-conditions-keyboard-empty-submit-navigation-refresh', scene: scene.id, passed: true, businessWrites: writes,
+          limitations: '只验证固定参考态的内存输入和场景切换；不将静态自动保存标签当作持久化，不验证真实训练提交、计时、结束、通知或个人菜单业务' })
+      }
       if (scene.id === '18') {
         const original = page.locator('.follow-original')
         const before = await original.locator('p').allTextContents()
@@ -871,7 +943,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)

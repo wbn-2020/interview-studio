@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -229,10 +229,23 @@ const recallPaths: Record<string, string[]> = {
   'refresh-cw': ['M3 10a9 9 0 0 1 15-6l3 3M21 2v6h-6M21 14A9 9 0 0 1 6 20l-3-3M3 22v-6h6'],
   bell: notePaths.bell!,
 }
+// 独立作答页保留清单、题库提箱、记忆卡和折线成长各自的轮廓。
+const writingPaths: Record<string, string[]> = {
+  clipboard: ['M8 3H5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3', 'M8 2h8v4H8ZM7 9h.01M10 9h6M7 14l2-2 2 2-2 2M14 14h2M7 19h8'],
+  database: ['M8 6V3h8v3M4 7h16a2 2 0 0 1 2 2v12H2V9a2 2 0 0 1 2-2Z', 'M2 10h20M6 12h12v7H6ZM9 14h.01M12 14h3M9 17h6'],
+  'credit-card': ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z', 'M5 8h2M10 8h3M5 12l2 2 2-2M12 14h6'],
+  'chart-no-axes-combined': ['M3 21h18M3 15l5-6 5 4 8-9M16 4h5v5'],
+  'refresh-cw': ['M3 10a9 9 0 0 1 15-6l3 3M21 2v6h-6M21 14A9 9 0 0 1 6 20l-3-3M3 22v-6h6'],
+  layers: ['m12 3 9 5-9 5-9-5Z', 'm3 12 9 5 9-5M3 16l9 5 9-5'],
+  target: ['M12 3a9 9 0 1 1-9 9 9 9 0 0 1 9-9Z', 'M12 1v4M12 19v4M1 12h4M19 12h4M12 8l3 4-3 4-3-4Z'],
+  'file-text': ['M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M8 7h8M8 11h8M8 15h4M15 18l2-2'],
+  'circle-check': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm7 12 3 3 7-8'],
+  clock: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 6v6l4 2'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0

@@ -46,7 +46,7 @@ const nav = computed(() => {
   ]
   const ordinary = [
     { id: 2, label: '今日', icon: [2, 10, 15].includes(scene.value) ? 'calendar-days' : 'house' },
-    { id: 3, label: '准备', icon: scene.value === 16 ? 'clipboard' : scene.value === 14 ? 'briefcase' : scene.value === 18 ? 'square-check-rounded' : scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
+    { id: 3, label: '准备', icon: [16, 17].includes(scene.value) ? 'clipboard' : scene.value === 14 ? 'briefcase' : scene.value === 18 ? 'square-check-rounded' : scene.value === 5 ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [6, 11].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: 'book-open' },
     { id: 17, label: '训练', icon: scene.value === 16 ? 'layers' : scene.value === 12 ? 'chart-no-axes-column' : scene.value === 18 ? 'circle-play' : [17, 20, 23].includes(scene.value) ? 'play' : 'dumbbell' },
     { id: 21, label: '复盘', icon: [5, 13, 16, 18, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
@@ -58,7 +58,7 @@ const nav = computed(() => {
   return ordinary
 })
 const secondary = computed(() => [
-  { id: 14, label: '题库', icon: scene.value === 15 ? 'file-text' : scene.value === 11 ? 'layout-grid' : [2, 6, 10, 12, 14, 16, 18, 19, 22, 23, 28].includes(scene.value) ? 'database' : 'layers' },
+  { id: 14, label: '题库', icon: scene.value === 15 ? 'file-text' : scene.value === 11 ? 'layout-grid' : [2, 6, 10, 12, 14, 16, 17, 18, 19, 22, 23, 28].includes(scene.value) ? 'database' : 'layers' },
   { id: 16, label: '回忆卡', icon: scene.value === 18 ? 'memory-cards' : 'credit-card' },
   ...(scene.value === 26 ? [] : [{ id: 26, label: '最近访问', icon: 'clock' }]),
   { id: 27, label: 'AI 任务', icon: scene.value === 11 ? 'zap' : scene.value === 27 ? 'settings' : 'sparkles' },
@@ -127,14 +127,14 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-              <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : undefined" :size="scene === 9 ? 34 : [16, 18].includes(scene) ? 30 : 28" :stroke-width="[14, 18].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+              <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : undefined" :size="scene === 9 ? 34 : [16, 18].includes(scene) ? 30 : 28" :stroke-width="[14, 18].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
               <div class="r-nav-separator" />
               <span v-if="scene === 15" class="r-tools-heading">工具</span>
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-                <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : undefined" :size="scene === 18 ? 30 : 27" :stroke-width="[14, 18].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+                <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : undefined" :size="scene === 18 ? 30 : 27" :stroke-width="[14, 18].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
             </template>
           </nav>
@@ -348,12 +348,21 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-16 .r-top-status::before { content: ""; position: absolute; right: 134px; top: 23px; height: 29px; width: 1px; background: #ffffff10; }
 .r-scene-16 .r-saved { color: #b1d5bd; }
 .r-scene-16 .r-saved svg { background: #60a880; fill: #60a880; }
-.r-scene-17 .r-sidebar { top: 23px; left: 19px; bottom: 55px; width: 198px; border-radius: 21px; }
-.r-scene-17 .r-sidebar .r-brand { left: 25px; }
-.r-scene-17 .r-sidebar nav { top: 125px; left: 8px; right: 8px; gap: 4px; }
+.r-scene-17 { will-change: transform; background: radial-gradient(ellipse at 70% 35%, #15110f44, transparent 85%), linear-gradient(180deg, #100e0d, #0c0b0a); }
+.r-scene-17 .r-sidebar { top: 23px; left: 19px; bottom: 55px; width: 198px; border-radius: 21px; background: linear-gradient(125deg, #25211f, #201b18 80%, #2c241f); border-color: #55493f; }
+.r-scene-17 .r-sidebar > a { position: absolute; left: 26px; top: 30px; }
+.r-scene-17 .r-sidebar :deep(.r-brand) { position: static; gap: 12px; }
+.r-scene-17 .r-sidebar :deep(.r-emblem) { width: 44px; height: 48px; color: #bd8956; filter: none; }
+.r-scene-17 .r-sidebar :deep(.r-brand-word) { font-size: 22px; line-height: 26px; font-weight: 500; }
+.r-scene-17 .r-sidebar :deep(.r-brand-word small) { font-size: 12px; line-height: 18px; margin-top: 0; }
+.r-scene-17 .r-sidebar nav { top: 123px; left: 6px; right: 6px; gap: 4px; }
 .r-scene-17 .r-nav-item { height: 58px; padding-left: 21px; font-size: 22px; }
-.r-scene-17 .r-nav-separator { margin-top: 17px; margin-bottom: 13px; }
-.r-scene-17 .r-nav-item.r-secondary { font-size: 21px; height: 54px; }
+.r-scene-17 .r-nav-item.r-selected { background: radial-gradient(ellipse at 50% 80%, #c88b5377, transparent), linear-gradient(120deg, #98653f, #5f412b); border-color: #d79961; box-shadow: inset 0 0 7px #efb57966, 0 0 17px #c98d5022; }
+.r-scene-17 .r-nav-separator { margin: 12px 8px 13px; background: #74645755; }
+.r-scene-17 .r-nav-item.r-secondary { font-size: 21px; height: 55px; }
+.r-scene-17 .r-sidebar-avatar { left: 22px; bottom: 18px; }
+.r-scene-17 .r-sidebar-avatar .r-avatar { width: 45px; height: 47px; font-size: 24px; background: linear-gradient(120deg, #806f61, #5e5044); }
+.r-scene-17 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -25px; width: 166px; height: 1px; background: #7c69564d; }
 .r-scene-18 .r-sidebar { top: 8px; bottom: 8px; width: 229px; border-radius: 22px; background: linear-gradient(150deg, #171411, #241b13); border-color: #342b22; }
 .r-scene-18 .r-sidebar nav { top: 159px; left: 17px; right: 18px; gap: 3px; }
 .r-scene-18 .r-nav-item { height: 59px; padding-left: 16px; }
