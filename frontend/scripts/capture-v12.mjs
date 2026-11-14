@@ -1566,6 +1566,7 @@ try {
             sources: [...document.querySelectorAll('.task-input-list > div')].map(node => node.textContent),
             times: [...document.querySelectorAll('.task-item-time')].map(node => node.textContent),
             brandDisc: document.querySelector('.r-brand circle')?.getAttribute('fill'),
+            brandHittable: (() => { const brand = document.querySelector('.r-sidebar > a'), rect = brand.getBoundingClientRect(); return rect.width > 0 && rect.height > 0 && brand.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) })(),
             topAvatar: getComputedStyle(document.querySelector('.r-top-status > .r-avatar')).backgroundImage,
             bottomAvatar: getComputedStyle(document.querySelector('.r-sidebar-avatar .r-avatar')).backgroundImage,
           }
@@ -1579,7 +1580,7 @@ try {
           && layout.taskNames.join(',') === '知识整理,出题候选,来源问答,关系候选'
           && layout.statuses.join(',') === '处理中,成功,失败,费用待核对'
           && layout.sources.join(',') === '知识v4,笔记v3' && layout.times.join(',') === '今天 20:18,今天 19:47,今天 19:32,'
-          && layout.brandDisc === '#27231f' && layout.topAvatar.includes('61, 125, 184')
+          && layout.brandDisc === '#27231f' && layout.brandHittable && layout.topAvatar.includes('61, 125, 184')
           && layout.bottomAvatar.includes('80, 91, 131'), '27固定文案／版本／顺序／重复导航或品牌／头像不符')
         checks.push({ check: 'ai-authorization-three-panels-single-line-stages-shell-and-initial-data', scene: scene.id, ...layout, passed: true })
         const writes = []

@@ -589,7 +589,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-27 { will-change: transform; background: radial-gradient(ellipse at 33% 0, #29201830, transparent 62%), radial-gradient(ellipse at 100% 100%, #40231129, transparent 65%), #0b0907; }
 .r-scene-27::before { content: ""; position: absolute; inset: 0 0 0 216px; border: 1px solid #30261c55; border-radius: 26px; pointer-events: none; }
 .r-scene-27 .r-sidebar { width: 216px; bottom: 0; border-color: #30281f66; background: radial-gradient(ellipse at 0 55%, #392a1b3b, transparent 80%), linear-gradient(115deg, #15120fde, #100e0be8); }
-.r-scene-27 .r-sidebar :deep(.r-brand) { left: 27px; top: 43px; gap: 10px; }
+.r-scene-27 .r-sidebar > a { position: absolute; left: 27px; top: 43px; width: 166px; height: 54px; display: flex; align-items: center; }
+.r-scene-27 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
 .r-scene-27 .r-sidebar :deep(.r-emblem) { width: 50px; height: 52px; filter: none; }
 .r-scene-27 .r-sidebar :deep(.r-brand-word) { font-size: 29px; font-weight: 500; line-height: 33px; color: #faf9f7; }
 .r-scene-27 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 21px; color: #c6c3bf; }
