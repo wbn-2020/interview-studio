@@ -58,6 +58,12 @@ const secondary = computed(() => [
   ...(scene.value === 26 ? [] : [{ id: 26, label: '最近访问', icon: 'clock' }]),
   { id: 27, label: 'AI 任务', icon: scene.value === 27 ? 'settings' : 'sparkles' },
 ])
+// 18的参考图标限定在复现入口，避免改变正式业务共用图标的发布边界。
+const followNavPaths: Record<string, string[]> = {
+  'circle-play': ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'm10 7 6 5-6 5Z'],
+  'square-check-rounded': ['M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z', 'm7 12 3 3 7-8'],
+  'memory-cards': ['M7 3h12a2 2 0 0 1 2 2v12', 'M5 6h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z', 'M7 11h.01', 'M14 15h.01', 'M8 17h.01'],
+}
 const headerBox = computed(() => {
   const n = scene.value
   if (n === 2) return { left: 14, width: 718 }
@@ -105,15 +111,25 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
     <div class="r-canvas" :class="`r-scene-${String(scene).padStart(2, '0')}`" :style="{ '--sidebar': `${sidebar}px`, transform: `scale(${scale})` }" :data-scene="String(scene).padStart(2, '0')">
       <template v-if="![1, 29].includes(scene)">
         <aside class="r-sidebar" :class="{ 'r-sidebar-mini': scene === 9 }">
-          <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)"><RBrand :variant="scene" /></a>
+          <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)">
+            <div v-if="scene === 18" class="r-brand">
+              <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M50 2 61 37 94 50 61 63 50 98 39 63 6 50 39 37Z M50 29 44 44 29 50 44 56 50 72 56 56 71 50 56 44Z" fill="currentColor" fill-rule="evenodd" /></svg>
+              <span class="r-brand-word">问阶<small>Interview Studio</small></span>
+            </div>
+            <RBrand v-else :variant="scene" />
+          </a>
           <div v-if="scene === 18" class="r-brand-rule" aria-hidden="true" />
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
-              <RIcon :name="item.icon" :size="scene === 9 ? 34 : scene === 18 ? 30 : 28" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+              <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
+              <RIcon v-else :name="item.icon" :size="scene === 9 ? 34 : scene === 18 ? 30 : 28" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
               <div class="r-nav-separator" />
-              <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)"><RIcon :name="item.icon" :size="scene === 18 ? 30 : 27" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span></a>
+              <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
+                <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
+                <RIcon v-else :name="item.icon" :size="scene === 18 ? 30 : 27" :stroke-width="scene === 18 ? 2.1 : 1.7" /><span>{{ item.label }}</span>
+              </a>
             </template>
           </nav>
           <button class="r-sidebar-avatar" title="设置与数据" @click="navigate(28)"><span class="r-avatar">林</span></button>
