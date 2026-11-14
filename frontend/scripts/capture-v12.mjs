@@ -773,6 +773,13 @@ try {
         const list = page.getByRole('region', { name: '待整理内容' })
         const sources = page.getByRole('complementary', { name: '收件箱来源' })
         const detail = page.getByRole('complementary', { name: '内容详情' })
+        const detailPaint = await detail.evaluate(node => {
+          const box = node.getBoundingClientRect()
+          return { box: [box.x, box.y, box.width, box.height], backgroundClip: getComputedStyle(node).backgroundClip }
+        })
+        ensure(JSON.stringify(detailPaint.box) === JSON.stringify([1011, 233, 501, 701])
+          && detailPaint.backgroundClip === 'padding-box', '30详情面板几何或背景绘制边界不符')
+        checks.push({ check: 'inbox-detail-padding-clip-geometry', scene: scene.id, ...detailPaint, passed: true })
         const all = page.getByRole('checkbox', { name: '全选收件箱', exact: true })
         const rows = list.locator('article')
         ensure(await rows.count() === 4 && await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true',

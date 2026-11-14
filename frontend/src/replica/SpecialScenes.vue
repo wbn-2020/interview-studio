@@ -241,7 +241,7 @@ onUnmounted(() => {
 .sp-inbox-list article.selected > .r-pill { right: 22px; top: 22px; }
 .sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
 .sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
-.sp-inbox-detail { background: #1a1612; }
+.sp-inbox-detail { background: #1a1612; background-clip: padding-box; }
 .sp-inbox-detail h2 { font-size: 22.5px; line-height: 35px; }
 .sp-inbox-detail header h2 { position: relative; top: -2px; }
 .sp-excerpt-heading { font-size: 21.5px !important; line-height: 33.35px; }
