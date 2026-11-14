@@ -37,6 +37,15 @@ body { background: var(--bg); }
   .screen-note { --sidebar: 240px; }.studio-product.screen-note .studio-sidebar { left: 21px; top: 25px; bottom: 41px; width: 215px; border-radius: 22px; }.screen-note .studio-topbar { top: 41px; left: 270px; right: 45px; }.screen-note .studio-global-search { width: 356px; height: 47px; font-size: 17px; }.screen-note .studio-top-status { gap: 34px; }.screen-note .studio-avatar { width: 44px; height: 46px; }.screen-note .studio-sidebar-avatar { width: 56px; height: 58px; }.screen-note .studio-primary-nav { top: 119px; gap: 4px; }.screen-note .studio-nav-item { min-height: 56px; height: 56px; font-size: 22px; }.screen-note .studio-nav-rule { margin-block: 55px 20px; }.studio-product.screen-note .studio-main { padding: 145px 28px 40px 2px; }
 }
 .screen-materials .studio-topbar, .screen-settings .studio-topbar, .screen-report .studio-topbar { border: 1px solid var(--line); border-radius: 22px; background: #33281e50; padding: 0 18px; height: 68px; }
+@media (min-width: 1201px) {
+  .studio-product.screen-materials .studio-sidebar { left: 14px; top: 20px; bottom: 44px; width: 219px; border-radius: 20px; }
+  .screen-materials .studio-brand { top: 29px; left: 20px; }.screen-materials .studio-brand .r-brand-word { font-size: 20px; }
+  .studio-product.screen-materials .studio-primary-nav { top: 114px; left: 10px; right: 15px; gap: 0; }
+  .studio-product.screen-materials .studio-nav-item { height: 56px; min-height: 56px; padding-left: 21px; gap: 21px; font-size: 20px; }
+  .screen-materials .studio-nav-rule { margin-block: 20px 10px; }.screen-materials .studio-sidebar-avatar { left: 22px; bottom: 16px; font-size: 22px; }
+  .screen-materials .studio-topbar { left: 260px; top: 19px; right: 22px; height: 65px; border-radius: 20px; }
+  .studio-product.screen-materials .studio-main { padding: 106px 16px 44px 13px; }
+}
 .screen-concept { --sidebar: 220px; }.studio-product.screen-concept .studio-sidebar { left: 0; top: 0; bottom: 10px; width: 222px; }.screen-concept .studio-topbar { left: 258px; }
 html[data-studio-theme="light"] .studio-product :is(.studio-sidebar,.studio-global-search,.prepare-catalog,.prepare-welcome,.schedule-overview,.reminder-panel,.knowledge-catalog,.knowledge-stage,.item-editor,.schedule-editor) { color: var(--ink); background: var(--surface); border-color: var(--line); }
 html[data-studio-theme="light"] .studio-product .studio-nav-item { color: var(--muted); }html[data-studio-theme="light"] .studio-product .studio-nav-item.studio-selected { color: #fff4e4; }

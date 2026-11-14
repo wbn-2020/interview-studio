@@ -158,8 +158,12 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-05 .r-topbar { top: 8px; left: 274px; }
 .r-scene-05 .r-breadcrumb { font-size: 19px; }
 .r-scene-06 .r-sidebar { left: 14px; top: 20px; bottom: 44px; width: 219px; border-radius: 20px; }
-.r-scene-06 .r-sidebar nav { top: 118px; left: 10px; right: 15px; gap: 0; }
-.r-scene-06 .r-nav-item { height: 56px; padding-left: 21px; }
+.r-scene-06 .r-sidebar nav { top: 114px; left: 10px; right: 15px; gap: 0; }
+.r-scene-06 .r-nav-item { height: 56px; padding-left: 21px; gap: 21px; font-size: 20px; }
+.r-scene-06 .r-nav-separator { margin-block: 20px 10px; }
+.r-scene-06 .r-sidebar :deep(.r-brand) { top: 29px; left: 20px; }
+.r-scene-06 .r-sidebar :deep(.r-brand-word) { font-size: 20px; }
+.r-scene-06 .r-sidebar-avatar { left: 22px; bottom: 16px; }.r-scene-06 .r-sidebar-avatar .r-avatar { font-size: 22px; }
 .r-scene-06 .r-topbar { background: #211b1588; border: 1px solid #514334; border-radius: 20px; height: 65px; padding: 0 16px; }
 .r-scene-07 .r-sidebar { width: 256px; top: 22px; bottom: 7px; }
 .r-scene-07 .r-sidebar nav { top: 144px; left: 22px; right: 18px; }
