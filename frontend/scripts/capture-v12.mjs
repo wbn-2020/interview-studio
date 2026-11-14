@@ -1356,6 +1356,25 @@ try {
         const dialog = page.getByRole('dialog', { name: '全局命令面板' })
         const input = dialog.getByRole('combobox', { name: '搜索命令' })
         const options = dialog.getByRole('option')
+        const background = page.locator('.sp-task-table')
+        const taskRows = background.locator('tbody tr')
+        const initialLayout = await page.evaluate(() => {
+          const rect = selector => { const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect(); return [x, y, width, height] }
+          return { table: rect('.sp-task-table'), topSearch: rect('.r-top-search'),
+            navigation: [...document.querySelectorAll('.r-nav-item > span')].map(node => {
+              const range = document.createRange(); range.selectNodeContents(node)
+              return { text: node.textContent, lines: range.getClientRects().length }
+            }),
+            brandCircles: document.querySelectorAll('.r-emblem > circle').length,
+            breadcrumb: document.querySelector('.r-breadcrumb')?.textContent,
+            priorities: [...document.querySelectorAll('.sp-task-table tbody td:nth-child(3)')].map(node => node.textContent),
+          }
+        })
+        ensure(JSON.stringify(initialLayout.table) === JSON.stringify([231,375,1273,535])
+          && JSON.stringify(initialLayout.topSearch) === JSON.stringify([609,21,496,55]), '25背景任务表或顶栏位置不符')
+        ensure(initialLayout.navigation.every(item => item.lines === 1) && initialLayout.brandCircles === 1
+          && initialLayout.breadcrumb === '今日任务总览', '25侧栏换行、品牌外圆或面包屑不符')
+        ensure(await taskRows.count() === 5 && JSON.stringify(initialLayout.priorities) === JSON.stringify(['高','中','高','低','中']), '25五条背景任务或优先级不符')
         const box = await dialog.boundingBox()
         ensure(box && box.x === 396 && box.y === 135 && box.width === 847 && box.height === 728, '25面板位置或尺寸不符')
         ensure(await options.count() === 12 && await options.first().getAttribute('aria-selected') === 'true', '25初始选项数量或首项选择不符')
@@ -1411,6 +1430,28 @@ try {
         }
         await assertFrame(captured, '25交互后重新访问没有恢复静止初态')
         checks.push({ check: 'command-geometry-domains-ime-keyboard-focus-shortcuts-navigation-refresh', scene: scene.id, passed: true })
+        await input.press('Escape')
+        const taskSearch = page.getByRole('textbox', { name: '筛选今日任务', exact: true })
+        const allTasks = page.getByRole('checkbox', { name: '全选任务', exact: true })
+        await taskSearch.fill('缓存')
+        ensure(await taskRows.count() === 1, '25背景任务筛选未生效')
+        await allTasks.check()
+        ensure(await page.getByRole('checkbox', { name: '缓存一致性', exact: true }).isChecked(), '25可见任务全选未选中筛选结果')
+        await taskSearch.fill('')
+        ensure(await taskRows.count() === 5 && await allTasks.evaluate(node => node.indeterminate && !node.checked), '25清空筛选未恢复五行或部分选择')
+        await page.getByRole('checkbox', { name: '深度理解线程池', exact: true }).check()
+        await taskSearch.fill('缓存')
+        await allTasks.uncheck()
+        await taskSearch.fill('')
+        ensure(await page.getByRole('checkbox', { name: '深度理解线程池', exact: true }).isChecked()
+          && !await page.getByRole('checkbox', { name: '缓存一致性', exact: true }).isChecked(), '25取消可见全选改变隐藏任务状态')
+        await taskSearch.fill('不存在的任务')
+        ensure(await taskRows.count() === 0 && await allTasks.evaluate(node => !node.checked && !node.indeterminate), '25无匹配任务全选状态不符')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        ensure(await dialog.isVisible() && await input.inputValue() === '缓存'
+          && await page.getByRole('checkbox', { name: '全选任务', exact: true }).evaluate(node => !node.checked && !node.indeterminate), '25刷新未恢复打开面板及未选任务')
+        await assertFrame(captured, '25背景任务交互后刷新未恢复静止初态')
+        checks.push({ check: 'command-shell-five-tasks-filter-visible-selection-refresh', scene: scene.id, initialLayout, passed: true })
       }
       if (scene.id === '09') {
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
