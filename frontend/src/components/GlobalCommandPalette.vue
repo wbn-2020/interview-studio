@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
             <button :id="`command-option-${command.id}`" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1"
               :aria-selected="selected?.id === command.id" :aria-disabled="commandDisabled(command) || !canExecute" :disabled="commandDisabled(command) || !canExecute"
               class="command-item" :class="{ selected: selected?.id === command.id, compact: command.group === 'CREATE' }"
-              @mouseenter="!commandDisabled(command) && (selectedIndex = commands.findIndex(item => item.id === command.id))" @mousedown.prevent @click="execute(command)">
+              @pointermove="!commandDisabled(command) && (selectedIndex = commands.findIndex(item => item.id === command.id))" @mousedown.prevent @click="execute(command)">
               <span class="command-icon"><RIcon :name="commandIcons[command.id] || (command.group === 'CREATE' ? 'file-plus' : 'file-text')" :size="38" /><RIcon v-if="command.id === 'create-memory-card'" class="command-card-plus" name="plus" :size="18" /></span>
               <span class="command-copy"><span class="command-label">{{ command.label }}</span><span v-if="command.group === 'PAGE'" class="command-detail">{{ command.description }}</span></span>
               <kbd v-if="commandShortcuts[command.id]" class="command-shortcut">{{ commandShortcuts[command.id] }}</kbd>
@@ -230,7 +230,7 @@ onBeforeUnmount(() => {
             <div class="command-domains">
               <button v-for="(command, index) in domainCommands" :id="`command-option-${command.id}`" :key="command.id" :ref="element => rememberOption(command.id, element)" type="button" role="option" tabindex="-1"
                 :aria-selected="selected?.id === command.id" :disabled="commandDisabled(command) || !canExecute" :class="{ selected: selected?.id === command.id }"
-                @mouseenter="!commandDisabled(command) && (selectedIndex = commands.findIndex(value => value.id === command.id))" @mousedown.prevent @click="execute(command)">
+                @pointermove="!commandDisabled(command) && (selectedIndex = commands.findIndex(value => value.id === command.id))" @mousedown.prevent @click="execute(command)">
                 <RIcon :name="domainIcons[index]!" :size="21" />{{ domainLabels[command.id.replace('search-', '')] }}
               </button>
             </div>
