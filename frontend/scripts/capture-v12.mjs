@@ -231,6 +231,59 @@ try {
         await assertFrame(captured, '06页码、缩放、筛选和折叠后刷新未恢复初态')
         checks.push({ check: 'attachment-pagination-zoom-filter-collapse-refresh', scene: scene.id, passed: true })
       }
+      if (scene.id === '10') {
+        const geometry = await page.locator('.kl-table').evaluate(table => {
+          const headers = [...table.querySelectorAll('th')].map(cell => ({ text: cell.textContent, height: cell.getBoundingClientRect().height }))
+          const titles = [...table.querySelectorAll('tbody td:first-child')].map(cell => {
+            const range = document.createRange(); range.selectNodeContents(cell)
+            return { text: cell.textContent, lines: range.getClientRects().length }
+          })
+          return { headers, titles }
+        })
+        ensure(geometry.headers.length === 5 && geometry.headers.every(cell => cell.height <= 62), '10表头出现额外换行')
+        ensure(geometry.titles.length === 4 && geometry.titles.slice(1).every(cell => cell.lines === 1), '10后续三条标题未保持单行')
+        await page.locator('.kl-table tbody tr').nth(1).click()
+        ensure(await page.locator('.kl-detail h2').textContent() === '分布式锁的边界', '10选择记录未同步详情标题')
+        await page.locator('.kl-table tbody tr').nth(2).focus()
+        await page.keyboard.press('Enter')
+        ensure(await page.locator('.kl-detail h2').textContent() === 'JVM 内存模型速记', '10键盘选择记录失败')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '10记录切换后刷新未恢复参考初态')
+        for (const [selector, target] of [['.kl-views button:first-child', '09'], ['.kl-views button:last-child', '13'], ['.kl-detail > .r-btn.r-primary', '11'], ['.kl-folders button:last-child', '30']]) {
+          await page.locator(selector).click()
+          ensure(new URL(page.url()).searchParams.get('scene') === target, `10导航未进入${target}`)
+          await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        }
+        await assertFrame(captured, '10导航返回后未恢复参考初态')
+        checks.push({ check: 'knowledge-table-lines-selection-keyboard-navigation-refresh', scene: scene.id, geometry, passed: true })
+      }
+      if (scene.id === '12') {
+        const paragraphs = await page.locator('.kd-definition p, .kd-main-note p').evaluateAll(nodes => nodes.map(node => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
+          while (walker.nextNode()) {
+            const text = walker.currentNode
+            for (let offset = 0; offset < text.textContent.length; offset++) {
+              const range = document.createRange(); range.setStart(text, offset); range.setEnd(text, offset + 1)
+              const rect = range.getBoundingClientRect(), key = Math.round(rect.top)
+              if (rect.width) lines.set(key, (lines.get(key) || '') + text.textContent[offset])
+            }
+          }
+          return { lines: [...lines.values()], bottom: node.getBoundingClientRect().bottom, panelBottom: node.parentElement.getBoundingClientRect().bottom }
+        }))
+        ensure(paragraphs.length === 2 && paragraphs[0].lines.length === 4 && paragraphs[1].lines.length === 2 && paragraphs.every(p => p.bottom < p.panelBottom), '12定义或主笔记发生额外换行／截断')
+        ensure(await page.locator('.kd-evidence-row').count() === 3, '12证据初态不是三行')
+        for (const [tab, title, target] of [['回答 2', '独立复练 · 11.10', '22'], ['事实 2', '项目事实 · 11.06', '04'], ['回忆 2', '面后回忆 · 11.09', '23']]) {
+          await page.locator('.kd-evidence-tabs').getByRole('button', { name: tab, exact: true }).click()
+          ensure(await page.locator('.kd-evidence-row').count() === 1 && await page.locator('.kd-evidence-row h3').textContent() === title, `12${tab}筛选身份不符`)
+          await page.locator('.kd-evidence-row > button').click()
+          ensure(new URL(page.url()).searchParams.get('scene') === target, `12${tab}打开了错误原文`)
+          await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        }
+        await page.locator('.kd-evidence-tabs').getByRole('button', { name: '事实 2', exact: true }).click()
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '12筛选与原文导航后刷新未恢复参考初态')
+        checks.push({ check: 'knowledge-definition-lines-evidence-source-identity-navigation-refresh', scene: scene.id, paragraphs, passed: true })
+      }
       if (scene.id === '11') {
         const prose = page.locator('.kn-prose p').first(), initialText = await prose.textContent()
         const lines = await prose.evaluate(node => {
@@ -424,7 +477,7 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
-        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '11', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
+        interactionStatus: interactionError ? '失败' : ['04', '05', '06', '09', '10', '11', '12', '25', '30'].includes(scene.id) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
       await writeJson(path.join(values.output, 'records', `${scene.id}.json`), record)
