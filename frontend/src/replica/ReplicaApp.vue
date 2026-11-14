@@ -218,7 +218,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-10 .r-top-status { gap: 31px; }
 .r-scene-10 .r-saved { color: #b1d7bd; }
 .r-scene-10 .r-saved svg { width: 22px; height: 25px; background: #4da46c; fill: #4da46c; }
-.r-scene-11 { background: linear-gradient(110deg, #0e0a07, #060503 48%, #0a0705); }
+.r-scene-11 { background: linear-gradient(110deg, #0e0a07, #060503 48%, #0a0705); will-change: transform; }
 .r-scene-11 .r-main::before { content: ""; position: absolute; top: 25px; left: -1px; right: 20px; bottom: 41px; border: 1px solid #44382e; border-radius: 26px; background: linear-gradient(115deg, #1c1916b0, #141210 60%, #211a15c9); pointer-events: none; }
 .r-scene-11 .r-sidebar { left: 21px; width: 214px; top: 25px; bottom: 41px; border-radius: 22px; background: radial-gradient(ellipse 150px 220px at 0 0, #65452e44, transparent), linear-gradient(160deg, #15110f, #151210 58%, #181311); border-color: #65503e; }
 .r-scene-11 .r-sidebar :deep(.r-brand) { left: 25px; top: 30px; gap: 15px; }
