@@ -319,7 +319,7 @@ try {
             return [r.x, r.y, r.width, r.height]
           }
           return {
-            sidebar: box('.r-sidebar'), topbar: box('.r-topbar'), search: box('.r-top-search'),
+            sidebar: box('.r-sidebar'), brandHitbox: box('.r-sidebar > a'), topbar: box('.r-topbar'), search: box('.r-top-search'),
             avatar: box('.r-top-status > .r-avatar'), viewer: box('.pdf-viewer'), parsing: box('.parsing'),
             brandPaths: document.querySelectorAll('.r-brand path').length,
             breadcrumbPaths: document.querySelectorAll('.r-material-breadcrumb-icon path').length,
@@ -335,7 +335,7 @@ try {
           }
         })
         const sameBox = (actual, expected) => actual.length === 4 && actual.every((value, i) => Math.abs(value - expected[i]) < 1)
-        ensure(sameBox(layout.sidebar, [14,20,219,960]) && sameBox(layout.topbar, [254,21,1266,65])
+        ensure(sameBox(layout.sidebar, [14,20,219,960]) && sameBox(layout.brandHitbox, [35,50,174,55]) && sameBox(layout.topbar, [254,21,1266,65])
           && sameBox(layout.search, [660,29,463,50]) && sameBox(layout.avatar, [1457,31.5,42,44])
           && sameBox(layout.viewer, [588,196,563,784]) && sameBox(layout.parsing, [1164,196,356,784]),
           '06侧栏、顶栏、头像或三栏几何不符')
