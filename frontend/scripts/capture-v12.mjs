@@ -420,6 +420,8 @@ try {
             scheduledDates: [...document.querySelectorAll('.scheduled-row > span')].map(node => node.textContent),
             taskStatusPaths: [...document.querySelectorAll('.scheduled-row button > svg')].map(node => node.querySelectorAll('path').length),
             loads: [...document.querySelectorAll('.week-bars i')].map(node => node.style.height),
+            previewRows: [...document.querySelectorAll('.preview-task')].map(node => node.getBoundingClientRect().height),
+            cancel: box('.schedule-preview > .r-btn:last-child'),
             overflow: [...document.querySelectorAll('.pending-task p,.scheduled-row button p,.preview-note')].some(node => node.scrollWidth > node.clientWidth + 1),
           }
         })
@@ -434,6 +436,9 @@ try {
           && JSON.stringify(layout.saved) === '["rgba(0, 0, 0, 0)","0px"]'
           && layout.navigation.length === 10 && layout.navigation.every(item => !item.overflow) && !layout.overflow,
           '07统计分隔、地平线、品牌、保存标记或单行内容不符')
+        ensure(layout.previewRows.every(height => Math.abs(height - 47.5) < 1)
+          && layout.cancel[1] + layout.cancel[3] < layout.preview[1] + layout.preview[3] - 10,
+          '07排期行高或底部按钮越界')
         await writeJson(path.join(values.output, 'records', '07-tasks-layout.json'), layout)
         checks.push({ check: 'tasks-brand-horizon-shell-stats-and-three-columns', scene: scene.id, layout, passed: true })
         ensure(JSON.stringify(layout.pendingTitles) === '["项目追问演练","系统设计取舍","缓存一致性补证"]'
