@@ -172,6 +172,8 @@ onUnmounted(() => document.removeEventListener('visibilitychange', visibility))
 .inbox-filters > button > span { flex: 1; }
 .inbox-filters small { font-size: 22px; margin-right: 6px; }
 .inbox-filters svg { color: var(--brand-strong); }
+/* 来源图标保持独立合成，避免筛选返回时描边边缘采用不同的绘制缓存。 */
+.inbox-filters > button > svg { transform: translateZ(0); }
 .inbox-filters > .field-help { margin: 22px 14px 8px; }
 .inbox-list { display: flex; flex-direction: column; overflow: hidden; padding-top: 9px; }
 .inbox-list > header { display: flex; align-items: center; justify-content: space-between; padding: 8px 18px 18px 24px; font-size: 22px; line-height: 33.5px; color: var(--muted); gap: 16px; flex: none; }
