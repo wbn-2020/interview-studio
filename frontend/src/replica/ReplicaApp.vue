@@ -202,7 +202,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-04 .r-sidebar nav { top: 162px; left: 23px; right: 21px; gap: 6px; }
 .r-scene-04 .r-nav-item { height: 64px; padding: 0 23px; gap: 17px; font-size: 24px; white-space: nowrap; color: #c5c1ba; }
 .r-scene-04 .r-nav-item :deep(svg) { color: #999993; }
-.r-scene-04 .r-nav-item.r-selected { color: #fff3e3; border-radius: 15px; border-color: #c4935b9c; background: linear-gradient(110deg, #b17a4a9c, #67452999); box-shadow: inset 1px 0 2px #edb87c91, -5px 0 17px #d08c3f20; }
+.r-scene-04 .r-nav-item.r-selected { color: #fff3e3; border-radius: 15px; border-color: #c4935b9c; background: linear-gradient(110deg, #9166449c, #50382599); box-shadow: inset 1px 0 2px #edb87c91, -5px 0 17px #d08c3f20; }
 .r-scene-04 .r-nav-item.r-selected :deep(svg) { color: #edb382; }
 .r-scene-04 .r-nav-separator { margin: 8px 10px 21px; background: #c8b79b17; }
 .r-scene-04 .r-nav-item.r-secondary { height: 53px; font-size: 22px; padding-left: 24px; }

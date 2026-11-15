@@ -445,17 +445,21 @@ const factsPaths: Record<string, string[]> = {
   dumbbell: ['M5 2a1 1 0 0 1 1.5-1l16 10a1.2 1.2 0 0 1 0 2l-16 10A1 1 0 0 1 5 22Z M11 9v6l5-3Z'],
   'refresh-cw': ['M3 13h4v9H3ZM10 3h4v19h-4ZM17 9h4v13h-4Z'],
   'chart-no-axes-combined': ['M12 22V10M12 14C4 14 3 9 3 5c6 0 9 3 9 9ZM12 10c0-6 4-8 9-8 0 5-3 8-9 8Z'],
-  layers: ['m12 2 10 5-10 5L2 7Z', 'm2 12 10 5 10-5M2 17l10 5 10-5'],
-  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 8h14M5 12h8M5 16h5M17 14v3'],
+  layers: ['m12 2 10 5-10 5L2 7Z M2 10.5l10 5 10-5v3l-10 5-10-5Z M2 16l10 5 10-5v2.5l-10 5-10-5Z'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z M5 7h14v2H5Z M5 12h8v1.5H5Z M5 16h5v1.5H5Z M17 13h2v5h-2Z'],
   clock: ['M21 12a9 10 0 1 1-18 0 9 10 0 0 1 18 0Z', 'M12 5v7l4 3'],
   sparkles: ['m9 2 2 6 5 3-5 3-2 6-2-6-5-3 5-3Z M19 1l1 3 3 2-3 2-1 3-1-3-3-2 3-2Z M19 14l1 3 3 1-3 2-1 3-1-3-3-2 3-1Z'],
   building: ['M5 2h14a1 1 0 0 1 1 1v19H4V3a1 1 0 0 1 1-1Z M8 6h1v2H8Zm7 0h1v2h-1ZM8 11h1v2H8Zm7 0h1v2h-1ZM8 16h1v2H8Zm7 0h1v2h-1Z'],
   folder: ['M3 4h6l2 3h10a1 1 0 0 1 1 1v13H2V5a1 1 0 0 1 1-1Z', 'M3 9h18'],
   'calendar-check': ['M5 2h14a2 2 0 0 1 2 2v17H3V4a2 2 0 0 1 2-2Z M7 11l4 5 7-10-7 7Z'],
   'file-text': ['M6 2h9l5 5v15H4V4a2 2 0 0 1 2-2Z', 'M14 2v6h6M8 12h8M8 16h8M8 19h6'],
+  history: ['M5 5.5A9 9 0 1 1 3 15M3 2v6h6', 'M12 6v6l3 2M3 12H1'],
+  link: ['m10 8 3-4a4 4 0 0 1 6 5l-4 5a4 4 0 0 1-6 0', 'm14 16-3 4a4 4 0 0 1-6-5l4-5a4 4 0 0 1 6 0'],
+  info: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z M11 6h2v2h-2Z M11 10h2v8h-2Z'],
+  users: ['M9 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z M17 4a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z M2 21v-4a7 7 0 0 1 14 0v4Z M17 11a5 5 0 0 1 5 5v5h-4v-5a9 9 0 0 0-1-5Z M6 16v3h2v-3Z M11 16v3h2v-3Z'],
   'graduation-cap': ['m12 2 11 6-11 6L1 8Z', 'M5 11v7l7 4 7-4v-7M22 9v8'],
 }
-const factsFilled = new Set(['house', 'play', 'book-open', 'dumbbell', 'refresh-cw', 'layers', 'credit-card', 'sparkles', 'building', 'folder', 'calendar-check'])
+const factsFilled = new Set(['house', 'book-open', 'dumbbell', 'refresh-cw', 'layers', 'credit-card', 'sparkles', 'building', 'folder', 'calendar-check', 'info', 'users'])
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'facts' && factsFilled.has(props.name) ? .6 : props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)

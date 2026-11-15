@@ -189,6 +189,26 @@ try {
         ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected), '04布局不符：' + selector)
         ensure(layout.navigation.length === 10 && layout.navigation.every(item => item.lines === 1) && layout.headingClear && layout.selected === 1, '04导航换行、标题重叠或选中不符')
         checks.push({ check: 'fact-three-columns-single-line-navigation-brand-search-avatar-geometry', scene: scene.id, layout, passed: true })
+        const details = await page.evaluate(() => {
+          const title = document.querySelector('.prep-facts .p-title')
+          const buttons = [...document.querySelectorAll('.prep-facts .p-actions .r-btn')].map(node => {
+            const box = node.getBoundingClientRect()
+            return { text: node.textContent, width: box.width, height: box.height }
+          })
+          const fields = [...document.querySelectorAll('.fact-body dd')].map(node => ({
+            text: node.innerText, breaks: node.querySelectorAll('br').length, whiteSpace: getComputedStyle(node).whiteSpace,
+          }))
+          const cube = document.querySelector('.r-nav-item.r-selected svg path')
+          return { titleSize: getComputedStyle(title).fontSize, buttons, fields, cubeIsOutline: !cube.hasAttribute('fill'),
+            infoIsFilled: document.querySelector('.fact-foot svg path').getAttribute('fill') === 'currentColor' }
+        })
+        ensure(details.titleSize === '48px' && details.buttons.length === 2
+          && details.buttons[0].width === 121 && details.buttons[1].width === 161 && details.buttons.every(item => item.height === 55)
+          && details.cubeIsOutline && details.infoIsFilled, '04标题、按钮尺寸或专用图标不符')
+        ensure(JSON.stringify(details.fields.map(item => item.breaks)) === '[0,1,1,1]'
+          && details.fields.every(item => item.whiteSpace === 'nowrap')
+          && details.fields[3].text === '问题已修复，补发任务已完成，用户可正常\n领取奖励；关联日志与监控截图已留存', '04事实正文或换行漂移')
+        checks.push({ check: 'fact-typography-control-width-outline-icons-original-body-lines', scene: scene.id, details, passed: true })
         const preview = page.locator('.expression-preview p')
         const lines = await preview.evaluate(node => {
           const text = node.firstChild, rows = new Map()
