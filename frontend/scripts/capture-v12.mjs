@@ -2648,6 +2648,33 @@ try {
         ensure(JSON.stringify(detailPaint.box) === JSON.stringify([1011, 233, 501, 701])
           && detailPaint.backgroundClip === 'padding-box', '30详情面板几何或背景绘制边界不符')
         checks.push({ check: 'inbox-detail-padding-clip-geometry', scene: scene.id, ...detailPaint, passed: true })
+        const inboxTypography = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node)
+            return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth,
+              transform: s.transform, width: s.width, background: s.backgroundImage, gap: s.gap, margin: s.margin }
+          }
+          return {
+            body: style('.r-scene-30'), title: style('.sp-inbox-heading h1'),
+            entries: [...document.querySelectorAll('.sp-inbox-entry')].map(node => getComputedStyle(node).transform),
+            checks: [...document.querySelectorAll('.sp-inbox-list article .r-checkbox')].map(node => getComputedStyle(node).transform),
+            all: style('.sp-inbox-list header .r-checkbox'), excerpt: style('.sp-inbox-excerpt p'),
+            action: style('.sp-inbox-buttons .r-btn'), secondary: style('.r-nav-item.r-secondary'),
+            source: style('.sp-inbox-sources button.selected'), list: style('.sp-inbox-list'), detail: style('.sp-inbox-detail'),
+          }
+        })
+        ensure(inboxTypography.body.weight === '300' && inboxTypography.title.weight === '500'
+          && inboxTypography.title.size === '47px' && inboxTypography.title.stroke === '0.6px'
+          && JSON.stringify(inboxTypography.entries) === JSON.stringify([-2, -2, -3, -5].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
+          && JSON.stringify(inboxTypography.checks) === JSON.stringify([-6, -6, -6, -10].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
+          && inboxTypography.all.width === '21px' && inboxTypography.excerpt.size === '20.75px'
+          && inboxTypography.excerpt.transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && inboxTypography.action.weight === '300' && inboxTypography.secondary.gap === '13px'
+          && inboxTypography.source.background.includes('rgba(154, 113, 71, 0.267)')
+          && inboxTypography.list.background.includes('rgb(20, 18, 15)')
+          && inboxTypography.detail.background.includes('rgba(95, 68, 34, 0.145)'),
+          '30字面、四行基线、勾选框或分区光照偏离已核参考状态')
+        checks.push({ check: 'inbox-type-row-baselines-checkboxes-surfaces', scene: scene.id, ...inboxTypography, passed: true })
         const all = page.getByRole('checkbox', { name: '全选收件箱', exact: true })
         const rows = list.locator('article')
         ensure(await rows.count() === 4 && await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true',

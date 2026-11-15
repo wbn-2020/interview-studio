@@ -276,6 +276,7 @@ onUnmounted(() => {
 .sp-inbox-detail { position: absolute; top: 233px; left: 783px; right: 24px; bottom: 90px; padding: 15px 23px 22px; border-radius: 20px; border-color: #3d3125; }.sp-inbox-detail header { border-bottom: 1px solid #30281f; padding-bottom: 11px; }.sp-inbox-detail h2 { font-size: 25px; }.sp-excerpt-heading { position: relative; margin-top: 17px !important; padding-left: 18px; font-size: 23px !important; }.sp-excerpt-heading::before { content: ""; width: 3px; height: 27px; background: #e7b77e; position: absolute; left: 0; top: 5px; }.sp-inbox-excerpt { padding: 14px 18px 15px; margin-top: 5px; border-radius: 15px; background: #ffffff02; }.sp-inbox-excerpt p { font-size: 22px; line-height: 1.75; white-space: nowrap; }.sp-inbox-excerpt h3 { font-size: 22px; margin-bottom: 10px; }.sp-inbox-detail .r-rule { margin: 21px 0 16px; }.sp-suggestions-title { color: #f2d7af; font-size: 23px !important; gap: 12px; }.sp-inbox-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 21px; }.sp-inbox-buttons .r-btn { min-height: 68px; padding: 10px 14px !important; font-size: 23px; border-radius: 14px; background: #ffffff02 !important; border-color: #44372a !important; gap: 14px; }.sp-inbox-note { background: #ffffff03; border-radius: 14px; margin-top: 26px !important; min-height: 56px; padding: 10px 13px; font-size: 18px; white-space: nowrap; gap: 10px; }
 /* 收件箱保留四条参考记录的独立行距，详情摘录保持五行。 */
 .sp-inbox-heading { left: 28px; }
+.sp-inbox-heading h1 { font-weight: 500; -webkit-text-stroke: .6px currentColor; }
 .sp-inbox-heading p { margin-top: 5px; font-size: 22px; }
 .sp-inbox-actions { gap: 15px; top: 134px; }
 .sp-inbox-actions .r-btn { font-size: 22px; font-weight: 400; }
@@ -283,33 +284,38 @@ onUnmounted(() => {
 .sp-inbox-actions > .r-primary { width: 166px; background: linear-gradient(115deg, #e4ac76, #d69e6c 62%, #e6b281) !important; }
 .sp-inbox-sources, .sp-inbox-list { background: radial-gradient(ellipse at 30% 45%, #40302512, transparent 80%), linear-gradient(125deg, #181511, #14100e); border-color: #4e40344d; }
 .sp-inbox-sources > button:not(.selected) .r-icon { color: #e2ddd5; }
+.sp-inbox-sources button.selected { background: radial-gradient(ellipse at 0 100%, #9a714744, transparent 100%), linear-gradient(110deg, #79593855, #54433455) !important; }
 .sp-inbox-sources h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-sources > button { min-height: 63px; font-size: 21px; line-height: 34px; }
 .sp-inbox-sources small { margin-right: 6px; font-size: 22px; }
-.sp-inbox-list { padding-left: 4px; padding-right: 8px; }
+.sp-inbox-list { padding-left: 4px; padding-right: 8px; background: radial-gradient(ellipse at 20% 10%, #4c352510, transparent 65%), linear-gradient(125deg, #14120f, #14110f); }
 .sp-inbox-list header { font-size: 22px; line-height: 33.5px; padding-left: 20px; padding-right: 10px; }
+.sp-inbox-list header .r-checkbox { width: 21px; margin-left: 1px; }
 .sp-inbox-list header select { line-height: 31.5px; }
 .sp-inbox-list article { gap: 20px; margin-inline: 21px 18px; padding-left: 1px; border-bottom-color: #a48c6f12; }
 .sp-inbox-list article.selected { min-height: 113px; margin: 0; padding-left: 21px; gap: 20px; border-color: #c4965e; background: radial-gradient(ellipse at 10% 90%, #9a714733, transparent 80%), linear-gradient(110deg, #89654470, #70573955); }
 .sp-inbox-list article:nth-of-type(2) { min-height: 114px; }
 .sp-inbox-list article:nth-of-type(3) { min-height: 110px; padding-bottom: 13px; }
 .sp-inbox-list article:nth-of-type(4) { min-height: 107px; }
-.sp-inbox-list article .r-checkbox { transform: translateY(-5px); border-color: #bfb9b0; box-shadow: inset 0 0 2px #fff4; }
+.sp-inbox-list article .r-checkbox { transform: translateY(-6px); border-color: #bfb9b0; box-shadow: inset 0 0 2px #fff4; }
+.sp-inbox-list article:nth-of-type(4) .r-checkbox { transform: translateY(-10px); }
 .sp-inbox-list article.selected .r-checkbox { border-color: #edbf8d; }
-.sp-inbox-entry { position: relative; top: 0; }
+.sp-inbox-entry { position: relative; top: 0; transform: translateY(-2px); }
+.sp-inbox-list article:nth-of-type(3) .sp-inbox-entry { transform: translateY(-3px); }
+.sp-inbox-list article:nth-of-type(4) .sp-inbox-entry { transform: translateY(-5px); }
 .sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; font-weight: 400; line-height: 36px; }
 .sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; }
 .sp-inbox-list article > .r-pill { right: 2px; top: 24px; font-size: 20px; padding-inline: 14px; }
 .sp-inbox-list article.selected > .r-pill { right: 20px; top: 24px; }
 .sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
 .sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
-.sp-inbox-detail { background: linear-gradient(135deg, #1c1714, #1a1613 55%, #211c19); background-clip: padding-box; border-color: #58483a5c; }
+.sp-inbox-detail { background: radial-gradient(ellipse at 30% 90%, #5f442225, transparent 65%), linear-gradient(135deg, #1b1714, #191512 55%, #181410); background-clip: padding-box; border-color: #58483a5c; }
 .sp-inbox-detail header { border-bottom-color: #bba1810a; }
 .sp-inbox-detail h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-detail header h2 { position: relative; top: -2px; }
 .sp-excerpt-heading { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
 .sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #ffffff01, #ffffff03); }
-.sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; }
+.sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; transform: translateY(1px); }
 .sp-inbox-detail .r-rule { margin-bottom: 20px; }
 .sp-suggestions-title { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
 .sp-inbox-buttons { margin-top: 20px; grid-template-columns: 227px 1fr; }
