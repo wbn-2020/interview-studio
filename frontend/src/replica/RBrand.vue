@@ -24,6 +24,13 @@ withDefaults(defineProps<{ large?: boolean; variant?: number }>(), { large: fals
         <path d="m50 29 5 15 16 6-16 5-5 17-5-17-17-5 17-6Z" fill="#62462f" stroke="#e9b886" stroke-width="1.8" />
         <path d="m50 39 3 9 9 2-9 3-3 10-3-10-9-3 9-2Z" fill="#e7b886" />
       </template>
+      <template v-else-if="variant === 7">
+        <ellipse cx="50" cy="50" rx="42" ry="48" fill="#34271e" />
+        <path d="m50 0 7 37 31 13-31 8-7 42-8-42-30-8 30-13Z" fill="#d69868" />
+        <path d="m50 0 1 43 37 7-34 4-4 46-4-44-34-6 32-6Z" fill="#edb48a" />
+        <path d="m50 31 6 14 13 5-13 6-6 17-6-17-13-6 13-5Z" fill="#453021" />
+        <path d="m50 41 3 7 7 2-7 3-3 8-3-8-7-3 7-2Z" fill="#eeb98f" />
+      </template>
       <template v-else-if="variant === 10">
         <path d="M50 2 61 36 98 50 62 62 50 98 38 63 2 50 37 38Z" fill="currentColor" />
         <path d="m50 2 3 41 45 7-38 4-10 44-3-39L2 50l39-5Z" fill="#eee1c8" opacity=".32" />

@@ -58,8 +58,8 @@ const nav = computed(() => {
     { id: 2, label: '今日', icon: [2, 10, 15].includes(scene.value) ? 'calendar-days' : 'house' },
     { id: 3, label: '准备', icon: [16, 17, 20, 23].includes(scene.value) ? 'clipboard' : scene.value === 14 ? 'briefcase' : [18, 24].includes(scene.value) ? 'square-check-rounded' : [5, 6].includes(scene.value) ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [11, 19].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: scene.value === 19 ? 'box' : 'book-open' },
-    { id: 17, label: '训练', icon: scene.value === 20 ? 'zap' : scene.value === 16 ? 'layers' : scene.value === 12 ? 'chart-no-axes-column' : scene.value === 18 ? 'circle-play' : [5, 6, 17, 23, 24].includes(scene.value) ? 'play' : 'dumbbell' },
-    { id: 21, label: '复盘', icon: [5, 6, 13, 16, 18, 20, 26, 27, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
+    { id: 17, label: '训练', icon: scene.value === 20 ? 'zap' : scene.value === 16 ? 'layers' : scene.value === 12 ? 'chart-no-axes-column' : scene.value === 18 ? 'circle-play' : [5, 6, 7, 17, 23, 24].includes(scene.value) ? 'play' : 'dumbbell' },
+    { id: 21, label: '复盘', icon: [5, 6, 7, 13, 16, 18, 20, 26, 27, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
     { id: 24, label: '成长', icon: [5, 6, 30].includes(scene.value) ? 'leaf' : [3, 7, 12, 13, 16, 18, 26, 27].includes(scene.value) ? 'sprout' : 'chart-no-axes-combined' },
   ]
   if (scene.value === 16) [ordinary[2], ordinary[3]] = [ordinary[3]!, ordinary[2]!]
@@ -118,6 +118,43 @@ function popstate() {
 function keydown(event: KeyboardEvent) {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); navigate(25) }
 }
+function drawTaskHorizon(canvas: HTMLCanvasElement | null) {
+  if (!canvas) return
+  canvas.width = 254
+  canvas.height = 181
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const rim = (x: number) => 71 + x * .247 + x * x * .00032
+  const pixels = ctx.createImageData(254, 181)
+  // 自有纹理使用固定整数噪声，不依赖图片切片、时钟、随机数或动画时序。
+  for (let y = 0; y < 181; y++) for (let x = 0; x < 254; x++) {
+    const depth = y - rim(x)
+    const glow = Math.exp(-Math.abs(depth) / 12) * (1 - x / 700)
+    let seed = Math.imul(x + 7, 374761393) ^ Math.imul(y + 71, 668265263)
+    seed = Math.imul(seed ^ seed >>> 13, 1274126177)
+    const grain = ((seed ^ seed >>> 16) >>> 0) / 4294967295
+    const bands = Math.sin(x * .06 + depth * .42 + Math.sin(x * .04) * 2) * .5 + .5
+    const ground = depth > 0 ? (grain * .55 + bands * .45) * Math.exp(-depth / 44) : 0
+    const offset = (y * 254 + x) * 4
+    pixels.data[offset] = 24 + glow * 88 + ground * 31
+    pixels.data[offset + 1] = 18 + glow * 41 + ground * 17
+    pixels.data[offset + 2] = 14 + glow * 19 + ground * 10
+    pixels.data[offset + 3] = Math.round(255 * Math.min(1, y / 52))
+  }
+  ctx.putImageData(pixels, 0, 0)
+  ctx.beginPath()
+  ctx.moveTo(0, rim(0))
+  for (let x = 1; x < 254; x++) ctx.lineTo(x, rim(x))
+  const edge = ctx.createLinearGradient(0, 0, 254, 0)
+  edge.addColorStop(0, '#ffd3a5')
+  edge.addColorStop(.55, '#d58b57')
+  edge.addColorStop(1, '#a66a42')
+  ctx.strokeStyle = edge
+  ctx.lineWidth = 1.1
+  ctx.shadowColor = '#f5a363'
+  ctx.shadowBlur = 5
+  ctx.stroke()
+}
 onMounted(() => { resize(); document.title = `${page.value.title} · 问阶`; window.addEventListener('resize', resize); window.addEventListener('popstate', popstate); window.addEventListener('keydown', keydown) })
 onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize', resize); window.removeEventListener('popstate', popstate); window.removeEventListener('keydown', keydown) })
 </script>
@@ -126,6 +163,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
     <div class="r-canvas" :class="`r-scene-${String(scene).padStart(2, '0')}`" :style="{ '--sidebar': `${sidebar}px`, transform: `scale(${scale})` }" :data-scene="String(scene).padStart(2, '0')">
       <template v-if="![1, 29].includes(scene)">
         <aside class="r-sidebar" :class="{ 'r-sidebar-mini': scene === 9 }">
+          <canvas v-if="scene === 7" :ref="element => drawTaskHorizon(element as HTMLCanvasElement | null)" class="r-task-horizon" aria-hidden="true" />
           <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)">
             <div v-if="scene === 18" class="r-brand">
               <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M50 2 61 37 94 50 61 63 50 98 39 63 6 50 39 37Z M50 29 44 44 29 50 44 56 50 72 56 56 71 50 56 44Z" fill="currentColor" fill-rule="evenodd" /></svg>
@@ -137,7 +175,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-              <RIcon v-else-if="[4, 5, 6, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
+              <RIcon v-else-if="[4, 5, 6, 7, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
               <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="scene === 9 ? 34 : [16, 18, 19, 21, 22, 23, 24, 25].includes(scene) ? 30 : 28" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
@@ -145,7 +183,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <span v-if="scene === 15" class="r-tools-heading">工具</span>
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-                <RIcon v-else-if="[4, 5, 6, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 29" :stroke-width="scene === 30 ? 1.7 : 1.9" />
+                <RIcon v-else-if="[4, 5, 6, 7, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 29" :stroke-width="scene === 30 ? 1.7 : 1.9" />
                 <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 && item.id !== 14 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[18, 21, 23, 24, 25].includes(scene) ? 30 : scene === 22 ? 28 : 27" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
             </template>
@@ -156,7 +194,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <button v-if="scene === 30" class="r-breadcrumb r-inbox-breadcrumb" @click="navigate(10)">知识 / 收件箱<RIcon name="chevron-down" :size="23" /></button>
           <div v-else-if="scene !== 2 && scene !== 28" class="r-breadcrumb">
             <span v-if="scene === 6" class="r-material-breadcrumb-icon"><RIcon name="breadcrumb" variant="materials" :size="24" /></span>
-            <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="[5, 27].includes(scene) ? 28 : 25" />
+            <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 7 ? 'tasks' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 7 ? 30 : [5, 27].includes(scene) ? 28 : 25" />
             <template v-if="scene === 20"><span>训练</span><span>/</span><span>系统设计</span><span>/</span><strong>秒杀发奖</strong></template>
             <template v-else-if="scene === 24"><strong>成长</strong><span>/</span><span>Java 后端 · 技术一面</span></template>
             <template v-else-if="scene === 25"><RIcon name="calendar-days" variant="command" :size="28" /><span>今日</span><RIcon name="chevron-right" :size="15" /><span class="r-faint">任务总览</span></template>
@@ -168,7 +206,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <button class="r-top-search" :style="{ left: `${headerBox.left - 20}px`, width: `${headerBox.width}px` }" @click="navigate(25)"><RIcon name="search" :size="25" /><span>{{ searchHint }}</span><kbd v-if="![3, 7, 9, 13, 16, 18, 19, 21, 22, 24, 26].includes(scene)">⌘K</kbd></button>
           <div class="r-top-status">
             <span class="r-saved"><RIcon :name="scene === 26 ? 'bookmark' : [4, 20, 21, 23].includes(scene) ? 'circle-check' : 'check'" :variant="scene === 23 ? 'recollection' : undefined" /><span>已保存<span v-if="scene === 5" class="r-muted"> 10:24</span><span v-if="scene === 11" class="r-muted"> 14:32</span></span></span>
-            <button class="r-icon-btn" title="通知" @click="notify('暂无新通知')"><RIcon name="bell" :variant="scene === 30 ? 'inbox' : scene === 6 ? 'materials' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[24, 26, 30].includes(scene) ? 32 : 28" /></button>
+            <button class="r-icon-btn" title="通知" @click="notify('暂无新通知')"><RIcon name="bell" :variant="scene === 30 ? 'inbox' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[7, 24, 26, 30].includes(scene) ? 32 : 28" /></button>
             <button v-if="scene === 20" class="r-icon-btn" title="提醒" @click="notify('暂无新提醒')"><RIcon name="bell" variant="design" :size="28" /></button>
             <button title="设置与数据" class="r-avatar" @click="navigate(28)">林</button>
           </div>
@@ -274,8 +312,31 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-06 .r-top-status .r-icon-btn { transform: translateX(6px); }
 .r-scene-06 .r-top-status > .r-avatar { position: relative; width: 42px; height: 44px; font-size: 23px; border-color: #78645344; background: linear-gradient(125deg, #6b5746, #44372f); }
 .r-scene-06 .r-top-status > .r-avatar::before { content: ""; position: absolute; left: -23px; top: 15px; width: 1px; height: 13px; background: #8b735535; }
-.r-scene-07 .r-sidebar { width: 256px; top: 22px; bottom: 7px; }
-.r-scene-07 .r-sidebar nav { top: 144px; left: 22px; right: 18px; }
+.r-scene-07 { will-change: transform; background: radial-gradient(ellipse 540px 700px at 0 50%, #32221833, transparent), #080706; }
+.r-scene-07 .r-sidebar { width: 256px; top: 22px; bottom: 7px; overflow: hidden; border-color: #55453766; background: linear-gradient(115deg, #211b16bb, #1b1814 65%, #241c16); }
+.r-scene-07 .r-task-horizon { position: absolute; left: 0; bottom: 0; width: 254px; height: 181px; pointer-events: none; }
+.r-scene-07 .r-sidebar > a { position: absolute; left: 34px; top: 30px; width: 185px; height: 62px; display: flex; align-items: center; }
+.r-scene-07 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
+.r-scene-07 .r-sidebar :deep(.r-emblem) { width: 54px; height: 60px; filter: none; flex-shrink: 0; }
+.r-scene-07 .r-sidebar :deep(.r-brand-word) { font-size: 28px; line-height: 35px; font-weight: 500; }
+.r-scene-07 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; line-height: 24px; margin-top: 0; color: #aaa29a; }
+.r-scene-07 .r-sidebar nav { top: 144px; left: 22px; right: 18px; gap: 10px; }
+.r-scene-07 .r-nav-item { height: 56px; padding-left: 23px; gap: 20px; font-size: 23px; white-space: nowrap; color: #c7c1b9; }
+.r-scene-07 .r-nav-item.r-selected { border-radius: 18px; color: #fff1dd; font-weight: 600; border-color: #d5a075a8; background: linear-gradient(110deg, #b77e55a8, #714e37bf); box-shadow: inset 1px 1px 5px #ffcd9b8c, -4px 0 15px #e29d6044; }
+.r-scene-07 .r-nav-separator { margin: 18px 15px 17px; background: #a38a6d26; }
+.r-scene-07 .r-nav-item.r-secondary { height: 52px; margin-top: -1px; font-size: 22px; }
+.r-scene-07 .r-sidebar-avatar { left: 37px; bottom: 26px; }
+.r-scene-07 .r-sidebar-avatar::before { content: ""; position: absolute; top: -69px; left: -1px; width: 184px; height: 1px; background: #a38a6d1a; }
+.r-scene-07 .r-avatar { color: #20160e; border-color: #ead2b744; background: linear-gradient(120deg, #ead2b8, #c5a58b); }
+.r-scene-07 .r-sidebar-avatar .r-avatar { width: 47px; height: 48px; font-size: 24px; }
+.r-scene-07 .r-topbar { top: 25px; right: 36px; height: 70px; }
+.r-scene-07 .r-breadcrumb { font-size: 22px; gap: 15px; }
+.r-scene-07 .r-top-search { top: 6px; height: 50px; border-radius: 22px; border-color: #4a40341a !important; background: linear-gradient(110deg, #24211ee6, #211e1bd9) !important; padding-left: 17px; gap: 9px; }
+.r-scene-07 .r-top-status { gap: 47px; }
+.r-scene-07 .r-saved { color: #81dbc5; }
+.r-scene-07 .r-saved svg { width: 26px; height: 27px; padding: 0; color: #70dbc0; fill: none; background: none; }
+.r-scene-07 .r-top-status > .r-avatar { width: 49px; height: 50px; font-size: 24px; }
+.r-scene-07 .r-top-status .r-icon-btn { color: #e0dad2; }
 .r-scene-08 .r-sidebar nav { top: 124px; left: 24px; right: 24px; }
 .r-scene-08 .r-nav-item { height: 60px; padding-left: 20px; }
 .r-scene-09 .r-sidebar { top: 92px; bottom: 1px; width: 118px; }

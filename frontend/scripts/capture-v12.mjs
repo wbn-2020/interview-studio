@@ -394,6 +394,90 @@ try {
         await assertFrame(captured, '06采用事实、品牌和搜索返回后初态不符')
         checks.push({ check: 'attachment-facts-brand-command-navigation-return', scene: scene.id, passed: true })
       }
+      if (scene.id === '07') {
+        const layout = await page.evaluate(() => {
+          const box = selector => {
+            const r = document.querySelector(selector).getBoundingClientRect()
+            return [r.x, r.y, r.width, r.height]
+          }
+          const canvas = document.querySelector('.r-task-horizon')
+          const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+          const colors = new Set()
+          for (let i = 0; i < pixels.length; i += 4) colors.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`)
+          return {
+            sidebar: box('.r-sidebar'), brand: box('.r-sidebar > a'), search: box('.r-top-search'),
+            avatar: box('.r-top-status > .r-avatar'), bottomAvatar: box('.r-sidebar-avatar .r-avatar'),
+            stats: box('.task-stats'), pending: box('.pending-tasks'), scheduled: box('.scheduled-tasks'), preview: box('.schedule-preview'),
+            statsColumns: [...document.querySelectorAll('.task-stats > .r-row')].map(node => node.getBoundingClientRect().x),
+            brandPaths: document.querySelectorAll('.r-brand path').length, brandEllipse: document.querySelectorAll('.r-brand ellipse').length,
+            canvas: [canvas.width, canvas.height], canvasColors: colors.size,
+            composition: getComputedStyle(document.querySelector('.r-scene-07')).willChange,
+            saved: (() => { const s = getComputedStyle(document.querySelector('.r-saved svg')); return [s.backgroundColor, s.padding] })(),
+            navigation: [...document.querySelectorAll('.r-nav-item')].map(node => ({
+              text: node.textContent.trim(), height: node.getBoundingClientRect().height, overflow: node.scrollWidth > node.clientWidth + 1,
+            })),
+            pendingTitles: [...document.querySelectorAll('.pending-task h3')].map(node => node.textContent),
+            scheduledDates: [...document.querySelectorAll('.scheduled-row > span')].map(node => node.textContent),
+            taskStatusPaths: [...document.querySelectorAll('.scheduled-row button > svg')].map(node => node.querySelectorAll('path').length),
+            loads: [...document.querySelectorAll('.week-bars i')].map(node => node.style.height),
+            overflow: [...document.querySelectorAll('.pending-task p,.scheduled-row button p,.preview-note')].some(node => node.scrollWidth > node.clientWidth + 1),
+          }
+        })
+        const sameBox = (actual, expected) => actual.length === 4 && actual.every((value, i) => Math.abs(value - expected[i]) < 1)
+        ensure(sameBox(layout.sidebar, [0,22,256,995]) && sameBox(layout.brand, [35,53,185,62])
+          && sameBox(layout.search, [656,31,454,50]) && sameBox(layout.avatar, [1451,35,49,50])
+          && sameBox(layout.bottomAvatar, [38,943,47,48]) && sameBox(layout.stats, [276,255,1228,118])
+          && sameBox(layout.pending, [276,394,437,592]) && sameBox(layout.scheduled, [726,394,409,592])
+          && sameBox(layout.preview, [1148,394,356,592]), '07侧栏、品牌命中框、顶栏或三栏几何不符')
+        ensure(JSON.stringify(layout.statsColumns) === '[305,651,1057]' && layout.brandPaths === 4 && layout.brandEllipse === 1
+          && JSON.stringify(layout.canvas) === '[254,181]' && layout.canvasColors > 1000 && layout.composition === 'transform'
+          && JSON.stringify(layout.saved) === '["rgba(0, 0, 0, 0)","0px"]'
+          && layout.navigation.length === 10 && layout.navigation.every(item => !item.overflow) && !layout.overflow,
+          '07统计分隔、地平线、品牌、保存标记或单行内容不符')
+        await writeJson(path.join(values.output, 'records', '07-tasks-layout.json'), layout)
+        checks.push({ check: 'tasks-brand-horizon-shell-stats-and-three-columns', scene: scene.id, layout, passed: true })
+        ensure(JSON.stringify(layout.pendingTitles) === '["项目追问演练","系统设计取舍","缓存一致性补证"]'
+          && JSON.stringify(layout.scheduledDates) === '["11.09","11.10","11.12"]'
+          && JSON.stringify(layout.taskStatusPaths) === '[2,2,2]'
+          && JSON.stringify(layout.loads) === '["72%","72%","68%","58%","22%","0%","0%"]'
+          && await page.locator('.task-tabs button[aria-current="page"]').textContent() === '任务'
+          && await page.locator('.preview-task').count() === 3
+          && await page.locator('.pending-task[aria-pressed="false"]').count() === 3, '07任务、日期、状态、负载或选中初态不符')
+        checks.push({ check: 'tasks-fixed-content-counts-status-loads-and-tab', scene: scene.id, passed: true })
+        const first = page.locator('.pending-task').first()
+        await first.click()
+        ensure(await first.getAttribute('aria-pressed') === 'true', '07任务未响应选择')
+        await first.press('Enter')
+        ensure(await first.getAttribute('aria-pressed') === 'false', '07任务未响应Enter取消选择')
+        await first.press('Space')
+        ensure(await first.getAttribute('aria-pressed') === 'true', '07任务未响应空格选择')
+        await page.locator('.schedule-preview > .r-btn').last().click()
+        ensure(await page.locator('.pending-task[aria-pressed="false"]').count() === 3, '07取消安排未清除本次选择')
+        for (const [selector, message] of [
+          ['.p-actions .r-btn:first-child', '建议生成需要另行确认，不调用模型'],
+          ['.p-actions .r-btn:last-child', '新建任务流程待确认'],
+          ['.schedule-preview > .r-primary', '安排已保存到本次页面状态'],
+        ]) {
+          await page.locator(selector).click()
+          ensure(await page.getByRole('status').textContent() === message, '07未确认业务或页面内保存边界提示不符')
+        }
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '07任务选择、取消与边界操作后刷新未恢复初态')
+        checks.push({ check: 'tasks-selection-keyboard-cancel-local-boundaries-refresh', scene: scene.id, passed: true })
+        for (const [selector, target] of [
+          ['.task-tabs button:first-child', '03'], ['.task-tabs button:nth-child(2)', '06'], ['.task-tabs button:last-child', '08'],
+          ['.scheduled-row:nth-of-type(1) button', '04'], ['.scheduled-row:nth-of-type(2) button', '20'], ['.scheduled-row:nth-of-type(3) button', '08'],
+          ['.schedule-preview button[title="编辑安排"]', '08'], ['.r-sidebar > a', '02'], ['.r-top-search', '25'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '07导航未进入对应场景')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '07返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '07页签、来源、编辑、品牌与搜索导航返回后初态不符')
+        checks.push({ check: 'tasks-tabs-source-edit-brand-command-navigation-return', scene: scene.id, passed: true })
+      }
       if (scene.id === '14') {
         const table = page.locator('.bank-list'), rows = table.locator('tbody tr')
         const geometry = await page.evaluate(() => {
