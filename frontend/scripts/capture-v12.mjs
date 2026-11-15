@@ -2031,6 +2031,31 @@ try {
         const options = dialog.getByRole('option')
         const background = page.locator('.sp-task-table')
         const taskRows = background.locator('tbody tr')
+        const commandSurface = await page.evaluate(() => {
+          const get = (selector, pseudo) => {
+            const s = getComputedStyle(document.querySelector(selector), pseudo)
+            return { size: s.fontSize, top: s.top, left: s.left, gap: s.gap, height: s.height, width: s.width,
+              padding: s.padding, background: s.backgroundImage, border: s.borderBottomWidth, pointerEvents: s.pointerEvents }
+          }
+          return { header: get('.r-scene-25', '::before'), navigation: get('.r-sidebar nav'), primary: get('.r-nav-item'),
+            secondary: get('.r-nav-item.r-secondary'), status: get('.r-top-status'), modal: get('.sp-command-modal'),
+            intro: get('.sp-task-intro'), action: get('.sp-task-intro .r-btn'),
+            left: get('.sp-task-table', '::before'), right: get('.sp-task-table', '::after'),
+            button: (() => { const b = document.querySelector('.sp-task-intro .r-btn').getBoundingClientRect(); return [b.x, b.y, b.width, b.height] })() }
+        })
+        ensure(commandSurface.header.height === '94px' && commandSurface.header.left === '212px'
+          && commandSurface.header.border === '1px' && commandSurface.header.pointerEvents === 'none'
+          && commandSurface.navigation.top === '153px' && commandSurface.primary.size === '23px'
+          && commandSurface.secondary.size === '22px' && commandSurface.status.gap === '26px'
+          && commandSurface.modal.background === 'linear-gradient(110deg, rgba(28, 25, 22, 0.96), rgba(25, 22, 21, 0.97))'
+          && commandSurface.action.size === '20px' && commandSurface.action.padding === '8px 16px'
+          && commandSurface.action.gap === '8px' && JSON.stringify(commandSurface.button) === JSON.stringify([1289,285.5,146,49])
+          && commandSurface.left.left === '-1px' && commandSurface.left.top === '23px' && commandSurface.left.width === '181px'
+          && commandSurface.right.left === '179px' && commandSurface.right.top === '-1px'
+          && commandSurface.left.pointerEvents === 'none' && commandSurface.right.pointerEvents === 'none',
+          '25顶栏、导航／保存区、面板材质、任务按钮或左右上沿不符')
+        checks.push({ check: 'command-header-navigation-status-modal-surface-task-action-asymmetric-background',
+          scene: scene.id, commandSurface, passed: true })
         const initialLayout = await page.evaluate(() => {
           const rect = selector => { const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect(); return [x, y, width, height] }
           return { table: rect('.sp-task-table'), topSearch: rect('.r-top-search'),

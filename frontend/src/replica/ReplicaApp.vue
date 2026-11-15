@@ -748,23 +748,24 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-24 .r-top-status .r-icon-btn::before { content: ""; position: absolute; left: -39px; top: 6px; height: 32px; width: 1px; background: #77716899; }
 .r-scene-24 .r-top-status > .r-avatar { width: 53px; height: 55px; font-size: 25px; background: linear-gradient(120deg, #ad775d, #7b4e39); }
 .r-scene-25 { will-change: transform; }
+.r-scene-25::before { content: ""; position: absolute; top: 0; left: 212px; right: 0; height: 94px; background: linear-gradient(110deg, #1c181466, #15110e33); border-bottom: 1px solid #5c493222; pointer-events: none; }
 .r-scene-25 .r-sidebar { border-radius: 0; width: 212px; bottom: 0; border-width: 0 1px 0 0; border-color: #302821; background: linear-gradient(110deg, #211c17, #191511); }
 .r-scene-25 .r-sidebar > a::after { content: ""; position: absolute; left: 0; right: 0; top: 120px; height: 1px; background: #ffffff09; }
 .r-scene-25 .r-sidebar :deep(.r-brand) { left: 34px; top: 40px; gap: 11px; }
 .r-scene-25 .r-sidebar :deep(.r-emblem) { width: 45px; height: 53px; color: #d6c7b5; filter: none; }
 .r-scene-25 .r-sidebar :deep(.r-brand-word) { font-size: 28px; font-weight: 500; line-height: 32px; }
 .r-scene-25 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; line-height: 20px; margin-top: 0; color: #a49c94; }
-.r-scene-25 .r-sidebar nav { left: 24px; right: 20px; top: 151px; gap: 9px; }
-.r-scene-25 .r-nav-item { padding-left: 19px; padding-right: 0; gap: 17px; color: #c6bfb6; }
+.r-scene-25 .r-sidebar nav { left: 24px; right: 20px; top: 153px; gap: 9px; }
+.r-scene-25 .r-nav-item { padding-left: 19px; padding-right: 0; gap: 17px; color: #c6bfb6; font-size: 23px; }
 .r-scene-25 .r-nav-item.r-selected { color: #fff1dc; background: linear-gradient(115deg, #a7744d, #5d3b26); border-color: #e2a575; box-shadow: inset 1px 1px 7px #f7c49240, 0 0 17px #e49c5538; }
-.r-scene-25 .r-nav-item.r-secondary { height: 51px; white-space: nowrap; }
+.r-scene-25 .r-nav-item.r-secondary { height: 51px; font-size: 22px; white-space: nowrap; }
 .r-scene-25 .r-nav-separator { margin: 24px 8px 25px; }
 .r-scene-25 .r-sidebar-avatar { left: 45px; bottom: 37px; }
 .r-scene-25 .r-sidebar-avatar .r-avatar { width: 57px; height: 59px; font-size: 26px; background: linear-gradient(125deg, #74695e, #51483f); }
 .r-scene-25 .r-topbar { left: 253px; right: 36px; top: 21px; height: 55px; }
 .r-scene-25 .r-breadcrumb { gap: 12px; font-size: 22px; color: #d3cdc6; }
 .r-scene-25 .r-top-search { left: 356px !important; top: 0; height: 55px; padding: 0 17px; }
-.r-scene-25 .r-top-status { gap: 32px; }
+.r-scene-25 .r-top-status { gap: 26px; }
 .r-scene-25 .r-saved { margin-right: 14px; color: #73cbb1; font-size: 22px; }
 .r-scene-25 .r-saved svg { width: 25px; height: 25px; background: linear-gradient(120deg, #38b89b, #238c79); fill: none; color: #b1e1d4; padding: 6px; }
 .r-scene-25 .r-top-status .r-icon-btn { position: relative; }

@@ -226,13 +226,17 @@ onUnmounted(() => {
 .sp-command-heading { left: 38px; top: 133px; }
 .sp-command-heading h1 { font-weight: 500; }
 .sp-command-heading p { margin-top: 5px; }
-.sp-task-intro { padding-left: 23px; background: linear-gradient(110deg, #1b1714, #14120f); }
+.sp-task-intro { padding-left: 23px; padding-right: 6px; background: linear-gradient(110deg, #1b1714, #14120f); }
 .sp-task-emblem { background: linear-gradient(125deg, #75543d, #523725); }
 .sp-task-emblem svg { width: 28px; height: 28px; }
-.sp-task-intro > .r-row:last-child { position: relative; top: -14px; gap: 15px; }
-.sp-task-intro .r-btn { min-height: 49px; font-size: 21px; background: linear-gradient(110deg, #825533, #52331f) !important; border-color: #a7754b !important; }
+.sp-task-intro > .r-row:last-child { position: relative; top: -13px; gap: 15px; }
+.sp-task-intro .r-btn { min-height: 49px; font-size: 20px; padding-inline: 16px !important; gap: 8px; background: linear-gradient(110deg, #825533, #52331f) !important; border-color: #a7754b !important; }
 .sp-task-intro .r-icon-btn { width: 47px; height: 49px; }
-.sp-task-table { top: 375px; height: 535px; background: linear-gradient(110deg, #191512, #151210); }
+/* 左侧上沿比右侧低24px；分界放在命令面板遮挡内，表格内容坐标保持。 */
+.sp-task-table { top: 375px; height: 535px; background: none; border-color: transparent; isolation: isolate; overflow: visible; }
+.sp-task-table::before, .sp-task-table::after { content: ""; position: absolute; z-index: -1; border: 1px solid #30271e; background: linear-gradient(110deg, #191512, #151210); pointer-events: none; }
+.sp-task-table::before { left: -1px; top: 23px; bottom: -1px; width: 181px; border-right: 0; border-radius: 20px 0 0 20px; }
+.sp-task-table::after { left: 179px; right: -1px; top: -1px; bottom: -1px; border-left: 0; border-radius: 0 20px 20px 0; }
 .sp-task-table h3 { height: 100px; padding-top: 49px; font-weight: 500; }
 .sp-task-search { top: 39px; padding: 0 22px; outline: none; }
 .sp-task-table th { height: 58px; font-size: 20px; }
@@ -243,7 +247,7 @@ onUnmounted(() => {
 .sp-task-table .r-pill.high { color: #f0a564; background: #6b351b70; }
 .sp-task-table .r-pill.medium { color: #f7bd59; background: #67440a70; }
 .sp-task-table .r-checkbox:indeterminate::after { content: ""; width: 11px; height: 2px; background: #e7b279; }
-.sp-command-modal { background: linear-gradient(110deg, #1d1a18f5, #1b1816f7); border-color: #44403b; }
+.sp-command-modal { background: linear-gradient(110deg, #1c1916f5, #191615f7); border-color: #44403b; }
 .sp-command-input::before { background: #00000020; }
 .sp-command-section { position: relative; top: 2px; font-size: 22px; }
 .sp-command-copy { font-size: 23px; }
