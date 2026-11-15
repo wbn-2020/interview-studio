@@ -2528,6 +2528,25 @@ try {
           && JSON.stringify(layout.answer) === '[1071,463,375,237]' && JSON.stringify(layout.rating) === '[1072,742,373,92]',
         '29详情、标签、抽屉、答案或评分几何不符')
         checks.push({ check: 'mobile-three-phones-fixed-geometry-copy-lines-initial-state', scene: scene.id, layout, passed: true })
+        const mobileStyle = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node)
+            return { weight:s.fontWeight, size:s.fontSize, margin:s.marginTop, transform:s.transform, background:s.backgroundImage }
+          }
+          const wave = getComputedStyle(document.querySelector('.mobile-continue'), '::after')
+          return { body:style('.mobile-scene'), definition:style('.mobile-definition p'), title:style('.mobile-continue-copy strong'),
+            task:style('.mobile-task-copy'), note:style('.mobile-linked-note > button'), screen:style('.phone-today .phone-screen'),
+            practice:style('.mobile-practice'), wave:{background:wave.backgroundImage,shadow:wave.boxShadow} }
+        })
+        ensure(mobileStyle.body.weight === '300' && mobileStyle.definition.size === '18.4px'
+          && mobileStyle.definition.margin === '16px' && mobileStyle.definition.weight === '300'
+          && mobileStyle.title.size === '22.5px' && mobileStyle.title.weight === '600'
+          && mobileStyle.task.transform === 'matrix(1, 0, 0, 1, 0, 1)' && mobileStyle.note.margin === '15px'
+          && mobileStyle.wave.background.startsWith('repeating-radial-gradient(') && mobileStyle.wave.shadow === 'none'
+          && mobileStyle.screen.background.includes('60px 115px') && mobileStyle.screen.background.includes('60px 130px')
+          && mobileStyle.practice.background.includes('rgb(208, 154, 105)'),
+        '29正文字面、学习标题、细纹、局部光照或按钮渐变不符')
+        checks.push({ check:'mobile-type-baselines-wave-light-and-practice-surface',scene:scene.id,mobileStyle,passed:true })
         const writes = [], onWrite = request => {
           if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method() + ' ' + new URL(request.url()).pathname)
         }

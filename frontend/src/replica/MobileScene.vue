@@ -216,12 +216,13 @@ function showNote() { emit('navigate', 11) }
 </template>
 
 <style scoped>
-.mobile-scene { position: absolute; inset: 0; width: 1536px; height: 1024px; overflow: hidden; color: #f4f4f1; background: radial-gradient(ellipse at -9% 3%, #6953426e, transparent 34%), radial-gradient(ellipse 420px 200px at 103% 18%, #a5673e91, transparent 78%), radial-gradient(ellipse at 8% 106%, #9b653b61, transparent 33%), radial-gradient(ellipse at 72% 104%, #73513924, transparent 38%), #0b0a09; font-family: Arial, "Microsoft YaHei", sans-serif; font-size: 20px; will-change: transform; }
+.mobile-scene { position: absolute; inset: 0; width: 1536px; height: 1024px; overflow: hidden; color: #f4f4f1; background: radial-gradient(ellipse at -9% 3%, #6953426e, transparent 34%), radial-gradient(ellipse 420px 200px at 103% 18%, #a5673e91, transparent 78%), radial-gradient(ellipse at 8% 106%, #9b653b61, transparent 33%), radial-gradient(ellipse at 72% 104%, #73513924, transparent 38%), #0b0a09; font-family: Arial, "Microsoft YaHei", sans-serif; font-size: 20px; font-weight: 300; will-change: transform; }
 .mobile-phone { position: absolute; border: 2px solid #605b52; border-radius: 82px; background: linear-gradient(105deg, #66615a, #151412 4%, #070707 49%, #24211d 97%, #6c6458); box-shadow: 0 7px 8px #000b, 0 0 0 1px #161615, inset 0 0 0 2px #22201c, inset 4px 1px 3px #9d968c85, inset -4px 0 3px #b8ab9070; }
 .phone-today { left: 61px; top: 62px; width: 447px; height: 916px; transform: rotate(-.15deg); }
 .phone-detail { left: 541px; top: 42px; width: 459px; height: 951px; border-radius: 86px; }
 .phone-recall { left: 1033px; top: 65px; width: 451px; height: 912px; }
 .phone-screen { position: absolute; inset: 13px 12px; overflow: hidden; border: 1px solid #080807; border-radius: 66px; background: radial-gradient(ellipse at 68% 52%, #45302432, transparent 58%), linear-gradient(160deg, #0a0908, #13100d 78%, #151411); box-shadow: 0 0 0 5px #030303; }
+.phone-today .phone-screen { background: radial-gradient(ellipse 60px 115px at 0% 41%, #bd793d55, transparent), radial-gradient(ellipse 60px 130px at 100% 34%, #b8713e80, transparent), radial-gradient(ellipse at 68% 52%, #45302432, transparent 58%), linear-gradient(160deg, #0a0908, #13100d 78%, #151411); }
 .phone-detail .phone-screen { inset: 14px 13px; border-radius: 69px; background: radial-gradient(ellipse at 72% 67%, #49312338, transparent 66%), #0c0b09; }
 .phone-recall .phone-screen { inset: 13px 12px; background: #0a0908; }
 .phone-button { position: absolute; z-index: -1; width: 3px; border-radius: 3px; background: linear-gradient(90deg, #b9afa1, #38342d); }
@@ -256,14 +257,14 @@ function showNote() { emit('navigate', 11) }
 .mobile-home-title h1 { font-size: 44px; font-weight: 600; line-height: 63px; }
 .mobile-home-title p { margin-top: 1px; font-size: 19px; color: #b5b2ac; line-height: 31px; white-space: nowrap; }
 .mobile-continue { position: absolute; left: 22px; right: 22px; top: 267px; height: 124px; display: flex; align-items: center; padding: 0 18px 0 20px !important; gap: 18px; border: 1px solid #b9824b !important; border-radius: 23px; background: radial-gradient(ellipse at 4% 82%, #cc8c4f80, transparent 51%), radial-gradient(ellipse at 100% 10%, #d69b6540, transparent 43%), linear-gradient(120deg, #302418, #211810 58%, #4b3524) !important; box-shadow: inset 0 0 12px #edbe8b0f; overflow: hidden; text-align: left; }
-.mobile-continue::before, .mobile-continue::after { content: ""; position: absolute; pointer-events: none; left: -90px; top: -122px; width: 520px; height: 230px; border: 1px solid #d5a06712; border-radius: 50%; transform: rotate(17deg); box-shadow: 0 6px 0 #d5a0670b, 0 12px 0 #d5a0670b, 0 18px 0 #d5a0670b, 0 24px 0 #d5a0670b, 0 30px 0 #d5a0670b, 0 36px 0 #d5a0670b; }
+.mobile-continue::before, .mobile-continue::after { content: ""; position: absolute; pointer-events: none; left: -90px; top: -122px; width: 520px; height: 230px; border-radius: 50%; transform: rotate(17deg); background: repeating-radial-gradient(ellipse at center, transparent 0px, transparent 2px, #d5a06726 2.4px, transparent 2.8px); }
 .mobile-continue::before { left: -156px; top: -153px; transform: rotate(-14deg); opacity: .3; }
 .mobile-continue::after { left: -115px; top: 33px; transform: rotate(-13deg); opacity: .3; }
 .mobile-play { display: grid; place-items: center; flex: none; width: 64px; height: 65px; border: 1.6px solid #e9ac6d; border-radius: 50%; color: #ffd7a6; background: #5b3d2540; }
 .mobile-play .r-icon { fill: currentColor; margin-left: 4px; }
 .mobile-continue-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 1px; }
 .mobile-continue-copy > span { color: #f8eee1; font-size: 21px; line-height: 31px; }
-.mobile-continue-copy strong { color: #fff8ef; font-size: 21px; font-weight: 600; line-height: 35px; white-space: nowrap; }
+.mobile-continue-copy strong { color: #fff8ef; font-size: 22.5px; font-weight: 600; line-height: 35px; white-space: nowrap; }
 .mobile-continue > .r-icon { margin-left: auto; color: #d7a172; flex: none; }
 .mobile-tasks { position: absolute; top: 421px; left: 22px; right: 22px; }
 .mobile-section-heading { display: flex; align-items: center; justify-content: space-between; height: 35px; }
@@ -276,7 +277,7 @@ function showNote() { emit('navigate', 11) }
 .mobile-task-row + .mobile-task-row::before { content: ""; position: absolute; top: 0; left: 14px; right: 0; height: 1px; background: #a7917010; }
 .mobile-task-check { display: grid; place-items: center; flex: none; width: 31px; height: 32px; border: 2px solid #7f7c748c !important; border-radius: 50%; }
 .mobile-task-check.checked { border-color: #ddaa70 !important; color: #22180e; background: #dbac77 !important; }
-.mobile-task-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.mobile-task-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; transform: translateY(1px); }
 .mobile-task-copy > span { color: #f1eee6; font-size: 19px; line-height: 28px; white-space: nowrap; }
 .mobile-task-copy small { color: #918b81; font-size: 15px; line-height: 23px; white-space: nowrap; }
 .mobile-task-row.is-done .mobile-task-copy > span { color: #aaa59b; text-decoration: line-through; }
@@ -312,9 +313,9 @@ function showNote() { emit('navigate', 11) }
 .mobile-definition { height: 176px; padding: 20px 16px 15px; }
 .mobile-definition-icon { display: grid; place-items: center; width: 24px; height: 26px; color: #e9b27e; }
 .mobile-definition-icon .r-icon { fill: #edb681; stroke: #9b6e48; stroke-width: .7; }
-.mobile-definition p { margin-top: 15px; font-size: 18.2px; color: #f1eee7; line-height: 31px; }
+.mobile-definition p { margin-top: 16px; font-size: 18.4px; color: #f1eee7; line-height: 31px; }
 .mobile-linked-note { height: 130px; margin-top: 13px; padding: 16px 16px 10px; }
-.mobile-linked-note > button { display: flex; gap: 9px; align-items: center; width: 100%; height: 56px; margin-top: 13px; text-align: left; }
+.mobile-linked-note > button { display: flex; gap: 9px; align-items: center; width: 100%; height: 56px; margin-top: 15px; text-align: left; }
 .mobile-linked-note > button .mobile-note-icon { width: 45px; height: 47px; border-radius: 11px; }
 .mobile-linked-note strong { color: #eee8df; font-size: 18px; font-weight: 400; line-height: 28px; white-space: nowrap; }
 .mobile-linked-note small { color: #898278; font-size: 15px; line-height: 22px; }
@@ -323,7 +324,7 @@ function showNote() { emit('navigate', 11) }
 .mobile-key-points ul { list-style: none; margin: 12px 0 0; padding: 0; color: #e8e1d6; font-size: 17px; line-height: 34px; }
 .mobile-key-points li { white-space: nowrap; }
 .mobile-key-points li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e6a269; margin: 0 9px 3px 1px; }
-.mobile-practice { position: absolute; bottom: 35px; left: 21px; right: 23px; height: 59px; display: flex; align-items: center; justify-content: center; gap: 13px; border: 1px solid #e6b889 !important; border-radius: 31px; background: linear-gradient(115deg, #d69d6b, #bc8254 60%, #a66b43) !important; color: #241609; font-size: 22px; font-weight: 500; box-shadow: inset 0 1px 2px #f2ceaa50; }
+.mobile-practice { position: absolute; bottom: 35px; left: 21px; right: 23px; height: 59px; display: flex; align-items: center; justify-content: center; gap: 13px; border: 1px solid #e6b889 !important; border-radius: 31px; background: linear-gradient(115deg, #d09a69, #bd8356 60%, #a46a43) !important; color: #241609; font-size: 22px; font-weight: 500; box-shadow: inset 0 1px 2px #f2ceaa50; }
 .mobile-practice .r-icon { fill: currentColor; stroke-width: 1; }
 .mobile-detail-menu { position: absolute; z-index: 5; top: 126px; right: 22px; width: 181px; padding: 5px 13px; border: 1px solid #796047; border-radius: 14px; background: #292019; }
 .mobile-detail-menu > button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px 0; font-size: 17px; color: #ecddc8; }
