@@ -1847,6 +1847,33 @@ try {
         const list = page.getByRole('region', { name: '待整理内容' })
         const sources = page.getByRole('complementary', { name: '收件箱来源' })
         const detail = page.getByRole('complementary', { name: '内容详情' })
+        const inboxGeometry = await page.evaluate(() => {
+          const box = selector => {
+            const node = document.querySelector(selector), r = node.getBoundingClientRect()
+            return [r.x, r.y, r.width, r.height]
+          }
+          const navigation = [...document.querySelectorAll('.r-sidebar .r-nav-item')].map(node => {
+            const span = node.querySelector('span'), range = document.createRange()
+            range.selectNodeContents(span)
+            return { text: span.textContent, lines: range.getClientRects().length }
+          })
+          return {
+            sources: box('.sp-inbox-sources'), list: box('.sp-inbox-list'),
+            avatar: box('.r-sidebar-avatar .r-avatar'), navigation,
+            sourceCount: document.querySelectorAll('.sp-inbox-sources > button').length,
+            selectedSources: document.querySelectorAll('.sp-inbox-sources > button[aria-pressed="true"]').length,
+            selectedRows: document.querySelectorAll('.sp-inbox-entry[aria-pressed="true"]').length,
+            checkedRows: document.querySelectorAll('.sp-inbox-list input:checked').length,
+          }
+        })
+        ensure(JSON.stringify(inboxGeometry.sources) === '[243,233,233,701]'
+          && JSON.stringify(inboxGeometry.list) === '[486,233,514,701]'
+          && JSON.stringify(inboxGeometry.avatar) === '[38,917,57,61]',
+          '30来源栏、列表或头像坐标偏离固定构图')
+        ensure(inboxGeometry.navigation.length === 10 && inboxGeometry.navigation.every(item => item.lines === 1)
+          && inboxGeometry.sourceCount === 5 && inboxGeometry.selectedSources === 1
+          && inboxGeometry.selectedRows === 1 && inboxGeometry.checkedRows === 0, '30初始导航、筛选或选择状态不符')
+        checks.push({ check: 'inbox-columns-avatar-single-line-navigation-initial-state', scene: scene.id, ...inboxGeometry, passed: true })
         const detailPaint = await detail.evaluate(node => {
           const box = node.getBoundingClientRect()
           return { box: [box.x, box.y, box.width, box.height], backgroundClip: getComputedStyle(node).backgroundClip }

@@ -112,6 +112,13 @@ withDefaults(defineProps<{ large?: boolean; variant?: number }>(), { large: fals
         <path d="m50 39 7 11-7 12-8-12Z" fill="#5e3f29" />
         <path d="m50 44 3 6-3 5-3-5Z" fill="#d6a071" />
       </template>
+      <template v-else-if="variant === 30">
+        <circle cx="50" cy="50" r="38" stroke="#e7b581" stroke-width="2.2" />
+        <path d="M50 2c2 31 11 41 46 48-35 5-44 16-46 48C46 66 38 55 3 50c35-7 43-17 47-48Z" stroke="#e6b27c" stroke-width="2.4" />
+        <path d="m50 20 7 22 22 8-22 7-7 23-7-23-22-7 22-8Z" fill="#e9b57e" />
+        <path d="m50 36 4 10 10 4-10 3-4 12-4-12-10-3 10-4Z" fill="#5e422b" />
+        <path d="m20 21 9 7M74 73l7 7" stroke="#edbc88" stroke-width="1.4" />
+      </template>
       <template v-else>
         <circle v-if="variant % 3 === 0" cx="50" cy="50" r="39" stroke="currentColor" stroke-width="1.4" />
         <path d="M50 2 57 40 98 50 57 58 50 98 42 58 2 50 42 40Z" fill="currentColor" />

@@ -173,16 +173,16 @@ onUnmounted(() => {
   <section v-else-if="scene === 30" class="sp-inbox-page">
     <div class="sp-inbox-heading"><h1>知识收件箱</h1><p class="r-muted">3 条待整理 · 来自快速记录和导入</p></div>
     <div class="sp-inbox-actions r-row"><button class="r-btn" :disabled="allRead" @click="allRead = true">全部标为已读</button><button class="r-btn r-primary" @click="go(11)"><RIcon name="plus" />新建笔记</button></div>
-    <aside class="r-panel sp-inbox-sources" aria-label="收件箱来源"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" :aria-pressed="sourceFilter === i" @click="selectInboxSource(i)"><RIcon :name="source[2]!" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
+    <aside class="r-panel sp-inbox-sources" aria-label="收件箱来源"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" :aria-pressed="sourceFilter === i" @click="selectInboxSource(i)"><RIcon :name="source[2]!" variant="inbox" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
     <section class="r-panel sp-inbox-list" aria-label="待整理内容">
       <header class="r-between"><label class="r-row"><input type="checkbox" class="r-checkbox" aria-label="全选收件箱" :checked="visibleInbox.length > 0 && visibleInbox.every(entry => inboxChecked.includes(entry.index))" :indeterminate="visibleInbox.some(entry => inboxChecked.includes(entry.index)) && !visibleInbox.every(entry => inboxChecked.includes(entry.index))" @change="toggleAll" />全选</label><label class="sp-inbox-order"><select v-model="sort" aria-label="收件箱排序"><option>按时间倒序</option><option>按时间顺序</option></select><RIcon name="chevron-down" :size="18" /></label></header>
-      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" :size="23" />{{ entry.source }}</small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''">{{ entry.state }}</span></article>
+      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" variant="inbox" :size="23" />{{ entry.source }}</small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''">{{ entry.state }}</span></article>
     </section>
     <aside class="r-panel sp-inbox-detail" aria-label="内容详情">
-      <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><RIcon name="external-link" :size="23" /></button></header>
+      <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><RIcon name="external-link" variant="inbox" :size="23" /></button></header>
       <h3 class="sp-excerpt-heading">原始摘录</h3>
       <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p>缓存删除失败通常有三种情况：</p><p>1. key 不存在，删除返回 0；<br>2. 网络超时，客户端误判；<br>3. 连接池耗尽，导致删除请求被拒绝。<br>需要根据业务场景选择合适的重试策略...</p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
-      <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" :size="28" />转为笔记</button><button class="r-btn" @click="go(12)"><RIcon name="box" :size="30" />新建概念</button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" :size="27" />创建回忆卡</button><button class="r-btn" @click="go(9)"><RIcon name="link" :size="29" />关联已有知识</button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" />来源与候选分开保存，不会自动发布</p>
+      <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" variant="inbox" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" variant="inbox" :size="28" />转为笔记</button><button class="r-btn" @click="go(12)"><RIcon name="box" variant="inbox" :size="30" />新建概念</button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" variant="inbox" :size="27" />创建回忆卡</button><button class="r-btn" @click="go(9)"><RIcon name="link" variant="inbox" :size="29" />关联已有知识</button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" />来源与候选分开保存，不会自动发布</p>
     </aside>
   </section>
 </template>
@@ -273,36 +273,44 @@ onUnmounted(() => {
 /* 收件箱保留四条参考记录的独立行距，详情摘录保持五行。 */
 .sp-inbox-heading { left: 28px; }
 .sp-inbox-heading p { margin-top: 5px; font-size: 22px; }
-.sp-inbox-actions .r-btn { font-size: 21.5px; }
-.sp-inbox-actions > .r-btn:first-child { padding-right: 19px !important; }
-.sp-inbox-sources, .sp-inbox-list { background: #15120f; }
-.sp-inbox-sources h2 { font-size: 22.5px; line-height: 35px; }
+.sp-inbox-actions { gap: 15px; top: 134px; }
+.sp-inbox-actions .r-btn { font-size: 22px; font-weight: 400; }
+.sp-inbox-actions > .r-btn:first-child { width: 183px; padding-inline: 12px !important; }
+.sp-inbox-actions > .r-primary { width: 166px; background: linear-gradient(115deg, #e4ac76, #d69e6c 62%, #e6b281) !important; }
+.sp-inbox-sources, .sp-inbox-list { background: radial-gradient(ellipse at 30% 45%, #40302512, transparent 80%), linear-gradient(125deg, #181511, #14100e); border-color: #4e40344d; }
+.sp-inbox-sources > button:not(.selected) .r-icon { color: #e2ddd5; }
+.sp-inbox-sources h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-sources > button { min-height: 63px; font-size: 21px; line-height: 34px; }
 .sp-inbox-sources small { margin-right: 6px; font-size: 22px; }
-.sp-inbox-list header { font-size: 22px; line-height: 34.5px; }
+.sp-inbox-list { padding-left: 4px; padding-right: 8px; }
+.sp-inbox-list header { font-size: 22px; line-height: 33.5px; padding-left: 20px; padding-right: 10px; }
 .sp-inbox-list header select { line-height: 31.5px; }
-.sp-inbox-list article { gap: 24px; }
-.sp-inbox-list article.selected { min-height: 115px; gap: 22px; }
-.sp-inbox-list article:nth-of-type(2) { min-height: 113px; }
-.sp-inbox-list article:nth-of-type(3) { min-height: 107px; padding-bottom: 13px; }
-.sp-inbox-entry { position: relative; top: -2px; }
-.sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; line-height: 36px; }
+.sp-inbox-list article { gap: 20px; margin-inline: 21px 18px; padding-left: 1px; border-bottom-color: #a48c6f12; }
+.sp-inbox-list article.selected { min-height: 113px; margin: 0; padding-left: 21px; gap: 20px; border-color: #c4965e; background: radial-gradient(ellipse at 10% 90%, #9a714733, transparent 80%), linear-gradient(110deg, #89654470, #70573955); }
+.sp-inbox-list article:nth-of-type(2) { min-height: 114px; }
+.sp-inbox-list article:nth-of-type(3) { min-height: 110px; padding-bottom: 13px; }
+.sp-inbox-list article:nth-of-type(4) { min-height: 107px; }
+.sp-inbox-list article .r-checkbox { transform: translateY(-5px); border-color: #bfb9b0; box-shadow: inset 0 0 2px #fff4; }
+.sp-inbox-list article.selected .r-checkbox { border-color: #edbf8d; }
+.sp-inbox-entry { position: relative; top: 0; }
+.sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; font-weight: 400; line-height: 36px; }
 .sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; }
-.sp-inbox-list article > .r-pill { right: 11px; top: 23px; font-size: 18px; }
-.sp-inbox-list article.selected > .r-pill { right: 22px; top: 22px; }
+.sp-inbox-list article > .r-pill { right: 2px; top: 24px; font-size: 20px; padding-inline: 14px; }
+.sp-inbox-list article.selected > .r-pill { right: 20px; top: 24px; }
 .sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
 .sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
-.sp-inbox-detail { background: #1a1612; background-clip: padding-box; }
-.sp-inbox-detail h2 { font-size: 22.5px; line-height: 35px; }
+.sp-inbox-detail { background: linear-gradient(135deg, #1c1714, #1a1613 55%, #211c19); background-clip: padding-box; border-color: #58483a5c; }
+.sp-inbox-detail header { border-bottom-color: #bba1810a; }
+.sp-inbox-detail h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-detail header h2 { position: relative; top: -2px; }
-.sp-excerpt-heading { font-size: 21.5px !important; line-height: 33.35px; }
-.sp-inbox-excerpt { padding-top: 11px; background: #1d1915; }
-.sp-inbox-excerpt p { font-size: 20.5px; line-height: 39px; }
+.sp-excerpt-heading { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
+.sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #ffffff01, #ffffff03); }
+.sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; }
 .sp-inbox-detail .r-rule { margin-bottom: 20px; }
-.sp-suggestions-title { font-size: 21.5px !important; line-height: 33.35px; }
-.sp-inbox-buttons { margin-top: 18px; }
-.sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 20px; padding-left: 46px !important; padding-right: 10px !important; }
-.sp-inbox-buttons .r-btn:nth-child(even) { padding-left: 36px !important; }
+.sp-suggestions-title { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
+.sp-inbox-buttons { margin-top: 20px; grid-template-columns: 227px 1fr; }
+.sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 22px; padding-left: 44px !important; padding-right: 10px !important; border-color: #b6997930 !important; }
+.sp-inbox-buttons .r-btn:nth-child(even) { padding-left: 30px !important; }
 .sp-inbox-buttons .r-icon { width: 30px; }
 .sp-inbox-note { margin-top: 28px !important; }
 </style>
