@@ -804,14 +804,15 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-27 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 21px; color: #c6c3bf; }
 .r-scene-27 .r-sidebar nav { top: 139px; left: 20px; right: 20px; gap: 5px; }
 .r-scene-27 .r-nav-item { height: 60px; padding: 0 0 0 15px; gap: 16px; font-size: 21px; color: #c1bcb5; white-space: nowrap; }
-.r-scene-27 .r-nav-item.r-selected { height: 56px; margin-top: 3px; margin-bottom: 1px; border-radius: 15px; border-color: #b281574f; background: linear-gradient(110deg, #ac734b99, #503420aa); box-shadow: inset 1px 0 1px #e4a67999, -3px 0 15px #e49c5516; }
-.r-scene-27 .r-nav-item.r-secondary { height: 54px; }
+.r-scene-27 .r-nav-item.r-selected { height: 56px; margin-top: 3px; margin-bottom: 1px; border-radius: 15px; border-color: #b281574f; color: #fff1dc; background: linear-gradient(110deg, #ac734b99, #503420aa); box-shadow: inset 1px 0 1px #e4a67999, -3px 0 15px #e49c5516; }
+.r-scene-27 .r-nav-item.r-secondary { height: 54px; font-size: 21px; }
 .r-scene-27 .r-nav-item.r-secondary:last-child { margin-top: -3px; }
-.r-scene-27 .r-nav-separator { margin: 18px 7px 22px; background: #b3a08a21; }
+.r-scene-27 .r-nav-separator { margin: 20px 7px 22px; background: #b3a08a21; }
 .r-scene-27 .r-sidebar-avatar { left: 35px; bottom: 38px; }
 .r-scene-27 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -33px; width: 159px; height: 1px; background: #b3a08a21; }
 .r-scene-27 .r-sidebar-avatar .r-avatar { width: 52px; height: 54px; font-size: 24px; border-color: #656b8c44; background: linear-gradient(115deg, #505b83, #35384f); }
 .r-scene-27 .r-topbar { left: 248px; right: 31px; top: 18px; height: 74px; }
+.r-scene-27 .r-topbar::before { content: ""; position: absolute; z-index: -1; left: -31px; right: -31px; top: -6px; height: 82px; border-radius: 26px 26px 0 0; background: linear-gradient(110deg, #1b181440, #1b181488); }
 .r-scene-27 .r-breadcrumb { gap: 12px; color: #bdb9b4; }
 .r-scene-27 .r-breadcrumb .r-icon { margin-right: 6px; }
 .r-scene-27 .r-top-search { left: 465px !important; top: 9px; width: 449px !important; height: 55px; background: linear-gradient(110deg, #27231fe6, #231f1ab3) !important; border-color: #4c453a77 !important; }

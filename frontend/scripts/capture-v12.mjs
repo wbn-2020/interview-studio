@@ -2281,6 +2281,32 @@ try {
           && layout.brandDisc === '#27231f' && layout.brandHittable && layout.topAvatar.includes('61, 125, 184')
           && layout.bottomAvatar.includes('80, 91, 131'), '27固定文案／版本／顺序／重复导航或品牌／头像不符')
         checks.push({ check: 'ai-authorization-three-panels-single-line-stages-shell-and-initial-data', scene: scene.id, ...layout, passed: true })
+        const appearance = await page.evaluate(() => {
+          const style = (selector, pseudo = null) => {
+            const s = getComputedStyle(document.querySelector(selector), pseudo)
+            return { weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, size: s.fontSize, color: s.color,
+              background: s.backgroundImage, shadow: s.boxShadow, height: s.height, top: s.top, marginTop: s.marginTop }
+          }
+          return { type: Object.fromEntries(['.task-heading h1', '.task-filter-button', '.task-item-name',
+            '.task-detail-heading h2', '.task-step.current', '.task-detail h3', '.task-cost-note strong',
+            '.task-continuous h3', '.task-confirm'].map(selector => [selector, style(selector)])),
+            selected: style('.r-nav-item.r-selected'), secondary: style('.r-nav-item.r-secondary'),
+            separator: style('.r-nav-separator'), header: style('.r-topbar', '::before'),
+            queue: style('.task-queue'), detail: style('.task-detail'), authorization: style('.task-authorization'),
+            cancel: style('.task-detail-actions .utility-button:first-child') }
+        })
+        ensure(Object.values(appearance.type).every(s => s.weight === '500' && s.stroke === '0.3px')
+          && appearance.selected.color === 'rgb(255, 241, 220)' && appearance.secondary.size === '21px'
+          && appearance.separator.marginTop === '20px' && appearance.header.height === '82px' && appearance.header.top === '-6px'
+          && appearance.header.background.includes('rgba(27, 24, 20, 0.25)') && appearance.header.background.includes('rgba(27, 24, 20, 0.533)')
+          && appearance.queue.background === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(27, 24, 21))'
+          && appearance.detail.background.includes('rgba(29, 25, 22, 0.796)')
+          && appearance.authorization.background.includes('rgba(84, 48, 27, 0.125)') && appearance.authorization.background.includes('rgb(21, 18, 15)')
+          && appearance.cancel.background.includes('rgba(41, 35, 30, 0.85)')
+          && appearance.type['.task-confirm'].background.includes('rgb(203, 149, 100)')
+          && appearance.type['.task-confirm'].shadow.includes('inset'), '27字重／导航选中颜色／顶栏底层或面板／按钮光照不符')
+        checks.push({ check: 'ai-authorization-typography-selected-navigation-header-panel-and-button-surfaces',
+          scene: scene.id, ...appearance, passed: true })
         const writes = []
         const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) writes.push({ method: request.method(), path: new URL(request.url()).pathname }) }
         page.on('request', onWrite)

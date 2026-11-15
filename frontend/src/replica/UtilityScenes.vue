@@ -430,13 +430,13 @@ onMounted(drawHorizon)
 
 /* 27：坐标均从原图 x 减去 216。 */
 .task-heading { position: absolute; top: 114px; left: 36px; }
-.task-heading h1 { width: max-content; font-size: 42px; font-weight: 600; line-height: 1.3; }
+.task-heading h1 { width: max-content; font-size: 42px; font-weight: 500; line-height: 1.3; -webkit-text-stroke: .3px currentColor; }
 .task-heading p { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 21px; color: #bdb9b3; }
 .task-actions { position: absolute; top: 140px; left: 1006px; z-index: 2; display: flex; gap: 15px; }
 .task-actions .utility-button { height: 51px; border-radius: 16px; border-color: #ffffff04 !important; }
-.task-filter-button { width: 164px; gap: 8px; font-weight: 550 !important; }
+.task-filter-button { width: 164px; gap: 8px; font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; }
 .task-refresh-button { width: 105px; }
-.task-queue { top: 236px; left: 19px; width: 334px; height: 709px; padding-top: 70px; background: linear-gradient(120deg, #211d19c4, #1b1713db); }
+.task-queue { top: 236px; left: 19px; width: 334px; height: 709px; padding-top: 70px; background: linear-gradient(120deg, #191613, #1b1815); }
 .task-queue h2 { position: absolute; left: 21px; top: 23px; margin: 0; font-size: 24px; font-weight: 500; }
 .task-queue-item { position: relative; display: block; width: 332px; height: 109px; text-align: left; padding: 15px 21px 12px 45px !important; border: 1px solid transparent !important; color: #f2eeea; }
 .task-queue-item::after { content: ""; position: absolute; left: 21px; right: 21px; bottom: 0; height: 1px; background: #ffffff14; }
@@ -449,7 +449,7 @@ onMounted(drawHorizon)
 .task-dot.green { background: #46d16a; }
 .task-dot.red { background: #ef453c; }
 .task-dot.blue { background: #509ad2; }
-.task-item-name { position: absolute; top: 15px; left: 44px; font-size: 20px; font-weight: 600; }
+.task-item-name { position: absolute; top: 15px; left: 44px; font-size: 20px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .task-status { display: inline-flex; justify-content: center; align-items: center; padding: 3px 11px; border-radius: 22px; font-size: 17px; line-height: 1.5; white-space: nowrap; }
 .task-queue-item > .task-status { position: absolute; right: 21px; top: 17px; }
 .task-status.amber { color: #fff2db; background: linear-gradient(120deg, #986515df, #69430ebf); }
@@ -461,7 +461,7 @@ onMounted(drawHorizon)
 .task-item-time.dim { color: #76674f6e; }
 .task-detail { top: 236px; left: 371px; width: 516px; height: 709px; padding: 27px 23px 22px; background: linear-gradient(125deg, #1d1916cb, #1c1814e8); }
 .task-detail-heading { display: flex; align-items: flex-start; gap: 21px; }
-.task-detail-heading h2 { font-size: 26px; font-weight: 600; white-space: nowrap; }
+.task-detail-heading h2 { font-size: 26px; font-weight: 500; white-space: nowrap; -webkit-text-stroke: .3px currentColor; }
 .task-detail-heading p { margin-top: 6px; font-size: 18px; white-space: nowrap; color: #bcb7b0; }
 .task-progress-ring { flex: none; width: 46px; height: 47px; margin-top: 2px; margin-left: 2px; border: 7px solid #6b4b2c; border-top-color: #f6bc73; border-right-color: #f6bc73; border-bottom-color: #d49a52; border-radius: 50%; transform: rotate(19deg); }
 .task-progress-ring.finished { border-color: #7cc99e; }
@@ -471,11 +471,11 @@ onMounted(drawHorizon)
 .task-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: 76px; color: #bcb7b0; font-size: 20px; }
 .task-step > span:last-child { white-space: nowrap; }
 .task-step-marker { display: inline-flex; align-items: center; justify-content: center; width: 33px; height: 33px; border-radius: 50%; background: linear-gradient(130deg, #67655f, #393630); color: #c6c2bb; }
-.task-step.current { color: #faf4ec; font-weight: 600; }
+.task-step.current { color: #faf4ec; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .task-step.current .task-step-marker { border: 3px solid #f0ad68; background: #39291b; }
 .task-step.current .task-step-marker > span { width: 19px; height: 19px; border-radius: 50%; background: #efb57b; }
 .task-input-section { position: absolute; left: 23px; right: 23px; top: 243px; }
-.task-detail h3 { font-size: 21px; font-weight: 600; }
+.task-detail h3 { font-size: 21px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .task-input-list { height: 161px; margin-top: 5px; padding: 12px 17px; border: 1px solid #ffffff02; border-radius: 16px; background: linear-gradient(110deg, #342f2882, #302b2563); }
 .task-input-list > p { font-size: 19px; }
 .task-input-list > div { display: flex; align-items: center; gap: 12px; height: 50px; font-size: 21px; }
@@ -493,16 +493,16 @@ onMounted(drawHorizon)
 .task-cost-note { position: absolute; top: 550px; left: 23px; right: 23px; display: flex; align-items: center; gap: 14px; height: 59px; padding: 0 17px; border: 1px solid #6b4c242e; border-radius: 14px; background: linear-gradient(110deg, #7044164d, #62422557); }
 .task-cost-note > span { display: inline-grid; place-items: center; width: 24px; height: 25px; border-radius: 50%; background: #f1b777; color: #3c2612; font-size: 21px; font-weight: 650; }
 .task-cost-note p { font-size: 19px; color: #ddc9b4; white-space: nowrap; }
-.task-cost-note strong { color: #efb66e; font-weight: 600; }
+.task-cost-note strong { color: #efb66e; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .task-detail-actions { position: absolute; left: 23px; right: 23px; bottom: 21px; display: flex; gap: 23px; }
 .task-detail-actions .utility-button { flex: 1; height: 58px; border-radius: 16px; }
-.task-detail-actions .utility-button:first-child { flex: 1.06; border-color: transparent !important; }
+.task-detail-actions .utility-button:first-child { flex: 1.06; border-color: transparent !important; background: linear-gradient(130deg, #302b24a6, #29231ed9) !important; }
 .task-detail-actions .task-record-button { border-color: #b89a79 !important; }
 .task-alternate-summary { position: absolute; top: 180px; left: 23px; right: 23px; }
 .task-alternate-summary .task-status { margin-top: 18px; }
 .task-alternate-summary p { margin-top: 20px; color: #c5beb4; }
 .task-alternate-summary .utility-button { margin-top: 30px; }
-.task-authorization { top: 236px; left: 905px; width: 386px; height: 709px; padding: 25px 23px; background: radial-gradient(ellipse at 100% 100%, #54301b30, transparent 70%), linear-gradient(125deg, #1e1a17c9, #1a1612e8); }
+.task-authorization { top: 236px; left: 905px; width: 386px; height: 709px; padding: 25px 23px; background: radial-gradient(ellipse at 100% 100%, #54301b20, transparent 70%), linear-gradient(125deg, #191613, #15120f); }
 .task-authorization h2 { display: flex; align-items: center; gap: 10px; font-size: 25px; font-weight: 500; }
 .task-authorization h2 .r-icon { color: #d6d5d0; }
 .task-configured { display: flex; align-items: center; gap: 12px; height: 69px; margin-top: 29px; padding: 0 15px; border: 1px solid #31552b24; border-radius: 15px; color: #cef3d0; background: #2844215e; font-size: 21px; white-space: nowrap; }
@@ -513,10 +513,10 @@ onMounted(drawHorizon)
 .task-authorization-list dd { margin: 0; white-space: nowrap; font-size: 20px; }
 .task-authorization-rule { position: absolute; top: 411px; left: 23px; right: 23px; height: 1px; background: #ffffff12; }
 .task-continuous { position: absolute; top: 457px; left: 23px; right: 23px; display: flex; align-items: center; justify-content: space-between; }
-.task-continuous h3 { font-size: 23px; font-weight: 550; }
+.task-continuous h3 { font-size: 23px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .task-authorization-note { position: absolute; top: 500px; left: 23px; right: 23px; display: flex; align-items: center; gap: 9px; white-space: nowrap; font-size: 18px; color: #a9a299; }
 .task-authorization-note .r-icon { color: #7b746b; }
-.utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(110deg, #d4a071, #be8253 60%, #a46b42) !important; }
+.utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(115deg, #cb9564, #b57b4e 65%, #a26940) !important; box-shadow: inset 0 0 8px #f7c48d33; font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; }
 
 /* 28：固定展示偏好只在当前组件内存切换，不写入正式用户设置。 */
 .settings-heading { position: absolute; top: 116px; left: 24px; }
