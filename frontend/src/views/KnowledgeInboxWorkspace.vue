@@ -214,9 +214,6 @@ onUnmounted(() => document.removeEventListener('visibilitychange', visibility))
 .inbox-empty p { font-size: 18px; }
 .inbox-list > footer { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; border-top: 1px solid var(--line); flex: none; }
 .inbox-message { padding: 16px 22px; font-size: 16px; color: var(--muted); }
-:global(html:not([data-studio-theme="light"])) .inbox-filters,
-:global(html:not([data-studio-theme="light"])) .inbox-list { background: radial-gradient(ellipse at 30% 45%, #40302512, transparent 80%), linear-gradient(125deg, #181511, #14100e); border-color: #4e40344d; }
-:global(html:not([data-studio-theme="light"])) .inbox-detail { background: linear-gradient(135deg, #1c1714, #1a1613 55%, #211c19); background-clip: padding-box; border-color: #58483a5c; }
 @media(max-width:1350px) {
   .inbox-layout { grid-template-columns: 210px minmax(0,1fr); }
   .inbox-detail { grid-column: 2; height: auto; min-height: 500px; }

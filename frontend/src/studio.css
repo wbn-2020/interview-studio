@@ -79,9 +79,9 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
 @media (min-width: 1251px) {
   .screen-inbox { --sidebar: 228px; will-change: opacity; }
   .studio-product.screen-inbox .studio-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; }
-  .screen-inbox .studio-brand { left: 27px; top: 29px; width: 170px; height: 64px; }
+  .screen-inbox .studio-brand { left: 27px; top: 29px; width: 198px; height: 64px; }
   .screen-inbox .studio-brand .r-brand { gap: 8px; }
-  .screen-inbox .studio-brand .r-emblem { width: 62px; height: 62px; }
+  .screen-inbox .studio-brand .r-emblem { width: 62px; height: 62px; flex-shrink: 0; }
   .screen-inbox .studio-brand .r-brand-word { position: relative; top: 4px; font-size: 34px; font-weight: 500; line-height: 41px; }
   .screen-inbox .studio-brand .r-brand-word small { position: relative; left: -24px; font-size: 16px; margin-top: 0; line-height: 22px; }
   .studio-product.screen-inbox .studio-primary-nav { top: 141px; left: 20px; right: 22px; gap: 9px; }
@@ -110,6 +110,9 @@ html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,b
   html:not([data-studio-theme="light"]) .screen-inbox .studio-saved { color: #c5e9c5; }
   html:not([data-studio-theme="light"]) .screen-inbox .studio-saved svg { width: 26px; height: 28px; color: #16321a; fill: none; background: linear-gradient(120deg, #a8e3a5, #79cb89); padding: 5px; }
   html:not([data-studio-theme="light"]) .screen-inbox .studio-top-status .studio-avatar { background: linear-gradient(130deg, #746a5f, #514a40); }
+  html:not([data-studio-theme="light"]) .screen-inbox .knowledge-inbox .inbox-filters,
+  html:not([data-studio-theme="light"]) .screen-inbox .knowledge-inbox .inbox-list { background: radial-gradient(ellipse at 30% 45%, #40302512, transparent 80%), linear-gradient(125deg, #181511, #14100e); border-color: #4e40344d; }
+  html:not([data-studio-theme="light"]) .screen-inbox .knowledge-inbox .inbox-detail { background: linear-gradient(135deg, #1c1714, #1a1613 55%, #211c19); background-clip: padding-box; border-color: #58483a5c; }
   .screen-galaxy::before { content: ""; position: absolute; left: 0; top: 0; width: 248px; height: 93px; border: 1px solid #5d503233; border-radius: 26px 0 0; pointer-events: none; }
   .screen-galaxy::after { content: ""; position: absolute; left: 248px; right: 0; top: 92px; border-top: 1px solid #5d503226; pointer-events: none; }
   .screen-galaxy .studio-brand .r-brand-word { font-size: 26px; }
