@@ -168,6 +168,61 @@ try {
       let interactionError = null
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
+      if (scene.id === '01') {
+        const layout = await page.evaluate(() => {
+          const box = selector => { const r=document.querySelector(selector).getBoundingClientRect();return [r.x,r.y,r.width,r.height] }
+          return {
+            boxes:Object.fromEntries(['.lt-login','.lt-introduction .r-emblem','.lt-features','.lt-login-form','.lt-login-name','.lt-login-password','.lt-enter','.lt-reconnect'].map(s=>[s,box(s)])),
+            features:[...document.querySelectorAll('.lt-features li')].map(n=>[n.querySelector('h2').textContent,n.querySelector('p').textContent]),
+            brandPaths:document.querySelectorAll('.lt-introduction .r-emblem path').length,
+            starFilled:[...document.querySelectorAll('.lt-introduction .r-emblem path')].some(n=>n.getAttribute('fill')==='#e4ad76'),
+            graphNodes:(document.querySelector('.lt-features li:nth-child(2) path').getAttribute('d').match(/Z/g)||[]).length,
+            composited:getComputedStyle(document.querySelector('.lt-login')).willChange,
+            horizon:document.querySelector('.lt-dawn-horizon > g > path:last-child').getAttribute('d'),
+            horizonMask:document.querySelector('.lt-dawn-horizon > g').getAttribute('mask'),
+            englishSize:getComputedStyle(document.querySelector('.r-brand-word small')).fontSize,
+            description:document.querySelector('.lt-brand-description').textContent,
+            headings:[...document.querySelectorAll('.lt-login-form h1,.lt-login-subtitle')].map(n=>n.textContent),
+          }
+        })
+        for (const [selector, expected] of [
+          ['.lt-login',[0,0,1536,1024]],['.lt-introduction .r-emblem',[105,179,150,145]],
+          ['.lt-features',[105,463,513,368]],['.lt-login-form',[838,139,627,745]],
+          ['.lt-login-name',[888,346,527,85]],['.lt-login-password',[888,460,527,85]],
+          ['.lt-enter',[888,586,527,76]],['.lt-reconnect',[888,680,527,76]],
+        ]) ensure(JSON.stringify(layout.boxes[selector])===JSON.stringify(expected),'01几何不符：'+selector)
+        ensure(layout.brandPaths===4&&layout.starFilled&&layout.graphNodes===5&&layout.composited==='transform'
+          &&layout.horizon==='M-20 485C280 366 535 402 850 548'&&layout.horizonMask==='url(#lt-horizon-mask)'
+          &&layout.englishSize==='35px'&&layout.description==='知识、准备、训练与复盘，留在一个工作台。'
+          &&JSON.stringify(layout.headings)===JSON.stringify(['登录','进入你的个人空间'])
+          &&JSON.stringify(layout.features)===JSON.stringify([['独立知识库','概念、笔记与出处'],['知识星图','看见真实关联'],['文字训练','从空白回答到复盘'],['成长证据','有记录、也有待验证']]),'01品牌、图标、原文或静止背景不符')
+        await writeJson(path.join(values.output,'records','01-login-layout.json'),layout)
+        checks.push({check:'login-split-brand-five-node-graph-four-features-fixed-horizon-geometry',scene:scene.id,layout,passed:true})
+        const apiRequests=[],onRequest=request=>{if(new URL(request.url()).pathname.startsWith('/api/'))apiRequests.push(request.method()+' '+new URL(request.url()).pathname)}
+        page.on('request',onRequest)
+        await page.locator('.lt-login-name input').fill('参考页面演示')
+        await page.locator('.lt-login-password input').fill('仅供页面内存演示')
+        const toggle=page.locator('.lt-password-toggle')
+        await toggle.click()
+        ensure(await toggle.getAttribute('aria-pressed')==='true'&&await page.locator('.lt-login-password input').getAttribute('type')==='text','01密码显隐按钮未显示')
+        await toggle.press('Enter')
+        ensure(await toggle.getAttribute('aria-pressed')==='false'&&await page.locator('.lt-login-password input').getAttribute('type')==='password','01密码显隐键盘未隐藏')
+        checks.push({check:'login-password-mouse-keyboard-visibility',scene:scene.id,passed:true})
+        await page.locator('.lt-reconnect').click()
+        ensure(await page.getByRole('status').textContent()==='示例页面未发起服务器连接检查或网络请求'&&!apiRequests.length,'01重连未保持示例边界')
+        checks.push({check:'login-reconnect-explicit-no-api-boundary',scene:scene.id,passed:true})
+        await page.locator('.lt-login-password input').press('Enter')
+        await page.locator('.r-canvas[data-scene="02"]').waitFor({state:'visible'})
+        ensure(new URL(page.url()).searchParams.get('scene')==='02'&&!apiRequests.length,'01表单键盘提交未进入02或发起认证')
+        ensure((await page.goto(entry,{waitUntil:'networkidle'}))?.ok(),'01返回加载失败');await ready()
+        ensure(await page.locator('.lt-login-name input').inputValue()===''&&await page.locator('.lt-login-password input').inputValue()===''
+          &&await page.locator('.lt-login-password input').getAttribute('type')==='password','01返回未清空展示输入')
+        await page.reload({waitUntil:'networkidle'});await ready()
+        await assertFrame(captured,'01显隐／重连／键盘提交后刷新未恢复初态')
+        ensure(!apiRequests.length,'01示例交互发送了API请求')
+        page.off('request',onRequest)
+        checks.push({check:'login-keyboard-submit-memory-reset-return-refresh-no-api',scene:scene.id,passed:true})
+      }
       if (scene.id === '02') {
         const layout = await page.evaluate(() => {
           const box = selector => {

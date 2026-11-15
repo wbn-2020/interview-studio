@@ -133,15 +133,34 @@ watch(() => props.scene, () => {
   <section v-if="scene === 1" class="lt-login" aria-label="登录">
     <div class="lt-dawn" aria-hidden="true">
       <div class="lt-dawn-beam" />
-      <div class="lt-dawn-horizon" />
+      <svg class="lt-dawn-horizon" viewBox="0 0 1536 1024" fill="none">
+        <defs>
+          <radialGradient id="lt-planet-surface" cx=".36" cy="0" r=".7">
+            <stop stop-color="#282016" /><stop offset=".36" stop-color="#100e0b" /><stop offset="1" stop-color="#080807" />
+          </radialGradient>
+          <linearGradient id="lt-horizon-edge" x1="0" y1="420" x2="850" y2="540" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#ac7645" stop-opacity=".55" /><stop offset=".63" stop-color="#f2c494" /><stop offset="1" stop-color="#c69b6a" stop-opacity=".55" />
+          </linearGradient>
+          <linearGradient id="lt-horizon-fade" x2="0" y1="0" y2="1024" gradientUnits="userSpaceOnUse">
+            <stop offset=".65" stop-color="white" /><stop offset=".87" stop-color="black" />
+          </linearGradient>
+          <mask id="lt-horizon-mask"><path fill="url(#lt-horizon-fade)" d="M0 0h1536v1024H0Z" /></mask>
+          <filter id="lt-horizon-glow" x="-20%" y="-100%" width="140%" height="300%"><feGaussianBlur stdDeviation="14" /></filter>
+        </defs>
+        <g mask="url(#lt-horizon-mask)">
+          <path d="M-20 485C280 366 535 402 850 548L1536 1024H-20Z" fill="url(#lt-planet-surface)" />
+          <path d="M-20 485C280 366 535 402 850 548" stroke="#e5ac6d" stroke-width="8" opacity=".55" filter="url(#lt-horizon-glow)" />
+          <path d="M-20 485C280 366 535 402 850 548" stroke="url(#lt-horizon-edge)" stroke-width="1.3" />
+        </g>
+      </svg>
     </div>
 
     <div class="lt-introduction">
-      <RBrand large :variant="0" />
+      <RBrand large :variant="1" />
       <p class="lt-brand-description">知识、准备、训练与复盘，留在一个工作台。</p>
       <ul class="lt-features">
         <li v-for="feature in features" :key="feature.title">
-          <RIcon :name="feature.icon" :size="49" :stroke-width="1.5" :style="{ color: feature.color }" />
+          <RIcon :name="feature.icon" variant="login" :size="49" :stroke-width="1.5" :style="{ color: feature.color }" />
           <div>
             <h2>{{ feature.title }}</h2>
             <p>{{ feature.detail }}</p>
@@ -161,12 +180,12 @@ watch(() => props.scene, () => {
       <p class="lt-login-subtitle">进入你的个人空间</p>
       <p id="lt-login-demo" class="lt-sr-only">此为示例表单，输入仅保留于当前页面内存，请勿输入真实凭据。</p>
       <label class="lt-login-field lt-login-name">
-        <RIcon name="user" :size="37" :stroke-width="1.5" />
+        <RIcon name="user" variant="login" :size="37" :stroke-width="1.5" />
         <span class="lt-sr-only">示例登录名</span>
         <input v-model="loginName" type="text" placeholder="登录名" autocomplete="off" :spellcheck="false">
       </label>
       <label class="lt-login-field lt-login-password">
-        <RIcon name="lock" :size="36" :stroke-width="1.5" />
+        <RIcon name="lock" variant="login" :size="36" :stroke-width="1.5" />
         <span class="lt-sr-only">示例密码</span>
         <input v-model="password" :type="passwordVisible ? 'text' : 'password'" placeholder="密码" autocomplete="new-password">
         <button
@@ -176,7 +195,7 @@ watch(() => props.scene, () => {
           :aria-pressed="passwordVisible"
           @click="passwordVisible = !passwordVisible"
         >
-          <RIcon :name="passwordVisible ? 'eye' : 'eye-off'" :size="29" />
+          <RIcon :name="passwordVisible ? 'eye' : 'eye-off'" variant="login" :size="29" />
         </button>
       </label>
       <button type="submit" class="lt-enter">进入工作台</button>
@@ -375,6 +394,7 @@ watch(() => props.scene, () => {
 }
 
 .lt-login {
+  will-change: transform;
   width: 1536px;
   height: 1024px;
   background: radial-gradient(ellipse at 39% 37%, #4b342025, transparent 43%), #0a0907;
@@ -385,14 +405,15 @@ watch(() => props.scene, () => {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  background: radial-gradient(ellipse 360px 190px at 35% 42%, #e3ac6661, #a16c3326 45%, transparent 77%);
+  background: radial-gradient(ellipse 360px 190px at 35% 42%, #e3ac6675, #a16c3333 45%, transparent 77%),
+    radial-gradient(ellipse 600px 370px at 32% 36%, #8b603340, transparent 75%);
 }
 
 .lt-dawn-beam {
   position: absolute;
   inset: 0;
-  clip-path: polygon(38% 0, 58.3% 0, 34.6% 42.3%, 10% 45%);
-  background: linear-gradient(131deg, #24190f00 25%, #7d542c28 48%, #b17d4752 64%, #e5ad6a6e 80%);
+  clip-path: polygon(0 0, 58.3% 0, 34.6% 42.3%, 0 48%);
+  background: linear-gradient(131deg, #24190f00 12%, #7d542c18 25%, #b17d4752 46%, #e5ad6a6e 65%);
 }
 
 .lt-dawn-beam::after {
@@ -410,14 +431,9 @@ watch(() => props.scene, () => {
 
 .lt-dawn-horizon {
   position: absolute;
-  left: -583px;
-  top: 414px;
-  width: 1840px;
-  height: 1400px;
-  border: 1.4px solid #bd966575;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 55% 0, #282016e6, #0c0b09 34%, #080807 62%);
-  box-shadow: 0 -2px 7px #e8b67b69, 0 -14px 44px #d99d5230, inset 0 6px 17px #edb27413;
+  inset: 0;
+  width: 1536px;
+  height: 1024px;
 }
 
 .lt-introduction {
@@ -439,12 +455,8 @@ watch(() => props.scene, () => {
   filter: none;
 }
 
-.lt-introduction :deep(.r-emblem path:nth-of-type(2)),
-.lt-introduction :deep(.r-emblem path:nth-of-type(3)) {
-  display: none;
-}
-
 .lt-introduction :deep(.r-brand-word) {
+  transform: translateY(-6px);
   font-size: 56px;
   font-weight: 650;
   line-height: 1.18;
@@ -452,7 +464,7 @@ watch(() => props.scene, () => {
 
 .lt-introduction :deep(.r-brand-word small) {
   margin-top: 7px;
-  font-size: 32px;
+  font-size: 35px;
   color: #eee5d8;
 }
 
@@ -460,7 +472,7 @@ watch(() => props.scene, () => {
   position: absolute;
   left: 105px;
   top: 345px;
-  font-size: 32px;
+  font-size: 32.5px;
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
@@ -542,18 +554,18 @@ watch(() => props.scene, () => {
 .lt-login-form h1 {
   position: absolute;
   left: 53px;
-  top: 39px;
+  top: 35px;
   font-size: 56px;
   line-height: 1.4;
-  font-weight: 650;
+  font-weight: 600;
   color: #fff4e1;
 }
 
 .lt-login .lt-login-subtitle {
   position: absolute;
-  top: 120px;
+  top: 117px;
   left: 53px;
-  font-size: 28px;
+  font-size: 27px;
   color: #b2aa9e;
 }
 
@@ -623,6 +635,7 @@ watch(() => props.scene, () => {
   height: 76px;
   border-radius: 40px;
   font-size: 27px;
+  transform: translateY(-1px);
 }
 
 .lt-login-form .lt-enter {
