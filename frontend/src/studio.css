@@ -77,25 +77,39 @@ html[data-studio-theme="light"] .studio-product .studio-nav-item { color: var(--
 html[data-studio-theme="light"] .studio-product .item-overview-tags > :is(span,button) { color: #315b50; background: #dbeae2; border-color: #b5cfc3; }
 .screen-galaxy { --sidebar: 118px; }.studio-product.screen-galaxy .studio-sidebar { left: 0; top: 92px; bottom: 1px; width: 118px; border-radius: 27px; }.screen-galaxy .studio-brand { position: fixed; top: 23px; left: 30px; }.screen-galaxy .studio-primary-nav { top: 40px; left: 13px; right: 13px; gap: 9px; }.studio-product.screen-galaxy .studio-nav-item { height: 91px; min-height: 91px; flex-direction: column; justify-content: center; gap: 3px; padding: 0; font-size: 21px; }.screen-galaxy .studio-topbar { left: 280px; top: 14px; }.screen-galaxy .studio-global-search { width: 560px; }.screen-galaxy .studio-sidebar-avatar { left: 30px; bottom: 37px; }.studio-product.screen-galaxy .studio-main { padding: 110px 27px 24px 18px; }
 @media (min-width: 1251px) {
-  .screen-inbox { --sidebar: 228px; }
+  .screen-inbox { --sidebar: 228px; will-change: opacity; }
   .studio-product.screen-inbox .studio-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; }
-  .screen-inbox .studio-brand { left: 27px; top: 31px; }
+  .screen-inbox .studio-brand { left: 27px; top: 29px; width: 170px; height: 64px; }
+  .screen-inbox .studio-brand .r-brand { gap: 8px; }
   .screen-inbox .studio-brand .r-emblem { width: 62px; height: 62px; }
-  .screen-inbox .studio-brand .r-brand-word { font-size: 36px; font-weight: 500; }
-  .screen-inbox .studio-brand .r-brand-word small { font-size: 16px; margin-top: 2px; }
-  .studio-product.screen-inbox .studio-primary-nav { top: 145px; left: 20px; right: 20px; gap: 9px; }
-  .studio-product.screen-inbox .studio-nav-item { height: 59px; min-height: 59px; padding: 0 19px; gap: 19px; font-size: 24px; }
-  .studio-product.screen-inbox .studio-secondary { height: 51px; min-height: 51px; font-size: 22px; }
-  .screen-inbox .studio-sidebar-avatar { left: 29px; bottom: 20px; width: 56px; height: 62px; }
-  .screen-inbox .studio-nav-rule { margin: 24px 13px 22px; }
+  .screen-inbox .studio-brand .r-brand-word { position: relative; top: 4px; font-size: 34px; font-weight: 500; line-height: 41px; }
+  .screen-inbox .studio-brand .r-brand-word small { position: relative; left: -24px; font-size: 16px; margin-top: 0; line-height: 22px; }
+  .studio-product.screen-inbox .studio-primary-nav { top: 141px; left: 20px; right: 22px; gap: 9px; }
+  .studio-product.screen-inbox .studio-nav-item { height: 59px; min-height: 59px; padding: 0 18px; gap: 13px; font-size: 22px; font-weight: 300; }
+  .studio-product.screen-inbox .studio-nav-item.studio-selected { height: 65px; min-height: 65px; margin-top: -2px; margin-bottom: -2px; border-radius: 15px; }
+  .studio-product.screen-inbox .studio-secondary { height: 47px; min-height: 47px; font-size: 22px; gap: 14px; }
+  .screen-inbox .studio-sidebar-avatar { left: 29px; bottom: 20px; width: 57px; height: 61px; font-size: 27px; }
+  .screen-inbox .studio-nav-rule { margin: 16px 17px 13px; }
   .screen-inbox .studio-topbar { top: 32px; left: 242px; right: 30px; height: 62px; gap: 15px; }
   .screen-inbox .studio-inbox-breadcrumb { height: 62px; width: 336px; padding: 0 12px; justify-content: space-between; border: 1px solid var(--line); border-radius: 20px; font-size: 23px; }
-  .screen-inbox .studio-global-search { width: 483px; height: 62px; margin-left: 0; font-size: 23px; }
-  .screen-inbox .studio-global-search kbd { font-size: 23px; }
-  .screen-inbox .studio-top-status { gap: 30px; }
-  .screen-inbox .studio-saved { font-size: 23px; }
-  .screen-inbox .studio-top-status .studio-avatar { width: 56px; height: 62px; }
+  .screen-inbox .studio-global-search { width: 483px; height: 62px; margin-left: 0; font-size: 20px; }
+  .screen-inbox .studio-global-search kbd { font-size: 18px; padding: 2px 7px; border-radius: 8px; background: #ffffff07; }
+  .screen-inbox .studio-top-status { gap: 29px; }
+  .screen-inbox .studio-saved { font-size: 22px; gap: 12px; }
+  .screen-inbox .studio-top-status .studio-avatar { width: 57px; height: 62px; }
+  .screen-inbox .studio-top-status .studio-icon-button > svg { width: 32px; height: 32px; }
   .studio-product.screen-inbox .studio-main { padding: 109px 24px 90px 15px; }
+  html:not([data-studio-theme="light"]) .screen-inbox { background: radial-gradient(ellipse 310px 290px at 0 0, #533a284d, transparent), radial-gradient(ellipse at 100% 100%, #39241318, transparent 60%), #080604; }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-sidebar { border-color: #73583e8c; background: radial-gradient(ellipse 260px 300px at 0 0, #79533833, transparent), linear-gradient(130deg, #201a16, #1b1613 64%, #211a14); }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-brand .r-brand-word small { color: #ded6ce; }
+  html:not([data-studio-theme="light"]) .studio-product.screen-inbox .studio-nav-item { color: #e3ded7; }
+  html:not([data-studio-theme="light"]) .studio-product.screen-inbox .studio-nav-item.studio-selected { background: linear-gradient(110deg, #af7e5380, #7252388c); border-color: #bb8e62b3; box-shadow: inset 1px 1px 8px #edbb8122, -5px 0 18px #dc9f5a1c; }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-nav-rule { background: #a68b6e2b; }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-sidebar-avatar { background: linear-gradient(120deg, #7c6b5b, #5c4d40); }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-global-search { background: linear-gradient(110deg, #302e29a3, #29251f99); }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-saved { color: #c5e9c5; }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-saved svg { width: 26px; height: 28px; color: #16321a; fill: none; background: linear-gradient(120deg, #a8e3a5, #79cb89); padding: 5px; }
+  html:not([data-studio-theme="light"]) .screen-inbox .studio-top-status .studio-avatar { background: linear-gradient(130deg, #746a5f, #514a40); }
   .screen-galaxy::before { content: ""; position: absolute; left: 0; top: 0; width: 248px; height: 93px; border: 1px solid #5d503233; border-radius: 26px 0 0; pointer-events: none; }
   .screen-galaxy::after { content: ""; position: absolute; left: 248px; right: 0; top: 92px; border-top: 1px solid #5d503226; pointer-events: none; }
   .screen-galaxy .studio-brand .r-brand-word { font-size: 26px; }
