@@ -229,7 +229,7 @@ try {
         checks.push({check:'target-keyboard-selection-no-borrowed-details-history-boundary-refresh',scene:scene.id,passed:true})
         for (const [selector, target] of [
           ['.prep-tabs button:nth-child(2)','06'], ['.prep-tabs button:nth-child(3)','07'], ['.prep-tabs button:nth-child(4)','08'],
-          ['.target-budget .r-btn','07'], ['.recent-materials button:first-child','23'], ['.recent-materials button:nth-child(2)','06'],
+          ['.target-budget .r-btn','07'], ['.recent-materials button:first-of-type','23'], ['.recent-materials button:nth-of-type(2)','06'],
           ['.r-sidebar > a','02'], ['.r-top-search','25'],
         ]) {
           await page.locator(selector).click()
