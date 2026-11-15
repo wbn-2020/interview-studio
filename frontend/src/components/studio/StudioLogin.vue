@@ -57,6 +57,8 @@ const features = [
 </template>
 <style scoped>
 .studio-login { position: relative; width: 100vw; min-height: 100dvh; overflow: hidden; color: #f4eee4; background: radial-gradient(ellipse at 39% 37%, #4b342025, transparent 43%), #0a0907; font: 20px/1.5 "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; will-change: transform; }
+/* 输入框可以收缩，表单图标仍须保留参考尺寸。 */
+.studio-login :deep(.r-icon) { flex-shrink: 0; display: inline-block; vertical-align: middle; }
 .login-dawn { position: absolute; inset: 0; pointer-events: none; overflow: hidden; background: radial-gradient(ellipse 360px 190px at 35% 42%, #e3ac6675, #a16c3333 45%, transparent 77%), radial-gradient(ellipse 600px 370px at 32% 36%, #8b603340, transparent 75%); }
 .login-beam { position: absolute; inset: 0; clip-path: polygon(0 0, 58.3% 0, 34.6% 42.3%, 0 48%); background: linear-gradient(131deg, #24190f00 12%, #7d542c18 25%, #b17d4752 46%, #e5ad6a6e 65%); }
 .login-beam::after { content: ""; position: absolute; left: 531px; top: -145px; width: 1px; height: 574px; background: linear-gradient(0deg, #ebbb7ca3, #95602f44 65%, transparent); transform: rotate(40.2deg); transform-origin: bottom; box-shadow: 0 0 22px 4px #bc834b21; }
@@ -82,6 +84,8 @@ const features = [
 .login-enter { top: 446px; background: linear-gradient(170deg, #dca368, #cb8d54 53%, #b37b48); border: 1px solid #e6b17c; box-shadow: inset 0 1px 1px #f8d0a7a6; color: #100a04; font-weight: 650; }
 .login-reconnect { top: 540px; border: 2px solid transparent; background: linear-gradient(120deg, #191713, #1b1712) padding-box, linear-gradient(160deg, #6e665b, #39342d 75%) border-box; color: #f0e7d7; }
 .login-account-note { position: absolute; top: 645px; left: 48px; right: 48px; padding-top: 22px; border-top: 1px solid #49403466; color: #938b80; text-align: center; font-size: 20px; }
+/* 基准视口使用整数宽度，避免构建后的百分比舍入改变表单边缘。 */
+@media (width: 1536px) { .studio-login-form { width: 627px; } }
 @media (min-width: 1101px) and (min-height: 1025px) { .studio-login-form { top: calc(50dvh - 373px); } }
 @media (max-width: 1100px) { .login-introduction { display: none; }.studio-login { display: grid; place-items: center; padding: 30px 20px; }.studio-login-form { position: relative; left: auto; top: auto; width: min(627px, 100%); }.login-dawn { opacity: .6; } }
 @media (max-width: 600px) { .studio-login-form { height: 650px; border-radius: 28px; }.studio-login-form h1 { left: 28px; font-size: 42px; }.login-subtitle { top: 107px; left: 28px; font-size: 23px; }.login-field, .login-enter, .login-reconnect, .login-account-note { left: 24px; right: 24px; }.login-name { top: 181px; }.login-password { top: 280px; }.login-field { height: 73px; gap: 16px; padding: 0 20px; }.login-field input, .login-enter, .login-reconnect { font-size: 22px; }.login-enter { top: 391px; height: 65px; }.login-reconnect { top: 475px; height: 65px; }.login-account-note { top: 566px; font-size: 16px; }.login-error { top: 147px; left: 28px; } }
