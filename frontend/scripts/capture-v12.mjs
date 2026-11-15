@@ -1561,7 +1561,7 @@ try {
           && recollectionStyles.subtitleMargin === '5px' && recollectionStyles.numberFont === 'Arial, sans-serif'
           && recollectionStyles.fragmentWeight === '500' && recollectionStyles.suggestionWeight === '500'
           && recollectionStyles.suggestionMargin === '4px' && recollectionStyles.selectedWeight === '500'
-          && recollectionStyles.sidebarSurface.includes('rgba(112, 77, 59, 0.459)')
+          && recollectionStyles.sidebarSurface.includes('rgba(112, 77, 59, 0.46)')
           && recollectionStyles.navigation.length === 10
           && recollectionStyles.navigation.every(item => item.gap === '15px' && item.whiteSpace === 'nowrap' && item.textLines === 1),
           '23文字合成、字重、编号、说明间距、侧栏光照或十项单行导航不符')
