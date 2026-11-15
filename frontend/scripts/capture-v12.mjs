@@ -245,6 +245,39 @@ try {
         checks.push({ check: 'fact-brand-tabs-source-expression-training-navigation-return', scene: scene.id, passed: true })
       }
       if (scene.id === '05') {
+        const expressionLayout = await page.evaluate(() => {
+          const selectors = ['.expression-editor', '.version-history', '.version-diff', '.expression-tabs', '.r-top-search', '.r-top-status>.r-avatar', '.r-sidebar-avatar .r-avatar', '.r-sidebar > a', '.r-emblem']
+          return {
+            boxes: Object.fromEntries(selectors.map(selector => {
+              const box = document.querySelector(selector).getBoundingClientRect()
+              return [selector, [box.x, box.y, box.width, box.height]]
+            })),
+            titleSize: getComputedStyle(document.querySelector('.prep-expression .p-title')).fontSize,
+            composition: getComputedStyle(document.querySelector('.r-scene-05')).willChange,
+            saveColor: getComputedStyle(document.querySelector('.version-history>.r-primary')).color,
+            nav: [...document.querySelectorAll('.r-nav-item')].map(node => {
+              const box = node.getBoundingClientRect(), label = node.querySelector('span').getBoundingClientRect()
+              return { text: node.textContent, within: label.right <= box.right, height: label.height }
+            }),
+            trainingPath: document.querySelectorAll('.r-nav-item')[3].querySelector('path').getAttribute('d'),
+            prose: [...document.querySelectorAll('.expression-prose p')].map(node => ({ text: node.textContent, breaks: node.querySelectorAll('br').length })),
+            unresolved: document.querySelectorAll('.expression-prose .unreadable[aria-label="原图此处文字待确认"]').length,
+          }
+        })
+        for (const [selector, expected] of [
+          ['.expression-editor', [269, 229, 933, 580]], ['.version-history', [1211, 229, 309, 580]],
+          ['.version-diff', [269, 821, 1251, 170]], ['.expression-tabs', [270, 166, 321, 51]],
+          ['.r-top-search', [696, 21, 378, 53]], ['.r-top-status>.r-avatar', [1451, 25, 41, 44]],
+          ['.r-emblem', [40, 49.5, 47, 55]], ['.r-sidebar-avatar .r-avatar', [42, 923, 49, 52]],
+        ]) ensure(expressionLayout.boxes[selector]?.every((value, index) => Math.abs(value - expected[index]) <= 1), '05几何不符：' + selector)
+        ensure(expressionLayout.titleSize === '44px' && expressionLayout.composition === 'transform'
+          && expressionLayout.saveColor === 'rgb(255, 246, 232)' && expressionLayout.nav.length === 10
+          && expressionLayout.nav.every(item => item.within && item.height <= 34)
+          && expressionLayout.trainingPath.startsWith('M5 3a1')
+          && expressionLayout.prose.map(row => row.breaks).join(',') === '1,2,1'
+          && expressionLayout.unresolved === 1, '05标题、按钮、导航图标、原换行或待确认边界不符')
+        await writeJson(path.join(values.output, 'records', '05-expression-layout.json'), expressionLayout)
+        checks.push({ check: 'expression-three-panels-brand-topbar-tabs-prose-and-save-paint', scene: scene.id, passed: true })
         const directory = page.locator('.expression-directory'), heading = page.locator('.expression-text h2')
         const root = directory.getByRole('button', { name: '项目介绍 3', exact: true })
         ensure(await root.getAttribute('aria-expanded') === 'true' && await directory.locator('.version-link').count() === 3, '05目录初态不符')
@@ -262,6 +295,21 @@ try {
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '05目录、版本及对比切换后刷新未恢复参考初态')
         checks.push({ check: 'expression-directory-versions-comparison-refresh', scene: scene.id, passed: true })
+        for (const [selector, target] of [
+          ['.r-sidebar > a', '02'], ['.expression-tabs button:first-child', '04'],
+          ['.expression-tabs button:last-child', '06'], ['.history-count:first-of-type', '04'],
+          ['.history-count:last-of-type', '19'],
+        ]) {
+          const link = selector.startsWith('.history-count')
+            ? page.locator('.history-count').nth(target === '04' ? 0 : 1) : page.locator(selector)
+          await link.click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '05入口未进入对应场景')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '05返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '05各入口返回后初态不符')
+        checks.push({ check: 'expression-brand-tabs-facts-training-navigation-return', scene: scene.id, passed: true })
       }
       if (scene.id === '06') {
         const library = page.locator('.file-library'), viewer = page.locator('.pdf-viewer')
