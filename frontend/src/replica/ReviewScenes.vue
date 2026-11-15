@@ -480,7 +480,7 @@ watch(() => props.scene, () => {
 .rv21-source-view { position: absolute; left: 27px; right: 25px; top: 331px; height: 564px; padding: 26px; }
 .rv21-source-view p { margin-top: 22px; }
 .rv22 .rv-heading { left: 28px; top: 121px; }
-.rv22 .rv-heading h1 { font-size: 49px; }
+.rv22 .rv-heading h1 { font-size: 49px; font-weight: 600; }
 .rv22 .rv-subheading { margin-top: 6px; font-size: 25px; color: #c7c2ba; gap: 15px; }
 .rv22-source { position: absolute; top: 141px; right: 35px; height: 56px; width: 204px; min-height: 0; padding: 8px 17px !important; font-size: 22px; border-radius: 30px; border-color: #3c352d !important; background: linear-gradient(130deg, #211e1988, #16141188) !important; }
 .rv22-old, .rv22-new, .rv22-conditions { position: absolute; top: 259px; height: 525px; border-radius: 22px; padding: 23px 26px; }
@@ -488,6 +488,7 @@ watch(() => props.scene, () => {
 .rv22-conditions { left: 490px; width: 288px; padding-left: 26px; padding-right: 24px; }
 .rv22-new { left: 798px; width: 481px; }
 .rv22-new h2, .rv22-new h3 { font-weight: 500; }
+.rv22-old .rv22-panel-heading, .rv22-old .rv22-answer-heading, .rv22-conditions .rv22-panel-heading { font-weight: 500; }
 .rv22-panel-heading { height: 54px; border-bottom: 1px solid #64544366; font-size: 24px; gap: 15px !important; white-space: nowrap; align-items: flex-start !important; padding-top: 1px; }
 .rv22-panel-heading > .r-icon { margin-top: 4px; color: #e3bc90 !important; }
 .rv22-history-icons { display: flex; align-items: center; gap: 5px; height: 35px; color: #d0ab83; }
@@ -516,7 +517,7 @@ watch(() => props.scene, () => {
 .rv22-difference { position: absolute; left: 26px; right: 22px; top: 433px; padding: 9px 0 9px 26px; font-size: 22px; white-space: nowrap; line-height: 1.6 !important; }
 .rv22-difference::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; background: #bf680e; border-radius: 5px; }
 .rv22-judgment { position: absolute; left: 28px; top: 812px; width: 1251px; height: 156px; border-radius: 23px; }
-.rv22-judgment h2 { position: absolute; left: 26px; top: 24px; font-size: 23px; gap: 13px; }
+.rv22-judgment h2 { position: absolute; left: 26px; top: 24px; font-size: 23px; gap: 13px; font-weight: 500; }
 .rv22-judgment h2 .r-icon { color: #edba83; }
 .rv22-judgment::after { content: ""; position: absolute; top: 28px; bottom: 28px; left: 624px; width: 1px; background: #584b3a66; }
 .rv22-judgment-options { position: absolute; left: 18px; top: 73px; display: flex; gap: 10px; }

@@ -674,6 +674,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-21 .r-saved { color: #36d77d; }
 .r-scene-21 .r-saved svg { width: 26px; height: 26px; padding: 0; fill: none; background: transparent; color: #36d77d; }
 .r-scene-21 .r-top-status > .r-avatar { width: 53px; height: 57px; background: linear-gradient(130deg, #787168, #504b44); }
+.r-scene-22 { will-change: transform; }
 .r-scene-22 .r-sidebar { left: 17px; top: 24px; bottom: 27px; width: 205px; }
 .r-scene-22 .r-sidebar > a { position: absolute; left: 20px; top: 24px; }
 .r-scene-22 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
@@ -682,14 +683,15 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-22 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 20px; }
 .r-scene-22 .r-sidebar::after { content: ""; position: absolute; left: 26px; right: 25px; top: 107px; height: 1px; background: #b59d7c22; }
 .r-scene-22 .r-sidebar nav { left: 15px; right: 15px; top: 131px; gap: 4px; }
-.r-scene-22 .r-nav-item { padding: 0 15px; height: 60px; gap: 20px; }
+.r-scene-22 .r-nav-item { padding: 0 15px; height: 60px; gap: 14px; white-space: nowrap; }
 .r-scene-22 .r-nav-item.r-selected { height: 62px; background: linear-gradient(120deg, #ae7d4e99, #5c3d26aa); border-color: #bf8b5b77; }
 .r-scene-22 .r-nav-item.r-secondary { height: 52px; margin-bottom: 6px; }
 .r-scene-22 .r-nav-separator { margin: 24px 11px 22px; }
 .r-scene-22 .r-sidebar-avatar { left: 24px; bottom: 24px; }
 .r-scene-22 .r-sidebar-avatar .r-avatar { width: 57px; height: 61px; background: linear-gradient(130deg, #bd8e5d, #82532c); font-size: 27px; }
 .r-scene-22 .r-topbar { left: 252px; top: 27px; right: 43px; height: 73px; }
-.r-scene-22 .r-breadcrumb { font-size: 21px; gap: 17px; }
+.r-scene-22 .r-breadcrumb { font-size: 21px; gap: 17px; color: #bbb7af; }
+.r-scene-22 .r-breadcrumb strong { font-weight: 500; }
 .r-scene-22 .r-top-search { left: 384px !important; top: 7px; height: 59px; background: linear-gradient(110deg, #26262199, #1c1c1988) !important; border-color: #625f5866 !important; }
 .r-scene-22 .r-top-status { gap: 18px; }
 .r-scene-22 .r-saved { width: 141px; height: 59px; justify-content: center; gap: 11px; border-radius: 32px; background: linear-gradient(110deg, #2a2924, #171614); font-size: 22px; color: #98e6af; }

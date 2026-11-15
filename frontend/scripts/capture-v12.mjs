@@ -1361,6 +1361,30 @@ try {
           limitations: '仅固定参考状态；反馈决定与改进动作只保留本次页面，持久安排、知识沉淀和正式复练业务待确认，未写入正式数据' })
       }
       if (scene.id === '22') {
+        const typography = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node)
+            return { fontWeight: s.fontWeight, color: s.color, gap: s.gap, willChange: s.willChange }
+          }
+          const navigation = [...document.querySelectorAll('.r-nav-item span')].map(node => {
+            const range = document.createRange(); range.selectNodeContents(node)
+            return { text: node.textContent, lines: range.getClientRects().length }
+          })
+          return { navigation, styles: Object.fromEntries([
+            '.r-scene-22', '.r-breadcrumb', '.r-nav-item', '.rv22 .rv-heading h1',
+            '.rv22-old .rv22-panel-heading', '.rv22-old .rv22-answer-heading',
+            '.rv22-conditions .rv22-panel-heading', '.rv22-judgment h2',
+          ].map(selector => [selector, style(selector)])) }
+        })
+        ensure(typography.styles['.r-scene-22'].willChange === 'transform'
+          && typography.styles['.r-breadcrumb'].color === 'rgb(187, 183, 175)'
+          && typography.styles['.r-nav-item'].gap === '14px'
+          && typography.styles['.rv22 .rv-heading h1'].fontWeight === '600'
+          && ['.rv22-old .rv22-panel-heading', '.rv22-old .rv22-answer-heading',
+            '.rv22-conditions .rv22-panel-heading', '.rv22-judgment h2'].every(selector => typography.styles[selector].fontWeight === '500')
+          && typography.navigation.length === 10 && typography.navigation.every(item => item.lines === 1),
+        '22文字合成、标题字重、面包屑或单行导航不符')
+        checks.push({ check: 'compare-composited-type-heading-weights-breadcrumb-single-line-navigation', scene: scene.id, ...typography, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({
           '.r-sidebar': [17, 24, 205, 973], '.r-top-search': [636, 34, 522, 59],
