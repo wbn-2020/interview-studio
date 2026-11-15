@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import RIcon from './RIcon.vue'
 defineProps<{ scene: number }>()
 const emit = defineEmits<{ navigate: [id: number]; notify: [text: string] }>()
@@ -16,6 +16,27 @@ const zoom = ref(100)
 const filter = ref('全部 12')
 const selectedDay = ref(12)
 const month = ref(11)
+const year = ref(2026)
+function weekday(day: number) {
+  const offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+  const y = year.value - (month.value < 3 ? 1 : 0)
+  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + offsets[month.value - 1]! + day) % 7
+}
+const referenceMonth = computed(() => year.value === 2026 && month.value === 11)
+const calendarDays = computed(() => {
+  // 参考初态只显示11月9日起的四行；其他月份按公历排布，不迁移参考面试数据。
+  if (referenceMonth.value) return Array.from({ length: 22 }, (_, i) => i + 9)
+  const leap = year.value % 4 === 0 && (year.value % 100 !== 0 || year.value % 400 === 0)
+  const length = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month.value - 1]!
+  return [...Array<number>((weekday(1) + 6) % 7).fill(0), ...Array.from({ length }, (_, i) => i + 1)]
+})
+function shiftMonth(delta: number) {
+  month.value += delta
+  if (month.value === 0) { month.value = 12; year.value-- }
+  if (month.value === 13) { month.value = 1; year.value++ }
+  selectedDay.value = referenceMonth.value ? 12 : 1
+}
+function today() { year.value = 2026; month.value = 11; selectedDay.value = 11 }
 const tasks = ref([false, false, false])
 const facts = [
   { name: '发奖链路', title: '发奖超时，结果未知', icon: 'network' },
@@ -101,11 +122,11 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
   </section>
 
   <section v-else-if="scene === 8" class="prep-calendar">
-    <h1 class="p-title">面试安排</h1><div class="p-actions"><button class="r-btn" @click="selectedDay = 11"><RIcon name="calendar" />今天</button><button class="r-btn r-primary" @click="emit('notify', '新建面试安排流程待确认')"><RIcon name="plus" />新建安排</button></div>
-    <section class="r-panel calendar-panel"><div class="r-row calendar-title"><h2>2026年{{ month }}月</h2><button title="上个月" @click="month = month === 1 ? 12 : month - 1"><RIcon name="chevron-left" :size="28" /></button><button title="下个月" @click="month = month === 12 ? 1 : month + 1"><RIcon name="chevron-right" :size="28" /></button></div><div class="calendar-weekdays"><span v-for="day in ['周一', '周二', '周三', '周四', '周五', '周六', '周日']" :key="day">{{ day }}</span></div><div class="calendar-days"><button v-for="day in Array.from({ length: 22 }, (_, i) => i + 9)" :key="day" :class="{ selected: day === selectedDay, marked: day === 11 || day === 18 }" @click="selectedDay = day"><span>{{ day }}</span><small v-if="day === 12">技术一面</small><small v-if="day === 18" class="tentative">HR 面 · 待确认</small></button></div></section>
-    <section class="r-panel calendar-event"><h3>11月{{ selectedDay }}日 {{ selectedDay === 12 ? '周四' : '' }}</h3><article><div><h2>{{ selectedDay === 18 ? 'HR 面 · 待确认' : 'Java 后端技术一面' }}</h2><p class="r-row r-muted"><RIcon name="clock" :size="23" />14:30 – 15:30<span class="event-divider" /><RIcon name="monitor" :size="23" />线上 · 视频面试<span class="event-divider" /><RIcon name="list-checks" :size="23" />准备清单 3 项</p></div><button class="r-btn" @click="emit('navigate', 3)">查看准备</button></article></section>
-    <aside class="r-panel reschedule"><h2 class="r-row"><RIcon name="info" :size="30" />改期前预览</h2><p class="r-muted">只移动未开始且未锁定日期的准备任务</p><div class="r-rule" /><h3>关联任务</h3><button v-for="(row, i) in [['项目追问', 'file-text'], ['系统设计', 'box'], ['缓存一致性', 'database']]" :key="row[0]" class="reschedule-task r-row" @click="tasks[i] = !tasks[i]"><RIcon :name="tasks[i] ? 'circle-check' : 'circle'" :size="32" class="r-muted" /><RIcon :name="row[1]!" :size="29" /><strong>{{ row[0] }}</strong><RIcon name="chevron-right" :size="23" class="r-faint" /></button><button class="r-btn adjust" @click="emit('navigate', 7)"><RIcon name="arrow-up-down" />调整安排</button></aside>
-    <aside class="r-panel calendar-reminder"><h2 class="r-row"><RIcon name="bell" :size="29" />提醒</h2><p class="r-row r-muted"><span class="reminder-dot" />站内 · 提前 30 分钟</p><div class="r-rule" /><p class="r-row r-muted"><RIcon name="clock" :size="27" />时区: Asia/Shanghai</p></aside>
+    <h1 class="p-title">面试安排</h1><div class="p-actions"><button class="r-btn" @click="today"><RIcon name="calendar" variant="schedule" :size="28" />今天</button><button class="r-btn r-primary" @click="emit('notify', '新建面试安排流程待确认')"><RIcon name="plus" :size="30" />新建安排</button></div>
+    <section class="r-panel calendar-panel"><div class="r-row calendar-title"><h2>{{ year }}年{{ month }}月</h2><button title="上个月" @click="shiftMonth(-1)"><RIcon name="chevron-left" :size="28" /></button><button title="下个月" @click="shiftMonth(1)"><RIcon name="chevron-right" :size="28" /></button></div><div class="calendar-weekdays"><span v-for="day in ['周一', '周二', '周三', '周四', '周五', '周六', '周日']" :key="day">{{ day }}</span></div><div class="calendar-days" :class="{ 'calendar-other-month': !referenceMonth }"><template v-for="(day, index) in calendarDays" :key="index"><button v-if="day" :aria-label="`${year}年${month}月${day}日`" :aria-pressed="day === selectedDay" :class="{ selected: day === selectedDay, marked: referenceMonth && (day === 11 || day === 18) }" @click="selectedDay = day"><span>{{ day }}</span><small v-if="referenceMonth && day === 12">技术一面</small><small v-if="referenceMonth && day === 18" class="tentative">HR 面 · 待确认</small></button><span v-else aria-hidden="true" /></template></div></section>
+    <section class="r-panel calendar-event"><h3>{{ month }}月{{ selectedDay }}日 {{ ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][weekday(selectedDay)] }}</h3><article v-if="referenceMonth && selectedDay === 12"><div><h2>Java 后端技术一面</h2><p class="r-row r-muted"><RIcon name="clock" variant="schedule" :size="23" />14:30 – 15:30<span class="event-divider" /><RIcon name="video" variant="schedule" :size="23" />线上 · 视频面试<span class="event-divider" /><RIcon name="square-pen" variant="schedule" :size="23" />准备清单 3 项</p></div><button class="r-btn" @click="emit('navigate', 3)">查看准备</button></article><p v-else class="r-muted">{{ referenceMonth && selectedDay === 18 ? 'HR 面 · 待确认；时间及安排详情待确认' : '该日期的安排详情待确认' }}</p></section>
+    <aside class="r-panel reschedule"><h2 class="r-row"><RIcon name="info" variant="schedule" :size="30" />改期前预览</h2><p class="r-muted">只移动未开始且未锁定日期的准备任务</p><div class="r-rule" /><h3>关联任务</h3><button v-for="(row, i) in [['项目追问', 'file-text'], ['系统设计', 'box'], ['缓存一致性', 'database']]" :key="row[0]" class="reschedule-task r-row" :aria-pressed="tasks[i]" @click="tasks[i] = !tasks[i]"><RIcon :name="tasks[i] ? 'circle-check' : 'circle'" variant="schedule" :size="32" class="r-muted" /><RIcon :name="row[1]!" variant="schedule" :size="29" /><strong>{{ row[0] }}</strong><RIcon name="chevron-right" :size="23" class="r-faint" /></button><button class="r-btn adjust" @click="emit('navigate', 7)"><RIcon name="arrow-up-down" variant="schedule" />调整安排</button></aside>
+    <aside class="r-panel calendar-reminder"><h2 class="r-row"><RIcon name="bell" variant="schedule" :size="30" />提醒</h2><p class="r-row r-muted"><span class="reminder-dot" />站内 · 提前 30 分钟</p><div class="r-rule" /><p class="r-row r-muted"><RIcon name="clock" variant="schedule" :size="27" />时区: Asia/Shanghai</p></aside>
   </section>
 </template>
 <style scoped>
@@ -246,6 +267,37 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .calendar-event { position: absolute; top: 708px; left: 21px; width: 787px; height: 246px; padding: 25px 18px; border-radius: 0 0 20px 20px; border-top: none; }.calendar-event h3 { font-size: 24px; margin-bottom: 7px; }.calendar-event article { border: 1px solid #a17c5788; border-radius: 17px; position: relative; display: flex; align-items: center; gap: 16px; padding: 18px 18px 18px 29px; background: #bd93621c; min-height: 116px; overflow: hidden; }.calendar-event article::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: #e9b180; }.calendar-event h2 { font-size: 26px; }.calendar-event p { font-size: 20px; gap: 7px; margin-top: 7px; white-space: nowrap; }.event-divider { height: 22px; width: 1px; background: #534230; margin: 0 11px; }.calendar-event .r-btn { min-height: 49px; padding: 6px 15px !important; color: #e9a464; font-size: 20px; border-radius: 26px; border-color: #d8934e !important; margin-left: auto; }
 .reschedule { position: absolute; top: 203px; right: 26px; width: 448px; height: 531px; padding: 29px 28px; }.reschedule h2 { font-size: 26px; }.reschedule > p { font-size: 20px; margin-top: 15px; white-space: nowrap; }.reschedule .r-rule { margin: 26px 0 23px; }.reschedule h3 { font-size: 25px; margin-bottom: 14px; }.reschedule-task { height: 64px; width: 100%; text-align: left; font-size: 25px; gap: 25px; }.reschedule-task > svg:last-child { margin-left: auto; }.reschedule-task strong { font-weight: 500; }.reschedule .adjust { width: 100%; margin-top: 22px; font-size: 23px; border-radius: 18px; min-height: 63px; border-color: #b5a08b99 !important; background: #ffffff09 !important; }
 .calendar-reminder { position: absolute; right: 26px; width: 448px; top: 751px; height: 203px; padding: 25px 28px; }.calendar-reminder h2 { font-size: 26px; margin-bottom: 13px; }.calendar-reminder p { font-size: 23px; gap: 14px; }.calendar-reminder .r-rule { margin: 13px 0; }.reminder-dot { width: 31px; height: 31px; border-radius: 50%; background: #ffffff0b; box-shadow: inset 0 0 0 9px #5b4a3a; }
+.prep-calendar .p-title { top: 118px; font-size: 48px; font-weight: 600; }
+.prep-calendar .p-actions { gap: 22px; }
+.prep-calendar .p-actions .r-btn { height: 57px; padding: 8px 21px !important; border-radius: 21px; font-size: 24px; font-weight: 500; background: linear-gradient(115deg, #393027cc, #302820d9) !important; }
+.prep-calendar .p-actions .r-primary { font-weight: 600; background: linear-gradient(115deg, #f8c698, #e7a570) !important; border-color: #efba8e !important; }
+.prep-calendar .p-actions .r-btn:first-child { width: 133px; padding-inline: 0 !important; }
+.prep-calendar .p-actions .r-btn:last-child { width: 167px; padding-inline: 12px !important; }
+.prep-calendar .calendar-panel, .prep-calendar .calendar-event, .prep-calendar .reschedule, .prep-calendar .calendar-reminder { border-color: #5f4e3c66; background: linear-gradient(115deg, #1b1713cf, #17130fe6 70%); box-shadow: inset 0 1px #ffffff06; }
+.prep-calendar .calendar-panel { top: 204px; width: 786px; height: 505px; }
+.prep-calendar .calendar-title h2 { font-weight: 600; }
+.prep-calendar .calendar-weekdays, .prep-calendar .calendar-days { grid-template-columns: 113px 119px 116px 114px 110px 110px 1fr; }
+.prep-calendar .calendar-days { grid-template-rows: 121px 99px 62px 62px; margin-top: 22.5px; }
+.prep-calendar .calendar-days button > span { position: absolute; left: -4px; top: 0; margin: 0; }
+.prep-calendar .calendar-days button.selected > span { background: linear-gradient(120deg, #f4bf8e, #eba56c); }
+.prep-calendar .calendar-days button.marked > span { background: linear-gradient(120deg, #3c352bc4, #2f2922cc); }
+.prep-calendar .calendar-days button small { top: 61px; padding: 3px 15px; color: #ffe9d0; background: linear-gradient(115deg, #73502fd9, #54391fd9); }
+.prep-calendar .calendar-days button small.tentative { top: 55px; background: linear-gradient(115deg, #35302b, #2b2621); color: #d7cfc5; }
+.prep-calendar .calendar-days.calendar-other-month { grid-template-rows: repeat(6, 57px); margin-top: 20px; }
+.prep-calendar .calendar-event { width: 786px; padding-right: 14px; background: linear-gradient(115deg, #15120fcc, #19140fe6 70%); }
+.prep-calendar .calendar-event h3 { font-weight: 500; margin-bottom: 10px; }
+.prep-calendar .calendar-event article { padding-left: 30px; background: linear-gradient(115deg, #3d342bd6, #2c241cde); border-color: #bc9875a1; }
+.prep-calendar .calendar-event h2 { font-weight: 500; }
+.prep-calendar .calendar-event p { font-size: 21px; gap: 8px; }
+.prep-calendar .event-divider { margin-inline: 9px; background: #a9927740; }
+.prep-calendar .calendar-event .r-btn { min-width: 113px; padding: 6px 15px !important; font-size: 20px; }
+.prep-calendar .reschedule { top: 204px; height: 530px; }
+.prep-calendar .reschedule h3 { margin-bottom: 20px; font-size: 24px; }
+.prep-calendar .reschedule-task { display: grid; grid-template-columns: 32px 29px 1fr 23px; column-gap: 23px; border-top: 1px solid #a9987f09; font-size: 24px; }
+.prep-calendar .reschedule .adjust { width: calc(100% + 3px); margin-left: -1px; margin-top: 29.5px; background: linear-gradient(115deg, #393129d9, #2c251ed9) !important; border-color: #ab9b8ab3 !important; font-weight: 500; }
+.prep-calendar .calendar-reminder h2 { margin-bottom: 14px; }
+.prep-calendar .calendar-reminder p { font-size: 22px; gap: 16px; color: #bcb3a9; }
+.prep-calendar .reminder-dot { background: #b2997f; box-shadow: inset 0 0 0 9px #534438; }
 .prep-facts .p-title { top: 92px; }
 .prep-facts .facts-tabs { gap: 6px; }
 .prep-facts .facts-tabs button { font-size: 24px; }

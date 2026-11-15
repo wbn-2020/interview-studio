@@ -483,6 +483,104 @@ try {
         await assertFrame(captured, '07页签、来源、编辑、品牌与搜索导航返回后初态不符')
         checks.push({ check: 'tasks-tabs-source-edit-brand-command-navigation-return', scene: scene.id, passed: true })
       }
+      if (scene.id === '08') {
+        const layout = await page.evaluate(() => {
+          const box = selector => {
+            const r = document.querySelector(selector).getBoundingClientRect()
+            return [r.x, r.y, r.width, r.height]
+          }
+          return {
+            sidebar: box('.r-sidebar'), brand: box('.r-sidebar > a'), search: box('.r-top-search'),
+            avatar: box('.r-top-status > .r-avatar'), bottomAvatar: box('.r-sidebar-avatar .r-avatar'),
+            calendar: box('.calendar-panel'), event: box('.calendar-event'), eventCard: box('.calendar-event article'),
+            reschedule: box('.reschedule'), reminder: box('.calendar-reminder'), adjust: box('.reschedule .adjust'),
+            brandPaths: document.querySelectorAll('.r-brand path').length,
+            dates: [...document.querySelectorAll('.calendar-days button > span')].map(node => ({
+              day: node.textContent, box: (() => { const r = node.getBoundingClientRect(); return [r.x,r.y,r.width,r.height] })(),
+            })),
+            actions: [...document.querySelectorAll('.p-actions .r-btn')].map(node => node.getBoundingClientRect().width),
+            navigation: [...document.querySelectorAll('.r-nav-item')].map(node => ({
+              text: node.textContent.trim(), overflow: node.scrollWidth > node.clientWidth + 1,
+            })),
+            save: getComputedStyle(document.querySelector('.r-saved')).color,
+            composition: getComputedStyle(document.querySelector('.r-canvas')).willChange,
+            overflow: [...document.querySelectorAll('.reschedule > p,.calendar-event article p,.calendar-reminder p')]
+              .some(node => node.scrollWidth > node.clientWidth + 1),
+          }
+        })
+        const sameBox = (actual, expected) => actual.length === 4 && actual.every((value, i) => Math.abs(value - expected[i]) < 1)
+        ensure(sameBox(layout.sidebar,[0,0,235,1020]) && sameBox(layout.brand,[35,36,177,55])
+          && sameBox(layout.search,[829,28,328,51]) && sameBox(layout.avatar,[1455,27,51,53])
+          && sameBox(layout.bottomAvatar,[40,920,62,64]) && sameBox(layout.calendar,[257,204,786,505])
+          && sameBox(layout.event,[257,708,786,246]) && sameBox(layout.reschedule,[1062,204,448,530])
+          && sameBox(layout.reminder,[1062,751,448,203]) && sameBox(layout.eventCard,[276,777.8,752,116]),
+          '08侧栏、品牌命中框、顶部或日历／事件／改期／提醒几何不符')
+        ensure(layout.brandPaths === 7 && layout.navigation.length === 10 && layout.navigation.every(item=>!item.overflow)
+          && layout.composition === 'transform' && layout.save === 'rgb(205, 197, 188)' && !layout.overflow
+          && JSON.stringify(layout.actions) === '[133,167]' && await page.locator('.r-top-search kbd').count() === 0
+          && layout.adjust[1] > 643 && layout.adjust[1] + layout.adjust[3] < layout.reschedule[1] + layout.reschedule[3] - 15,
+          '08单行导航、品牌、保存标记、按钮或内容边界不符')
+        const firstRow = layout.dates.slice(0,7)
+        ensure(layout.dates.length === 22 && firstRow.every((item,i)=>sameBox(item.box,[[282,356.8,47,47],[395,356.8,47,47],
+          [514,356.8,47,47],[630,356.8,47,47],[744,356.8,47,47],[854,356.8,47,47],[964,356.8,47,47]][i]))
+          && await page.getByRole('button',{name:'2026年11月12日',exact:true}).getAttribute('aria-pressed') === 'true'
+          && await page.locator('.calendar-days .marked').count() === 2
+          && await page.locator('.reschedule-task[aria-pressed="false"]').count() === 3,
+          '08日期列距、固定选中日期、标记或关联任务初态不符')
+        await writeJson(path.join(values.output,'records','08-schedule-layout.json'),layout)
+        checks.push({check:'schedule-shell-calendar-date-columns-fixed-selection-event-preview-reminder-geometry',scene:scene.id,layout,passed:true})
+        const writes = []
+        const onRequest = request => {
+          if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method())
+        }
+        page.on('request',onRequest)
+        await page.getByRole('button',{name:'2026年11月18日',exact:true}).click()
+        ensure(await page.locator('.calendar-event').textContent() === '11月18日 周三HR 面 · 待确认；时间及安排详情待确认'
+          && await page.locator('.calendar-event article').count() === 0,'08其他日期借用了12日面试内容')
+        await page.getByRole('button',{name:'2026年11月12日',exact:true}).click()
+        const firstTask = page.locator('.reschedule-task').first()
+        await firstTask.click()
+        ensure(await firstTask.getAttribute('aria-pressed') === 'true','08关联任务点击未选择')
+        await firstTask.press('Enter')
+        ensure(await firstTask.getAttribute('aria-pressed') === 'false','08关联任务Enter未取消')
+        await firstTask.press('Space')
+        ensure(await firstTask.getAttribute('aria-pressed') === 'true','08关联任务空格未选择')
+        await page.locator('.p-actions .r-primary').click()
+        ensure(await page.getByRole('status').textContent() === '新建面试安排流程待确认' && writes.length === 0,
+          '08新建边界提示或无业务写入不符')
+        await page.reload({waitUntil:'networkidle'}); await ready()
+        await assertFrame(captured,'08日期、任务和新建边界操作后刷新未恢复初态')
+        checks.push({check:'schedule-date-selection-task-keyboard-new-entry-boundary-refresh',scene:scene.id,businessWrites:writes,passed:true})
+        await page.getByTitle('下个月',{exact:true}).click()
+        ensure(await page.locator('.calendar-title h2').textContent() === '2026年12月'
+          && await page.locator('.calendar-days button').count() === 31
+          && await page.locator('.calendar-days small').count() === 0
+          && await page.locator('.calendar-event article').count() === 0,'08月历未真实切换或错误迁移参考数据')
+        await page.getByTitle('下个月',{exact:true}).press('Enter')
+        ensure(await page.locator('.calendar-title h2').textContent() === '2027年1月','08跨年月份错误')
+        await page.getByTitle('上个月',{exact:true}).click()
+        await page.getByTitle('上个月',{exact:true}).click()
+        ensure(await page.locator('.calendar-title h2').textContent() === '2026年11月'
+          && await page.getByRole('button',{name:'2026年11月12日',exact:true}).getAttribute('aria-pressed') === 'true','08返回参考月份未恢复日期')
+        await page.locator('.p-actions .r-btn').first().click()
+        ensure(await page.getByRole('button',{name:'2026年11月11日',exact:true}).getAttribute('aria-pressed') === 'true'
+          && await page.locator('.calendar-event article').count() === 0,'08今天未使用固定展示日期')
+        await page.reload({waitUntil:'networkidle'}); await ready()
+        await assertFrame(captured,'08月份、跨年、今天操作后刷新未恢复初态')
+        checks.push({check:'schedule-month-year-rollover-today-no-invented-events-refresh',scene:scene.id,passed:true})
+        for(const [selector,target] of [['.calendar-event article .r-btn','03'],['.reschedule .adjust','07'],
+          ['.r-sidebar > a','02'],['.r-top-search','25']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({state:'visible'})
+          ensure(new URL(page.url()).searchParams.get('scene') === target,'08导航未进入对应场景')
+          ensure((await page.goto(entry,{waitUntil:'networkidle'}))?.ok(),'08返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured,'08准备、排期、品牌与搜索返回初态不符')
+        ensure(writes.length === 0,'08固定场景向正式库写入数据')
+        page.off('request',onRequest)
+        checks.push({check:'schedule-preparation-adjust-brand-command-navigation-return',scene:scene.id,passed:true})
+      }
       if (scene.id === '14') {
         const table = page.locator('.bank-list'), rows = table.locator('tbody tr')
         const geometry = await page.evaluate(() => {
