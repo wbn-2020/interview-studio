@@ -301,7 +301,7 @@ function showNote() { emit('navigate', 11) }
 .mobile-bottom-nav > button.selected .r-icon { fill: #af7949; stroke: #f2bc85; }
 .mobile-detail-header { position: absolute; top: 66px; left: 21px; right: 22px; display: flex; align-items: center; justify-content: space-between; height: 54px; }
 .mobile-circle-button { display: grid; place-items: center; width: 53px; height: 54px; border-radius: 50%; border: 1px solid #ffffff07 !important; background: linear-gradient(135deg, #352e25, #24211e) !important; color: #f2e8db; }
-.mobile-detail-title { position: absolute; top: 145px; left: 21px; font-size: 40px; font-weight: 600; line-height: 60px; }
+.mobile-detail-title { position: absolute; top: 146px; left: 21px; font-size: 39.5px; font-weight: 600; line-height: 60px; }
 .mobile-detail-tabs { position: absolute; top: 221px; left: 20px; right: 23px; height: 56px; display: flex; padding: 3px; border: 1px solid #ffffff14; border-radius: 31px; background: linear-gradient(120deg, #29251f, #2c2721); }
 .mobile-detail-tabs > button { flex: 1; color: #bdb7ac; font-size: 20px; line-height: 29px; border-radius: 27px; }
 .mobile-detail-tabs > button.selected { background: linear-gradient(170deg, #765238, #b68056 74%, #e5b080) !important; border: 1px solid #e7af76 !important; color: #fff4e8; font-weight: 600; box-shadow: 0 0 0 2px #f2b77915; }
@@ -312,14 +312,14 @@ function showNote() { emit('navigate', 11) }
 .mobile-definition { height: 176px; padding: 20px 16px 15px; }
 .mobile-definition-icon { display: grid; place-items: center; width: 24px; height: 26px; color: #e9b27e; }
 .mobile-definition-icon .r-icon { fill: #edb681; stroke: #9b6e48; stroke-width: .7; }
-.mobile-definition p { margin-top: 13px; font-size: 18px; color: #f1eee7; line-height: 31px; }
+.mobile-definition p { margin-top: 15px; font-size: 18.2px; color: #f1eee7; line-height: 31px; }
 .mobile-linked-note { height: 130px; margin-top: 13px; padding: 16px 16px 10px; }
 .mobile-linked-note > button { display: flex; gap: 9px; align-items: center; width: 100%; height: 56px; margin-top: 13px; text-align: left; }
 .mobile-linked-note > button .mobile-note-icon { width: 45px; height: 47px; border-radius: 11px; }
 .mobile-linked-note strong { color: #eee8df; font-size: 18px; font-weight: 400; line-height: 28px; white-space: nowrap; }
 .mobile-linked-note small { color: #898278; font-size: 15px; line-height: 22px; }
 .mobile-linked-note > button > .r-icon { margin-left: auto; color: #8f877b; }
-.mobile-key-points { height: 173px; margin-top: 19px; padding: 17px 15px; }
+.mobile-key-points { height: 173px; margin-top: 19px; padding: 17px 15px; background: linear-gradient(130deg, #1b1815, #13100d); }
 .mobile-key-points ul { list-style: none; margin: 12px 0 0; padding: 0; color: #e8e1d6; font-size: 17px; line-height: 34px; }
 .mobile-key-points li { white-space: nowrap; }
 .mobile-key-points li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e6a269; margin: 0 9px 3px 1px; }
@@ -339,8 +339,8 @@ function showNote() { emit('navigate', 11) }
 .mobile-drawer-handle span { display: block; width: 53px; height: 7px; border-radius: 5px; background: #67615b8a; }
 .mobile-recall-heading { position: absolute; top: 65px; left: 23px; display: flex; align-items: center; gap: 17px; font-size: 30px; font-weight: 500; line-height: 43px; }
 .mobile-recall-heading .r-icon { color: #e6aa77; fill: #d49a6870; stroke-width: 1.5; }
-.mobile-recall-question { position: absolute; top: 133px; left: 23px; right: 19px; font-size: 35px; font-weight: 600; line-height: 52px; white-space: nowrap; }
-.mobile-recall-answer { position: absolute; top: 272px; left: 22px; right: 22px; width: calc(100% - 44px); height: 237px; resize: none; padding: 18px 19px; border: 1px solid #9a8a7724; border-radius: 20px; outline: none; background: #ffffff03; color: #f1e7d9; font-size: 20px; line-height: 31px; }
+.mobile-recall-question { position: absolute; top: 131px; left: 23px; right: 19px; font-size: 36px; font-weight: 600; line-height: 52px; white-space: nowrap; }
+.mobile-recall-answer { position: absolute; top: 272px; left: 22px; right: 22px; width: calc(100% - 44px); height: 237px; resize: none; padding: 18px 19px; border: 1px solid #9a8a7724; border-radius: 20px; outline: none; background: #ffffff06; color: #f1e7d9; font-size: 20px; line-height: 31px; }
 .mobile-recall-answer::placeholder { color: #8b857b; opacity: 1; }
 .mobile-recall-answer:focus { border-color: #c59a6b; }
 .mobile-rating-options { position: absolute; top: 551px; left: 23px; right: 23px; height: 92px; display: flex; gap: 11px; }
