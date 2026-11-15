@@ -101,9 +101,28 @@ try {
   }
   for (const scene of selectedScenes) {
     const page = await context.newPage(), pageErrors = [], resourceTasks = []
+    const requestStarted = new Map(), recentRequests = []
+    const recordRequest = event => {
+      recentRequests.push(event)
+      if (recentRequests.length > 80) recentRequests.shift()
+    }
+    // 仅记录公开参考入口的请求路径与耗时；保留超时证据，不放宽加载或像素断言。
+    page.on('request', request => {
+      const startedAt = Date.now(), url = new URL(request.url())
+      requestStarted.set(request, { startedAt, method: request.method(), path: url.pathname, resourceType: request.resourceType() })
+      recordRequest({ event: 'request', at: new Date(startedAt).toISOString(), path: url.pathname, resourceType: request.resourceType() })
+    })
+    for (const event of ['requestfinished', 'requestfailed']) page.on(event, request => {
+      const info = requestStarted.get(request)
+      if (!info) return
+      recordRequest({ event, at: new Date().toISOString(), ...info, durationMs: Date.now() - info.startedAt,
+        ...(event === 'requestfailed' ? { error: request.failure()?.errorText } : {}) })
+      requestStarted.delete(request)
+    })
     page.on('pageerror', error => pageErrors.push(error.message))
     page.on('response', response => {
       const url = new URL(response.url())
+      recordRequest({ event: 'response', at: new Date().toISOString(), path: url.pathname, status: response.status() })
       if (url.origin !== base.origin || !url.pathname.startsWith('/assets/')) return
       resourceTasks.push((async () => {
         const file = decodeURIComponent(url.pathname.slice(1)), expected = entries.get(file)
@@ -2562,7 +2581,17 @@ try {
       failures.push({ scene: scene.id, error: error.message })
       console.error(`${scene.id} 取证失败：${error.message}`)
       process.exitCode = 1
-    } finally { await page.close() }
+    } finally {
+      if (failures.some(failure => failure.scene === scene.id)) {
+        await writeJson(path.join(values.output, 'records', `${scene.id}-network.json`), {
+          recordedAt: new Date().toISOString(), pageErrors,
+          pendingRequests: [...requestStarted.values()].map(info => ({ ...info, elapsedMs: Date.now() - info.startedAt })),
+          recentRequests,
+          limitations: '仅当前复查请求证据，不能反推先前超时根因；加载等待与画面断言未放宽',
+        })
+      }
+      await page.close()
+    }
   }
 } catch (error) {
   if (!failures.length) failures.push({ error: error.message })
