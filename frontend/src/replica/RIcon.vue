@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'facts' | 'expression' | 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' | 'recollection' | 'growth' | 'command' | 'recent' | 'authorization' | 'settings' | 'mobile' | 'inbox' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'facts' | 'expression' | 'materials' | 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' | 'recollection' | 'growth' | 'command' | 'recent' | 'authorization' | 'settings' | 'mobile' | 'inbox' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -472,10 +472,25 @@ const expressionPaths: Record<string, string[]> = {
   clock: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', 'M12 5v7l4 2'],
   sparkles: ['m9 3 2 6 5 3-5 2-2 7-2-7-5-2 5-3Z', 'm19 1 1 4 3 2-3 1-1 4-1-4-3-1 3-2ZM20 16l1 3 2 1-3 1-1 2-1-3Z'],
 }
+const materialsPaths: Record<string, string[]> = {
+  ...expressionPaths,
+  breadcrumb: ['m10 4-7 8 7 8', 'm14 4 7 8-7 8'],
+  'book-open': ['M12 4H4a1 1 0 0 0-1 1v16h6l3 1 3-1h6V5a1 1 0 0 0-1-1h-6l-2 2Z', 'M12 6v16'],
+  play: ['m6 3 15 9-15 9Z'],
+  leaf: ['M12 9C2 0-1 9 6 18c7 9 17-1 15-16-5 0-9 4-11 10', 'm4 22 14-16'],
+  'credit-card': ['M5 7H2V2h16v3', 'M6 6h14a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z', 'M9 11h8M10 14h6'],
+  sparkles: ['M12 2c1 7 3 9 10 10-7 1-9 3-10 10-1-7-3-9-10-10 7-1 9-3 10-10Z'],
+  bell: ['M5 9a7 7 0 0 1 14 0c0 7 3 8 3 9H2c0-1 3-2 3-9Z', 'M9 21c1 3 5 3 6 0'],
+  'file-lines': ['M6 11h11M6 15h11M6 19h8'],
+  'file-pdf': ['M7 19c3-6 5-14 4-15-3-3-2 9 4 11 7 3 7-2-1-1-11 0-12 7-7 5Z'],
+  'circle-check': ['m6 12 4 4 8-10'],
+  'circle-alert': ['M12 5v9M12 18h.01'],
+  maximize: ['M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5', 'm4 4 5 5m11-5-5 5m5 11-5-5M4 20l5-5'],
+}
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
 const outlineWidth = computed(() => props.variant === 'facts' && factsFilled.has(props.name) ? .6 : props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'facts' ? factsPaths[props.name] : props.variant === 'expression' ? expressionPaths[props.name] : props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : props.variant === 'growth' ? growthPaths[props.name] : props.variant === 'command' ? commandPaths[props.name] : props.variant === 'recent' ? recentPaths[props.name] : props.variant === 'authorization' ? authorizationPaths[props.name] : props.variant === 'settings' ? settingsPaths[props.name] : props.variant === 'mobile' ? mobilePaths[props.name] : props.variant === 'inbox' ? inboxPaths[props.name] : undefined)
+const iconPaths = computed(() => (props.variant === 'facts' ? factsPaths[props.name] : props.variant === 'expression' ? expressionPaths[props.name] : props.variant === 'materials' ? materialsPaths[props.name] : props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : props.variant === 'growth' ? growthPaths[props.name] : props.variant === 'command' ? commandPaths[props.name] : props.variant === 'recent' ? recentPaths[props.name] : props.variant === 'authorization' ? authorizationPaths[props.name] : props.variant === 'settings' ? settingsPaths[props.name] : props.variant === 'mobile' ? mobilePaths[props.name] : props.variant === 'inbox' ? inboxPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'facts' && factsFilled.has(props.name) ? .85 : props.variant === 'recent' ? ({ house: .85, play: .7, dumbbell: .75, clock: .2, 'chart-no-axes-column': .85, 'layout-grid': .85, zap: .85 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'recollection' ? ({ house: .35, clipboard: .85, 'book-open': .9, play: .3, 'chart-no-axes-combined': .8, database: .9, 'credit-card': .8 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0

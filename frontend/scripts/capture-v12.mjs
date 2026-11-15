@@ -313,6 +313,38 @@ try {
       }
       if (scene.id === '06') {
         const library = page.locator('.file-library'), viewer = page.locator('.pdf-viewer')
+        const layout = await page.evaluate(() => {
+          const box = selector => {
+            const r = document.querySelector(selector).getBoundingClientRect()
+            return [r.x, r.y, r.width, r.height]
+          }
+          return {
+            sidebar: box('.r-sidebar'), topbar: box('.r-topbar'), search: box('.r-top-search'),
+            avatar: box('.r-top-status > .r-avatar'), viewer: box('.pdf-viewer'), parsing: box('.parsing'),
+            brandPaths: document.querySelectorAll('.r-brand path').length,
+            breadcrumbPaths: document.querySelectorAll('.r-material-breadcrumb-icon path').length,
+            composition: getComputedStyle(document.querySelector('.r-scene-06')).willChange,
+            titleSize: getComputedStyle(document.querySelector('.prep-materials .p-title')).fontSize,
+            paperSize: getComputedStyle(document.querySelector('.pdf-paper p')).fontSize,
+            navigation: [...document.querySelectorAll('.r-nav-item')].map(node => {
+              const r = node.getBoundingClientRect()
+              return { text: node.textContent.trim(), height: r.height, scroll: node.scrollWidth, width: r.width }
+            }),
+            toolbarOverflow: document.querySelector('.pdf-toolbar').scrollWidth > document.querySelector('.pdf-toolbar').clientWidth,
+            paragraphs: [...document.querySelectorAll('.pdf-paper p')].map(node => node.innerHTML),
+          }
+        })
+        const sameBox = (actual, expected) => actual.length === 4 && actual.every((value, i) => Math.abs(value - expected[i]) < 1)
+        ensure(sameBox(layout.sidebar, [14,20,219,960]) && sameBox(layout.topbar, [254,21,1266,65])
+          && sameBox(layout.search, [660,29,463,50]) && sameBox(layout.avatar, [1457,31.5,42,44])
+          && sameBox(layout.viewer, [588,196,563,784]) && sameBox(layout.parsing, [1164,196,356,784]),
+          '06侧栏、顶栏、头像或三栏几何不符')
+        ensure(layout.brandPaths === 4 && layout.breadcrumbPaths === 2 && layout.composition === 'transform'
+          && layout.titleSize === '50px' && layout.paperSize === '15px'
+          && layout.navigation.length === 10 && layout.navigation.every(item => item.height === 56 && item.scroll <= item.width + 1)
+          && !layout.toolbarOverflow && layout.paragraphs.every(text => text.includes('<br>')), '06品牌、单行导航、工具栏或正文换行不符')
+        await writeJson(path.join(values.output, 'records', '06-materials-layout.json'), layout)
+        checks.push({ check: 'attachment-brand-breadcrumb-shell-three-columns-type-toolbar', scene: scene.id, layout, passed: true })
         ensure(await library.locator('.file-item:visible').count() === 5, '06初始文件行数不符')
         const parsingLists = await page.locator('.parsing-content ul').evaluateAll(lists => lists.map(list => ({
           rows: list.querySelectorAll('li').length,
@@ -352,6 +384,15 @@ try {
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '06页码、缩放、筛选和折叠后刷新未恢复初态')
         checks.push({ check: 'attachment-pagination-zoom-filter-collapse-refresh', scene: scene.id, passed: true })
+        for (const [selector, target] of [['.parsing footer .r-primary', '04'], ['.r-sidebar > a', '02'], ['.r-top-search', '25']]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '06导航入口未进入目标场景')
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '06返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '06采用事实、品牌和搜索返回后初态不符')
+        checks.push({ check: 'attachment-facts-brand-command-navigation-return', scene: scene.id, passed: true })
       }
       if (scene.id === '14') {
         const table = page.locator('.bank-list'), rows = table.locator('tbody tr')
