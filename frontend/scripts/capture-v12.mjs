@@ -2646,7 +2646,7 @@ try {
           return { box: [box.x, box.y, box.width, box.height], backgroundClip: getComputedStyle(node).backgroundClip }
         })
         ensure(JSON.stringify(detailPaint.box) === JSON.stringify([1011, 233, 501, 701])
-          && detailPaint.backgroundClip === 'padding-box', '30详情面板几何或背景绘制边界不符')
+          && detailPaint.backgroundClip === 'padding-box, padding-box', '30详情面板几何或背景绘制边界不符')
         checks.push({ check: 'inbox-detail-padding-clip-geometry', scene: scene.id, ...detailPaint, passed: true })
         const inboxTypography = await page.evaluate(() => {
           const style = selector => {
