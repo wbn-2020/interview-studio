@@ -1268,6 +1268,36 @@ try {
           limitations: '仅固定参考状态；说明与图的持久保存、图文答案提交及版本详情待确认，未写入正式业务数据' })
       }
       if (scene.id === '21') {
+        const appearance = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+            return { weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, size: s.fontSize, willChange: s.willChange,
+              paddingBottom: s.paddingBottom, marginTop: s.marginTop, marginBottom: s.marginBottom,
+              gap: s.gap, transform: s.transform, background: s.backgroundImage, box: [b.x, b.y, b.width, b.height] }
+          }
+          return Object.fromEntries(['.r-scene-21', '.r-sidebar', '.r-sidebar nav', '.r-nav-item.r-secondary',
+            '.r-nav-separator', '.rv21 .rv-heading h1', '.rv21-original', '.rv21-original h2', '.rv21-answer',
+            '.rv21-tabs button.selected', '.rv21-observation-copy', '.rv21-observation-copy strong',
+            '.rv21-observation.observation-3', '.rv21-actions .r-btn', '.rv21-add'].map(selector => [selector, style(selector)]))
+        })
+        ensure(appearance['.r-scene-21'].weight === '300' && appearance['.r-scene-21'].willChange === 'transform'
+          && appearance['.rv21 .rv-heading h1'].weight === '500' && appearance['.rv21 .rv-heading h1'].stroke === '0.6px'
+          && appearance['.rv21-original h2'].weight === '500' && appearance['.rv21-original h2'].stroke === '0.2px'
+          && appearance['.rv21-actions .r-btn'].weight === '400' && appearance['.rv21-add'].weight === '400',
+        '21正文、标题描边或操作字重不符')
+        ensure(appearance['.rv21-answer'].marginTop === '49px'
+          && appearance['.rv21-tabs button.selected'].weight === '500' && appearance['.rv21-tabs button.selected'].paddingBottom === '8px'
+          && appearance['.rv21-observation-copy'].transform === 'matrix(1, 0, 0, 1, 0, -1)'
+          && appearance['.rv21-observation-copy strong'].weight === '300'
+          && appearance['.r-nav-item.r-secondary'].size === '23px' && appearance['.r-nav-item.r-secondary'].gap === '18px'
+          && appearance['.r-nav-separator'].marginTop === '24px' && appearance['.r-nav-separator'].marginBottom === '29px'
+          && appearance['.r-sidebar nav'].box[0] === 22 && appearance['.r-sidebar nav'].box[1] === 139,
+        '21正文、页签、观察或侧栏基线不符')
+        ensure(appearance['.r-sidebar'].background.includes('20% 72%')
+          && appearance['.rv21-original'].background.includes('15% 0%')
+          && appearance['.rv21-observation.observation-3'].background.includes('0.25'),
+        '21侧栏、原答或第三条观察背景不符')
+        checks.push({ check: 'review-typography-baselines-navigation-and-panel-lighting', scene: scene.id, appearance, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({
           '.r-sidebar': [0, 0, 221, 1022], '.rv21-original': [249, 331, 441, 564],
@@ -1342,8 +1372,11 @@ try {
         ensure(await page.locator('.rv-feedback-menu').count() === 1, '21键盘未打开反馈菜单')
         await page.keyboard.press('Escape')
         ensure(await page.locator('.rv-feedback-menu').count() === 0, '21 Escape未关闭反馈菜单')
+        const selectedObservationBackground = await page.locator('.rv21-observation.selected').evaluate(node => getComputedStyle(node).backgroundImage)
         await page.getByRole('button', { name: '选中观察 3', exact: true }).click()
-        ensure(await page.locator('.observation-3').getAttribute('class').then(value => value.includes('selected')), '21观察数字未切换选择')
+        ensure(await page.locator('.observation-3').getAttribute('class').then(value => value.includes('selected'))
+          && await page.locator('.observation-3').evaluate(node => getComputedStyle(node).backgroundImage) === selectedObservationBackground,
+        '21观察数字未切换选择或选中色被默认底色覆盖')
         await page.locator('.rv21-source-tags').getByRole('button', { name: '观察 02', exact: true }).click()
         ensure(await page.getByRole('button', { name: '选中观察 2', exact: true }).getAttribute('aria-pressed') === 'true', '21来源未定位观察02')
         await page.getByRole('button', { name: '原文 02，定位观察 01', exact: true }).click()

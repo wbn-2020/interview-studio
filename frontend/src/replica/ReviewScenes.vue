@@ -421,29 +421,30 @@ watch(() => props.scene, () => {
 .rv-panel h2 { display: flex; align-items: center; gap: 13px; }
 .rv-panel h2 .r-icon { color: #ede5da; }
 .rv21 .rv-heading { left: 30px; top: 118px; }
-.rv21 .rv-heading h1 { font-size: 49px; }
+.rv21 .rv-heading h1 { font-size: 49px; font-weight: 500; -webkit-text-stroke: .6px currentColor; }
+.rv21 .rv-panel h2 { font-weight: 500; -webkit-text-stroke: .2px currentColor; }
 .rv21 .rv-subheading { margin-top: 7px; font-size: 22px; gap: 10px; }
 .rv21-actions { top: 143px; right: 25px; gap: 18px; }
-.rv21-actions .r-btn { height: 63px; border-radius: 21px; font-size: 23px; font-weight: 500; padding: 12px 23px !important; }
+.rv21-actions .r-btn { height: 63px; border-radius: 21px; font-size: 23px; font-weight: 400; padding: 12px 23px !important; }
 .rv21-knowledge { width: 172px; background: linear-gradient(120deg, #2d2822, #211d18) !important; border-color: #3e352d !important; }
 .rv21-practice { width: 204px; font-size: 22px !important; }
 .rv21 .rv21-practice, .rv21 .rv21-add { background: linear-gradient(130deg, #dca074, #d99b6e 50%, #a66b45) !important; }
 .rv21-practice .r-icon { fill: #1b1108; }
 .rv21-tabs { position: absolute; top: 246px; left: 28px; right: 26px; height: 64px; display: flex; align-items: stretch; gap: 10px; border-bottom: 1px solid #ffffff08; }
-.rv21-tabs button { display: flex; align-items: center; gap: 12px; padding: 0 22px; font-size: 25px; color: #aaa39b; position: relative; white-space: nowrap; }
-.rv21-tabs button:first-child { width: 214px; padding: 0 11px 0 30px; flex: none; }
-.rv21-tabs button:nth-child(2) { width: 177px; padding: 0 10px 0 20px; flex: none; }
+.rv21-tabs button { display: flex; align-items: center; gap: 12px; padding: 0 22px 8px; font-size: 25px; color: #aaa39b; position: relative; white-space: nowrap; }
+.rv21-tabs button:first-child { width: 214px; padding: 0 11px 8px 30px; flex: none; }
+.rv21-tabs button:nth-child(2) { width: 177px; padding: 0 10px 8px 20px; flex: none; }
 .rv21-tabs button:nth-child(3) { padding-inline: 17px; }
 .rv21-tabs button .r-icon { color: #8f877d; }
-.rv21-tabs button.selected { background: linear-gradient(105deg, #241c138c, #211c1644); border-radius: 17px 17px 0 0; color: #f6f0e8; font-weight: 600; }
+.rv21-tabs button.selected { background: linear-gradient(105deg, #241c138c, #211c1644); border-radius: 17px 17px 0 0; color: #f6f0e8; font-weight: 500; }
 .rv21-tabs button.selected .r-icon { fill: #c99f7c; color: #c99f7c; }
 .rv21-tabs button.selected::after { content: ""; position: absolute; height: 2px; left: 1px; right: 1px; bottom: 0; border-radius: 50%; background: #da9a67; }
-.rv21-original { position: absolute; left: 27px; top: 331px; width: 441px; height: 564px; padding: 23px 24px; border-radius: 17px; }
+.rv21-original { position: absolute; left: 27px; top: 331px; width: 441px; height: 564px; padding: 23px 24px; border-radius: 17px; background: radial-gradient(ellipse at 15% 0, #5b463519, transparent 65%), linear-gradient(120deg, #1c1814, #181410 80%); border-color: #4b3e3077; }
 .rv21-original h2 { font-size: 28px; gap: 8px; }
 .rv21-quote-tag { position: absolute; top: 49px; right: 22px; height: 46px; min-width: 104px; border-radius: 11px; background: linear-gradient(110deg, #59412b88, #48382c99) !important; font-size: 22px; }
 .rv21-quote-tag::before { content: ""; position: absolute; top: 45px; left: 47px; border: 8px solid transparent; border-top: 11px solid #60442e; }
 .rv21-quote-tag::after { content: ""; position: absolute; top: 56px; left: 50px; width: 8px; height: 8px; border-radius: 50%; background: #d99765; }
-.rv21-answer { margin-top: 47px; font-size: 24px; color: #e7dfd1; }
+.rv21-answer { margin-top: 49px; font-size: 24px; color: #e7dfd1; }
 .rv21-answer p { line-height: 1.72; white-space: nowrap; }
 .rv21-answer p + p { margin-top: 31px; }
 .rv21-highlight { color: #e6a779; text-decoration: underline; text-decoration-color: #cf8447; text-decoration-thickness: 1px; text-underline-offset: 8px; }
@@ -456,9 +457,10 @@ watch(() => props.scene, () => {
 .rv21-observation.observation-1 { top: 91px; height: 151px; }
 .rv21-observation.observation-2 { top: 251px; height: 113px; }
 .rv21-observation.observation-3 { top: 362px; height: 200px; border-bottom-color: transparent; }
+.rv21-observation.observation-3:not(.selected) { background: linear-gradient(125deg, #211c1640, #16130f22); }
 .rv21-observation-number { position: absolute; top: 21px; left: 23px; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(140deg, #aa7a54, #5e4634) !important; font-size: 23px; }
-.rv21-observation-copy { display: block; position: absolute; top: 22px; left: 80px; text-align: left; }
-.rv21-observation-copy strong { display: block; font-weight: 500; font-size: 23px; line-height: 1.53; }
+.rv21-observation-copy { display: block; position: absolute; top: 22px; left: 80px; text-align: left; transform: translateY(-1px); }
+.rv21-observation-copy strong { display: block; font-weight: 300; font-size: 23px; line-height: 1.53; }
 .rv21-observation-copy > span { display: block; color: #a49a8f; font-size: 21px; line-height: 1.65; margin-top: 5px; }
 .rv21-observation.observation-2 .rv21-observation-copy { top: 20px; left: 86px; }
 .rv21-observation.observation-2 .rv21-observation-number { top: 20px; }
@@ -476,6 +478,7 @@ watch(() => props.scene, () => {
 .rv21-source-tags { position: absolute; left: 22px; top: 286px; display: flex; gap: 9px; }
 .rv21-source-tags button { padding: 6px 16px !important; background: #4b3b2c66 !important; border-radius: 25px; font-size: 21px; }
 .rv21-add { position: absolute; left: 22px; bottom: 63px; width: 254px; height: 63px; border-radius: 16px; font-size: 25px; font-weight: 500; }
+.rv21 .rv21-add { font-weight: 400; }
 .rv21-note { position: absolute; top: 923px; left: 27px; right: 25px; height: 63px; display: flex; align-items: center; gap: 17px; padding: 0 25px; color: #999186; border: 1px solid #4a3d2e9c; border-radius: 16px; background: linear-gradient(100deg, #29231ba0, #17130f50); font-size: 20px; }
 .rv21-source-view { position: absolute; left: 27px; right: 25px; top: 331px; height: 564px; padding: 26px; }
 .rv21-source-view p { margin-top: 22px; }
