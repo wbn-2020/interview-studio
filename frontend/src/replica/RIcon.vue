@@ -548,22 +548,25 @@ const targetPaths: Record<string, string[]> = {
 }
 const todayPaths: Record<string, string[]> = {
   play: ['M5 3.5a1 1 0 0 1 1.5-.9l15 8.5a1 1 0 0 1 0 1.8l-15 8.5a1 1 0 0 1-1.5-.9Z'],
-  'book-open': ['M12 5C8 2 4 2 2 4v15c4-1 7 0 10 3 3-3 6-4 10-3V4c-2-2-6-2-10 1Zm-5 1v11m5-12v17m5-16v11'],
+  'book-open': ['M12 5C8 2 4 2 2 4v15c4-1 7 0 10 3 3-3 6-4 10-3V4c-2-2-6-2-10 1ZM6 6h1.8v10H6Zm5.2.5h1.6v13h-1.6ZM16.2 6H18v10h-1.8Z'],
   'refresh-cw': ['M20 7a9 9 0 0 0-16 8m0-6a9 9 0 0 0 16 8', 'm17 3 4 4-5 2M7 21l-4-4 5-2'],
+  'review-loop': ['M20 8a9 9 0 1 0 .5 7', 'm16 4 4 4-5 1M4 15l-1 4 4-1'],
   'chart-no-axes-combined': ['M3 15h3v6H3Zm7-5h3v11h-3Zm7-7h3v18h-3Z'],
   'credit-card': ['M4 3h16a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z', 'M3 8h18M6 12h12M6 15h5M6 18h12'],
   sparkles: ['m12 2 3 7 6 3-6 3-3 7-3-7-6-3 6-3Z', 'm13 7-2 5 3 2m6-10v4m-2-2h4'],
-  'calendar-days': ['M5 4h14a2 2 0 0 1 2 2v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2Z', 'M7 2v5M16 2v5M3 9h18M8 13h.01M13 13h.01M17 13h.01M8 17h.01M13 17h.01'],
-  'file-text': ['M5 2h9l5 5v15H5Zm9 0v6h5M8 12h8M8 16h8M8 19h4'],
+  'calendar-days': ['M5 4h14a2 2 0 0 1 2 2v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2ZM4.5 9.5v10H19.5v-10Z', 'M6.5 2v5M12 2v5M17.5 2v5M8 13h.01M13 13h.01M17 13h.01M8 17h.01M13 17h.01'],
+  'file-text': ['M5 2h9l5 5v15H5ZM8 12h8v1.2H8Zm0 4h8v1.2H8Zm0 3h4v1.2H8Z', 'M14 2v6h5'],
+  'list-checks': ['M4 2h16v20H4ZM7 6v2h2V6Zm0 5v2h2v-2Zm0 5v2h2v-2Zm5-10v1.5h5V6Zm0 5v1.5h5V11Zm0 5v1.5h5V16Z'],
   pencil: ['m3 17 13-14 4 4L7 21l-5 1Zm2 1 2 2M13 6l4 4M5 17 16 5'],
   'code-2': ['m8 7-5 5 5 5m8-10 5 5-5 5'],
   check: ['m5 12 4.5 4.5L20 6'],
   bell: ['M18 9a6 6 0 0 0-12 0c0 6-3 6-3 9h18c0-3-3-3-3-9M10 21h4M11 2h2'],
 }
-const todayFills: Record<string, number> = { play: .85, 'book-open': .8, 'chart-no-axes-combined': .95, 'credit-card': .25, 'file-text': .85, pencil: .7 }
+const todayFills: Record<string, number> = { play: .85, 'book-open': .8, 'chart-no-axes-combined': .95, 'credit-card': .25, 'file-text': .85, 'list-checks': .9, 'calendar-days': .85, pencil: .7 }
+const todayCutouts = new Set(['book-open', 'calendar-days', 'file-text', 'list-checks'])
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
-const outlineWidth = computed(() => props.variant === 'today' && ['play', 'book-open', 'chart-no-axes-combined'].includes(props.name) ? .8 : props.variant === 'facts' && factsFilled.has(props.name) ? .6 : props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
+const outlineWidth = computed(() => props.variant === 'today' && props.name === 'review-loop' ? 2.5 : props.variant === 'today' && todayCutouts.has(props.name) ? .6 : props.variant === 'today' && ['play', 'chart-no-axes-combined'].includes(props.name) ? .8 : props.variant === 'facts' && factsFilled.has(props.name) ? .6 : props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
 const iconPaths = computed(() => (props.variant === 'today' ? todayPaths[props.name] : props.variant === 'target' ? targetPaths[props.name] : props.variant === 'facts' ? factsPaths[props.name] : props.variant === 'expression' ? expressionPaths[props.name] : props.variant === 'materials' ? materialsPaths[props.name] : props.variant === 'tasks' ? tasksPaths[props.name] : props.variant === 'schedule' ? schedulePaths[props.name] : props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : props.variant === 'growth' ? growthPaths[props.name] : props.variant === 'command' ? commandPaths[props.name] : props.variant === 'recent' ? recentPaths[props.name] : props.variant === 'authorization' ? authorizationPaths[props.name] : props.variant === 'settings' ? settingsPaths[props.name] : props.variant === 'mobile' ? mobilePaths[props.name] : props.variant === 'inbox' ? inboxPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
 const fillOpacity = computed(() => props.variant === 'today' ? todayFills[props.name] ?? 0 : props.variant === 'tasks' && props.name === 'database' ? .9 : props.variant === 'tasks' && props.name === 'lock' ? .35 : props.variant === 'facts' && factsFilled.has(props.name) ? .85 : props.variant === 'recent' ? ({ house: .85, play: .7, dumbbell: .75, clock: .2, 'chart-no-axes-column': .85, 'layout-grid': .85, zap: .85 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'recollection' ? ({ house: .35, clipboard: .85, 'book-open': .9, play: .3, 'chart-no-axes-combined': .8, database: .9, 'credit-card': .8 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
@@ -574,6 +577,6 @@ const fillOpacity = computed(() => props.variant === 'today' ? todayFills[props.
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="outlineWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
-    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'facts' || (variant === 'detail' && name === 'shield') || (variant === 'design' && name === 'monitor') ? 'evenodd' : undefined" />
+    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'facts' || (variant === 'today' && todayCutouts.has(name)) || (variant === 'detail' && name === 'shield') || (variant === 'design' && name === 'monitor') ? 'evenodd' : undefined" />
   </svg>
 </template>

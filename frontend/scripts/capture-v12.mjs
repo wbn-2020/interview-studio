@@ -188,6 +188,14 @@ try {
             orbit: document.querySelector('.lt-practice-orbit ellipse').getAttribute('transform'),
             brandPaths: document.querySelectorAll('.r-emblem path').length,
             savedColor: getComputedStyle(document.querySelector('.r-saved')).color,
+            typography: Object.fromEntries(['.lt-today-date p:first-child','.lt-practice-copy h3','.lt-task-link','.lt-interview-calendar'].map(selector=>{
+              const s=getComputedStyle(document.querySelector(selector))
+              return [selector,{fontSize:s.fontSize,paddingBottom:s.paddingBottom}]
+            })),
+            taskTextTransform: getComputedStyle(document.querySelector('.lt-task-link > span')).transform,
+            orbitMask: getComputedStyle(document.querySelector('.lt-practice-orbit')).maskImage,
+            orbitOpacity: getComputedStyle(document.querySelector('.lt-practice-orbit > ellipse')).strokeOpacity,
+            firstStepOutline: document.querySelector('.lt-interview-steps .r-icon path').getAttribute('fill-rule'),
           }
         })
         for (const [selector, expected] of [
@@ -197,6 +205,12 @@ try {
         ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected),'02布局不符：'+selector)
         ensure(layout.brandPaths===4 && layout.navigation.length===10 && layout.navigation.every(item=>item.lines===1)
           && layout.savedColor==='rgb(192, 196, 185)' && layout.ring==='3 1' && layout.orbit==='rotate(-40 615 185)','02品牌、导航、保存、进度环或固定轨道不符')
+        ensure(layout.typography['.lt-today-date p:first-child'].fontSize==='27.5px'
+          && layout.typography['.lt-practice-copy h3'].fontSize==='29px'
+          && layout.typography['.lt-task-link'].fontSize==='19px'
+          && layout.typography['.lt-interview-calendar'].paddingBottom==='6px'
+          && layout.taskTextTransform==='matrix(0.95, 0, 0, 1, 0, 0)'
+          && layout.orbitMask!=='none' && layout.orbitOpacity==='0.7' && layout.firstStepOutline==='evenodd','02局部字面、日期牌、轨道渐隐或准备清单轮廓不符')
         await writeJson(path.join(values.output,'records','02-today-layout.json'),layout)
         checks.push({check:'today-brand-navigation-topbar-avatars-summary-three-panels-fixed-orbit-geometry',scene:scene.id,layout,passed:true})
         ensure(layout.rows.length===4 && layout.rows.map(row=>row[0]).join('|')==='到期回忆 · 缓存一致性|整理失败路径 · 分布式系统|独立复练 · 系统设计|确认面试安排 · 字节跳动'

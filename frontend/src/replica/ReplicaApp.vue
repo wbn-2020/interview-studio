@@ -64,7 +64,7 @@ const nav = computed(() => {
     { id: 3, label: '准备', icon: [16, 17, 20, 23].includes(scene.value) ? 'clipboard' : scene.value === 14 ? 'briefcase' : [18, 24].includes(scene.value) ? 'square-check-rounded' : [5, 6].includes(scene.value) ? 'file-text' : scene.value === 13 ? 'clipboard' : [3, 7].includes(scene.value) ? 'target' : [11, 19].includes(scene.value) ? 'book-open' : 'play' },
     { id: 10, label: '知识', icon: scene.value === 19 ? 'box' : 'book-open' },
     { id: 17, label: '训练', icon: scene.value === 20 ? 'zap' : scene.value === 16 ? 'layers' : scene.value === 12 ? 'chart-no-axes-column' : scene.value === 18 ? 'circle-play' : [5, 6, 7, 17, 23, 24].includes(scene.value) ? 'play' : 'dumbbell' },
-    { id: 21, label: '复盘', icon: [3, 5, 6, 7, 13, 16, 18, 20, 26, 27, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
+    { id: 21, label: '复盘', icon: scene.value === 2 ? 'review-loop' : [3, 5, 6, 7, 13, 16, 18, 20, 26, 27, 30].includes(scene.value) ? 'chart-no-axes-column' : 'refresh-cw' },
     { id: 24, label: '成长', icon: [5, 6, 30].includes(scene.value) ? 'leaf' : [3, 7, 12, 13, 16, 18, 26, 27].includes(scene.value) ? 'sprout' : 'chart-no-axes-combined' },
   ]
   if (scene.value === 16) [ordinary[2], ordinary[3]] = [ordinary[3]!, ordinary[2]!]

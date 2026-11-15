@@ -46,7 +46,7 @@ const visibleTasks = computed(() => tasks.filter(task => (
   || (activeFilter.value === 'practice' && task.practice)
 )))
 const interviewSteps = [
-  { title: '复习重点', icon: 'file-text' },
+  { title: '复习重点', icon: 'list-checks' },
   { title: '刷题巩固', icon: 'code-2' },
   { title: '模拟面试', icon: 'check' },
 ]
@@ -682,7 +682,7 @@ watch(() => props.scene, () => {
 }
 
 .lt-today-date p:first-child {
-  font-size: 28px;
+  font-size: 27.5px;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -740,13 +740,13 @@ watch(() => props.scene, () => {
   height: 71px;
   display: flex;
   align-items: center;
-  gap: 29px;
+  gap: 33px;
   padding: 0 25px;
   border: 1px solid #4a3828;
   border-radius: 21px;
   background: radial-gradient(ellipse 75px 90px at 0 0, #bc83536b, transparent), linear-gradient(110deg, #2d221aab, #1c1a17c4 26%, #211d19c4);
   white-space: nowrap;
-  font-size: 20px;
+  font-size: 19px;
 }
 
 .lt-day-summary button,
@@ -760,12 +760,13 @@ watch(() => props.scene, () => {
 }
 
 .lt-summary-interview strong {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
 }
 
 .lt-summary-interview > span {
   margin-left: 0;
+  font-size: 19.5px;
 }
 
 .lt-summary-budget,
@@ -884,14 +885,14 @@ watch(() => props.scene, () => {
 }
 
 .lt-practice-copy h3 {
-  font-size: 30px;
+  font-size: 29px;
   font-weight: 600;
   line-height: 1.5;
   white-space: nowrap;
 }
 
 .lt-practice-copy p {
-  margin-top: 8px;
+  margin-top: 9.5px;
   color: #aaa69f;
   font-size: 23px;
   font-weight: 500;
@@ -936,6 +937,11 @@ watch(() => props.scene, () => {
   width: 795px;
   height: 263px;
   pointer-events: none;
+  mask-image: linear-gradient(0deg, transparent, #000 65%);
+}
+
+.lt-practice-orbit > ellipse {
+  stroke-opacity: .7;
 }
 
 .lt-task-panel {
@@ -1008,6 +1014,7 @@ watch(() => props.scene, () => {
   font-weight: 500;
   color: #aaa69f;
   padding: 0 4px 1px;
+  transform: translateY(-5px);
 }
 
 .lt-task-table td {
@@ -1038,6 +1045,11 @@ watch(() => props.scene, () => {
 
 .lt-task-link .r-icon {
   color: #9db4b9;
+}
+
+.lt-task-link > span {
+  transform: scaleX(.95);
+  transform-origin: left center;
 }
 
 .lt-task-recall .lt-task-link,
@@ -1126,9 +1138,11 @@ watch(() => props.scene, () => {
   flex: none;
   width: 128px;
   height: 132px;
+  padding-bottom: 6px;
   border: 1px solid #b77b43;
   border-radius: 22px;
-  background: radial-gradient(ellipse at 15% 0, #9e6b435c, transparent 65%), radial-gradient(ellipse at 70% 70%, #4f39282e, #241d17cc 75%);
+  background: radial-gradient(ellipse at 15% 0, #9e6b4340, transparent 65%), radial-gradient(ellipse at 70% 70%, #4f39282e, #241d17cc 75%);
+  box-shadow: inset 0 1px 3px #e6ac7e50, inset 0 0 24px #a7774b24;
   color: #f6dfc5;
 }
 
