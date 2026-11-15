@@ -61,16 +61,20 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
     <div class="r-tabs prep-tabs"><button v-for="(tab, i) in ['目标', '材料', '任务', '安排']" :key="tab" :class="{ 'r-active': i === 0 }" @click="prepTab(i)">{{ tab }}</button></div>
     <aside class="r-panel target-list">
       <div class="r-between"><h3>目标列表</h3><button class="r-icon-btn plus-small" title="新建目标" @click="emit('notify', '新建目标的业务流程待确认')"><RIcon name="plus" /></button></div>
-      <button v-for="(title, i) in targetTitles" :key="title" class="target-item" :class="{ selected: target === i }" @click="target = i"><i :style="{ background: ['#439ef3', '#7ccba6', '#76726b'][i] }" /><strong>{{ title }}</strong><small class="r-row"><RIcon name="calendar" :size="20" />{{ ['技术一面 · 12 天后', '待安排', '长期目标'][i] }}</small></button>
+      <button v-for="(title, i) in targetTitles" :key="title" class="target-item" :class="{ selected: target === i }" :aria-pressed="target === i" @click="target = i"><i :style="{ background: ['#439ef3', '#7ccba6', '#76726b'][i] }" /><strong>{{ title }}</strong><small class="r-row"><RIcon name="calendar" variant="target" :size="20" />{{ ['技术一面 · 12 天后', '待安排', '长期目标'][i] }}</small></button>
     </aside>
     <section class="target-center">
-      <div class="target-name r-between"><h2 class="r-row"><span class="company-bars"><i /><i /><i /><i /></span>{{ targetTitles[target] }}</h2><div class="r-segmented"><button class="r-active">当前目标</button><button @click="emit('notify', '暂无其他历史目标')">历史目标</button></div></div>
-      <div class="target-meta r-row r-muted"><span class="r-row"><RIcon name="calendar" />JD 11.06</span><span class="r-row"><RIcon name="folder" />项目 2</span><span class="r-row"><RIcon name="file-text" />题目 18</span></div>
-      <div class="r-panel requirements"><h2>要求与考察项</h2><table class="r-table"><thead><tr><th>要求</th><th>关联证据</th><th>状态</th><th>最近</th></tr></thead><tbody><tr v-for="(row, i) in [['分析异常与恢复', '2 条', '有证据', '11.08'], ['讲清本人职责', '1 条', '待补', '11.06'], ['缓存一致性', '3 条', '有证据', '11.10'], ['系统设计取舍', '0 条', '无记录', '—']]" :key="row[0]" @click="emit('navigate', 24)"><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td><span class="r-pill" :class="i === 1 ? 'amber' : i === 3 ? '' : 'green'">● {{ row[2] }}</span></td><td>{{ row[3] }}</td></tr></tbody></table></div>
-      <div class="r-panel recent-materials"><h3>近期材料</h3><button v-for="(row, i) in [['字节跳动一面复盘笔记', '11.08 · 2.3k 字'], ['分布式缓存设计要点', '11.07 · 1.8k 字'], ['高并发系统设计思路', '11.05 · 3.1k 字']]" :key="row[0]" class="r-between" @click="emit('navigate', i === 0 ? 23 : 6)"><span class="r-row"><RIcon name="file-text" />{{ row[0] }}</span><span class="r-row r-muted">{{ row[1] }}<RIcon name="chevron-right" /></span></button></div>
+      <div class="target-name r-between"><h2 class="r-row"><span v-if="target === 0" class="company-bars"><i /><i /><i /><i /></span>{{ targetTitles[target] }}</h2><div class="r-segmented"><button class="r-active" aria-pressed="true">当前目标</button><button @click="emit('notify', '历史目标内容待确认')">历史目标</button></div></div>
+      <!-- 原图只定义首个目标的详情，切换目标不能沿用其证据、路线或预算。 -->
+      <template v-if="target === 0">
+        <div class="target-meta r-row r-muted"><span class="r-row"><RIcon name="calendar" variant="target" />JD 11.06</span><span class="r-row"><RIcon name="folder" variant="target" />项目 2</span><span class="r-row"><RIcon name="file-text" variant="target" />题目 18</span></div>
+        <div class="r-panel requirements"><h2>要求与考察项</h2><table class="r-table"><colgroup><col /><col /><col /><col /></colgroup><thead><tr><th>要求</th><th>关联证据</th><th>状态</th><th>最近</th></tr></thead><tbody><tr v-for="(row, i) in [['分析异常与恢复', '2 条', '有证据', '11.08'], ['讲清本人职责', '1 条', '待补', '11.06'], ['缓存一致性', '3 条', '有证据', '11.10'], ['系统设计取舍', '0 条', '无记录', '—']]" :key="row[0]" tabindex="0" role="link" @click="emit('navigate', 24)" @keydown.enter="emit('navigate', 24)"><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td><span class="r-pill" :class="i === 1 ? 'amber' : i === 3 ? '' : 'green'">● {{ row[2] }}</span></td><td>{{ row[3] }}</td></tr></tbody></table></div>
+        <div class="r-panel recent-materials"><h3>近期材料</h3><button v-for="(row, i) in [['字节跳动一面复盘笔记', '11.08 · 2.3k 字'], ['分布式缓存设计要点', '11.07 · 1.8k 字'], ['高并发系统设计思路', '11.05 · 3.1k 字']]" :key="row[0]" class="r-between" @click="emit('navigate', i === 0 ? 23 : 6)"><span class="r-row"><RIcon name="file-text" variant="target" />{{ row[0] }}</span><span class="r-row r-muted">{{ row[1] }}<RIcon name="chevron-right" :size="18" /></span></button></div>
+      </template>
+      <p v-else class="target-unconfirmed r-muted" role="status">该目标的要求、关联证据、准备路线与预算待确认。</p>
     </section>
-    <aside class="r-panel target-route"><h2>准备路线</h2><div v-for="(row, i) in [['11.06', '核实项目事实', '已完成'], ['11.08', '项目追问', '已完成'], ['11.10', '系统设计演练', '进行中'], ['11.12', '技术一面', '']]" :key="row[0]" class="timeline-item" :class="{ current: i === 2, future: i === 3 }"><span class="timeline-dot"><RIcon v-if="i < 2" name="check" :size="22" /></span><div><strong>{{ row[0] }}&nbsp; {{ row[1] }}</strong><p class="r-muted">{{ row[2] }}</p></div></div></aside>
-    <aside class="r-panel target-budget"><h3>本周预算</h3><div class="r-between"><span><b>4</b> / 6 小时</span><button class="r-btn" @click="emit('navigate', 7)"><RIcon name="calendar" :size="20" />调整安排</button></div></aside>
+    <aside v-if="target === 0" class="r-panel target-route"><h2>准备路线</h2><div v-for="(row, i) in [['11.06', '核实项目事实', '已完成'], ['11.08', '项目追问', '已完成'], ['11.10', '系统设计演练', '进行中'], ['11.12', '技术一面', '']]" :key="row[0]" class="timeline-item" :class="{ current: i === 2, future: i === 3 }"><span class="timeline-dot"><RIcon v-if="i < 2" name="check" :size="22" /></span><div><strong>{{ row[0] }}&nbsp; {{ row[1] }}</strong><p class="r-muted">{{ row[2] }}</p></div></div></aside>
+    <aside v-if="target === 0" class="r-panel target-budget"><h3>本周预算</h3><div class="r-between"><span><b>4</b> / 6 小时</span><button class="r-btn" @click="emit('navigate', 7)"><RIcon name="calendar" variant="target" :size="20" />调整安排</button></div></aside>
   </section>
 
   <section v-else-if="scene === 4" class="prep-facts">
@@ -168,6 +172,56 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .timeline-item.future .timeline-dot { border: 3px solid #6c665f; background: none; }
 .timeline-item strong { font-size: 21px; font-weight: 550; white-space: nowrap; }.timeline-item p { margin-top: 4px; }.timeline-item.current p { color: #e4a05c; }
 .target-budget { position: absolute; right: 23px; bottom: 46px; width: 330px; height: 190px; padding: 19px 22px; }.target-budget b { font-size: 40px; }.target-budget .r-btn { min-height: 47px; font-size: 17px; padding: 7px 14px !important; border-radius: 25px; }
+.prep-target .p-title { top: 119px; left: 34px; font-size: 58px; }
+.prep-target .p-actions { top: 135px; right: 34px; gap: 18px; }
+.prep-target .p-actions .r-btn { height: 57px; font-size: 23px; font-weight: 500; border-radius: 28px; }
+.prep-target .p-actions .r-btn:first-child { width: 169px; border-color: #59504755 !important; background: linear-gradient(120deg, #2d2925de, #221e1bd9) !important; }
+.prep-target .p-actions .r-primary { width: 142px; background: linear-gradient(115deg, #ffd0a5, #ffba87 65%, #f2a56e) !important; box-shadow: inset 0 1px 6px #ffe6cba6, 0 0 22px #f5aa6b33; border-color: #e9af80 !important; color: #21150e; font-weight: 600; }
+.prep-tabs { gap: 28px; border-color: #352d2477; }
+.prep-tabs button { flex: none; width: 78px; padding: 10px 0 14px; font-weight: 500; }
+.prep-tabs button:first-child { margin-right: 6px; }
+.prep-tabs button.r-active { background: none; font-weight: 600; }
+.prep-tabs button.r-active::after { left: 0; right: 0; background: #f9bd91; }
+.prep-target .r-panel { background: linear-gradient(115deg, #211d19b8, #171411db 70%, #211b1766); border-color: #3b332b8a; }
+.target-list > .r-between { padding-bottom: 17px; padding-right: 7px; }
+.target-item strong { font-weight: 500; }
+.target-item.selected { background: linear-gradient(115deg, #805a3e94, #65472e80) !important; box-shadow: inset 0 0 10px #d5a27814; border-color: #a4774f99 !important; }
+.target-center { padding-inline: 20px; background: linear-gradient(120deg, #1c1814ad, #15120fb5); border-color: #30281f52; }
+.target-name h2 { gap: 18px; font-size: 27px; }
+.target-name .r-segmented { margin-right: -3px; font-size: 18px; }
+.target-name .r-segmented button { font-size: 18px; }
+.target-name .r-segmented .r-active { background: linear-gradient(120deg, #825734b0, #503b29a6); box-shadow: inset 0 0 0 1px #d3945ebd, inset 0 1px 6px #d79b6140; }
+.company-bars { width: 48px; gap: 4.5px; flex: none; }
+.company-bars i { width: 8.5px; }
+.target-meta { position: absolute; top: 91px; left: 20px; height: 37px; margin: 0; gap: 29px; font-size: 21px; color: #c8c1b8; }
+.target-meta > span { gap: 11px; }
+.requirements { position: absolute; left: -1px; top: 144px; width: 630px; height: 328px; padding: 17px 21px 8px; }
+.requirements .r-table { table-layout: fixed; margin-top: 18px; }
+.requirements col:nth-child(1) { width: 217px; }.requirements col:nth-child(2) { width: 149px; }.requirements col:nth-child(3) { width: 159px; }
+.requirements th { height: 49px; font-size: 21px; }.requirements td { height: 48px; line-height: 32px; }
+.requirements th,.requirements td { padding: 7px 3px; white-space: nowrap; }
+.requirements th:nth-child(3) { padding-left: 11px; }
+.requirements .r-pill { line-height: 33px; padding: 0 10px; }
+.requirements td:last-child { font-size: 20px; }
+.requirements tr:last-child td { border-bottom-color: transparent; }
+.recent-materials { left: -1px; right: auto; top: 480px; bottom: auto; width: 630px; height: 213px; padding: 16px 21px 18px; }
+.recent-materials button { height: 48px; padding: 8px 0 !important; }
+.recent-materials button > .r-row:first-child { gap: 20px; }
+.recent-materials .r-muted { gap: 24px; color: #bbb4ac; }
+.recent-materials button:last-child { border-bottom: 0 !important; }
+.target-route { width: 329px; }
+.target-route h2 { font-size: 26px; line-height: 36px; margin-bottom: 30px; }
+.timeline-item { gap: 22px; min-height: 102px; }
+.timeline-item:nth-of-type(2) { min-height: 112px; }
+.timeline-item strong { font-size: 20px; font-weight: 500; }
+.timeline-item.current strong { font-weight: 600; }
+.timeline-item.future strong { font-weight: 400; color: #c5bdb4; }
+.timeline-item p { font-size: 20px; margin-top: 4px; }
+.timeline-item:not(:last-child)::after { height: 56px; }
+.timeline-item:nth-of-type(2)::after { height: 66px; }
+.target-budget { width: 329px; }.target-budget h3 { line-height: 32px; }
+.target-budget .r-btn { height: 50px; background: linear-gradient(120deg, #302a24dd, #28231ec7) !important; border-color: #51473b44 !important; }
+.target-unconfirmed { margin-top: 36px !important; font-size: 20px; }
 .prep-facts .p-title { top: 95px; left: 25px; }.prep-facts .p-actions { top: 139px; right: 26px; gap: 12px; }.prep-facts .r-btn { border-radius: 29px; font-size: 22px; }
 .facts-tabs { position: absolute; top: 166px; left: 23px; right: 23px; height: 65px; gap: 20px; border-bottom: 1px solid #342c24; }.facts-tabs button { padding: 11px 23px; font-size: 25px; }
 .project-tree { position: absolute; top: 246px; bottom: 71px; left: 22px; width: 246px; padding: 25px 13px; border-radius: 18px; }.project-tree h3 { padding-left: 6px; margin-bottom: 21px; }.tree-root { width: 100%; font-size: 21px; gap: 8px; padding: 5px 2px 14px !important; white-space: nowrap; text-align: left; }.tree-root:not(:first-of-type) { margin-top: 15px; }.project-leaf { margin-left: 0; width: 100%; height: 58px; padding-left: 53px !important; text-align: left; font-size: 21px; gap: 10px; border-radius: 12px; }.project-leaf.selected { color: #f2c69b; background: #88572f55 !important; box-shadow: inset 4px 0 0 #ecb078; }

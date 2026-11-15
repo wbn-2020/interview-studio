@@ -168,6 +168,82 @@ try {
       let interactionError = null
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
+      if (scene.id === '03') {
+        const layout = await page.evaluate(() => {
+          const selectors = ['.r-sidebar', '.r-sidebar > a', '.r-top-search', '.r-top-status > .r-avatar',
+            '.r-sidebar-avatar .r-avatar', '.p-actions .r-btn:first-child', '.p-actions .r-btn:last-child',
+            '.target-list', '.requirements', '.recent-materials', '.target-route', '.target-budget']
+          const box = node => { const r = node.getBoundingClientRect(); return [r.x, r.y, r.width, r.height] }
+          const heading = document.querySelector('.target-name h2').getBoundingClientRect()
+          const segmented = document.querySelector('.target-name .r-segmented').getBoundingClientRect()
+          return {
+            boxes: Object.fromEntries(selectors.map(selector => [selector, box(document.querySelector(selector))])),
+            brandPaths: document.querySelectorAll('.r-emblem path').length,
+            brandCircles: document.querySelectorAll('.r-emblem circle').length,
+            navigation: [...document.querySelectorAll('.r-nav-item span')].map(node => {
+              const range = document.createRange(); range.selectNodeContents(node)
+              return { text: node.textContent, lines: range.getClientRects().length }
+            }),
+            headingClear: heading.right < segmented.left,
+            rows: [...document.querySelectorAll('.requirements tbody tr')].map(node => [...node.cells].map(cell => cell.textContent)),
+            columns: [...document.querySelectorAll('.requirements col')].map(node => node.getBoundingClientRect().width),
+            dates: [...document.querySelectorAll('.timeline-item strong')].map(node => node.textContent),
+            dots: [...document.querySelectorAll('.timeline-dot')].map(box),
+            materials: [...document.querySelectorAll('.recent-materials button')].map(node => node.textContent),
+            overflow: [...document.querySelectorAll('.target-item strong,.requirements td,.recent-materials button,.timeline-item strong')]
+              .some(node => node.scrollWidth > node.clientWidth + 1),
+          }
+        })
+        for (const [selector, expected] of [
+          ['.r-sidebar',[0,0,208,994]], ['.r-sidebar > a',[34,34,160,56]], ['.r-top-search',[645,26,500,53]],
+          ['.r-top-status > .r-avatar',[1455,26,47,52]], ['.r-sidebar-avatar .r-avatar',[32,919,53,57]],
+          ['.p-actions .r-btn:first-child',[1173,135,169,57]], ['.p-actions .r-btn:last-child',[1360,135,142,57]],
+          ['.target-list',[223,284,295,694]], ['.requirements',[529,429,630,328]], ['.recent-materials',[529,765,630,213]],
+          ['.target-route',[1184,284,329,495]], ['.target-budget',[1184,788,329,190]],
+        ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected), '03布局不符：' + selector)
+        ensure(layout.brandPaths === 2 && layout.brandCircles === 2 && layout.headingClear && !layout.overflow
+          && layout.navigation.length === 10 && layout.navigation.every(item => item.lines === 1), '03品牌、导航换行或标题／内容溢出')
+        await writeJson(path.join(values.output,'records','03-target-layout.json'),layout)
+        checks.push({check:'target-brand-three-columns-single-line-navigation-title-table-materials-route-budget-geometry',scene:scene.id,layout,passed:true})
+        ensure(JSON.stringify(layout.rows) === JSON.stringify([
+          ['分析异常与恢复','2 条','● 有证据','11.08'], ['讲清本人职责','1 条','● 待补','11.06'],
+          ['缓存一致性','3 条','● 有证据','11.10'], ['系统设计取舍','0 条','● 无记录','—'],
+        ]) && layout.columns.slice(0,3).join(',') === '217,149,159'
+          && layout.dates.length === 4 && layout.materials.length === 3
+          && layout.dots.map(box=>box[1]).join(',') === '374,476,588,690', '03四行要求、表列或四阶段路线不符')
+        checks.push({check:'target-four-requirements-three-materials-four-stages-fixed-data',scene:scene.id,passed:true})
+        for (const [index, title, keyboard] of [[1,'美团 · 后端开发','Enter'],[2,'通用 · Java 基础',' ']]) {
+          const item = page.locator('.target-item').nth(index)
+          await item.focus(); await item.press(keyboard)
+          ensure(await item.getAttribute('aria-pressed') === 'true' && (await page.locator('.target-name h2').textContent()).trim() === title,
+            '03键盘选择未同步目标')
+          ensure(await page.locator('.target-unconfirmed').isVisible()
+            && await page.locator('.requirements,.recent-materials,.target-route,.target-budget,.company-bars').count() === 0,
+            '03未定义目标借用了首个目标详情')
+        }
+        await page.locator('.target-item').first().click()
+        await page.locator('.target-name .r-segmented button').last().click()
+        ensure(await page.getByRole('status').getByText('历史目标内容待确认',{exact:true}).isVisible(), '03历史内容边界未说明')
+        await page.reload({waitUntil:'networkidle'}); await ready()
+        await assertFrame(captured,'03选择／历史边界后刷新未恢复参考初态')
+        checks.push({check:'target-keyboard-selection-no-borrowed-details-history-boundary-refresh',scene:scene.id,passed:true})
+        for (const [selector, target] of [
+          ['.prep-tabs button:nth-child(2)','06'], ['.prep-tabs button:nth-child(3)','07'], ['.prep-tabs button:nth-child(4)','08'],
+          ['.target-budget .r-btn','07'], ['.recent-materials button:first-child','23'], ['.recent-materials button:nth-child(2)','06'],
+          ['.r-sidebar > a','02'], ['.r-top-search','25'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({state:'visible'})
+          ensure(new URL(page.url()).searchParams.get('scene') === target,'03入口没有进入对应场景')
+          ensure((await page.goto(entry,{waitUntil:'networkidle'}))?.ok(),'03返回加载失败'); await ready()
+        }
+        await page.locator('.requirements tbody tr').first().focus()
+        await page.locator('.requirements tbody tr').first().press('Enter')
+        await page.locator('.r-canvas[data-scene="24"]').waitFor({state:'visible'})
+        ensure((await page.goto(entry,{waitUntil:'networkidle'}))?.ok(),'03要求证据返回加载失败'); await ready()
+        await assertFrame(captured,'03页签、材料、预算、证据、品牌或搜索返回初态不符')
+        checks.push({check:'target-tabs-materials-budget-evidence-keyboard-brand-command-navigation-return',scene:scene.id,passed:true})
+      }
       if (scene.id === '04') {
         const layout = await page.evaluate(() => {
           const boxes = Object.fromEntries(['.r-sidebar', '.r-sidebar > a', '.r-top-search', '.r-sidebar-avatar', '.project-tree', '.fact-body', '.fact-links', '.expressions'].map(selector => {
