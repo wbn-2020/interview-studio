@@ -168,6 +168,89 @@ try {
       let interactionError = null
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
+      if (scene.id === '02') {
+        const layout = await page.evaluate(() => {
+          const box = selector => {
+            const r = document.querySelector(selector).getBoundingClientRect()
+            return [r.x, r.y, r.width, r.height]
+          }
+          return {
+            boxes: Object.fromEntries(['.r-sidebar', '.r-sidebar > a', '.r-top-search', '.r-top-status > .r-avatar',
+              '.r-sidebar-avatar .r-avatar', '.lt-day-summary', '.lt-continue', '.lt-task-panel', '.lt-interview-panel'].map(selector => [selector, box(selector)])),
+            navigation: [...document.querySelectorAll('.r-nav-item span')].map(node => {
+              const range = document.createRange(); range.selectNodeContents(node)
+              return { text: node.textContent, lines: range.getClientRects().length }
+            }),
+            rows: [...document.querySelectorAll('.lt-task-table tbody tr')].map(row => [...row.cells].map(cell => cell.textContent)),
+            date: document.querySelector('.lt-today-date').textContent,
+            steps: [...document.querySelectorAll('.lt-interview-steps button')].map(node => ({ text: node.textContent.trim(), selected: node.getAttribute('aria-pressed') })),
+            ring: document.querySelector('.lt-ring-progress').getAttribute('stroke-dasharray'),
+            orbit: document.querySelector('.lt-practice-orbit ellipse').getAttribute('transform'),
+            brandPaths: document.querySelectorAll('.r-emblem path').length,
+            savedColor: getComputedStyle(document.querySelector('.r-saved')).color,
+          }
+        })
+        for (const [selector, expected] of [
+          ['.r-sidebar',[17,21,218,983]], ['.r-sidebar > a',[32,47,183,54]], ['.r-top-search',[262,28,718,55]],
+          ['.r-top-status > .r-avatar',[1441,28,54,56]], ['.lt-day-summary',[262,221,1243,71]],
+          ['.lt-continue',[262,311,795,263]], ['.lt-task-panel',[262,592,795,385]], ['.lt-interview-panel',[1076,311,429,666]],
+        ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected),'02布局不符：'+selector)
+        ensure(layout.brandPaths===4 && layout.navigation.length===10 && layout.navigation.every(item=>item.lines===1)
+          && layout.savedColor==='rgb(192, 196, 185)' && layout.ring==='3 1' && layout.orbit==='rotate(-40 615 185)','02品牌、导航、保存、进度环或固定轨道不符')
+        await writeJson(path.join(values.output,'records','02-today-layout.json'),layout)
+        checks.push({check:'today-brand-navigation-topbar-avatars-summary-three-panels-fixed-orbit-geometry',scene:scene.id,layout,passed:true})
+        ensure(layout.rows.length===4 && layout.rows.map(row=>row[0]).join('|')==='到期回忆 · 缓存一致性|整理失败路径 · 分布式系统|独立复练 · 系统设计|确认面试安排 · 字节跳动'
+          && layout.rows.map(row=>row[2]).join('|')==='3 分钟|5 分钟|12 分钟|5 分钟'
+          && layout.date.includes('2026年11月11日 周三') && layout.date.includes('4 项待处理 · 预计 42 分钟')
+          && JSON.stringify(layout.steps)===JSON.stringify([{text:'复习重点',selected:'true'},{text:'刷题巩固',selected:'false'},{text:'模拟面试',selected:'false'}]),'02固定文案、任务四行或三步初态不符')
+        const tabs=page.getByRole('tablist',{name:'任务筛选'}).getByRole('tab')
+        await tabs.nth(1).click()
+        ensure(await page.locator('.lt-task-table tbody tr').count()===2,'02到期筛选行数错误')
+        await tabs.nth(1).press('ArrowRight')
+        ensure(await tabs.nth(2).getAttribute('aria-selected')==='true' && await page.locator('.lt-task-table tbody tr').count()===1,'02方向键筛选错误')
+        await tabs.nth(2).press('ArrowRight')
+        ensure(await tabs.first().getAttribute('aria-selected')==='true' && await page.locator('.lt-task-table tbody tr').count()===4,'02筛选没有循环返回')
+        for(let index=1;index<3;index++) {
+          await page.locator('.lt-interview-steps button').nth(index).click()
+          ensure(await page.locator('.lt-interview-steps button').nth(index).getAttribute('aria-pressed')==='true','02准备步骤未切换')
+        }
+        await page.reload({waitUntil:'networkidle'}); await ready()
+        await assertFrame(captured,'02筛选和准备步骤刷新后未恢复')
+        checks.push({check:'today-four-tasks-filters-keyboard-three-steps-fixed-data-refresh',scene:scene.id,passed:true})
+        await page.locator('.lt-quick-button').click()
+        const dialog=page.getByRole('dialog',{name:'快速记录'}),input=dialog.getByRole('textbox',{name:'记录内容'})
+        ensure(await input.evaluate(node=>node===document.activeElement),'02快速记录未自动聚焦')
+        const close=dialog.getByRole('button',{name:'关闭快速记录'}),save=dialog.getByRole('button',{name:'保存记录'})
+        await close.focus(); await close.press('Shift+Tab')
+        ensure(await save.evaluate(node=>node===document.activeElement),'02弹层反向焦点未循环')
+        await save.press('Tab')
+        ensure(await close.evaluate(node=>node===document.activeElement),'02弹层正向焦点未循环')
+        await input.fill('准备要点仅在本页记录')
+        await input.press('Escape')
+        ensure(await dialog.count()===0 && await page.locator('.lt-quick-button').evaluate(node=>node===document.activeElement),'02Escape关闭或返回焦点错误')
+        await page.locator('.lt-quick-button').click(); await save.click()
+        ensure(await dialog.count()===0 && await page.getByRole('status').textContent()==='快速记录已保留在本次页面内存中','02快速记录内存边界错误')
+        await page.getByRole('textbox',{name:'记录面试准备要点'}).fill('明确恢复判据')
+        await page.getByRole('button',{name:'保存面试准备要点'}).click()
+        ensure(await page.getByRole('status').textContent()==='面试准备要点已保留在本次页面内存中','02面试要点内存边界错误')
+        await page.reload({waitUntil:'networkidle'}); await ready()
+        await assertFrame(captured,'02记录保存后刷新未恢复初态')
+        checks.push({check:'today-quick-record-focus-trap-escape-local-note-boundaries-refresh',scene:scene.id,passed:true})
+        for(const [selector,target] of [
+          ['.lt-focus-button','16'],['.lt-resume-button','22'],['.lt-previous-button','19'],
+          ['.lt-summary-interview','08'],['.lt-summary-sources','06'],['.lt-interview-overview','08'],
+          ['.lt-task-table tbody tr:nth-child(1) .lt-task-link','16'],['.lt-task-table tbody tr:nth-child(2) .lt-task-link','11'],
+          ['.lt-task-table tbody tr:nth-child(3) .lt-task-more','22'],['.lt-task-table tbody tr:nth-child(4) .lt-task-more','08'],
+          ['.r-top-search','25'],['.r-sidebar-avatar','28'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({state:'visible'})
+          ensure(new URL(page.url()).searchParams.get('scene')===target,'02入口未进入对应场景')
+          ensure((await page.goto(entry,{waitUntil:'networkidle'}))?.ok(),'02返回加载失败'); await ready()
+        }
+        await assertFrame(captured,'02十二入口返回后初态不符')
+        checks.push({check:'today-focus-practice-answer-interview-source-task-command-avatar-navigation-return',scene:scene.id,passed:true})
+      }
       if (scene.id === '03') {
         const layout = await page.evaluate(() => {
           const selectors = ['.r-sidebar', '.r-sidebar > a', '.r-top-search', '.r-top-status > .r-avatar',

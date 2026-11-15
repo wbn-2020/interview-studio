@@ -19,6 +19,8 @@ const quickRecord = ref('')
 const interviewNote = ref('')
 const savedRecords = ref<string[]>([])
 const recordInput = ref<HTMLTextAreaElement | null>(null)
+const recordTrigger = ref<HTMLButtonElement | null>(null)
+const recordDialog = ref<HTMLElement | null>(null)
 const selectedStep = ref(0)
 
 const features = [
@@ -63,6 +65,33 @@ async function openQuickRecord() {
   recordInput.value?.focus()
 }
 
+function closeQuickRecord() {
+  quickRecordOpen.value = false
+  void nextTick().then(() => recordTrigger.value?.focus({ preventScroll: true }))
+}
+
+function recordKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeQuickRecord()
+  } else if (event.key === 'Tab') {
+    const targets = [...(recordDialog.value?.querySelectorAll<HTMLElement>('button, textarea') ?? [])]
+    const first = targets[0], last = targets.at(-1)
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+  }
+}
+
+function filterKeydown(event: KeyboardEvent, index: number) {
+  const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? filters.length - 1 : 0
+  if (!offset) return
+  event.preventDefault()
+  const filter = filters[(index + offset) % filters.length]!
+  activeFilter.value = filter.id
+  document.getElementById(`lt-tab-${filter.id}`)?.focus()
+}
+
 function saveQuickRecord() {
   const text = quickRecord.value.trim()
   if (!text) {
@@ -71,7 +100,7 @@ function saveQuickRecord() {
   }
   savedRecords.value.push(text)
   quickRecord.value = ''
-  quickRecordOpen.value = false
+  closeQuickRecord()
   emit('notify', '快速记录已保留在本次页面内存中')
 }
 
@@ -164,12 +193,12 @@ watch(() => props.scene, () => {
         <p>4 项待处理 · 预计 42 分钟</p>
       </div>
       <div class="lt-today-actions">
-        <button class="lt-quick-button" @click="openQuickRecord">
-          <RIcon name="pencil" :size="25" />
+        <button ref="recordTrigger" class="lt-quick-button" @click="openQuickRecord">
+          <RIcon name="pencil" variant="today" :size="25" />
           快速记录
         </button>
         <button class="lt-focus-button" @click="emit('navigate', 16)">
-          <RIcon name="play" :size="24" />
+          <RIcon name="play" variant="today" :size="24" />
           开始专注
         </button>
       </div>
@@ -177,7 +206,7 @@ watch(() => props.scene, () => {
 
     <div class="lt-day-summary">
       <button class="lt-summary-interview" @click="emit('navigate', 8)">
-        <RIcon name="calendar-days" :size="24" />
+        <RIcon name="calendar-days" variant="today" :size="24" />
         <strong>下一场面试</strong>
         <span>11月12日 14:30 · Java 后端技术一面</span>
       </button>
@@ -193,13 +222,13 @@ watch(() => props.scene, () => {
         <svg viewBox="0 0 154 154" aria-hidden="true">
           <defs>
             <linearGradient id="lt-ring-gradient" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0" stop-color="#e9af7a" />
-              <stop offset="0.55" stop-color="#dca577" />
-              <stop offset="1" stop-color="#ae876b" />
+              <stop offset="0" stop-color="#efb784" />
+              <stop offset="0.55" stop-color="#cda17d" />
+              <stop offset="1" stop-color="#ab8466" />
             </linearGradient>
           </defs>
           <circle class="lt-ring-track" cx="77" cy="77" r="66" />
-          <circle class="lt-ring-progress" cx="77" cy="77" r="66" pathLength="3" stroke-dasharray="2 1" transform="rotate(-90 77 77)" />
+          <circle class="lt-ring-progress" cx="77" cy="77" r="66" pathLength="4" stroke-dasharray="3 1" transform="rotate(-90 77 77)" />
         </svg>
         <div><strong>2 / 3</strong><span>题</span></div>
       </div>
@@ -207,26 +236,36 @@ watch(() => props.scene, () => {
         <h3>缓存删除失败以后</h3>
         <p>独立复练 · 第 2 次 · 2/3 题</p>
         <div class="lt-practice-actions">
-          <button class="lt-resume-button" @click="emit('navigate', 22)"><RIcon name="play" :size="23" />继续复练</button>
+          <button class="lt-resume-button" @click="emit('navigate', 22)"><RIcon name="play" variant="today" :size="23" />继续复练</button>
           <button class="lt-previous-button" @click="emit('navigate', 19)">查看上次回答<RIcon name="chevron-right" :size="23" /></button>
         </div>
       </div>
-      <div class="lt-practice-orbit" aria-hidden="true"><i /></div>
+      <svg class="lt-practice-orbit" viewBox="0 0 795 263" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="lt-orbit-line"><stop stop-color="#ad743a" stop-opacity="0" /><stop offset=".55" stop-color="#b87d40" stop-opacity=".5" /><stop offset="1" stop-color="#b87d40" stop-opacity=".85" /></linearGradient>
+          <radialGradient id="lt-orbit-light"><stop stop-color="#ffcf9c" /><stop offset=".22" stop-color="#efaa65" stop-opacity=".8" /><stop offset=".55" stop-color="#d68a42" stop-opacity=".2" /><stop offset="1" stop-color="#d68a42" stop-opacity="0" /></radialGradient>
+        </defs>
+        <ellipse cx="615" cy="185" rx="160" ry="55" transform="rotate(-40 615 185)" stroke="url(#lt-orbit-line)" />
+        <circle cx="737.6" cy="82.2" r="21" fill="url(#lt-orbit-light)" />
+        <ellipse cx="737.6" cy="82.2" rx="4.1" ry="5.2" fill="#fac08b" />
+      </svg>
     </article>
 
     <section class="lt-task-panel lt-panel" aria-labelledby="lt-task-heading">
       <h2 id="lt-task-heading"><span class="lt-heading-check"><RIcon name="check" :size="20" :stroke-width="2.2" /></span>今天要做</h2>
       <div class="lt-task-tabs" role="tablist" aria-label="任务筛选">
         <button
-          v-for="filter in filters"
+          v-for="(filter, index) in filters"
           :id="`lt-tab-${filter.id}`"
           :key="filter.id"
           type="button"
           role="tab"
           :aria-selected="activeFilter === filter.id"
+          :tabindex="activeFilter === filter.id ? 0 : -1"
           aria-controls="lt-task-list"
           :class="{ 'lt-tab-selected': activeFilter === filter.id }"
           @click="activeFilter = filter.id"
+          @keydown="filterKeydown($event, index)"
         >{{ filter.label }} {{ filter.count }}</button>
       </div>
       <div id="lt-task-list" role="tabpanel" :aria-labelledby="`lt-tab-${activeFilter}`">
@@ -235,7 +274,7 @@ watch(() => props.scene, () => {
           <thead><tr><th scope="col">任务</th><th scope="col">来源</th><th scope="col">时长</th><th scope="col">到期</th><th scope="col">操作</th></tr></thead>
           <tbody>
             <tr v-for="task in visibleTasks" :key="task.title" :class="`lt-task-${task.kind}`">
-              <td><button class="lt-task-link" @click="emit('navigate', task.scene)"><RIcon :name="task.icon" :size="23" /><span>{{ task.title }}</span></button></td>
+              <td><button class="lt-task-link" @click="emit('navigate', task.scene)"><RIcon :name="task.icon" variant="today" :size="23" /><span>{{ task.title }}</span></button></td>
               <td><span class="lt-source-tag" :class="`lt-source-${task.kind}`">{{ task.source }}</span></td>
               <td>{{ task.duration }}</td>
               <td :class="{ 'lt-due-today': task.due === '现在' || task.due === '今天' }">{{ task.due }}</td>
@@ -247,7 +286,7 @@ watch(() => props.scene, () => {
     </section>
 
     <aside class="lt-interview-panel lt-panel" aria-labelledby="lt-interview-heading">
-      <h2 id="lt-interview-heading"><RIcon name="calendar-days" :size="29" />下一场面试</h2>
+      <h2 id="lt-interview-heading"><RIcon name="calendar-days" variant="today" :size="29" />下一场面试</h2>
       <button class="lt-interview-overview" @click="emit('navigate', 8)">
         <span class="lt-interview-calendar"><strong>12</strong><span>NOV</span></span>
         <span class="lt-interview-description">
@@ -265,7 +304,7 @@ watch(() => props.scene, () => {
           :aria-pressed="selectedStep === index"
           @click="selectedStep = index; emit('notify', `已选择${step.title}`)"
         >
-          <span class="lt-step-symbol"><RIcon :name="step.icon" :size="26" :stroke-width="2" /></span>
+          <span class="lt-step-symbol"><RIcon :name="step.icon" variant="today" :size="26" :stroke-width="2" /></span>
           <span>{{ step.title }}</span>
         </button>
       </div>
@@ -280,17 +319,17 @@ watch(() => props.scene, () => {
       </form>
     </aside>
 
-    <div v-if="quickRecordOpen" class="lt-record-backdrop" @click.self="quickRecordOpen = false" @keydown.esc="quickRecordOpen = false">
-      <section class="lt-record-dialog" role="dialog" aria-modal="true" aria-labelledby="lt-record-title">
+    <div v-if="quickRecordOpen" class="lt-record-backdrop" @click.self="closeQuickRecord" @keydown="recordKeydown">
+      <section ref="recordDialog" class="lt-record-dialog" role="dialog" aria-modal="true" aria-labelledby="lt-record-title">
         <div class="lt-record-heading">
           <h2 id="lt-record-title">快速记录</h2>
-          <button type="button" class="r-icon-btn" aria-label="关闭快速记录" @click="quickRecordOpen = false"><RIcon name="x" /></button>
+          <button type="button" class="r-icon-btn" aria-label="关闭快速记录" @click="closeQuickRecord"><RIcon name="x" /></button>
         </div>
         <form @submit.prevent="saveQuickRecord">
           <label for="lt-record-content" class="lt-sr-only">记录内容</label>
           <textarea id="lt-record-content" ref="recordInput" v-model="quickRecord" placeholder="记录此刻的想法..." rows="5" />
           <div class="lt-record-actions">
-            <button type="button" class="r-btn" @click="quickRecordOpen = false">取消</button>
+            <button type="button" class="r-btn" @click="closeQuickRecord">取消</button>
             <button type="submit" class="r-btn r-primary">保存记录</button>
           </div>
         </form>
@@ -621,7 +660,7 @@ watch(() => props.scene, () => {
 
 .lt-today-heading {
   position: absolute;
-  top: 111px;
+  top: 115px;
   left: 19px;
   right: 41px;
   height: 88px;
@@ -630,15 +669,15 @@ watch(() => props.scene, () => {
 }
 
 .lt-today-heading h1 {
-  font-size: 60px;
+  font-size: 56px;
   line-height: 1.25;
   font-weight: 650;
   color: #f5f0e9;
 }
 
 .lt-today-date {
-  margin-left: 16px;
-  margin-top: 11px;
+  margin-left: 21px;
+  margin-top: 7px;
   color: #a8a39c;
 }
 
@@ -659,7 +698,7 @@ watch(() => props.scene, () => {
   display: flex;
   gap: 20px;
   margin-left: auto;
-  padding-top: 22px;
+  padding-top: 18px;
 }
 
 .lt-today-actions button {
@@ -681,7 +720,7 @@ watch(() => props.scene, () => {
 
 .lt-today-actions .lt-focus-button {
   width: 184px;
-  background: linear-gradient(155deg, #f0b77d, #d99a5d);
+  background: linear-gradient(155deg, #efae6e, #d38a4c 70%, #eda96c);
   border: 1px solid #efb47d;
   color: #171006;
 }
@@ -705,7 +744,7 @@ watch(() => props.scene, () => {
   padding: 0 25px;
   border: 1px solid #4a3828;
   border-radius: 21px;
-  background: linear-gradient(110deg, #76503467, #211d1780 16%, #231e1780);
+  background: radial-gradient(ellipse 75px 90px at 0 0, #bc83536b, transparent), linear-gradient(110deg, #2d221aab, #1c1a17c4 26%, #211d19c4);
   white-space: nowrap;
   font-size: 20px;
 }
@@ -721,7 +760,7 @@ watch(() => props.scene, () => {
 }
 
 .lt-summary-interview strong {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -749,7 +788,7 @@ watch(() => props.scene, () => {
   position: absolute;
   border: 1px solid #3d352c;
   border-radius: 21px;
-  background: linear-gradient(120deg, #29251fca, #1c1a17d9 70%);
+  background: linear-gradient(120deg, #282421d9, #1c1a18e8 70%);
   overflow: hidden;
 }
 
@@ -762,8 +801,8 @@ watch(() => props.scene, () => {
 .lt-continue {
   top: 311px;
   height: 263px;
-  background: radial-gradient(ellipse at 0 30%, #6e482d38, transparent 55%),
-    linear-gradient(120deg, #29251fde, #1b1916ed);
+  background: radial-gradient(ellipse 250px 260px at 0 0, #81502d45, transparent),
+    radial-gradient(ellipse at 90% 0, #5a4d4226, transparent 70%), linear-gradient(120deg, #25221fde, #1b1917ed);
 }
 
 .lt-continue h2,
@@ -789,7 +828,7 @@ watch(() => props.scene, () => {
 
 .lt-practice-ring {
   position: absolute;
-  top: 85px;
+  top: 84px;
   left: 25px;
   width: 154px;
   height: 154px;
@@ -808,7 +847,7 @@ watch(() => props.scene, () => {
 }
 
 .lt-ring-track {
-  stroke: #694b35;
+  stroke: #644932;
 }
 
 .lt-ring-progress {
@@ -875,7 +914,7 @@ watch(() => props.scene, () => {
   width: 194px;
   border-radius: 28px;
   border: 1px solid #dca26b;
-  background: linear-gradient(150deg, #d89b60, #d08a4f);
+  background: linear-gradient(150deg, #d99d63, #c17b41 68%, #df9c61);
   font-size: 22px;
   font-weight: 600;
   color: #1c1006;
@@ -892,37 +931,22 @@ watch(() => props.scene, () => {
 
 .lt-practice-orbit {
   position: absolute;
-  right: 29px;
-  top: 102px;
-  width: 248px;
-  height: 115px;
-  border-top: 1px solid #ac763e8c;
-  border-right: 1px solid #bc854990;
-  border-bottom: 1px solid #8c5b2523;
-  border-radius: 50%;
-  transform: rotate(-39deg);
-}
-
-.lt-practice-orbit i {
-  position: absolute;
-  top: 36px;
   right: 0;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #ffc58c;
-  box-shadow: 0 0 5px 2px #e3a063, 0 0 15px 7px #c1823f66;
+  top: 0;
+  width: 795px;
+  height: 263px;
+  pointer-events: none;
 }
 
 .lt-task-panel {
   top: 592px;
   height: 385px;
   padding: 21px 25px 0;
-  background: linear-gradient(120deg, #272522d9, #1b1916ed);
+  background: radial-gradient(ellipse at 15% 0, #49444021, transparent 70%), linear-gradient(120deg, #272524db, #1b1917ed);
 }
 
 .lt-task-panel h2 {
-  gap: 13px;
+  gap: 15px;
 }
 
 .lt-heading-check {
@@ -961,15 +985,15 @@ watch(() => props.scene, () => {
 
 .lt-task-table {
   width: 100%;
-  margin-top: 14px;
+  margin-top: 17px;
   border-collapse: collapse;
   table-layout: fixed;
   text-align: left;
   font-size: 19px;
 }
 
-.lt-task-name-column { width: 43.6%; }
-.lt-task-source-column { width: 16.5%; }
+.lt-task-name-column { width: 42.9%; }
+.lt-task-source-column { width: 17.2%; }
 .lt-task-duration-column { width: 14.3%; }
 .lt-task-due-column { width: 17.7%; }
 .lt-task-action-column { width: 7.9%; }
@@ -1068,7 +1092,7 @@ watch(() => props.scene, () => {
   top: 311px;
   width: 429px;
   height: 666px;
-  background: linear-gradient(120deg, #28231cbd, #1a1713d9 60%);
+  background: radial-gradient(ellipse at 0 0, #49403921, transparent 60%), linear-gradient(120deg, #211e1abd, #171512d9 60%);
 }
 
 .lt-interview-panel h2 {
@@ -1104,7 +1128,7 @@ watch(() => props.scene, () => {
   height: 132px;
   border: 1px solid #b77b43;
   border-radius: 22px;
-  background: radial-gradient(ellipse at 48% 28%, #7950337d, #2d251bcc 75%);
+  background: radial-gradient(ellipse at 15% 0, #9e6b435c, transparent 65%), radial-gradient(ellipse at 70% 70%, #4f39282e, #241d17cc 75%);
   color: #f6dfc5;
 }
 
@@ -1200,7 +1224,7 @@ watch(() => props.scene, () => {
   height: 50px;
   border: 1px solid #6a6458;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4b4943, #282722);
+  background: linear-gradient(135deg, #494743, #282725);
   color: #a6a39b;
 }
 
@@ -1240,7 +1264,7 @@ watch(() => props.scene, () => {
   height: 16px;
   overflow: hidden;
   border-radius: 9px;
-  background: #302c26;
+  background: #292522;
 }
 
 .lt-capacity-track > span {
@@ -1263,7 +1287,7 @@ watch(() => props.scene, () => {
   padding: 7px 8px 7px 21px;
   border: 1px solid #3b352d;
   border-radius: 37px;
-  background: linear-gradient(110deg, #312d27c9, #25221dbf);
+  background: linear-gradient(110deg, #312d2ac9, #25221fbf);
   color: #958d81;
 }
 
