@@ -2383,6 +2383,30 @@ try {
           && layout.primaryIcons[1].startsWith('M6 2h12') && layout.primaryIcons[3].startsWith('M5 3a1')
           && layout.primaryIcons[4].startsWith('M3 11a9') && layout.primaryIcons[5].startsWith('m2 18'), '28文案、初态、次序或专用导航轮廓不符')
         checks.push({ check: 'settings-reference-three-panels-shell-icons-and-defaults', scene: scene.id, ...layout, passed: true })
+        const material = await page.evaluate(() => {
+          const style = selector => {
+            const value = getComputedStyle(document.querySelector(selector))
+            return { size: value.fontSize, weight: value.fontWeight, stroke: value.webkitTextStrokeWidth,
+              gap: value.gap, margin: value.marginRight, background: value.backgroundImage, shadow: value.boxShadow }
+          }
+          return { title: style('.settings-heading h1'), navigation: style('.r-nav-item'),
+            secondary: style('.r-nav-item.r-secondary'), saved: style('.r-saved'),
+            category: style('.settings-navigation > button'), directory: style('.settings-navigation'),
+            selectedCategory: style('.settings-navigation > button.selected'), appearance: style('.settings-appearance'),
+            selected: [...document.querySelectorAll('.utility-segment > button.selected')].map(node => getComputedStyle(node).backgroundImage),
+            unselected: style('.settings-motion-row .utility-segment > button:not(.selected)'),
+            statistic: style('.settings-data-overview dd') }
+        })
+        ensure(material.title.weight === '500' && material.title.stroke === '0.6px'
+          && material.navigation.size === '21px' && material.navigation.weight === '300'
+          && material.secondary.size === '20px' && material.saved.margin === '10px'
+          && material.category.gap === '16px' && material.statistic.weight === '400'
+          && material.directory.background.includes('rgb(30, 24, 19)')
+          && material.appearance.background.includes('rgb(26, 21, 17)')
+          && material.selectedCategory.shadow.includes('8px')
+          && material.selected.length === 4 && material.selected.every(value => value.includes('rgb(214, 159, 108)') && value.includes('rgb(117, 73, 43) 80%'))
+          && material.unselected.background.includes('linear-gradient'), '28字重、图文间距、保存区或面板／分段光照不符')
+        checks.push({ check: 'settings-typography-spacing-panels-and-segment-lighting', scene: scene.id, ...material, passed: true })
         const writes = []
         const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(new URL(request.url()).pathname) }
         page.on('request', onWrite)

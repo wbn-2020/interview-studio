@@ -522,13 +522,13 @@ onMounted(drawHorizon)
 .settings-heading { position: absolute; top: 116px; left: 24px; }
 .settings-heading > p { display: flex; gap: 15px; align-items: center; color: #c9c2b9; font-size: 19px; }
 .settings-heading > p > span { color: #e1d6c8; }
-.settings-heading h1 { margin-top: 6px; font-size: 54px; font-weight: 600; line-height: 1.3; }
-.settings-navigation { top: 247px; left: 24px; width: 230px; height: 666px; padding: 13px 9px; background: linear-gradient(130deg, #392a1cc7, #1b1713db 50%, #30231ad6); border-color: #7150387a; border-radius: 25px; }
-.settings-navigation > button { display: flex; align-items: center; gap: 20px; width: 208px; height: 58px; padding: 0 18px !important; border: 1px solid transparent !important; border-radius: 21px; color: #d6d0c8; font-size: 20px; text-align: left; white-space: nowrap; }
+.settings-heading h1 { margin-top: 6px; font-size: 54px; font-weight: 500; -webkit-text-stroke: .6px currentColor; line-height: 1.3; }
+.settings-navigation { top: 247px; left: 24px; width: 230px; height: 666px; padding: 13px 9px; background: radial-gradient(ellipse at 0 100%, #51321c24, transparent 70%), linear-gradient(130deg, #1e1813, #171310 55%, #1c1611); border-color: #7150387a; border-radius: 25px; }
+.settings-navigation > button { display: flex; align-items: center; gap: 16px; width: 208px; height: 58px; padding: 0 18px !important; border: 1px solid transparent !important; border-radius: 21px; color: #d6d0c8; font-size: 20px; text-align: left; white-space: nowrap; }
 .settings-navigation > button:first-child { height: 64px; margin-bottom: 7px; }
-.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: radial-gradient(ellipse at 10% 0, #d99e6055, transparent 85%), linear-gradient(115deg, #805631b3, #4d321fc9) !important; font-weight: 400; }
+.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: radial-gradient(ellipse at 0 100%, #df9e5330, transparent 80%), linear-gradient(115deg, #76502fba, #3a271bc9) !important; box-shadow: inset 0 0 8px #e5b27f16; font-weight: 400; }
 .settings-navigation > button:hover { background-color: #ffffff06; }
-.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: radial-gradient(ellipse at 0 25%, #34251b33, transparent 75%), linear-gradient(120deg, #1b1511, #1a1512); }
+.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: radial-gradient(ellipse at 0 60%, #54321e1a, transparent 75%), linear-gradient(120deg, #1a1511, #191511); }
 .settings-appearance > h2 { position: absolute; top: 20px; left: 27px; display: flex; align-items: center; gap: 12px; font-size: 29px; font-weight: 500; }
 .settings-appearance > h2 .r-icon { color: #f3b275; }
 .settings-row { position: absolute; left: 29px; right: 25px; display: flex; align-items: center; min-height: 53px; }
@@ -541,9 +541,10 @@ onMounted(drawHorizon)
 .utility-segment > button { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; height: 53px; margin-top: -1px; border: 1px solid #51483b3d !important; border-radius: 23px; font-size: 20px; white-space: nowrap; }
 .utility-segment > button:first-child { margin-left: -1px; }
 .utility-segment > button:last-child { margin-right: -1px; }
-.utility-segment > button.selected { border-color: #efb77f !important; color: #fff7ec; background: radial-gradient(ellipse at 38% 100%, #713c2666, transparent 70%), radial-gradient(ellipse at 0 0, #f8c89b66, transparent 75%), linear-gradient(115deg, #c18a58, #87512f 70%, #b68253) !important; box-shadow: inset 0 0 0 1px #f3c99e26; font-weight: 500; }
+.utility-segment > button.selected { border-color: #efb77f !important; color: #fff7ec; background: linear-gradient(115deg, #d69f6c, #9b633b 45%, #75492b 80%, #996840) !important; box-shadow: inset 0 0 8px #f6c18a66; font-weight: 500; }
 .utility-segment > button:hover { background-color: #ffffff07; }
 .settings-theme-row .utility-segment, .settings-motion-row .utility-segment { grid-template-columns: 152px 152px 1fr; gap: 4px; background: transparent; border-color: transparent; }
+.settings-theme-row .utility-segment > button:not(.selected), .settings-motion-row .utility-segment > button:not(.selected) { background: linear-gradient(120deg, #302a2359, #3b332966); }
 .settings-theme-row .utility-segment > button { border-color: #67594b85 !important; }
 .settings-theme-row .utility-segment > button.selected { border-color: #f0b77f !important; }
 .settings-theme-row .utility-segment > button:first-child { font-size: 18px; gap: 9px; }
@@ -570,7 +571,7 @@ onMounted(drawHorizon)
 .settings-data-overview > div:first-child { height: 65px; }
 .settings-data-overview > div:last-child { border-bottom: 0; }
 .settings-data-overview dt { display: flex; align-items: center; gap: 20px; font-size: 20px; }
-.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 500; }
+.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 400; }
 .settings-export-section { margin-top: 17px; }
 .settings-export-section h3 { font-size: 23px; font-weight: 500; }
 .settings-export-section > p { color: #b6aea4; font-size: 18px; margin-top: 1px; white-space: nowrap; }
