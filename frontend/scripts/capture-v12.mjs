@@ -331,7 +331,7 @@ try {
               return { text: node.textContent.trim(), height: r.height, scroll: node.scrollWidth, width: r.width }
             }),
             toolbarOverflow: document.querySelector('.pdf-toolbar').scrollWidth > document.querySelector('.pdf-toolbar').clientWidth,
-            paragraphs: [...document.querySelectorAll('.pdf-paper p')].map(node => node.innerHTML),
+            paragraphs: [...document.querySelectorAll('.pdf-paper p')].map(node => ({ text: node.textContent, breaks: node.querySelectorAll('br').length })),
           }
         })
         const sameBox = (actual, expected) => actual.length === 4 && actual.every((value, i) => Math.abs(value - expected[i]) < 1)
@@ -342,7 +342,7 @@ try {
         ensure(layout.brandPaths === 4 && layout.breadcrumbPaths === 2 && layout.composition === 'transform'
           && layout.titleSize === '50px' && layout.paperSize === '15px'
           && layout.navigation.length === 10 && layout.navigation.every(item => item.height === 56 && item.scroll <= item.width + 1)
-          && !layout.toolbarOverflow && layout.paragraphs.every(text => text.includes('<br>')), '06品牌、单行导航、工具栏或正文换行不符')
+          && !layout.toolbarOverflow && layout.paragraphs.every(item => item.breaks === 1), '06品牌、单行导航、工具栏或正文换行不符')
         await writeJson(path.join(values.output, 'records', '06-materials-layout.json'), layout)
         checks.push({ check: 'attachment-brand-breadcrumb-shell-three-columns-type-toolbar', scene: scene.id, layout, passed: true })
         ensure(await library.locator('.file-item:visible').count() === 5, '06初始文件行数不符')
