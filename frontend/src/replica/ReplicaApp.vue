@@ -687,7 +687,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-22 .r-nav-item.r-selected { height: 62px; background: linear-gradient(120deg, #ae7d4e99, #5c3d26aa); border-color: #bf8b5b77; }
 .r-scene-22 .r-nav-item.r-secondary { height: 52px; margin-bottom: 6px; }
 .r-scene-22 .r-nav-separator { margin: 24px 11px 22px; }
-.r-scene-22 .r-sidebar-avatar { left: 24px; bottom: 24px; }
+.r-scene-22 .r-sidebar-avatar { left: 22px; bottom: 24px; }
 .r-scene-22 .r-sidebar-avatar .r-avatar { width: 57px; height: 61px; background: linear-gradient(130deg, #bd8e5d, #82532c); font-size: 27px; }
 .r-scene-22 .r-topbar { left: 252px; top: 27px; right: 43px; height: 73px; }
 .r-scene-22 .r-breadcrumb { font-size: 21px; gap: 17px; color: #bbb7af; }

@@ -1389,7 +1389,17 @@ try {
             const range = document.createRange(); range.selectNodeContents(node)
             return { text: node.textContent, lines: range.getClientRects().length }
           })
-          return { navigation, styles: Object.fromEntries([
+          const oldList = document.querySelector('.rv22-old .rv22-answer-list')
+          const marker = getComputedStyle(oldList.querySelector('li'), '::marker')
+          const avatar = document.querySelector('.r-sidebar-avatar .r-avatar').getBoundingClientRect()
+          return { navigation, nativeList: {
+            oldMarginTop: getComputedStyle(oldList).marginTop,
+            newMarginTop: getComputedStyle(document.querySelector('.rv22-new .rv22-answer-list')).marginTop,
+            markerSize: marker.fontSize, markerFamily: marker.fontFamily,
+          }, avatar: [avatar.x, avatar.y, avatar.width, avatar.height],
+          panelPaint: Object.fromEntries(['.rv22-old', '.rv22-conditions', '.rv22-new', '.rv22-judgment']
+            .map(selector => [selector, getComputedStyle(document.querySelector(selector)).backgroundImage])),
+          styles: Object.fromEntries([
             '.r-scene-22', '.r-breadcrumb', '.r-nav-item', '.rv22 .rv-heading h1',
             '.rv22-old .rv22-panel-heading', '.rv22-old .rv22-answer-heading',
             '.rv22-conditions .rv22-panel-heading', '.rv22-judgment h2',
@@ -1403,6 +1413,11 @@ try {
             '.rv22-conditions .rv22-panel-heading', '.rv22-judgment h2'].every(selector => typography.styles[selector].fontWeight === '500')
           && typography.navigation.length === 10 && typography.navigation.every(item => item.lines === 1),
         '22文字合成、标题字重、面包屑或单行导航不符')
+        ensure(typography.nativeList.oldMarginTop === '10px' && typography.nativeList.newMarginTop === '14px'
+          && typography.nativeList.markerSize === '24px' && typography.nativeList.markerFamily.startsWith('Arial')
+          && typography.avatar[0] === 40 && typography.avatar[2] === 57 && typography.avatar[3] === 61
+          && ['.rv22-old', '.rv22-conditions', '.rv22-judgment'].every(selector => typography.panelPaint[selector].includes('rgb(29, 27, 23)'))
+          && !typography.panelPaint['.rv22-new'].includes('rgb(29, 27, 23)'), '22原生编号、列表间距、头像或分区材质不符')
         checks.push({ check: 'compare-composited-type-heading-weights-breadcrumb-single-line-navigation', scene: scene.id, ...typography, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({

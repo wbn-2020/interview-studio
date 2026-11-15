@@ -487,6 +487,7 @@ watch(() => props.scene, () => {
 .rv22-old { left: 28px; width: 442px; }
 .rv22-conditions { left: 490px; width: 288px; padding-left: 26px; padding-right: 24px; }
 .rv22-new { left: 798px; width: 481px; }
+.rv22-old, .rv22-conditions, .rv22-judgment { background: linear-gradient(115deg, #1d1b17, #181612 72%, #1d1a16); }
 .rv22-new h2, .rv22-new h3 { font-weight: 500; }
 .rv22-old .rv22-panel-heading, .rv22-old .rv22-answer-heading, .rv22-conditions .rv22-panel-heading { font-weight: 500; }
 .rv22-panel-heading { height: 54px; border-bottom: 1px solid #64544366; font-size: 24px; gap: 15px !important; white-space: nowrap; align-items: flex-start !important; padding-top: 1px; }
@@ -496,12 +497,14 @@ watch(() => props.scene, () => {
 .rv22-answer-heading { font-size: 24px; margin-top: 18px !important; margin-bottom: 18px !important; }
 .rv22-answer-intro { font-size: 22px; font-weight: 500; white-space: nowrap; line-height: 1.6 !important; }
 .rv22-answer-list { font-size: 22px; margin: 14px 0 0; padding-left: 32px; line-height: 2.04; }
+.rv22-old .rv22-answer-list { margin-top: 10px; }
 .rv22-answer-list li { padding-left: 1px; white-space: nowrap; }
+.rv22-answer-list li::marker { font-family: Arial, sans-serif; font-size: 24px; }
 .rv22-answer-rule { position: absolute; top: 358px; left: 26px; right: 26px; height: 1px; background: #5d4d3e55; }
 .rv22-detail-heading { position: absolute; top: 386px; left: 27px; display: flex; align-items: center; gap: 11px; font-size: 23px; color: #bcb7ae; font-weight: 500; }
 .rv22-detail-heading .r-icon { color: #e0b98e; }
 .rv22-keywords { position: absolute; left: 26px; top: 433px; display: flex; gap: 9px; }
-.rv22-keywords button { font-size: 21px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff12, #ffffff0b) !important; }
+.rv22-keywords button { font-size: 21px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff17, #ffffff0f) !important; }
 .rv22-conditions dl { margin: 16px 0 0; }
 .rv22-conditions dl > div { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 18px; }
 .rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 500; line-height: 50px; white-space: nowrap; }
