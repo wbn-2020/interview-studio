@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' | 'recollection' | 'growth' | 'command' | 'recent' | 'authorization' | 'settings' | 'mobile' | 'inbox' }>(), { size: 24, strokeWidth: 1.7 })
+const props = withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number; variant?: 'facts' | 'library' | 'note' | 'detail' | 'bank' | 'route' | 'recall' | 'writing' | 'report' | 'design' | 'review' | 'compare' | 'recollection' | 'growth' | 'command' | 'recent' | 'authorization' | 'settings' | 'mobile' | 'inbox' }>(), { size: 24, strokeWidth: 1.7 })
 // 以统一线性图标几何保持工具按钮的稳定尺寸；不依赖字符字体绘制图标。
 const paths: Record<string, string[]> = {
   house: ['m3 10 9-7 9 7', 'M5 9v12h5v-7h4v7h5V9'],
@@ -438,12 +438,30 @@ const inboxPaths: Record<string, string[]> = {
   'external-link': ['M13 3h8v8M21 3 10 14', 'M9 4H4v17h16v-8'],
   bell: notePaths.bell!,
 }
+const factsPaths: Record<string, string[]> = {
+  house: ['m2 10 9-9a1.5 1.5 0 0 1 2 0l9 9a1 1 0 0 1-1 2h-2v10h-5v-8h-4v8H5V12H3a1 1 0 0 1-1-2Z'],
+  play: ['m12 1 9 5v12l-9 5-9-5V6Z', 'm3 6 9 5 9-5M12 11v12M7 4l9 5'],
+  'book-open': ['M2 3c4-2 7-1 10 2 3-3 6-4 10-2v18c-4-2-7-1-10 2-3-3-6-4-10-2Z', 'M12 5v18'],
+  dumbbell: ['M5 2a1 1 0 0 1 1.5-1l16 10a1.2 1.2 0 0 1 0 2l-16 10A1 1 0 0 1 5 22Z M11 9v6l5-3Z'],
+  'refresh-cw': ['M3 13h4v9H3ZM10 3h4v19h-4ZM17 9h4v13h-4Z'],
+  'chart-no-axes-combined': ['M12 22V10M12 14C4 14 3 9 3 5c6 0 9 3 9 9ZM12 10c0-6 4-8 9-8 0 5-3 8-9 8Z'],
+  layers: ['m12 2 10 5-10 5L2 7Z', 'm2 12 10 5 10-5M2 17l10 5 10-5'],
+  'credit-card': ['M4 3h16a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z', 'M5 8h14M5 12h8M5 16h5M17 14v3'],
+  clock: ['M21 12a9 10 0 1 1-18 0 9 10 0 0 1 18 0Z', 'M12 5v7l4 3'],
+  sparkles: ['m9 2 2 6 5 3-5 3-2 6-2-6-5-3 5-3Z M19 1l1 3 3 2-3 2-1 3-1-3-3-2 3-2Z M19 14l1 3 3 1-3 2-1 3-1-3-3-2 3-1Z'],
+  building: ['M5 2h14a1 1 0 0 1 1 1v19H4V3a1 1 0 0 1 1-1Z M8 6h1v2H8Zm7 0h1v2h-1ZM8 11h1v2H8Zm7 0h1v2h-1ZM8 16h1v2H8Zm7 0h1v2h-1Z'],
+  folder: ['M3 4h6l2 3h10a1 1 0 0 1 1 1v13H2V5a1 1 0 0 1 1-1Z', 'M3 9h18'],
+  'calendar-check': ['M5 2h14a2 2 0 0 1 2 2v17H3V4a2 2 0 0 1 2-2Z M7 11l4 5 7-10-7 7Z'],
+  'file-text': ['M6 2h9l5 5v15H4V4a2 2 0 0 1 2-2Z', 'M14 2v6h6M8 12h8M8 16h8M8 19h6'],
+  'graduation-cap': ['m12 2 11 6-11 6L1 8Z', 'M5 11v7l7 4 7-4v-7M22 9v8'],
+}
+const factsFilled = new Set(['house', 'play', 'book-open', 'dumbbell', 'refresh-cw', 'layers', 'credit-card', 'sparkles', 'building', 'folder', 'calendar-check'])
 // 实心剪影只保留细轮廓，避免默认描边吞掉叠层间隙或盾牌内孔。
 const detailSilhouettes = new Set(['layers', 'shield', 'pencil', 'file-text', 'message-square'])
-const outlineWidth = computed(() => props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
-const iconPaths = computed(() => (props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : props.variant === 'growth' ? growthPaths[props.name] : props.variant === 'command' ? commandPaths[props.name] : props.variant === 'recent' ? recentPaths[props.name] : props.variant === 'authorization' ? authorizationPaths[props.name] : props.variant === 'settings' ? settingsPaths[props.name] : props.variant === 'mobile' ? mobilePaths[props.name] : props.variant === 'inbox' ? inboxPaths[props.name] : undefined)
+const outlineWidth = computed(() => props.variant === 'facts' && factsFilled.has(props.name) ? .6 : props.variant === 'detail' && detailSilhouettes.has(props.name) ? .5 : props.variant === 'design' && designFilled.has(props.name) ? .7 : props.strokeWidth)
+const iconPaths = computed(() => (props.variant === 'facts' ? factsPaths[props.name] : props.variant === 'library' ? libraryPaths[props.name] : props.variant === 'note' ? notePaths[props.name] : props.variant === 'detail' ? detailPaths[props.name] : props.variant === 'bank' ? bankPaths[props.name] : props.variant === 'route' ? routePaths[props.name] : props.variant === 'recall' ? recallPaths[props.name] : props.variant === 'writing' ? writingPaths[props.name] : props.variant === 'report' ? reportPaths[props.name] : props.variant === 'design' ? designPaths[props.name] : props.variant === 'review' ? reviewPaths[props.name] : props.variant === 'compare' ? comparePaths[props.name] : props.variant === 'recollection' ? recollectionPaths[props.name] : props.variant === 'growth' ? growthPaths[props.name] : props.variant === 'command' ? commandPaths[props.name] : props.variant === 'recent' ? recentPaths[props.name] : props.variant === 'authorization' ? authorizationPaths[props.name] : props.variant === 'settings' ? settingsPaths[props.name] : props.variant === 'mobile' ? mobilePaths[props.name] : props.variant === 'inbox' ? inboxPaths[props.name] : undefined)
   ?? paths[aliases[props.name] ?? props.name] ?? paths.square)
-const fillOpacity = computed(() => props.variant === 'recent' ? ({ house: .85, play: .7, dumbbell: .75, clock: .2, 'chart-no-axes-column': .85, 'layout-grid': .85, zap: .85 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'recollection' ? ({ house: .35, clipboard: .85, 'book-open': .9, play: .3, 'chart-no-axes-combined': .8, database: .9, 'credit-card': .8 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
+const fillOpacity = computed(() => props.variant === 'facts' && factsFilled.has(props.name) ? .85 : props.variant === 'recent' ? ({ house: .85, play: .7, dumbbell: .75, clock: .2, 'chart-no-axes-column': .85, 'layout-grid': .85, zap: .85 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'recollection' ? ({ house: .35, clipboard: .85, 'book-open': .9, play: .3, 'chart-no-axes-combined': .8, database: .9, 'credit-card': .8 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'review' ? ({ house: .2, 'book-open': .25, 'message-square': .9, play: .6 } as Record<string, number>)[props.name] ?? 0 : props.variant === 'design' && designFilled.has(props.name) ? .98 : props.variant === 'library' ? libraryFills[props.name] ?? 0
   : props.variant === 'detail' ? detailFills[props.name] ?? 0
     : props.variant === 'route' ? ({ play: .65, 'book-open': .5, 'chart-no-axes-combined': .65 } as Record<string, number>)[props.name] ?? 0
     : props.variant === 'bank' && props.name === 'arrow-up-down' ? .9
@@ -451,6 +469,6 @@ const fillOpacity = computed(() => props.variant === 'recent' ? ({ house: .85, p
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="outlineWidth" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon">
-    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="(variant === 'detail' && name === 'shield') || (variant === 'design' && name === 'monitor') ? 'evenodd' : undefined" />
+    <path v-for="(d, i) in iconPaths" :key="i" :d="d" :fill="i === 0 && fillOpacity ? 'currentColor' : undefined" :fill-opacity="i === 0 && fillOpacity ? fillOpacity : undefined" :fill-rule="variant === 'facts' || (variant === 'detail' && name === 'shield') || (variant === 'design' && name === 'monitor') ? 'evenodd' : undefined" />
   </svg>
 </template>

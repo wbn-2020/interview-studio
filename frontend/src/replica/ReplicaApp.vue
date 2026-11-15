@@ -137,7 +137,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-              <RIcon v-else-if="[27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
+              <RIcon v-else-if="[4, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="scene === 4 ? 28 : 30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
               <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="scene === 9 ? 34 : [16, 18, 19, 21, 22, 23, 24, 25].includes(scene) ? 30 : 28" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
             <template v-if="scene !== 9">
@@ -145,7 +145,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <span v-if="scene === 15" class="r-tools-heading">工具</span>
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
-                <RIcon v-else-if="[27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="29" :stroke-width="scene === 30 ? 1.7 : 1.9" />
+                <RIcon v-else-if="[4, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 4 ? 'facts' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="scene === 4 ? 28 : 29" :stroke-width="scene === 30 ? 1.7 : 1.9" />
                 <RIcon v-else :name="item.icon" :variant="scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 && item.id !== 14 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[18, 21, 23, 24, 25].includes(scene) ? 30 : scene === 22 ? 28 : 27" :stroke-width="[14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
             </template>
@@ -155,7 +155,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
         <header v-if="scene !== 17" class="r-topbar">
           <button v-if="scene === 30" class="r-breadcrumb r-inbox-breadcrumb" @click="navigate(10)">知识 / 收件箱<RIcon name="chevron-down" :size="23" /></button>
           <div v-else-if="scene !== 2 && scene !== 28" class="r-breadcrumb">
-            <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 27 ? 28 : 25" />
+            <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 27 ? 28 : 25" />
             <template v-if="scene === 20"><span>训练</span><span>/</span><span>系统设计</span><span>/</span><strong>秒杀发奖</strong></template>
             <template v-else-if="scene === 24"><strong>成长</strong><span>/</span><span>Java 后端 · 技术一面</span></template>
             <template v-else-if="scene === 25"><RIcon name="calendar-days" variant="command" :size="28" /><span>今日</span><RIcon name="chevron-right" :size="15" /><span class="r-faint">任务总览</span></template>
@@ -165,7 +165,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           </div>
           <button class="r-top-search" :style="{ left: `${headerBox.left - 20}px`, width: `${headerBox.width}px` }" @click="navigate(25)"><RIcon name="search" :size="25" /><span>{{ searchHint }}</span><kbd v-if="![3, 7, 9, 13, 16, 18, 19, 21, 22, 24, 26].includes(scene)">⌘K</kbd></button>
           <div class="r-top-status">
-            <span class="r-saved"><RIcon :name="scene === 26 ? 'bookmark' : [20, 21, 23].includes(scene) ? 'circle-check' : 'check'" :variant="scene === 23 ? 'recollection' : undefined" /><span>已保存<span v-if="scene === 5" class="r-muted"> 10:24</span><span v-if="scene === 11" class="r-muted"> 14:32</span></span></span>
+            <span class="r-saved"><RIcon :name="scene === 26 ? 'bookmark' : [4, 20, 21, 23].includes(scene) ? 'circle-check' : 'check'" :variant="scene === 23 ? 'recollection' : undefined" /><span>已保存<span v-if="scene === 5" class="r-muted"> 10:24</span><span v-if="scene === 11" class="r-muted"> 14:32</span></span></span>
             <button class="r-icon-btn" title="通知" @click="notify('暂无新通知')"><RIcon name="bell" :variant="scene === 30 ? 'inbox' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[24, 26, 30].includes(scene) ? 32 : 28" /></button>
             <button v-if="scene === 20" class="r-icon-btn" title="提醒" @click="notify('暂无新提醒')"><RIcon name="bell" variant="design" :size="28" /></button>
             <button title="设置与数据" class="r-avatar" @click="navigate(28)">林</button>
@@ -191,8 +191,32 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-03 .r-sidebar { border-radius: 36px; border-color: #242019; bottom: 30px; }
 .r-scene-03 .r-sidebar nav { left: 15px; right: 15px; top: 149px; gap: 9px; }
 .r-scene-03 .r-nav-item { padding: 0 23px; }
-.r-scene-04 .r-sidebar nav { top: 162px; }
-.r-scene-04 .r-topbar { left: 267px; top: 14px; }
+.r-scene-04 { will-change: transform; background: radial-gradient(ellipse 700px 550px at 0 55%, #30271d18, transparent), radial-gradient(ellipse at 95% 100%, #2d20141c, transparent 55%), #0b0907; }
+.r-scene-04 .r-sidebar { width: 239px; bottom: 11px; border-radius: 36px; border-color: #302b26; background: linear-gradient(115deg, #181614, #141210 65%, #171411); }
+.r-scene-04 .r-sidebar > a { position: absolute; left: 36px; top: 35px; width: 174px; height: 65px; }
+.r-scene-04 .r-sidebar .r-brand { top: 0; left: 0; gap: 11px; }
+.r-scene-04 .r-sidebar :deep(.r-emblem) { width: 44px; height: 60px; flex-shrink: 0; }
+.r-scene-04 .r-sidebar :deep(.r-brand-word) { font-size: 28px; font-weight: 500; line-height: 34px; }
+.r-scene-04 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; line-height: 22px; margin-top: 0; }
+.r-scene-04 .r-sidebar > a::after { content: ""; position: absolute; top: 96px; left: -4px; width: 175px; height: 1px; background: #aca08f14; }
+.r-scene-04 .r-sidebar nav { top: 162px; left: 23px; right: 21px; gap: 6px; }
+.r-scene-04 .r-nav-item { height: 64px; padding: 0 23px; gap: 17px; font-size: 24px; white-space: nowrap; color: #c5c1ba; }
+.r-scene-04 .r-nav-item :deep(svg) { color: #999993; }
+.r-scene-04 .r-nav-item.r-selected { color: #fff3e3; border-radius: 15px; border-color: #c4935b9c; background: linear-gradient(110deg, #b17a4a9c, #67452999); box-shadow: inset 1px 0 2px #edb87c91, -5px 0 17px #d08c3f20; }
+.r-scene-04 .r-nav-item.r-selected :deep(svg) { color: #edb382; }
+.r-scene-04 .r-nav-separator { margin: 8px 10px 21px; background: #c8b79b17; }
+.r-scene-04 .r-nav-item.r-secondary { height: 53px; font-size: 22px; padding-left: 24px; }
+.r-scene-04 .r-sidebar-avatar { left: 39px; bottom: 29px; }
+.r-scene-04 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -40px; width: 175px; height: 1px; background: #c8b79b12; }
+.r-scene-04 .r-avatar { background: linear-gradient(120deg, #707b92, #555e70); border-color: #8390a955; }
+.r-scene-04 .r-sidebar-avatar .r-avatar { width: 58px; height: 66px; }
+.r-scene-04 .r-topbar { left: 267px; top: 17px; right: 32px; height: 75px; }
+.r-scene-04 .r-breadcrumb { font-size: 22px; gap: 13px; }
+.r-scene-04 .r-top-search { left: 404px !important; height: 61px; background: linear-gradient(110deg, #24211d55, #201b1755) !important; border-color: #55504a80 !important; }
+.r-scene-04 .r-top-status { gap: 36px; }
+.r-scene-04 .r-saved { gap: 10px; font-size: 21px; color: #8ce2cb; }
+.r-scene-04 .r-saved svg { width: 24px; height: 28px; padding: 0; background: none; fill: none; color: #73dbc0; }
+.r-scene-04 .r-top-status > .r-avatar { width: 49px; height: 58px; }
 .r-scene-05 .r-sidebar { left: 16px; top: 19px; bottom: 30px; width: 228px; }
 .r-scene-05 .r-sidebar nav { left: 11px; right: 15px; top: 153px; gap: 4px; }
 .r-scene-05 .r-sidebar .r-brand { left: 23px; }

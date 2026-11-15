@@ -4,7 +4,13 @@ withDefaults(defineProps<{ large?: boolean; variant?: number }>(), { large: fals
 <template>
   <div class="r-brand" :class="{ 'r-brand-large': large }">
     <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-      <template v-if="variant === 10">
+      <template v-if="variant === 4">
+        <path d="m50 1 12 34 34 15-34 15-12 34-12-34L4 50l34-15Z" fill="#c18c60" />
+        <path d="m50 1 1 44 45 5-39 5-7 44-5-43L4 50l40-6Z" fill="#d7a277" />
+        <path d="m50 33 7 17-7 18-7-18Z" fill="#5a3c27" />
+        <path d="m50 43 3 7-3 8-3-8Z" fill="#dba576" />
+      </template>
+      <template v-else-if="variant === 10">
         <path d="M50 2 61 36 98 50 62 62 50 98 38 63 2 50 37 38Z" fill="currentColor" />
         <path d="m50 2 3 41 45 7-38 4-10 44-3-39L2 50l39-5Z" fill="#eee1c8" opacity=".32" />
         <path d="m50 39 10 11-10 11-10-11Z" fill="#544b3d" />

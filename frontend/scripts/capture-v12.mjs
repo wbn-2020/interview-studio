@@ -169,6 +169,26 @@ try {
       // 交互失败仍保留已核实的初态截图，逐页失败不会掩盖其他页面的真实结果。
       try {
       if (scene.id === '04') {
+        const layout = await page.evaluate(() => {
+          const boxes = Object.fromEntries(['.r-sidebar', '.r-sidebar > a', '.r-top-search', '.r-sidebar-avatar', '.project-tree', '.fact-body', '.fact-links', '.expressions'].map(selector => {
+            const box = document.querySelector(selector).getBoundingClientRect()
+            return [selector, [box.x, box.y, box.width, box.height]]
+          }))
+          const navigation = [...document.querySelectorAll('.r-nav-item span')].map(node => {
+            const range = document.createRange(); range.selectNodeContents(node)
+            return { text: node.textContent, lines: range.getClientRects().length }
+          })
+          const heading = document.querySelector('.fact-heading h3').getBoundingClientRect()
+          const badges = document.querySelector('.fact-heading > div').getBoundingClientRect()
+          return { boxes, navigation, headingClear: heading.right <= badges.left, selected: document.querySelectorAll('.project-leaf.selected').length }
+        })
+        for (const [selector, expected] of [
+          ['.r-sidebar', [0, 0, 239, 1013]], ['.r-sidebar > a', [37, 36, 174, 65]], ['.r-top-search', [671, 24, 468, 61]],
+          ['.r-sidebar-avatar', [40, 917, 58, 66]], ['.project-tree', [262, 246, 246, 707]], ['.fact-body', [517, 246, 611, 612]],
+          ['.fact-links', [517, 867, 611, 86]], ['.expressions', [1144, 246, 369, 707]],
+        ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected), '04布局不符：' + selector)
+        ensure(layout.navigation.length === 10 && layout.navigation.every(item => item.lines === 1) && layout.headingClear && layout.selected === 1, '04导航换行、标题重叠或选中不符')
+        checks.push({ check: 'fact-three-columns-single-line-navigation-brand-search-avatar-geometry', scene: scene.id, layout, passed: true })
         const preview = page.locator('.expression-preview p')
         const lines = await preview.evaluate(node => {
           const text = node.firstChild, rows = new Map()
@@ -191,6 +211,18 @@ try {
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '04目录或事实切换后刷新未恢复参考初态')
         checks.push({ check: 'fact-preview-two-lines-directory-selection-refresh', scene: scene.id, lines, passed: true })
+        for (const [selector, target] of [
+          ['.r-sidebar > a', '02'], ['.facts-tabs button:nth-child(2)', '05'], ['.facts-tabs button:nth-child(3)', '06'],
+          ['.fact-source', '06'], ['.fact-links button:first-child', '05'], ['.fact-links button:last-child', '19'],
+        ]) {
+          await page.locator(selector).click()
+          await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor({ state: 'visible' })
+          ensure(new URL(page.url()).searchParams.get('scene') === target, '04入口未进入对应场景：' + selector)
+          ensure((await page.goto(entry, { waitUntil: 'networkidle' }))?.ok(), '04返回加载失败')
+          await ready()
+        }
+        await assertFrame(captured, '04各入口返回后初态不符')
+        checks.push({ check: 'fact-brand-tabs-source-expression-training-navigation-return', scene: scene.id, passed: true })
       }
       if (scene.id === '05') {
         const directory = page.locator('.expression-directory'), heading = page.locator('.expression-text h2')
