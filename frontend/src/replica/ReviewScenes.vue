@@ -537,8 +537,8 @@ watch(() => props.scene, () => {
 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; }
 .rv22-save::before { content: ""; position: absolute; left: -22px; top: 0; bottom: -10px; width: 1px; background: #4a3d2c66; }
 .rv23 .rv-heading { left: 32px; top: 117px; }
-.rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; }
-.rv23 .rv-subheading { margin-top: 9px; font-size: 23px; gap: 16px; }
+.rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; font-weight: 500; }
+.rv23 .rv-subheading { margin-top: 5px; font-size: 23px; gap: 16px; }
 .rv23-company { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid #5b70ac77; border-radius: 9px; color: #eef9ff; background: linear-gradient(130deg, #5371b1, #343d6b); }
 .rv23-company svg { width: 27px; height: 27px; }
 .rv23-actions { top: 132px; right: 31px; gap: 16px; }
@@ -549,13 +549,13 @@ watch(() => props.scene, () => {
 .rv23-confidence h2 { font-size: 25px; }
 .rv23-confidence-options { display: flex; position: absolute; top: 80px; left: 27px; right: 27px; height: 64px; border-radius: 38px; border: 1px solid #4b4139a6; background: #ffffff06; }
 .rv23-confidence-options button { display: flex; align-items: center; justify-content: center; gap: 13px; flex: 1; border-radius: 36px; font-size: 24px; font-weight: 500; }
-.rv23-confidence-options button.selected { border: 1px solid #efb979; background: radial-gradient(ellipse at 52% 100%, #da9a5d8c, transparent), linear-gradient(120deg, #805632, #a5764b9c); box-shadow: inset 0 0 13px #fbd4a83b, 0 0 13px #d1904c26; color: #fff6e7; font-weight: 600; }
+.rv23-confidence-options button.selected { border: 1px solid #efb979; background: radial-gradient(ellipse at 52% 100%, #da9a5d8c, transparent), linear-gradient(120deg, #805632, #a5764b9c); box-shadow: inset 0 0 13px #fbd4a83b, 0 0 13px #d1904c26; color: #fff6e7; font-weight: 500; }
 .rv23-confidence-check { width: 25px; height: 25px; border-radius: 50%; background: #f4c493; color: #59402a; display: inline-flex; align-items: center; justify-content: center; }
 .rv23-record { position: absolute; left: 32px; top: 440px; width: 725px; height: 514px; border-radius: 22px; padding: 10px 27px 0; background: linear-gradient(115deg, #1c1816, #191614); }
 .rv23-fragment { position: relative; height: 104px; display: flex; gap: 30px; padding: 17px 10px 13px; border-radius: 15px; background: linear-gradient(110deg, #211c18, #1d1917); margin-bottom: 10px; }
-.rv23-fragment-number { width: 38px; flex: none; color: #7f7973; font-size: 29px; line-height: 1.6; }
+.rv23-fragment-number { width: 38px; flex: none; color: #7f7973; font-family: Arial, sans-serif; font-size: 29px; line-height: 1.6; }
 .rv23-fragment-content { min-width: 0; padding-top: 1px; }
-.rv23-fragment h3 { font-size: 24px; font-weight: 600; line-height: 1.5; }
+.rv23-fragment h3 { font-size: 24px; font-weight: 500; line-height: 1.5; }
 .rv23-fragment-content p { font-size: 23px; color: #f0e9df; white-space: nowrap; line-height: 1.6; cursor: text; }
 .rv23-fragment:nth-child(2) .rv23-fragment-content p { padding-left: 12px; }
 .rv23-add-fragment { display: flex; align-items: center; justify-content: center; gap: 4px; position: absolute; top: 18px; right: 14px; height: 46px; width: 139px; border: 1px solid #807468 !important; border-radius: 27px; background: linear-gradient(120deg, #2e27208c, #221d188c) !important; font-size: 21px; }
@@ -572,7 +572,7 @@ watch(() => props.scene, () => {
 .rv23-create-icon.cyan { color: #a8e8ee; border-color: #387078; background: radial-gradient(ellipse, #28566155, #263e4355); }
 .rv23-create-icon.green { color: #89deb0; border-color: #385d3b; background: #2842303b; }
 .rv23-create-copy { min-width: 0; }
-.rv23-create-copy strong { display: block; font-size: 24px; line-height: 1.4; margin-bottom: 8px; font-weight: 600; }
+.rv23-create-copy strong { display: block; font-size: 24px; line-height: 1.4; margin-bottom: 4px; font-weight: 500; }
 .rv23-create-copy > span { display: block; white-space: pre-line; font-size: 20px; line-height: 1.55; color: #d5cdc3; }
 .rv23-create-meta { border-top: 1px solid #79614b40; margin-top: 27px; padding-top: 22px; color: #d0c6bb; }
 .rv23-create-meta > p { display: flex; align-items: center; gap: 13px; font-size: 20px; white-space: nowrap; }

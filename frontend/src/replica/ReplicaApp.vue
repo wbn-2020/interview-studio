@@ -698,16 +698,17 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-22 .r-saved svg { width: 30px; height: 30px; background: #6bde85; fill: #6bde85; color: #172e19; padding: 6px; }
 .r-scene-22 .r-top-status .r-icon-btn { width: 74px; height: 59px; border-radius: 31px; background: linear-gradient(110deg, #23221e, #151410); color: #f4f1ea; }
 .r-scene-22 .r-top-status > .r-avatar { width: 53px; height: 59px; margin-left: 8px; background: linear-gradient(130deg, #bb8654, #8b582d); }
-.r-scene-23 .r-sidebar { width: 244px; bottom: 0; border-radius: 0; background: radial-gradient(ellipse at 0 0, #45312677, transparent 42%), linear-gradient(150deg, #181512, #1b1714 52%, #35291f); border-color: #332a24; }
+.r-scene-23 { will-change: transform; }
+.r-scene-23 .r-sidebar { width: 244px; bottom: 0; border-radius: 0; background: radial-gradient(ellipse 200px 400px at 0 68%, #704d3b75, transparent), radial-gradient(ellipse at 0 0, #45312677, transparent 42%), linear-gradient(150deg, #181512, #1b1714 52%, #241d18); border-color: #332a24; }
 .r-scene-23 .r-sidebar > a { position: absolute; left: 31px; top: 34px; }
 .r-scene-23 .r-sidebar :deep(.r-brand) { position: static; gap: 11px; }
 .r-scene-23 .r-sidebar :deep(.r-emblem) { width: 47px; height: 54px; }
 .r-scene-23 .r-sidebar :deep(.r-brand-word) { font-size: 28px; font-weight: 500; line-height: 32px; }
 .r-scene-23 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 22px; }
-.r-scene-23 .r-sidebar nav { top: 142px; left: 15px; right: 34px; gap: 10px; }
-.r-scene-23 .r-nav-item { height: 60px; padding-left: 21px; gap: 19px; }
+.r-scene-23 .r-sidebar nav { top: 142px; left: 15px; right: 36px; gap: 10px; }
+.r-scene-23 .r-nav-item { height: 60px; padding-left: 21px; gap: 15px; white-space: nowrap; }
 .r-scene-23 .r-nav-item.r-selected { height: 62px; margin-top: -2px; border-radius: 32px; border-color: #e8b180; background: linear-gradient(110deg, #9a6b4699, #68472fd9); }
-.r-scene-23 .r-nav-item.r-secondary { height: 54px; font-size: 23px; }
+.r-scene-23 .r-nav-item.r-secondary { height: 53px; font-size: 23px; }
 .r-scene-23 .r-nav-separator { margin: 18px 0 20px; }
 .r-scene-23 .r-sidebar-avatar { left: 32px; bottom: 34px; }
 .r-scene-23 .r-sidebar-avatar .r-avatar { width: 62px; height: 62px; font-size: 27px; }

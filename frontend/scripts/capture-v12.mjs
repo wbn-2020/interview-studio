@@ -1539,6 +1539,34 @@ try {
           '23确定度、按钮字色、空心保存标记或回忆来源身份不符')
         checks.push({ check: 'recollection-three-fragments-two-line-suggestions-confidence-source-fixed-geometry', scene: scene.id,
           geometry, suggestionLines, passed: true })
+        const recollectionStyles = await page.locator('.r-canvas').evaluate(canvas => {
+          const style = selector => getComputedStyle(canvas.querySelector(selector))
+          return {
+            willChange: getComputedStyle(canvas).willChange,
+            titleWeight: style('.rv23 h1').fontWeight,
+            subtitleMargin: style('.rv23 .rv-subheading').marginTop,
+            numberFont: style('.rv23-fragment-number').fontFamily,
+            fragmentWeight: style('.rv23-fragment h3').fontWeight,
+            suggestionWeight: style('.rv23-create-copy strong').fontWeight,
+            suggestionMargin: style('.rv23-create-copy strong').marginBottom,
+            selectedWeight: style('.rv23-confidence-options button.selected').fontWeight,
+            sidebarSurface: style('.r-sidebar').backgroundImage,
+            navigation: [...canvas.querySelectorAll('.r-nav-item')].map(node => {
+              const range = document.createRange(); range.selectNodeContents(node.querySelector('span'))
+              return { gap: getComputedStyle(node).gap, whiteSpace: getComputedStyle(node).whiteSpace, textLines: range.getClientRects().length }
+            }),
+          }
+        })
+        ensure(recollectionStyles.willChange === 'transform' && recollectionStyles.titleWeight === '500'
+          && recollectionStyles.subtitleMargin === '5px' && recollectionStyles.numberFont === 'Arial, sans-serif'
+          && recollectionStyles.fragmentWeight === '500' && recollectionStyles.suggestionWeight === '500'
+          && recollectionStyles.suggestionMargin === '4px' && recollectionStyles.selectedWeight === '500'
+          && recollectionStyles.sidebarSurface.includes('rgba(112, 77, 59, 0.459)')
+          && recollectionStyles.navigation.length === 10
+          && recollectionStyles.navigation.every(item => item.gap === '15px' && item.whiteSpace === 'nowrap' && item.textLines === 1),
+          '23文字合成、字重、编号、说明间距、侧栏光照或十项单行导航不符')
+        checks.push({ check: 'recollection-compositing-type-spacing-sidebar-surface-single-line-navigation', scene: scene.id,
+          styles: recollectionStyles, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
