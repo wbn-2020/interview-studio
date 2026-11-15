@@ -1623,6 +1623,37 @@ try {
           limitations: '仅本次页面内确定度和片段编辑；持久保存、提交、创建及正式非空回忆业务待确认／服务器验收' })
       }
       if (scene.id === '24') {
+        const style = await page.evaluate(() => {
+          const read = selector => {
+            const s = getComputedStyle(document.querySelector(selector))
+            return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth, gap: s.gap,
+              background: s.backgroundImage, family: s.fontFamily, lineHeight: s.lineHeight, padding: s.padding }
+          }
+          return Object.fromEntries([
+            '.rv24 h1', '.rv24 h2', '.rv24-suggestion h3', '.rv24-evidence-filters legend',
+            '.rv24-evidence-table tbody th', '.rv24-note strong', '.r-nav-item', '.r-nav-item.r-secondary',
+            '.rv24-suggestion-source', '.rv24-suggestion-text', '.rv24-suggestion-actions button',
+            '.rv24-suggestion .priority', '.rv24-suggestion:nth-of-type(2) .priority',
+            '.rv24-directions', '.rv24-evidence', '.rv24-suggestions',
+          ].map(selector => [selector, read(selector)]))
+        })
+        ensure(style['.rv24 h1'].weight === '650' && style['.rv24 h1'].size === '54px'
+          && ['.rv24 h2', '.rv24-suggestion h3', '.rv24-evidence-filters legend', '.rv24-evidence-table tbody th', '.rv24-note strong']
+            .every(selector => style[selector].weight === '500' && style[selector].stroke === '0.15px')
+          && style['.r-nav-item'].size === '23px' && style['.r-nav-item'].gap === '16px'
+          && style['.r-nav-item.r-secondary'].size === '22px' && style['.r-nav-item.r-secondary'].gap === '16px'
+          && ['.rv24-suggestion-source', '.rv24-suggestion-text'].every(selector =>
+            style[selector].size === '15px' && style[selector].family === '"Microsoft YaHei", sans-serif')
+          && style['.rv24-suggestion-text'].lineHeight === '22.5px'
+          && style['.rv24-suggestion-actions button'].size === '16px' && style['.rv24-suggestion-actions button'].padding === '0px 19px'
+          && style['.rv24-suggestion .priority'].background === 'linear-gradient(110deg, rgb(106, 75, 49), rgb(135, 83, 45))'
+          && style['.rv24-suggestion:nth-of-type(2) .priority'].background === 'linear-gradient(110deg, rgb(88, 75, 55), rgb(102, 77, 49))'
+          && ['.rv24-directions', '.rv24-evidence'].every(selector =>
+            style[selector].background === 'linear-gradient(110deg, rgb(23, 21, 18), rgb(18, 17, 15))')
+          && style['.rv24-suggestions'].background === 'linear-gradient(115deg, rgb(25, 22, 17), rgb(18, 17, 14))',
+          '24标题层次、侧栏字距、建议说明／按钮或分区底色不符')
+        checks.push({ check: 'growth-heading-weights-navigation-spacing-suggestion-copy-buttons-panel-surfaces',
+          scene: scene.id, style, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({
           '.r-sidebar': [0, 106, 208, 918], '.r-top-search': [715, 32, 399, 56],

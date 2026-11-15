@@ -582,7 +582,7 @@ watch(() => props.scene, () => {
 .rv23-tags button.amber { border-color: #a16937; color: #edb46e; background: #89542520; }
 .rv23-tags button.cyan { border-color: #4f8e88; color: #9eddd7; background: #397a7418; }
 .rv24 .rv-heading { left: 36px; top: 124px; }
-.rv24 .rv-panel { background: linear-gradient(110deg, #191613, #151311); border-color: #302a23; }
+.rv24 .rv-panel { background: linear-gradient(110deg, #171512, #12110f); border-color: #302a23; }
 .rv24 .rv-heading h1 { font-size: 54px; }
 .rv24 .rv-subheading { margin-top: 8px; font-size: 23px; color: #d5c9b7; gap: 11px; }
 .rv24-shield { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 25px; color: #fff8eb; background: linear-gradient(120deg, #9d5526, #bf8752); clip-path: polygon(50% 0, 95% 14%, 95% 57%, 83% 82%, 50% 100%, 17% 82%, 5% 57%, 5% 14%); }
@@ -634,16 +634,17 @@ watch(() => props.scene, () => {
 .rv24-dot.blue { background: linear-gradient(130deg, #60a9e5, #2d83d0); }
 .rv24-dot.amber { background: linear-gradient(130deg, #dfa973, #ac7449); }
 .rv24-no-evidence { font-size: 23px; color: #777062; white-space: nowrap; word-spacing: 3px; }
-.rv24 .rv24-suggestions { position: absolute; top: 270px; left: 951px; width: 353px; height: 617px; padding: 20px 13px 0; border-radius: 17px; background: linear-gradient(115deg, #1c1813, #14120f); }
+.rv24 .rv24-suggestions { position: absolute; top: 270px; left: 951px; width: 353px; height: 617px; padding: 20px 13px 0; border-radius: 17px; background: linear-gradient(115deg, #191611, #12110e); }
 .rv24-suggestions > h2 { font-size: 22px; gap: 8px; margin: 0 6px 26px; }
 .rv24-suggestion { position: relative; height: 180px; padding: 11px 14px 8px; margin-bottom: 8px; border: 1px solid #353029; border-radius: 17px; background: linear-gradient(110deg, #171512, #121210); }
 .rv24-suggestion h3 { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
 .rv24-suggestion h3 .rv24-dot { width: 15px; height: 16px; }
-.rv24-suggestion-source { padding-left: 26px; color: #d5c1a7; margin-top: 5px !important; font-size: 16px; line-height: 1.6 !important; }
-.rv24-suggestion-text { padding-left: 26px; color: #c2b7a7; margin-top: 5px !important; white-space: pre-line; font-size: 16px; line-height: 1.4 !important; }
+.rv24-suggestion-source { padding-left: 26px; color: #d5c1a7; margin-top: 5px !important; font-family: "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.6 !important; }
+.rv24-suggestion-text { padding-left: 26px; color: #c2b7a7; margin-top: 5px !important; white-space: pre-line; font-family: "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.5 !important; }
 .rv24-suggestion-actions { position: absolute; display: flex; justify-content: flex-end; gap: 10px; bottom: 7px; right: 7px; }
-.rv24-suggestion-actions button { height: 37px; padding: 0 20px !important; border: 1px solid #78634d55 !important; border-radius: 21px; background: #ffffff08 !important; font-size: 15px; font-weight: 500; }
-.rv24-suggestion-actions button.priority { padding: 0 15px !important; color: #fff0d9; border-color: #a6713f !important; background: linear-gradient(110deg, #6a563a, #947046) !important; }
+.rv24-suggestion-actions button { height: 37px; padding: 0 19px !important; border: 1px solid #78634d55 !important; border-radius: 21px; background: linear-gradient(110deg, #24211c, #1c1a16) !important; font-size: 16px; font-weight: 500; }
+.rv24-suggestion-actions button.priority { padding: 0 14px !important; color: #fff0d9; border-color: #a6713f !important; background: linear-gradient(110deg, #584b37, #664d31) !important; box-shadow: inset 0 0 4px #f8c69366; }
+.rv24-suggestion:nth-of-type(1) .priority, .rv24-suggestion:nth-of-type(3) .priority { background: linear-gradient(110deg, #6a4b31, #87532d) !important; }
 .rv24-suggestion:nth-of-type(2) { height: 171px; }
 .rv24-suggestion:nth-of-type(3) { height: 173px; margin-bottom: 0; }
 .rv24-suggestion.prioritized { border-color: #bc894b; }
@@ -652,4 +653,5 @@ watch(() => props.scene, () => {
 .rv24-note-icon { display: inline-flex; align-items: center; justify-content: center; color: #65513d; background: #c8b99f; border-radius: 50%; width: 22px; height: 22px; margin-right: 6px; }
 .rv24-note-icon .r-icon { width: 18px; height: 18px; }
 .rv24-note strong { color: #eee5d7; font-weight: 600; }
+.rv24 h2, .rv24 h3, .rv24-evidence-filters legend, .rv24-evidence-table tbody th, .rv24-note strong { font-weight: 500; -webkit-text-stroke: .15px currentColor; }
 </style>

@@ -730,9 +730,9 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-24 .r-sidebar :deep(.r-brand-word) { font-size: 28px; font-weight: 500; line-height: 32px; }
 .r-scene-24 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; margin-top: 0; line-height: 22px; }
 .r-scene-24 .r-sidebar nav { top: 34px; left: 20px; right: 19px; gap: 7px; }
-.r-scene-24 .r-nav-item { padding-left: 23px; color: #c9bdac; }
+.r-scene-24 .r-nav-item { padding-left: 23px; color: #c9bdac; gap: 16px; font-size: 23px; white-space: nowrap; }
 .r-scene-24 .r-nav-item.r-selected { border-radius: 32px; color: #fff1dd; background: linear-gradient(110deg, #945c2dbc, #4d351f); border-color: #a96c38; box-shadow: inset 1px 1px 7px #f7c49226, -3px 0 15px #e49c5530; }
-.r-scene-24 .r-nav-item.r-secondary { height: 58px; padding-right: 0; padding-left: 21px; white-space: nowrap; }
+.r-scene-24 .r-nav-item.r-secondary { height: 58px; padding-right: 0; padding-left: 21px; font-size: 22px; white-space: nowrap; }
 .r-scene-24 .r-nav-separator { margin: 31px 13px 29px; }
 .r-scene-24 .r-sidebar-avatar { left: 35px; bottom: 36px; }
 .r-scene-24 .r-sidebar-avatar .r-avatar { width: 61px; height: 61px; font-size: 25px; background: linear-gradient(130deg, #62513e, #3f372c); }
