@@ -1741,6 +1741,108 @@ try {
         await assertFrame(captured, '09交互后重新访问的初态与原截图不符')
         checks.push({ check: 'graph-candidates-zoom-whiteboard-attachment', scene: scene.id, passed: true })
       }
+      if (scene.id === '29') {
+        const layout = await page.evaluate(() => {
+          const definition = document.querySelector('.mobile-definition p'), text = definition.firstChild, rows = new Map()
+          for (let index = 0; index < text.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const y = range.getBoundingClientRect().y
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+          }
+          const box = selector => { const rect = document.querySelector(selector).getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height] }
+          return {
+            phones: [...document.querySelectorAll('.mobile-phone')].map(node => [node.offsetLeft, node.offsetTop, node.offsetWidth, node.offsetHeight]),
+            labels: [...document.querySelectorAll('.mobile-bottom-nav > button > span')].map(node => node.textContent),
+            times: [...document.querySelectorAll('.phone-time')].map(node => node.textContent),
+            definitionLines: [...rows.values()], question: document.querySelector('.mobile-recall-question').innerText,
+            detail: box('.mobile-detail-content'), tabs: box('.mobile-detail-tabs'), drawer: box('.mobile-recall-drawer'),
+            answer: box('.mobile-recall-answer'), rating: box('.mobile-rating-options'),
+            brandPaths: document.querySelectorAll('.mobile-home-header .r-emblem path').length,
+            menuOpen: !!document.querySelector('.mobile-detail-menu'),
+            selectedTab: document.querySelector('.mobile-detail-tabs > .selected')?.textContent,
+            selectedRating: document.querySelectorAll('.mobile-rating-options [aria-pressed="true"]').length,
+            count: document.querySelector('.mobile-count').textContent,
+            answerValue: document.querySelector('.mobile-recall-answer').value,
+            completeDisabled: document.querySelector('.mobile-complete').disabled,
+            horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+          }
+        })
+        ensure(JSON.stringify(layout.phones) === '[[61,62,447,916],[541,42,459,951],[1033,65,451,912]]'
+          && layout.labels.join(',') === '今日,知识,训练,复盘,成长' && layout.times.join(',') === '9:41,9:41,9:41'
+          && layout.brandPaths === 4 && !layout.horizontalOverflow, '29三手机坐标、时间、品牌或底部导航不符')
+        ensure(JSON.stringify(layout.definitionLines) === JSON.stringify([
+          '缓存一致性是指在分布式系统中，多个缓存', '实例之间的数据保持一致的能力，避免出现', '脏数据或数据不一致的问题。',
+        ]) && layout.question === '缓存删除失败后，\n如何确认恢复？'
+          && layout.selectedTab === '概览' && !layout.menuOpen && !layout.selectedRating
+          && layout.count === '2' && layout.answerValue === '' && layout.completeDisabled, '29三行定义、两行题面或默认状态不符')
+        ensure(JSON.stringify(layout.detail) === '[577,363,385,511]'
+          && JSON.stringify(layout.tabs) === '[577,280,384,56]' && JSON.stringify(layout.drawer) === '[1048,190,421,771]'
+          && JSON.stringify(layout.answer) === '[1071,463,375,237]' && JSON.stringify(layout.rating) === '[1072,742,373,92]',
+        '29详情、标签、抽屉、答案或评分几何不符')
+        checks.push({ check: 'mobile-three-phones-fixed-geometry-copy-lines-initial-state', scene: scene.id, layout, passed: true })
+        const writes = [], onWrite = request => {
+          if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method() + ' ' + new URL(request.url()).pathname)
+        }
+        page.on('request', onWrite)
+        const tabs = page.getByRole('navigation', { name: '知识点标签', exact: true })
+        await tabs.getByRole('button', { name: '关系', exact: true }).click()
+        ensure(await page.locator('.mobile-unconfirmed').innerText() === '关系内容待确认', '29未定义关系被当成已确认内容')
+        await tabs.getByRole('button', { name: '练习', exact: true }).click()
+        ensure(await page.locator('.mobile-exercise-content').isVisible(), '29练习标签未切换')
+        await tabs.getByRole('button', { name: '概览', exact: true }).click()
+        const more = page.getByRole('button', { name: '知识点更多操作', exact: true })
+        await more.click()
+        ensure(await more.getAttribute('aria-expanded') === 'true' && await page.locator('.mobile-detail-menu button').count() === 2, '29更多菜单未打开')
+        await page.locator('.mobile-detail-menu button').first().focus()
+        await page.keyboard.press('Escape')
+        ensure(!await page.locator('.mobile-detail-menu').count() && await more.evaluate(node => node === document.activeElement), '29菜单Esc未关闭或焦点未归还')
+        const review = page.locator('.mobile-task-row').first().getByRole('button', { name: '完成复习：缓存一致性', exact: true })
+        await review.click()
+        ensure(await page.locator('.mobile-count').innerText() === '1', '29任务完成未同步计数')
+        await page.getByRole('button', { name: '取消完成复习：缓存一致性', exact: true }).click()
+        ensure(await page.locator('.mobile-count').innerText() === '2', '29取消完成未同步计数')
+        await page.getByRole('button', { name: '收起回忆卡', exact: true }).click()
+        ensure(!await page.locator('.mobile-recall-drawer').count(), '29抽屉未收起')
+        await page.locator('.mobile-reopen-recall').click()
+        const answer = page.getByRole('textbox', { name: '回忆卡答案', exact: true })
+        await answer.fill('先确认数据库状态，再检查删除结果和重试记录。')
+        const ratings = page.getByRole('group', { name: '回忆程度', exact: true })
+        for (const label of ['忘记','困难','记得','熟悉']) {
+          await ratings.getByRole('button', { name: label, exact: true }).click()
+          ensure(await ratings.locator('[aria-pressed="true"]').count() === 1
+            && await ratings.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed') === 'true', '29评分不是互斥单选')
+        }
+        await page.keyboard.press('Home')
+        ensure(await ratings.getByRole('button', { name: '忘记', exact: true }).getAttribute('aria-pressed') === 'true', '29评分Home无效')
+        await page.keyboard.press('ArrowLeft')
+        ensure(await ratings.getByRole('button', { name: '熟悉', exact: true }).evaluate(node => node === document.activeElement && node.getAttribute('aria-pressed') === 'true'), '29评分方向键循环无效')
+        await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowDown')
+        ensure(await ratings.getByRole('button', { name: '困难', exact: true }).getAttribute('aria-pressed') === 'true', '29评分右／下方向键无效')
+        await page.keyboard.press('ArrowUp'); await page.keyboard.press('End')
+        ensure(await ratings.getByRole('button', { name: '熟悉', exact: true }).getAttribute('aria-pressed') === 'true', '29评分上方向键或End无效')
+        await page.getByRole('button', { name: '完成', exact: true }).click()
+        ensure(await page.getByRole('button', { name: '已完成', exact: true }).isDisabled()
+          && await answer.evaluate(node => node.readOnly) && await page.locator('.mobile-count').innerText() === '1'
+          && (await page.locator('.r-toast').innerText()).includes('未写入正式记录'), '29页面内完成边界或任务计数不符')
+        await page.getByRole('button', { name: '重置回忆卡', exact: true }).click()
+        ensure(await answer.inputValue() === '' && !await answer.evaluate(node => node.readOnly)
+          && !await ratings.locator('[aria-pressed="true"]').count() && await page.getByRole('button', { name: '完成', exact: true }).isDisabled(), '29重置未清空草稿和评分')
+        await page.reload({ waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '29页签／任务／抽屉／评分后刷新未恢复原始三手机画面')
+        for (const [label, destination] of [['今日','02'],['知识','10'],['训练','17'],['复盘','21'],['成长','24']]) {
+          await page.getByRole('navigation', { name: '移动端主导航', exact: true }).getByRole('button', { name: label, exact: true }).click()
+          await page.locator(`.r-canvas[data-scene="${destination}"]`).waitFor()
+          await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        }
+        await page.locator('.mobile-recent-note').click()
+        await page.locator('.r-canvas[data-scene="11"]').waitFor()
+        await page.goto(entry, { waitUntil: 'networkidle' }); await ready()
+        await assertFrame(captured, '29导航返回未恢复三手机默认画面')
+        page.off('request', onWrite)
+        ensure(!writes.length, '29固定展示意外写入正式业务')
+        checks.push({ check: 'mobile-tabs-menu-escape-tasks-drawer-ratings-keyboard-reset-navigation-refresh', scene: scene.id,
+          businessWrites: writes, passed: true, limitations: '评分、作答和任务仅在展示页内存变化；关系内容和持久业务待确认，原字体与品牌素材未获得' })
+      }
       if (scene.id === '30') {
         const list = page.getByRole('region', { name: '待整理内容' })
         const sources = page.getByRole('complementary', { name: '收件箱来源' })
