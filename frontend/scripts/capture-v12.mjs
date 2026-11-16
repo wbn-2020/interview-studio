@@ -753,6 +753,23 @@ try {
           && typography.excerptFragments.every(r => Math.abs(r[0] - 1214) < 1),
           '06字重、纸面基线、原生列表标记间距或两行摘录高亮不符')
         checks.push({ check: 'attachment-typography-native-list-spacing-inline-highlight-fragments', scene: scene.id, typography, passed: true })
+        const attachmentIcons = await page.evaluate(() => {
+          const icon = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), r = node.getBoundingClientRect()
+            return { box: [r.x, r.y, r.width, r.height], strokeWidth: s.strokeWidth,
+              paths: [...node.querySelectorAll('path')].map(p => p.getAttribute('d')) }
+          }
+          return { fit: icon('.pdf-toolbar [title="适应页面"] svg'), fileMore: icon('.file-item:first-of-type > svg') }
+        })
+        ensure(sameBox(attachmentIcons.fit.box, [1071,220,26,26])
+          && JSON.stringify(attachmentIcons.fit.paths) === JSON.stringify([
+            'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5', 'm4 4 5 5m11-5-5 5m5 11-5-5M4 20l5-5',
+          ])
+          && sameBox(attachmentIcons.fileMore.box, [537.5,416.34375,22,22])
+          && attachmentIcons.fileMore.strokeWidth === '4px'
+          && JSON.stringify(attachmentIcons.fileMore.paths) === JSON.stringify(['M12 4h.01','M12 12h.01','M12 20h.01']),
+          '06适应页面四向箭头或文件行三点图标不符')
+        checks.push({ check: 'attachment-fit-arrows-and-file-more-icon-geometry', scene: scene.id, attachmentIcons, passed: true })
         await viewer.getByRole('button', { name: '下一页', exact: true }).click()
         ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible(), '06下一页未更新')
         await viewer.getByRole('button', { name: '上一页', exact: true }).click()
