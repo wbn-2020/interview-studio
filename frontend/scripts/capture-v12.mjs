@@ -590,6 +590,45 @@ try {
           && expressionLayout.unresolved === 1, '05标题、按钮、导航图标、原换行或待确认边界不符')
         await writeJson(path.join(values.output, 'records', '05-expression-layout.json'), expressionLayout)
         checks.push({ check: 'expression-three-panels-brand-topbar-tabs-prose-and-save-paint', scene: scene.id, passed: true })
+        const expressionPaint = await page.evaluate(() => {
+          const selectors = ['.r-scene-05', '.prep-expression .p-title', '.expression-text h2', '.expression-directory strong',
+            '.expression-tabs button.r-active', '.expression-prose p', '.expression-byline', '.expression-text .r-rule',
+            '.expression-outline p', '.expression-outline>div span', '.history-item p', '.version-history',
+            '.diff-heading>strong', '.diff-columns', '.diff-columns .added', '.diff-columns p>span:last-child', '.r-nav-separator']
+          return Object.fromEntries(selectors.map(selector => {
+            const node = document.querySelector(selector), style = getComputedStyle(node), box = node.getBoundingClientRect()
+            return [selector, { weight: style.fontWeight, size: style.fontSize, stroke: style.webkitTextStrokeWidth,
+              transform: style.transform, marginTop: style.marginTop, marginBottom: style.marginBottom,
+              paddingLeft: style.paddingLeft, background: style.backgroundImage, clipPath: style.clipPath,
+              gap: style.gap, box: [box.x, box.y, box.width, box.height] }]
+          }))
+        })
+        ensure(expressionPaint['.r-scene-05'].weight === '300'
+          && expressionPaint['.prep-expression .p-title'].weight === '500'
+          && expressionPaint['.prep-expression .p-title'].stroke === '0.6px'
+          && expressionPaint['.prep-expression .p-title'].transform === 'matrix(0.96, 0, 0, 1, 0, 0)'
+          && expressionPaint['.expression-text h2'].weight === '500'
+          && expressionPaint['.expression-text h2'].transform === 'matrix(0.98, 0, 0, 1, 0, 0)'
+          && expressionPaint['.expression-directory strong'].weight === '500'
+          && expressionPaint['.expression-tabs button.r-active'].weight === '500'
+          && expressionPaint['.expression-prose p'].size === '19px'
+          && expressionPaint['.expression-prose p'].weight === '300'
+          && expressionPaint['.expression-byline'].gap === '11px'
+          && Math.abs(expressionPaint['.expression-text .r-rule'].box[1] - 358.484375) < 1
+          && expressionPaint['.expression-text .r-rule'].box[2] === 497
+          && expressionPaint['.expression-outline p'].size === '17px'
+          && expressionPaint['.expression-outline>div span'].size === '0px'
+          && expressionPaint['.expression-outline>div span'].clipPath.startsWith('polygon(')
+          && expressionPaint['.history-item p'].weight === '400'
+          && expressionPaint['.version-history'].background.includes('rgb(30, 26, 22)')
+          && expressionPaint['.diff-heading>strong'].size === '21px'
+          && expressionPaint['.diff-columns'].size === '19px'
+          && expressionPaint['.diff-columns .added'].paddingLeft === '15px'
+          && expressionPaint['.diff-columns p>span:last-child'].transform === 'matrix(0.96, 0, 0, 1, 0, 0)'
+          && expressionPaint['.r-nav-separator'].marginTop === '22px'
+          && expressionPaint['.r-nav-separator'].marginBottom === '26px', '05字重、分隔线、提纲、版本记录或对比内距不符')
+        await writeJson(path.join(values.output, 'records', '05-expression-paint.json'), expressionPaint)
+        checks.push({ check: 'expression-typography-rule-outline-diff-spacing-and-panel-paint', scene: scene.id, passed: true })
         const directory = page.locator('.expression-directory'), heading = page.locator('.expression-text h2')
         const root = directory.getByRole('button', { name: '项目介绍 3', exact: true })
         ensure(await root.getAttribute('aria-expanded') === 'true' && await directory.locator('.version-link').count() === 3, '05目录初态不符')

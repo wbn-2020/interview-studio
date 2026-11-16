@@ -416,18 +416,28 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .expression-actions .r-btn:first-child { width: 148px; justify-content: center; padding-inline: 0 !important; background: linear-gradient(125deg, #171513, #141210) !important; }
 .prep-facts .expression-actions .r-btn:last-child { width: 162px; justify-content: center; padding-inline: 0 !important; }
 .prep-facts .fact-foot { font-size: 21px; gap: 12px; }
-.prep-expression .expression-editor { background: linear-gradient(115deg, #191613, #181512 65%, #1c1814); border-color: #25211b; }
+/* 表达页的字面比例和提纲标记单独校正，不改变其他准备页的排版。 */
+.prep-expression .p-title { left: 22px; font-weight: 500; -webkit-text-stroke: .6px currentColor; transform: scaleX(.96); transform-origin: left center; }
+.prep-expression h2 { font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.prep-expression .expression-directory strong { font-weight: 500; -webkit-text-stroke: .15px currentColor; }
+.prep-expression .expression-editor { background: linear-gradient(115deg, #1b1815, #1c1815 65%, #1b1814); border-color: #25211b; }
 .prep-expression .p-actions .r-btn { background: linear-gradient(120deg, #2c2923, #24211c) !important; border-color: #70685f8c !important; }
 .prep-expression .p-actions .r-primary { background: linear-gradient(120deg, #dba77f, #e5ab7b 65%, #ce916a) !important; box-shadow: inset 0 1px 5px #ffe9ce99, 0 0 17px #d4884a29; }
-.prep-expression .expression-tabs button.r-active { border-radius: 27px; background: radial-gradient(ellipse at 50% 100%, #7d5a3033, transparent 75%); }
+.prep-expression .expression-tabs button.r-active { font-weight: 500; -webkit-text-stroke: .15px currentColor; border-radius: 27px; background: radial-gradient(ellipse at 50% 100%, #7d5a3033, transparent 75%); }
 .prep-expression .expression-tabs button.r-active::after { left: 25px; right: 25px; height: 2px; }
 .prep-expression .version-history, .prep-expression .version-diff { background: linear-gradient(115deg, #231f1a, #211c17 70%, #231e18); border-color: #28221c; }
+.prep-expression .version-history { background: linear-gradient(115deg, #1e1a16, #1f1a16 70%, #201b17); }
+.prep-expression .history-item.selected { background: linear-gradient(110deg, #7d5c3e38, #5b48392e) !important; }
+.prep-expression .history-item p { font-weight: 400; }
 .prep-expression .history-item:not(.selected) p { color: #9f978d; }
 .prep-expression .history-item.selected small { color: #efc59f; }
 .prep-expression .version-history > .r-primary { color: #fff6e8; font-weight: 500; background: linear-gradient(115deg, #d49e75, #bb9272 60%, #b38b6a) !important; box-shadow: inset 0 1px 5px #ffe9ce77; border-color: #e9c4a366 !important; }
 .prep-expression .version-history > .r-btn:last-child { background: linear-gradient(110deg, #2c261f, #26211b) !important; }
-.prep-expression .diff-heading > strong { font-weight: 500; gap: 12px; }
-.prep-expression .diff-columns { grid-template-columns: 574px 1fr; margin-top: 14px; border-color: #554b3f66; }
+.prep-expression .diff-heading > strong { font-weight: 500; font-size: 21px; gap: 14px; }
+.prep-expression .diff-heading > strong > svg { width: 26px; height: 26px; }
+.prep-expression .diff-columns { grid-template-columns: 574px 1fr; font-size: 19px; margin-top: 15.5px; border-color: #554b3f66; }
+.prep-expression .diff-columns p { line-height: 30px; padding-top: 12px; padding-bottom: 12px; }
+.prep-expression .diff-columns p > span:last-child { transform: scaleX(.96); transform-origin: left center; white-space: nowrap; }
 .prep-expression .diff-columns .removed { background: transparent; }
 .prep-expression .diff-columns .added { background: linear-gradient(110deg, #1733294a, #1c2b2422); border-left-color: #55513b88; }
 .prep-expression .expression-directory { padding-top: 20px; }
@@ -436,13 +446,19 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-expression .expression-directory > button:nth-last-child(-n+2) { padding-block: 10.5px !important; }
 .prep-expression .expression-directory > button:nth-last-child(2) { margin-top: 6px; }
 .prep-expression .expression-text { padding-left: 30px; }
-.prep-expression .expression-text .r-rule { margin-bottom: 15px; }
+.prep-expression .expression-text h2 { transform: scaleX(.98); transform-origin: left center; }
+.prep-expression .expression-byline { font-weight: 400; gap: 11px; }
+.prep-expression .expression-byline .r-pill { margin-left: 4px; }
+.prep-expression .expression-text .r-rule { width: 497px; margin-top: 11px; margin-bottom: 19px; }
 .prep-expression .expression-prose p { line-height: 32px; margin-bottom: 30.5px; }
-.prep-expression .expression-outline { padding-top: 7px; padding-left: 27px; }
+.prep-expression .expression-outline { position: relative; padding-top: 7px; padding-left: 27px; }
+.prep-expression .expression-outline::before { content: ""; position: absolute; top: 0; left: 26px; right: 24px; height: 1px; background: #49413766; }
+.prep-expression .expression-outline::after { content: ""; position: absolute; top: -1px; left: -3px; width: 5px; height: 5px; background: #6e675c; transform: rotate(45deg); }
+.prep-expression .expression-outline > div span { font-size: 0; top: 7px; left: -32px; width: 10px; height: 14px; background: #8c8377; clip-path: polygon(50% 0, 65% 40%, 100% 50%, 65% 60%, 50% 100%, 35% 60%, 0 50%, 35% 40%); }
 .prep-expression .expression-outline > div { margin-bottom: 25px; }
 .prep-expression .expression-outline strong { display: block; line-height: 27px; }
-.prep-expression .expression-outline p { font-size: 16px; line-height: 27px; margin-top: 2px; }
-.prep-expression .diff-columns .added { padding-left: 4px; gap: 13px; }
+.prep-expression .expression-outline p { font-size: 17px; font-weight: 300; line-height: 27px; margin-top: 2px; }
+.prep-expression .diff-columns .added { padding-left: 15px; gap: 13px; }
 .prep-expression .history-item:first-of-type { height: 106px; }
 .prep-expression .history-item:nth-of-type(2) { height: 91px; }
 .prep-expression .history-item p:first-of-type { font-size: 17.5px; line-height: 27.2px; }
