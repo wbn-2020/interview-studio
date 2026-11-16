@@ -483,7 +483,7 @@ watch(() => props.scene, () => {
 .rv21-source-view { position: absolute; left: 27px; right: 25px; top: 331px; height: 564px; padding: 26px; }
 .rv21-source-view p { margin-top: 22px; }
 .rv22 .rv-heading { left: 28px; top: 121px; }
-.rv22 .rv-heading h1 { font-size: 49px; font-weight: 600; }
+.rv22 .rv-heading h1 { font-size: 49px; font-weight: 500; -webkit-text-stroke: .6px currentColor; }
 .rv22 .rv-subheading { margin-top: 6px; font-size: 25px; color: #c7c2ba; gap: 15px; }
 .rv22-source { position: absolute; top: 141px; right: 35px; height: 56px; width: 204px; min-height: 0; padding: 8px 17px !important; font-size: 22px; border-radius: 30px; border-color: #3c352d !important; background: linear-gradient(130deg, #211e1988, #16141188) !important; }
 .rv22-old, .rv22-new, .rv22-conditions { position: absolute; top: 259px; height: 525px; border-radius: 22px; padding: 23px 26px; }
@@ -498,21 +498,21 @@ watch(() => props.scene, () => {
 .rv22-history-icons { display: flex; align-items: center; gap: 5px; height: 35px; color: #d0ab83; }
 .rv22-history-icons .r-icon:first-child { color: #8a8071; }
 .rv22-answer-heading { font-size: 24px; margin-top: 18px !important; margin-bottom: 18px !important; }
-.rv22-answer-intro { font-size: 22px; font-weight: 500; white-space: nowrap; line-height: 1.6 !important; }
+.rv22-answer-intro { font-size: 22px; font-weight: 300; white-space: nowrap; line-height: 1.6 !important; transform: translateY(1px); }
 .rv22-answer-list { font-size: 22px; margin: 14px 0 0; padding-left: 32px; line-height: 2.04; }
-.rv22-old .rv22-answer-list { margin-top: 10px; }
+.rv22-old .rv22-answer-list { margin-top: 10px; transform: translateY(-1px); }
 .rv22-answer-list li { padding-left: 1px; white-space: nowrap; }
 .rv22-answer-list li::marker { font-family: Arial, sans-serif; font-size: 24px; }
 .rv22-answer-rule { position: absolute; top: 358px; left: 26px; right: 26px; height: 1px; background: #5d4d3e55; }
 .rv22-detail-heading { position: absolute; top: 386px; left: 27px; display: flex; align-items: center; gap: 11px; font-size: 23px; color: #bcb7ae; font-weight: 500; }
 .rv22-detail-heading .r-icon { color: #e0b98e; }
 .rv22-keywords { position: absolute; left: 26px; top: 433px; display: flex; gap: 9px; }
-.rv22-keywords button { font-size: 21px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff17, #ffffff0f) !important; }
+.rv22-keywords button { font-size: 20px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff17, #ffffff0f) !important; }
 .rv22-conditions dl { margin: 16px 0 0; }
 .rv22-conditions dl > div { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 18px; }
-.rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 500; line-height: 50px; white-space: nowrap; }
+.rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 400; line-height: 50px; white-space: nowrap; }
 .rv22-conditions dd { margin: 0; padding: 9px 14px; border-radius: 16px; background: #ffffff0c; font-size: 22px; line-height: 1.5; white-space: nowrap; }
-.rv22-conditions dl > div:nth-child(2) { margin-bottom: 18px; }
+.rv22-conditions dl > div:nth-child(2) { margin-bottom: 16px; }
 .rv22-conditions dl > div:nth-child(3) dd { padding-left: 13px; padding-right: 13px; }
 .rv22-conditions dl > div:nth-child(4) { margin-top: 1px; }
 .rv22-conditions dl > div:nth-child(4) dd { min-width: 137px; }
@@ -530,14 +530,14 @@ watch(() => props.scene, () => {
 .rv22-judgment-options > button { height: 54px; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 132px; border: 1px solid #ffffff03; border-radius: 30px; padding: 0 17px !important; color: #ded9d0; font-size: 21px; background: #ffffff02; }
 .rv22-judgment-options > button:nth-child(2) { min-width: 148px; }
 .rv22-judgment-options > button:nth-child(4) { min-width: 150px; }
-.rv22-judgment-options > button.selected { border-color: #dfa05b; background: linear-gradient(100deg, #76502b70, #3f2a1680); color: #f5d9b2; font-weight: 600; }
+.rv22-judgment-options > button.selected { border-color: #dfa05b; background: linear-gradient(100deg, #76502b70, #3f2a1680); color: #f5d9b2; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .rv22-judgment-options .r-icon { color: #979887; }
 .rv22-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #625e52; }
 .rv22-radio.checked { background: #e3a56d; border-color: #edb985; }
 .rv22-basis { display: flex; align-items: center; gap: 10px; position: absolute; top: 59px; left: 644px; width: 434px; height: 69px; border: 1px solid #554b3e; border-radius: 15px; padding: 0 17px; font-size: 19px; background: #ffffff02; white-space: nowrap; }
 .rv22-basis strong { flex: none; font-weight: 500; }
 .rv22-basis input { min-width: 0; flex: 1; background: transparent; padding: 0; border: 0; color: #d7d0c6; font-size: 19px; outline-offset: 6px; }
-.rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; }
+.rv22 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; font-weight: 500; -webkit-text-stroke: .3px currentColor; background: linear-gradient(120deg, #efbf8e, #c38952 75%, #bd824c) !important; box-shadow: inset 0 1px 2px #ffe1af4d, 0 0 16px #d8974e20; }
 .rv22-save::before { content: ""; position: absolute; left: -22px; top: 0; bottom: -10px; width: 1px; background: #4a3d2c66; }
 .rv23 .rv-heading { left: 32px; top: 117px; }
 .rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; font-weight: 500; }

@@ -1596,7 +1596,7 @@ try {
         ensure(typography.styles['.r-scene-22'].willChange === 'transform'
           && typography.styles['.r-breadcrumb'].color === 'rgb(187, 183, 175)'
           && typography.styles['.r-nav-item'].gap === '14px'
-          && typography.styles['.rv22 .rv-heading h1'].fontWeight === '600'
+          && typography.styles['.rv22 .rv-heading h1'].fontWeight === '500'
           && ['.rv22-old .rv22-panel-heading', '.rv22-old .rv22-answer-heading',
             '.rv22-conditions .rv22-panel-heading', '.rv22-judgment h2'].every(selector => typography.styles[selector].fontWeight === '500')
           && typography.navigation.length === 10 && typography.navigation.every(item => item.lines === 1),
@@ -1648,6 +1648,41 @@ try {
           && await page.locator('.rv22-new .rv22-panel-heading').textContent() === '本次复练 · 11.11', '22搜索文案或固定日期不符')
         checks.push({ check: 'compare-two-native-lists-five-items-conditions-judgment-fixed-geometry', scene: scene.id,
           geometry, answerLines, conditionValues, passed: true })
+        const detailType = await page.evaluate(() => Object.fromEntries([
+          '.r-scene-22', '.rv22 .rv-heading h1', '.rv22-answer-intro', '.rv22-conditions dt',
+          '.rv22-keywords button', '.rv22-judgment-options > button.selected', '.rv22-save',
+        ].map(selector => {
+          const s = getComputedStyle(document.querySelector(selector))
+          return [selector, { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth,
+            transform: s.transform, background: s.backgroundImage }]
+        })))
+        ensure(detailType['.r-scene-22'].weight === '300'
+          && detailType['.rv22 .rv-heading h1'].size === '49px' && detailType['.rv22 .rv-heading h1'].stroke === '0.6px'
+          && detailType['.rv22-answer-intro'].weight === '300' && detailType['.rv22-answer-intro'].size === '22px'
+          && detailType['.rv22-answer-intro'].transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && detailType['.rv22-conditions dt'].weight === '400' && detailType['.rv22-keywords button'].size === '20px'
+          && ['.rv22-judgment-options > button.selected', '.rv22-save']
+            .every(selector => detailType[selector].weight === '500' && detailType[selector].stroke === '0.3px')
+          && detailType['.rv22-save'].background === 'linear-gradient(120deg, rgb(239, 191, 142), rgb(195, 137, 82) 75%, rgb(189, 130, 76))',
+        '22正文字重、引导句基线、关键词字号或选中／保存按钮样式不符')
+        checks.push({ check: 'compare-copy-keywords-selected-save-typography-gradient', scene: scene.id, detailType, passed: true })
+        const detailGeometry = await page.evaluate(() => {
+          const selectors = ['.rv22-old .rv22-answer-list', '.rv22-new .rv22-answer-list', '.rv22-keywords', '.rv22-basis', '.rv22-save']
+          const boxes = Object.fromEntries(selectors.map(selector => {
+            const b = document.querySelector(selector).getBoundingClientRect()
+            return [selector, [b.x, b.y, b.width, b.height]]
+          }))
+          return { boxes, conditionMargin: getComputedStyle(document.querySelector('.rv22-conditions dl > div:nth-child(2)')).marginBottom,
+            listTransform: getComputedStyle(document.querySelector('.rv22-old .rv22-answer-list')).transform }
+        })
+        ensure(Object.entries({
+          '.rv22-old .rv22-answer-list': [277, 451.984375, 388, 137.625],
+          '.rv22-new .rv22-answer-list': [1047, 456.984375, 427, 117.5625],
+          '.rv22-keywords': [277, 693, 354, 46], '.rv22-basis': [895, 872, 434, 69], '.rv22-save': [1370, 872, 112, 59],
+        }).every(([selector, box]) => box.every((n, i) => Math.abs(detailGeometry.boxes[selector][i] - n) < .02))
+          && detailGeometry.conditionMargin === '16px' && detailGeometry.listTransform === 'matrix(1, 0, 0, 1, 0, -1)',
+        '22新旧回答列表、关键词、条件间距或底部操作几何不符')
+        checks.push({ check: 'compare-answer-list-baselines-keywords-conditions-footer-geometry', scene: scene.id, detailGeometry, passed: true })
         const beforeAnswers = await page.locator('.rv22-answer-panel').allTextContents(), writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)

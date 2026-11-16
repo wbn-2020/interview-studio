@@ -696,7 +696,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-21 .r-saved { color: #36d77d; }
 .r-scene-21 .r-saved svg { width: 26px; height: 26px; padding: 0; fill: none; background: transparent; color: #36d77d; }
 .r-scene-21 .r-top-status > .r-avatar { width: 53px; height: 57px; background: linear-gradient(130deg, #787168, #504b44); }
-.r-scene-22 { will-change: transform; }
+.r-scene-22 { will-change: transform; font-weight: 300; }
 .r-scene-22 .r-sidebar { left: 17px; top: 24px; bottom: 27px; width: 205px; }
 .r-scene-22 .r-sidebar > a { position: absolute; left: 20px; top: 24px; }
 .r-scene-22 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
