@@ -2066,6 +2066,15 @@ try {
           return [...lines.values()]
         })
         ensure(JSON.stringify(warningLines) === JSON.stringify(['预算扣减超时，', '结果未知']), '13黄色提示没有保持参考两行')
+        const boardDescription = await inspector.locator('textarea').evaluate(node => {
+          const b = node.getBoundingClientRect(), s = getComputedStyle(node)
+          return { value: node.value, box: [b.x, b.y, b.width, b.height], padding: s.padding,
+            clientHeight: node.clientHeight, scrollHeight: node.scrollHeight, clientWidth: node.clientWidth }
+        })
+        ensure(boardDescription.value === '画布线不会自动成为\n正式知识关系'
+          && JSON.stringify(boardDescription.box) === '[1277,494,216,73]' && boardDescription.padding === '9px 14px 8px'
+          && boardDescription.clientHeight === 71 && boardDescription.scrollHeight === 71 && boardDescription.clientWidth === 214, '13说明原文、外框或初态溢出不符')
+        checks.push({ check: 'whiteboard-description-two-lines-native-input-no-overflow', scene: scene.id, boardDescription, passed: true })
         ensure(await switches.count() === 3
           && JSON.stringify(await switches.evaluateAll(items => items.map(node => node.getAttribute('aria-checked')))) === JSON.stringify(['true', 'true', 'false']),
           '13网格、吸附或边界初态不符')

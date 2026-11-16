@@ -288,7 +288,7 @@ function endDrag(event: PointerEvent) {
 .kb-inspector input, .kb-inspector select, .kb-inspector textarea { font-size: 17.5px; padding-left: 14px; padding-right: 14px; border-color: #342d25; background: #1e1a15; }
 .kb-inspector input { height: 45px; line-height: 25px; }
 .kb-inspector select { height: 44px; }
-.kb-inspector textarea { line-height: 27px; }
+.kb-inspector textarea { line-height: 27px; padding-bottom: 8px; }
 .kb-inspector .r-rule { margin: 23px 0 17px; }
 .kb-inspector h3 { font-size: 17.5px; line-height: 28px; }
 .kb-inspector h3 + label.r-between { margin-top: 15px; }
