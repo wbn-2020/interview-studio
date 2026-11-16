@@ -1117,6 +1117,27 @@ try {
           && bankIcons['回忆卡'].paths[1].stroke === '0.7px' && bankIcons['回忆卡'].paths[1].opacity === '0.45'
           && (bankIcons['回忆卡'].paths[1].d.match(/M/g) ?? []).length === 24, '14回忆卡圆角外框、细点线宽或密度不符')
         checks.push({ check: 'question-bank-page-specific-navigation-icons', scene: scene.id, icons: bankIcons, passed: true })
+        const bankText = await page.evaluate(() => {
+          const measure = node => {
+            const range = document.createRange(); range.selectNodeContents(node)
+            const box = range.getBoundingClientRect(), style = getComputedStyle(node)
+            return { text: node.textContent, box: [box.x, box.y, box.width, box.height], size: style.fontSize,
+              weight: style.fontWeight, left: style.left, paddingLeft: style.paddingLeft }
+          }
+          return { navigation: [...document.querySelectorAll('.r-sidebar nav .r-nav-item span')].map(measure),
+            titles: [...document.querySelectorAll('.bank-list tbody td:first-child')].map(measure),
+            otherCells: [...document.querySelectorAll('.bank-list tbody td:not(:first-child)')].map(measure) }
+        })
+        ensure(bankText.navigation.length === 10 && bankText.navigation.every((item, index) => item.size === '20px'
+          && item.weight === '300' && item.left === (index < 6 ? '-2px' : '-1px')),
+          '14导航字面尺寸、字重或局部横向基线不符')
+        ensure(JSON.stringify(bankText.titles.map(item => item.text)) === JSON.stringify(['缓存删除失败后如何恢复？',
+          'ThreadLocal 为什么会泄漏？', '发奖接口如何保证幂等？', '如何设计对账补偿任务？', '解释一次 GC 停顿的排查过程'])
+          && bankText.titles.every(item => item.size === '17px' && item.weight === '400' && item.paddingLeft === '12px')
+          && closeBox(bankText.titles[0].box, [472, 309.25, 204, 22])
+          && bankText.otherCells.every(item => item.size === '18px' && item.weight === '400'),
+          '14五条题名原文、17px字面及首行基线或其他列字体不符')
+        checks.push({ check: 'question-bank-navigation-and-five-title-text-metrics', scene: scene.id, text: bankText, passed: true })
         const search = page.getByRole('textbox', { name: '搜索题目', exact: true })
         await search.fill('ThreadLocal')
         ensure(await rows.count() === 1 && (await rows.first().textContent()).includes('ThreadLocal'), '14标题搜索未筛选')

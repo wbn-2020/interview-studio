@@ -537,6 +537,7 @@ watch(() => props.scene, () => {
 .bank-list th { height: 55px; font-weight: 500; padding: 0 11px; white-space: nowrap; }
 .bank-list th button { display: flex; align-items: center; gap: 9px; }
 .bank-list td { height: 59px; border-bottom: 1px solid #ffffff04; padding: 0 11px; white-space: nowrap; }
+.bank-list td:first-child { font-size: 17px; padding-left: 12px; }
 .bank-list tr { cursor: pointer; }
 .bank-list tbody tr:hover td { background: #ffffff04; }
 .bank-list tr.selected td { background: linear-gradient(180deg, #302923e0, #2c2621e0); }
