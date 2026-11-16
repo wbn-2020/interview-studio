@@ -146,7 +146,7 @@ function practice() {
       <g class="graph-backdrop" transform="translate(-118 0)" fill="none">
         <ellipse cx="701" cy="506" rx="703" ry="377" stroke="#b88c4c" stroke-opacity=".07" stroke-dasharray="3 5" transform="rotate(-9 701 506)" />
         <ellipse cx="703" cy="505" rx="466" ry="278" stroke="#b88c4c" stroke-opacity=".07" stroke-dasharray="3 6" transform="rotate(14 703 505)" />
-        <path d="M118 243Q582 98 1004 142M118 853Q321 875 437 1024M1177 1024Q1401 867 1514 760" stroke="#b78c4c" stroke-width=".6" stroke-opacity=".34" />
+        <path d="M118 243Q582 98 1004 142M118 853Q321 875 437 1024M1177 1024Q1401 867 1514 760" stroke="#b78c4c" stroke-width=".6" stroke-opacity=".19" />
         <path d="m390 470 638 2M705 239v631M437 794l579-447M488 301l500 554" stroke="#8e7955" stroke-opacity=".08" stroke-dasharray="2 6" />
         <circle cx="339" cy="938" r="10" fill="#e9a84c" opacity=".1" />
         <circle cx="339" cy="938" r="3.5" fill="#f5b44f" />
@@ -257,11 +257,11 @@ function practice() {
       </nav>
       <div v-if="isCache && activeTab === '概览'" class="graph-overview">
         <section class="graph-definition">
-          <h2><RIcon name="file-text" :size="23" />定义</h2>
+          <h2><svg class="r-icon" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l5 5v15H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" /><path d="M14 2v6h6M8 12h8M8 16h5M2 5v17a2 2 0 0 0 2 2h11" /></svg>定义</h2>
           <p>缓存一致性是指在分布式系统中，缓存与数据源之间的数据保持一致的能力，常见策略包括 Cache Aside、Write Through、Write Back 等。</p>
         </section>
         <section class="graph-core-notes">
-          <h2><RIcon name="file-text" :size="23" />核心笔记</h2>
+          <h2><svg class="r-icon" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2h13a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5Z" /><path d="M2 5h3M2 10h3M2 15h3M8 6h8M8 10h8M8 14h5M8 18h3" /></svg>核心笔记</h2>
           <ul>
             <li>常见问题：缓存脏数据、数据不一致</li>
             <li>解决方案：更新时删除缓存 / 双写策略</li>
@@ -269,7 +269,7 @@ function practice() {
           </ul>
         </section>
         <section class="graph-evidence">
-          <h2><RIcon name="link" :size="23" />相关证据</h2>
+          <h2><svg class="r-icon" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 15 6-6" /><path d="m10 7 2-3a4 4 0 0 1 6 6l-2 3M14 17l-2 3a4 4 0 0 1-6-6l2-3" /></svg>相关证据</h2>
           <button @click="emit('navigate', 6)"><RIcon name="file-text" :size="24" /><span>分布式系统设计与实现.pdf</span><RIcon name="chevron-right" :size="22" /></button>
         </section>
       </div>
@@ -292,7 +292,7 @@ function practice() {
           <button @click="emit('navigate', 6)">分布式系统设计与实现.pdf<RIcon name="chevron-right" :size="20" /></button>
         </template>
       </div>
-      <button class="graph-practice" @click="practice"><RIcon name="crosshair" :size="24" />练这一点</button>
+      <button class="graph-practice" @click="practice"><svg class="r-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><path d="m12 9 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z" /></svg>练这一点</button>
     </aside>
 
     <div class="graph-bottom-tools">
@@ -320,7 +320,7 @@ function practice() {
 .graph-point, .graph-node-label, .graph-core, .graph-candidate [data-node] { cursor: pointer; outline: none; }
 .graph-point:focus-visible > circle:last-child { stroke: #ffe3af; stroke-width: 2; }
 .graph-node-label rect, .graph-strategy-label { fill: #11100dc9; stroke: #b1a18b25; stroke-width: 1; }
-.graph-node-label text, .graph-candidate text { fill: #f5f3ee; font-size: 22px; font-weight: 400; }
+.graph-node-label text, .graph-candidate text { fill: #f5f3ee; font-family: Arial, "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 400; }
 .graph-node-label:hover rect, .graph-node-label.is-selected rect, .graph-node-label:focus-visible rect { stroke: #c49b5c; fill: #392b1899; }
 .graph-extra-link { fill: none; stroke: #b8bdac; stroke-width: 1; stroke-dasharray: 5 7; opacity: .55; }
 .graph-core rect { fill: #49301066; stroke: #c78e32; stroke-width: .8; }
@@ -363,9 +363,9 @@ function practice() {
 .graph-view-switch > button.selected { background: linear-gradient(120deg, #a87935be, #99652caa); box-shadow: inset 0 0 0 1px #cda45c80; color: #fff7e6; font-weight: 500; }
 .graph-detail { position: absolute; z-index: 2; top: 131px; left: 976px; width: 415px; height: 777px; border: 1px solid #796447; border-radius: 22px; background: linear-gradient(120deg, #31271480, #14120ee8 25%, #171510f0); overflow: hidden; }
 .graph-detail-heading { padding: 24px 22px 0; height: 131px; }
-.graph-detail-title { display: flex; align-items: center; gap: 13px; height: 47px; }
+.graph-detail-title { display: flex; align-items: center; gap: 16px; height: 47px; }
 .graph-detail-star { width: 47px; height: 53px; flex: none; filter: drop-shadow(0 0 12px #eeab43a6); }
-.graph-detail-title h1 { margin: 0; font-size: 29px; font-weight: 500; -webkit-text-stroke: .3px currentColor; white-space: nowrap; }
+.graph-detail-title h1 { margin: 0; font-size: 30px; font-weight: 500; -webkit-text-stroke: .3px currentColor; white-space: nowrap; transform: translateY(-3px); }
 .graph-open { margin-left: auto; display: grid; place-items: center; width: 35px; height: 37px; color: #f0eee6; background: #ffffff05 !important; border-radius: 9px; }
 .graph-detail-heading > p { color: #aaa697; font-size: 18px; padding-top: 6px; }
 .graph-detail-heading > p span { margin-left: 18px; }
@@ -384,7 +384,7 @@ function practice() {
 .graph-evidence > button { display: flex; align-items: center; gap: 11px; width: 100%; height: 58px; margin-top: 12px; padding: 0 15px; border: 1px solid #ffffff05; border-radius: 13px; background: linear-gradient(120deg, #28251dd9, #24221bd9); font-size: 19px; }
 .graph-evidence > button span { flex: 1; text-align: left; white-space: nowrap; }
 .graph-evidence > button > .r-icon:last-child { color: #aaa594; }
-.graph-practice { position: absolute; display: flex; align-items: center; justify-content: center; gap: 11px; left: 23px; right: 23px; bottom: 23px; height: 58px; border: 1px solid #b18136 !important; border-radius: 16px; color: #191207; font-size: 21px; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: linear-gradient(120deg, #b88a42, #ac7c35) !important; box-shadow: inset 0 1px 2px #efd39860; }
+.graph-practice { position: absolute; display: flex; align-items: center; justify-content: center; gap: 11px; left: 23px; right: 23px; bottom: 23px; height: 58px; border: 1px solid #b18136 !important; border-radius: 16px; color: #191207; font-size: 21px; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: linear-gradient(120deg, #ac7e38, #ad7932 67%, #a87530) !important; box-shadow: inset 0 1px 2px #efd39860; }
 .graph-practice:hover { filter: brightness(1.1); }
 .graph-bottom-tools { position: absolute; z-index: 2; left: 331px; top: 927px; width: 638px; height: 64px; display: flex; align-items: center; padding: 0 23px 0 29px; border: 1px solid #8c6c3f80; border-radius: 34px; background: linear-gradient(115deg, #291e0c80, #0c0b09eb 60%); }
 .graph-legend { display: flex; align-items: center; gap: 29px; }
@@ -396,7 +396,7 @@ function practice() {
 .legend-candidate { background: linear-gradient(120deg, #8b8a80, #615f57); }
 .graph-zoom { height: 34px; margin-left: auto; padding-left: 34px; border-left: 1px solid #aaa18e66; display: flex; align-items: center; gap: 8px; }
 .graph-zoom > button:not(.graph-zoom-value) { display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid #a59b8320; border-radius: 50%; color: #c4bfb2; background: linear-gradient(130deg, #25231b70, #14130e); }
-.graph-zoom-value { min-width: 60px; color: #ded9cc; font-size: 19px; text-align: center; }
+.graph-zoom-value { min-width: 66px; color: #ded9cc; font-size: 20px; text-align: center; }
 .graph-alternate-content { padding: 24px 23px; }
 .graph-alternate-content > button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 17px 0; border-bottom: 1px solid #ffffff0c; color: #ded6c7; font-size: 18px; text-align: left; }
 .graph-alternate-content > button .r-icon:last-child { margin-left: auto; }

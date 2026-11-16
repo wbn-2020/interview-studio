@@ -2795,6 +2795,35 @@ try {
             && graphLight.detailPath === 'M24 1C28 18 32 22 47 27C32 31 28 35 24 53C20 35 16 31 1 27C16 22 20 18 24 1Z',
           '09筛选、图例光照或弧面星形不符')
           checks.push({ check: 'graph-panel-light-halo-and-curved-star-paths', scene: scene.id, graphLight, passed: true })
+          const graphPolish = await page.evaluate(() => {
+            const style = selector => getComputedStyle(document.querySelector(selector))
+            const paths = selector => [...document.querySelectorAll(selector + ' path')].map(path => path.getAttribute('d'))
+            return {
+              labelFont: style('.graph-node-label text').fontFamily,
+              titleSize: style('.graph-detail-title h1').fontSize,
+              titleOffset: style('.graph-detail-title h1').transform,
+              titleGap: style('.graph-detail-title').columnGap,
+              zoomWidth: style('.graph-zoom-value').minWidth,
+              zoomSize: style('.graph-zoom-value').fontSize,
+              practiceBackground: style('.graph-practice').backgroundImage,
+              orbitOpacity: document.querySelector('.graph-backdrop > path').getAttribute('stroke-opacity'),
+              definitionIcon: paths('.graph-definition h2 svg'),
+              notesIcon: paths('.graph-core-notes h2 svg'),
+              evidenceIcon: paths('.graph-evidence h2 svg'),
+              practiceIcon: paths('.graph-practice svg'),
+            }
+          })
+          ensure(graphPolish.labelFont === 'Arial, "Microsoft YaHei", sans-serif'
+            && graphPolish.titleSize === '30px' && graphPolish.titleOffset === 'matrix(1, 0, 0, 1, 0, -3)'
+            && graphPolish.titleGap === '16px' && graphPolish.zoomWidth === '66px' && graphPolish.zoomSize === '20px'
+            && graphPolish.practiceBackground === 'linear-gradient(120deg, rgb(172, 126, 56), rgb(173, 121, 50) 67%, rgb(168, 117, 48))'
+            && graphPolish.orbitOpacity === '.19'
+            && JSON.stringify(graphPolish.definitionIcon) === JSON.stringify(['M6 2h9l5 5v15H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z', 'M14 2v6h6M8 12h8M8 16h5M2 5v17a2 2 0 0 0 2 2h11'])
+            && JSON.stringify(graphPolish.notesIcon) === JSON.stringify(['M5 2h13a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5Z', 'M2 5h3M2 10h3M2 15h3M8 6h8M8 10h8M8 14h5M8 18h3'])
+            && JSON.stringify(graphPolish.evidenceIcon) === JSON.stringify(['m9 15 6-6', 'm10 7 2-3a4 4 0 0 1 6 6l-2 3M14 17l-2 3a4 4 0 0 1-6-6l2-3'])
+            && JSON.stringify(graphPolish.practiceIcon) === JSON.stringify(['M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z', 'M12 2v5M12 17v5M2 12h5M17 12h5', 'm12 9 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z']),
+          '09标签字体、详情标题、专用图标、缩放间距或按钮底色不符')
+          checks.push({ check: 'graph-label-font-title-offset-detail-icons-zoom-and-practice', scene: scene.id, graphPolish, passed: true })
           const detailTabs = page.getByRole('navigation', { name: '知识详情标签' })
           for (const tab of ['笔记', '关系', '练习', '证据', '概览']) {
             await detailTabs.getByRole('button', { name: tab, exact: true }).click()
