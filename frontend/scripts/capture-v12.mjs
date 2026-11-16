@@ -1967,6 +1967,39 @@ try {
         await definitionScroll.evaluate(node => { node.scrollTop = 0 })
         await page.mouse.move(0, 0)
         checks.push({ check: 'detail-panel-geometry-native-scroll-source-icons-count-status', scene: scene.id, detailSurface, passed: true })
+        const detailTypography = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+            return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth, line: s.lineHeight,
+              box: [b.x, b.y, b.width, b.height] }
+          }
+          return {
+            root: style('.r-scene-12'), title: style('.kd-heading h1'), section: style('.kd-left h3'),
+            definition: style('.kd-definition p'), note: style('.kd-main-note p'), open: style('.kd-main-note .r-pill'),
+            path: style('.kd-path .r-pill'), action: style('.kd-actions .r-primary'), date: style('.kd-recent button span:first-child'),
+            evidence: style('.kd-evidence-row h3'), selected: style('.kd-evidence-tabs button.selected'),
+            rows: [...document.querySelectorAll('.kd-evidence-row')].map(node => {
+              const b = node.getBoundingClientRect(), s = getComputedStyle(node)
+              return { y: b.y, height: b.height, paddingBottom: s.paddingBottom, border: s.borderBottomColor }
+            }),
+            footer: style('.kd-evidence footer'),
+          }
+        })
+        ensure(detailTypography.root.weight === '300' && detailTypography.title.weight === '500'
+          && detailTypography.title.stroke === '0.6px' && detailTypography.title.box[0] === 372
+          && detailTypography.section.weight === '500' && detailTypography.section.stroke === '0.3px'
+          && detailTypography.path.weight === '500' && detailTypography.path.stroke === '0.15px'
+          && detailTypography.action.weight === '400' && detailTypography.selected.weight === '500'
+          && detailTypography.evidence.weight === '400' && detailTypography.evidence.stroke === '0.05px', '12标题、正文或操作字重不符')
+        ensure(JSON.stringify(detailTypography.definition.box) === '[270,286,648,146]'
+          && JSON.stringify(detailTypography.note.box) === '[270,514,648,66]' && detailTypography.note.line === '33px'
+          && JSON.stringify(detailTypography.open.box) === '[763,552,153,35]' && detailTypography.open.size === '17px'
+          && detailTypography.date.weight === '400' && detailTypography.date.box[1] === 949, '12正文、笔记入口或日期基线不符')
+        ensure(JSON.stringify(detailTypography.rows.map(row => [row.y, row.height, row.paddingBottom]))
+          === '[[359,151,"24px"],[510,149,"22px"],[659,149,"22px"]]'
+          && detailTypography.rows[2].border === 'rgba(0, 0, 0, 0)'
+          && JSON.stringify(detailTypography.footer.box) === '[988,841,496,48]', '12证据累计行高或底部分隔线不符')
+        checks.push({ check: 'detail-typography-copy-baselines-note-link-evidence-row-rhythm', scene: scene.id, detailTypography, passed: true })
         const paragraphs = await page.locator('.kd-definition p, .kd-main-note p').evaluateAll(nodes => nodes.map(node => {
           const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
           while (walker.nextNode()) {

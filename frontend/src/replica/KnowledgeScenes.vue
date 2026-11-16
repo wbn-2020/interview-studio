@@ -204,7 +204,7 @@ function endDrag(event: PointerEvent) {
 .kl-backlinks { font-size: 19px; }
 .kl-detail > .r-btn { font-size: 20px; margin-top: 37px; }
 .kd-heading { top: 107px; left: 33px; gap: 22px; }
-.kd-heading h1 { position: relative; left: 3px; top: -4px; font-size: 39px; line-height: 56px; margin-bottom: 12px; }
+.kd-heading h1 { position: relative; left: 2px; top: -4px; font-size: 39px; font-weight: 500; -webkit-text-stroke: .6px currentColor; line-height: 56px; margin-bottom: 12px; }
 .kd-heading > div > .r-row { position: relative; left: 1px; top: -2px; gap: 11px; }
 .kd-heading .r-pill { height: 32px; padding: 0; }
 .kd-heading .r-pill:first-child { width: 90px; }
@@ -213,24 +213,26 @@ function endDrag(event: PointerEvent) {
 .kd-confirmed { display: inline-flex; align-items: center; gap: 8px; }
 .kd-confirmed svg { padding: 3px; border-radius: 50%; background: #736d5c; color: #f1eddf; }
 .kd-actions { top: 129px; right: 27px; gap: 15px; }
-.kd-actions .r-btn { width: 156px; min-height: 54px; font-size: 20px; padding-inline: 18px !important; background: linear-gradient(140deg, #2b2723, #211e1a) !important; border-color: #3a322b !important; }
-.kd-actions .r-btn.r-primary { width: 155px; color: #fff1e2; font-weight: 600; background: linear-gradient(135deg, #e2b082, #bd855b 72%, #976440) !important; border-color: #dba576 !important; }
+.kd-actions .r-btn { width: 156px; min-height: 54px; font-size: 20px; font-weight: 400; padding-inline: 18px !important; background: linear-gradient(140deg, #2b2723, #211e1a) !important; border-color: #3a322b !important; }
+.kd-actions .r-btn.r-primary { width: 155px; color: #fff1e2; font-weight: 400; background: linear-gradient(135deg, #e2b082, #bd855b 72%, #976440) !important; border-color: #dba576 !important; }
 .kd-actions .r-primary :deep(path) { fill-opacity: 1; }
 .kd-left > section { padding-inline: 23px; background: linear-gradient(180deg, #1c1916, #1b1815); }
 .kd-left .kd-main-note { background: linear-gradient(180deg, #1c1916, #1c1916); }
-.kd-left h3 { font-size: 20px; line-height: 32px; }
+.kd-left h3 { font-size: 20px; font-weight: 500; -webkit-text-stroke: .3px currentColor; line-height: 32px; }
 .kd-left .kd-definition { height: 218px; margin-bottom: 13px; padding-top: 14px; }
 .kd-definition h3 { gap: 15px; }
 .kd-left p { font-size: 19.5px; line-height: 35px; margin-top: 7px; }
-.kd-definition p { height: 146px; padding: 0 10px 8px 0; overflow-y: scroll; overscroll-behavior: contain; }
+.kd-definition p { position: relative; left: 1px; height: 146px; margin-top: 10px; padding: 0 10px 8px 0; overflow-y: scroll; overscroll-behavior: contain; }
 .kd-definition p::-webkit-scrollbar { width: 5px; }
 .kd-definition p::-webkit-scrollbar-track { background: transparent; }
 .kd-definition p::-webkit-scrollbar-thumb { border-radius: 5px; background: #82776b66; }
 .kd-left .kd-main-note { height: 138px; margin-bottom: 12px; }
+.kd-main-note p { position: relative; left: 1px; margin-top: 5px; line-height: 33px; }
+.kd-main-note .r-pill { width: 153px; height: 35px; bottom: 10px; font-size: 17px; padding: 0; }
 .kd-path { background: linear-gradient(180deg, #191714, #1b1815) !important; }
 .kd-path > h3.r-row { margin-top: 0; gap: 10px; }
 .kd-path > div.r-row { margin-top: 5px; margin-left: -2px; }
-.kd-path .r-pill { height: 39px; padding: 0; border: 1px solid #51473a33; font-size: 18px; font-weight: 600; background: linear-gradient(180deg, #2e2a25, #25221f); }
+.kd-path .r-pill { height: 39px; padding: 0; border: 1px solid #51473a33; font-size: 18px; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: linear-gradient(180deg, #2e2a25, #25221f); }
 .kd-path .r-pill:nth-of-type(1) { width: 133px; }
 .kd-path .r-pill:nth-of-type(2) { width: 136px; }
 .kd-path .r-pill:nth-of-type(3) { width: 91px; }
@@ -242,29 +244,31 @@ function endDrag(event: PointerEvent) {
 .kd-practice .r-pill.amber { border-color: #a3793c55; background: linear-gradient(150deg, #46331e, #2d2519); }
 .kd-practice .r-success { border-radius: 50%; background: linear-gradient(140deg, #4ca889, #1d5845); color: #398468; }
 .kd-practice .r-success :deep(path:last-child) { stroke: #c0f0d8; stroke-width: 2.2; }
-.kd-recent button { justify-content: flex-start; gap: 40px; font-size: 18px; }
-.kd-recent button span:first-child { font-size: 20px; }
+.kd-recent button { justify-content: flex-start; gap: 40px; margin-top: 7px; font-size: 18px; }
+.kd-recent button span:first-child { font-size: 20px; font-weight: 400; }
 .kd-recent button > svg { margin-left: auto; flex: none; }
 .kd-evidence { padding-inline: 23px; background: linear-gradient(130deg, #1c1916, #1b1815 70%, #1a1715); }
 .kd-evidence h2 { font-size: 21.5px; font-weight: 500; -webkit-text-stroke: .15px currentColor; line-height: 34px; gap: 11px; }
 .kd-evidence-tabs { gap: 12px; margin-top: 20px; margin-bottom: 10px; }
 .kd-evidence-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100px; height: 42px; padding-inline: 12px !important; border-color: #4f413033 !important; background: linear-gradient(130deg, #1e1a16, #15120f) !important; }
-.kd-evidence-tabs button.selected { background: radial-gradient(ellipse at 65% 130%, #dfae83, transparent 70%), linear-gradient(110deg, #89582f, #a26c45) !important; box-shadow: inset 0 1px 8px #f7c49299, 0 0 15px #e49c5533; border-color: #d49c6c !important; font-weight: 600; }
+.kd-evidence-tabs button.selected { background: radial-gradient(ellipse at 65% 130%, #dfae83, transparent 70%), linear-gradient(110deg, #89582f, #a26c45) !important; box-shadow: inset 0 1px 8px #f7c49299, 0 0 15px #e49c5533; border-color: #d49c6c !important; font-weight: 500; }
 .kd-evidence-tabs .selected .kd-evidence-count { display: grid; place-items: center; width: 24px; height: 24px; margin-right: -7px; margin-left: -3px; border-radius: 50%; background: #56361c55; }
-.kd-evidence-row { gap: 19px; min-height: 152px; padding-bottom: 29px; }
-.kd-evidence-row + .kd-evidence-row { min-height: 148px; padding-bottom: 25px; }
+/* 原生内容高度计入标签与边框，分别约束留白以固定三条证据的累计位置。 */
+.kd-evidence-row { gap: 19px; min-height: 147px; padding-bottom: 24px; }
+.kd-evidence-row + .kd-evidence-row { min-height: 148px; padding-bottom: 22px; }
+.kd-evidence-row:last-of-type { border-bottom-color: transparent; }
 .evidence-icon { width: 47px; margin-left: 1px; background: linear-gradient(135deg, #83b5aa, #548783); box-shadow: inset 1px 1px 2px #d1f0df33; }
 .evidence-icon.blue { background: linear-gradient(135deg, #82a5b2, #476b82); }
 .evidence-icon.amber { background: linear-gradient(135deg, #ce965e, #a15f2e); }
 .evidence-icon :deep(path:not(:first-child)) { stroke: #668f8b; stroke-width: 1.4; }
 .evidence-icon.blue :deep(path:not(:first-child)) { stroke: #5c8195; }
 .evidence-icon.amber :deep(path:last-child) { stroke: #ac743f; stroke-width: 2.3; }
-.kd-evidence-row h3 { font-size: 19px; line-height: 29px; margin-top: 1px; }
+.kd-evidence-row h3 { font-size: 19px; font-weight: 400; -webkit-text-stroke: .05px currentColor; line-height: 29px; margin-top: 1px; }
 .kd-evidence-row p { font-size: 18px; line-height: 30px; margin-top: 3px; }
 .kd-evidence-row div > .r-pill { height: 31px; margin-top: 10px; border: 1px solid #ffffff04; }
 .kd-evidence-row > button { top: 22px; height: 41px; }
 .kd-evidence-row + .kd-evidence-row > button { top: 23px; }
-.kd-evidence footer { bottom: 26px; }
+.kd-evidence footer { bottom: 26px; padding-top: 20px; }
 /* 白板提示须保留参考两行；控件行高固定，避免字号调整挤动下方设置。 */
 .kb-heading p { margin-top: 6px; font-size: 18.5px; }
 .kb-group-label { top: 131px; font-size: 20.5px; line-height: 33px; }
