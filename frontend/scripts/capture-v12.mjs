@@ -456,6 +456,40 @@ try {
           && details.fields.every(item => item.whiteSpace === 'nowrap')
           && details.fields[3].text === '问题已修复，补发任务已完成，用户可正常\n领取奖励；关联日志与监控截图已留存', '04事实正文或换行漂移')
         checks.push({ check: 'fact-typography-control-width-outline-icons-original-body-lines', scene: scene.id, details, passed: true })
+        const typography = await page.evaluate(() => {
+          const selectors = ['.r-scene-04', '.prep-facts .p-title', '.facts-tabs button.r-active', '.project-tree h3', '.fact-heading h3', '.expressions > h2', '.expression-row', '.expression-preview h3', '.expression-actions .r-btn']
+          const styles = Object.fromEntries(selectors.map(selector => {
+            const node = document.querySelector(selector), style = getComputedStyle(node)
+            return [selector, { weight: style.fontWeight, size: style.fontSize, stroke: style.webkitTextStrokeWidth }]
+          }))
+          const title = document.querySelector('.prep-facts .p-title'), titleStyle = getComputedStyle(title)
+          const tabStyle = getComputedStyle(document.querySelector('.facts-tabs button.r-active'))
+          const body = [...document.querySelectorAll('.fact-body dd')].map(node => {
+            const style = getComputedStyle(node)
+            return { size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight, transform: style.transform, origin: style.transformOrigin }
+          })
+          return { styles, title: { top: titleStyle.top, left: titleStyle.left, transform: titleStyle.transform },
+            tabPadding: tabStyle.paddingBottom, body, source: getComputedStyle(document.querySelector('.fact-source')).backgroundImage,
+            links: getComputedStyle(document.querySelector('.fact-links button')).backgroundImage }
+        })
+        for (const [selector, weight] of [
+          ['.r-scene-04', '300'], ['.prep-facts .p-title', '500'], ['.facts-tabs button.r-active', '500'],
+          ['.project-tree h3', '400'], ['.fact-heading h3', '500'], ['.expressions > h2', '500'],
+          ['.expression-row', '300'], ['.expression-preview h3', '400'], ['.expression-actions .r-btn', '400'],
+        ]) ensure(typography.styles[selector].weight === weight, '04字重不符：' + selector)
+        ensure(typography.styles['.prep-facts .p-title'].stroke === '0.6px'
+          && typography.styles['.fact-heading h3'].stroke === '0.15px'
+          && typography.styles['.expressions > h2'].stroke === '0.2px'
+          && typography.styles['.project-tree h3'].size === '21px'
+          && typography.title.top === '92px' && typography.title.left === '27px'
+          && typography.title.transform === 'matrix(1, 0, 0, 1.1, 0, 0)' && typography.tabPadding === '19px',
+        '04标题、目录字面或页签基线不符')
+        ensure(typography.body.length === 4 && typography.body.every(item => item.size === '23px' && item.weight === '300'
+          && item.lineHeight === '35px' && item.transform === 'matrix(0.913043, 0, 0, 1, 0, 0)' && item.origin === '0px 0px'),
+        '04事实正文的字高、行宽或换行基线不符')
+        ensure(typography.source === 'linear-gradient(110deg, rgba(255, 255, 255, 0.043), rgba(255, 255, 255, 0.027))'
+          && typography.links === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(21, 19, 17))', '04来源或关联入口底色不符')
+        checks.push({ check: 'fact-scoped-type-weights-body-aspect-tab-baseline-source-link-surfaces', scene: scene.id, typography, passed: true })
         const preview = page.locator('.expression-preview p')
         const lines = await preview.evaluate(node => {
           const text = node.firstChild, rows = new Map()

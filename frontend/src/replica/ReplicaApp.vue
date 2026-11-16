@@ -276,7 +276,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-03 .r-top-status > .r-icon-btn { position: relative; }
 .r-scene-03 .r-top-status > .r-icon-btn::before { content: ""; position: absolute; left: -31px; top: 6px; height: 33px; width: 1px; background: #a99a8340; }
 .r-scene-03 .r-top-status > .r-avatar { width: 47px; height: 52px; font-size: 24px; margin-left: -40px; background: linear-gradient(120deg, #b0a497, #81776d); border-color: #c9b8a74d; }
-.r-scene-04 { will-change: transform; background: radial-gradient(ellipse 700px 550px at 0 55%, #30271d18, transparent), radial-gradient(ellipse at 95% 100%, #2d20141c, transparent 55%), #0b0907; }
+.r-scene-04 { will-change: transform; font-weight: 300; background: radial-gradient(ellipse 700px 550px at 0 55%, #30271d18, transparent), radial-gradient(ellipse at 95% 100%, #2d20141c, transparent 55%), #0b0907; }
 .r-scene-04 .r-sidebar { width: 239px; bottom: 11px; border-radius: 36px; border-color: #302b26; background: linear-gradient(115deg, #181614, #141210 65%, #171411); }
 .r-scene-04 .r-sidebar > a { position: absolute; left: 36px; top: 35px; width: 174px; height: 65px; }
 .r-scene-04 .r-sidebar .r-brand { top: 0; left: 0; gap: 11px; }
