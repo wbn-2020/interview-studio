@@ -2824,6 +2824,30 @@ try {
             && JSON.stringify(graphPolish.practiceIcon) === JSON.stringify(['M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z', 'M12 2v5M12 17v5M2 12h5M17 12h5', 'm12 9 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z']),
           '09标签字体、详情标题、专用图标、缩放间距或按钮底色不符')
           checks.push({ check: 'graph-label-font-title-offset-detail-icons-zoom-and-practice', scene: scene.id, graphPolish, passed: true })
+          const graphContours = await page.evaluate(() => {
+            const mark = document.querySelector('.graph-brand-emblem')
+            const style = getComputedStyle(mark)
+            return {
+              links: [...document.querySelectorAll('.graph-primary-links path')].map(node => node.getAttribute('d')),
+              candidate: document.querySelector('.graph-candidate > path').getAttribute('d'),
+              markPaths: [...mark.querySelectorAll('path')].map(node => [node.getAttribute('d'), node.getAttribute('fill')]),
+              markRing: ['r', 'stroke', 'stroke-width'].map(name => mark.querySelector('circle').getAttribute(name)),
+              markTransform: style.transform, markFilter: style.filter,
+            }
+          })
+          ensure(JSON.stringify(graphContours.links) === JSON.stringify([
+            'M628 338Q667 374 690 434', 'M735 447Q814.5 373.5 877 334', 'M688 482Q618 548 545 592',
+          ]) && graphContours.candidate === 'M732 491Q808 556 879 607'
+            && JSON.stringify(graphContours.markPaths) === JSON.stringify([
+              ['m30 30 21 15 22-17-17 23 12 20-21-16-19 15 16-23Z', '#d6a965'],
+              ['M50 0C53 34 58 42 100 50C59 54 54 62 50 100C46 62 40 55 0 50C39 45 45 36 50 0Z', '#e3b873'],
+              ['M50 0 51 46 100 50 55 52 50 100 48 55 0 50 44 48Z', '#f5d58d'],
+              ['m50 40 8 10-8 10-8-10Z', '#73542e'], ['m50 44 3 6-3 6-3-6Z', '#e8bf76'],
+            ]) && graphContours.markRing.join(',') === '41,#d3a65f,1.8'
+            && graphContours.markTransform === 'matrix(1, 0, 0, 1, 3, 0)'
+            && graphContours.markFilter === 'drop-shadow(rgba(228, 184, 113, 0.2) 0px 0px 2px)',
+          '09依赖曲线或专用罗盘标志轮廓不符')
+          checks.push({ check: 'graph-dependency-curve-and-scoped-compass-contours', scene: scene.id, graphContours, passed: true })
           const detailTabs = page.getByRole('navigation', { name: '知识详情标签' })
           for (const tab of ['笔记', '关系', '练习', '证据', '概览']) {
             await detailTabs.getByRole('button', { name: tab, exact: true }).click()

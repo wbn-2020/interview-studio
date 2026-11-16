@@ -170,7 +170,18 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
         <aside class="r-sidebar" :class="{ 'r-sidebar-mini': scene === 9 }">
           <canvas v-if="scene === 7" :ref="element => drawTaskHorizon(element as HTMLCanvasElement | null)" class="r-task-horizon" aria-hidden="true" />
           <a href="replica.html?scene=02" aria-label="问阶今日" @click.prevent="navigate(2)">
-            <div v-if="scene === 18" class="r-brand">
+            <div v-if="scene === 9" class="r-brand">
+              <svg class="r-emblem graph-brand-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+                <circle cx="50" cy="50" r="41" stroke="#d3a65f" stroke-width="1.8" />
+                <path d="m30 30 21 15 22-17-17 23 12 20-21-16-19 15 16-23Z" fill="#d6a965" />
+                <path d="M50 0C53 34 58 42 100 50C59 54 54 62 50 100C46 62 40 55 0 50C39 45 45 36 50 0Z" fill="#e3b873" />
+                <path d="M50 0 51 46 100 50 55 52 50 100 48 55 0 50 44 48Z" fill="#f5d58d" opacity=".5" />
+                <path d="m50 40 8 10-8 10-8-10Z" fill="#73542e" />
+                <path d="m50 44 3 6-3 6-3-6Z" fill="#e8bf76" />
+              </svg>
+              <span class="r-brand-word">问阶<small>Interview Studio</small></span>
+            </div>
+            <div v-else-if="scene === 18" class="r-brand">
               <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M50 2 61 37 94 50 61 63 50 98 39 63 6 50 39 37Z M50 29 44 44 29 50 44 56 50 72 56 56 71 50 56 44Z" fill="currentColor" fill-rule="evenodd" /></svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
@@ -412,6 +423,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-09 { will-change: transform; font-weight: 300; }
 .r-scene-09 .r-sidebar { top: 92px; bottom: 1px; width: 117px; }
 .r-scene-09 .r-sidebar .r-brand { position: fixed; left: 30px; top: 23px; gap: 10px; }
+.r-scene-09 .graph-brand-emblem { transform: translateX(3px); filter: drop-shadow(0 0 2px #e4b87133); }
 .r-scene-09 .r-sidebar :deep(.r-brand-word) { font-size: 26px; line-height: 31px; font-weight: 500; }
 .r-scene-09 .r-sidebar nav { top: 40px; left: 13px; right: 13px; gap: 9px; }
 .r-scene-09 .r-nav-item { height: 91px; flex-direction: column; justify-content: center; gap: 3px; padding: 0; font-size: 21px; border-radius: 18px; }

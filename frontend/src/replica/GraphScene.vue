@@ -163,7 +163,7 @@ function practice() {
           <path v-if="visibleClusters.some(item => item.id === 'distributed')" d="M628 338Q667 374 690 434" stroke="#edaa4c" marker-start="url(#g9-arrow-amber)" marker-end="url(#g9-arrow-amber)" />
         </g>
         <g v-if="showDepends" class="graph-primary-links">
-          <path v-if="visibleClusters.some(item => item.id === 'jvm')" d="M735 447Q799 381 877 334" stroke="#82dbd3" marker-end="url(#g9-arrow-teal)" />
+          <path v-if="visibleClusters.some(item => item.id === 'jvm')" d="M735 447Q814.5 373.5 877 334" stroke="#82dbd3" marker-end="url(#g9-arrow-teal)" />
           <path v-if="visibleClusters.some(item => item.id === 'database')" d="M688 482Q618 548 545 592" stroke="#82dbd3" marker-end="url(#g9-arrow-teal)" />
         </g>
         <path v-if="showSimilar" class="graph-extra-link" d="M613 322Q737 224 879 332" />
