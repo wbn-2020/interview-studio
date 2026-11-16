@@ -1094,6 +1094,29 @@ try {
             && (index === 0 || item.box[0] - bankCopy.tags[index - 1].box[0] - bankCopy.tags[index - 1].box[2] === 8)),
           '14三标签间距、内距、同行或边界不符')
         checks.push({ check: 'question-bank-original-paragraph-lines-and-tag-spacing-boundaries', scene: scene.id, copy: bankCopy, passed: true })
+        const bankIcons = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.r-sidebar nav .r-nav-item')]
+          .filter(node => ['复盘', '成长', '题库', '回忆卡'].includes(node.textContent.trim())).map(node => {
+            const svg = node.querySelector('svg'), box = svg.getBoundingClientRect()
+            return [node.textContent.trim(), { box: [box.x, box.y, box.width, box.height], stroke: getComputedStyle(svg).strokeWidth,
+              paths: [...svg.querySelectorAll('path')].map(path => ({ d: path.getAttribute('d'), fill: getComputedStyle(path).fill,
+                stroke: getComputedStyle(path).strokeWidth, opacity: getComputedStyle(path).strokeOpacity })) }]
+          })))
+        ensure(closeBox(bankIcons['复盘'].box, [41, 397.5, 28, 28]) && bankIcons['复盘'].stroke === '1.9px'
+          && bankIcons['复盘'].paths.length === 3 && bankIcons['复盘'].paths[0].d === 'M4.6 19.6a9.2 9.2 0 1 0-2.4-3.1'
+          && bankIcons['复盘'].paths[1].d === 'm1 20 1.2-3.5 3.5 1.3' && bankIcons['复盘'].paths[2].stroke === '0.4px'
+          && bankIcons['复盘'].paths[2].fill === 'rgb(239, 232, 225)', '14复盘回转箭头、中心点或线宽不符')
+        ensure(closeBox(bankIcons['成长'].box, [41, 456.5, 28, 28]) && bankIcons['成长'].stroke === '1.6px'
+          && bankIcons['成长'].paths.length === 2 && bankIcons['成长'].paths[0].d === 'M1.5 15h4v7h-4ZM9 10h4v12H9ZM17 5.5h4V22h-4Z'
+          && bankIcons['成长'].paths[0].fill === 'rgb(239, 232, 225)' && bankIcons['成长'].paths[1].d === 'm2 13 6.5-6 5 2 6-6M16 3h4v4',
+          '14成长实心三柱、趋势线或基线不符')
+        ensure(closeBox(bankIcons['题库'].box, [41, 540, 27, 27]) && bankIcons['题库'].stroke === '1.6px'
+          && bankIcons['题库'].paths.length === 2 && bankIcons['题库'].paths[0].d === 'M20 7c0 4-18 4-18 0s18-4 18 0Z'
+          && bankIcons['题库'].paths[1].d === 'M2 7v6c0 4 18 4 18 0V7M2 15v6c0 4 18 4 18 0v-6', '14数据库分层轮廓不符')
+        ensure(closeBox(bankIcons['回忆卡'].box, [41, 593, 27, 27]) && bankIcons['回忆卡'].stroke === '1.9px'
+          && bankIcons['回忆卡'].paths.length === 2 && bankIcons['回忆卡'].paths[0].d.startsWith('M3 4.5h16')
+          && bankIcons['回忆卡'].paths[1].stroke === '0.7px' && bankIcons['回忆卡'].paths[1].opacity === '0.45'
+          && (bankIcons['回忆卡'].paths[1].d.match(/M/g) ?? []).length === 24, '14回忆卡圆角外框、细点线宽或密度不符')
+        checks.push({ check: 'question-bank-page-specific-navigation-icons', scene: scene.id, icons: bankIcons, passed: true })
         const search = page.getByRole('textbox', { name: '搜索题目', exact: true })
         await search.fill('ThreadLocal')
         ensure(await rows.count() === 1 && (await rows.first().textContent()).includes('ThreadLocal'), '14标题搜索未筛选')
@@ -1122,7 +1145,8 @@ try {
           && await page.getByText('题干与标准要求待确认', { exact: true }).isVisible(), '14键盘选择没有同步真实已知题目')
         await page.reload({ waitUntil: 'networkidle' }); await ready()
         await assertFrame(captured, '14搜索、筛选、折叠、排序、选择后刷新未恢复')
-        for (const [selector, target] of [['.bank-start', '17'], ['.bank-route-head', '15'], ['.bank-tabs button:nth-child(2)', '15']]) {
+        for (const [selector, target] of [['.bank-start', '17'], ['.bank-route-head', '15'], ['.bank-tabs button:nth-child(2)', '15'],
+          ['.r-sidebar nav a[href$="scene=21"]', '21'], ['.r-sidebar nav a[href$="scene=16"]', '16']]) {
           await page.locator(selector).click()
           await page.locator(`.r-canvas[data-scene="${target}"]`).waitFor()
           ensure(new URL(page.url()).searchParams.get('scene') === target, '14题库导航未同步地址')

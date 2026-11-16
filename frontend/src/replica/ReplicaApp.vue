@@ -84,6 +84,13 @@ const followNavPaths: Record<string, string[]> = {
   'square-check-rounded': ['M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z', 'm7 12 3 3 7-8'],
   'memory-cards': ['M7 3h12a2 2 0 0 1 2 2v12', 'M5 6h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z', 'M7 11h.01', 'M14 15h.01', 'M8 17h.01'],
 }
+// 14的四个导航轮廓仅在复现入口绘制；共用RIcon保持正式业务的发布边界。
+const bankNavPaths: Record<string, string[]> = {
+  'refresh-cw': ['M4.6 19.6a9.2 9.2 0 1 0-2.4-3.1', 'm1 20 1.2-3.5 3.5 1.3', 'M12 12a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0'],
+  'chart-no-axes-combined': ['M1.5 15h4v7h-4ZM9 10h4v12H9ZM17 5.5h4V22h-4Z', 'm2 13 6.5-6 5 2 6-6M16 3h4v4'],
+  database: ['M20 7c0 4-18 4-18 0s18-4 18 0Z', 'M2 7v6c0 4 18 4 18 0V7M2 15v6c0 4 18 4 18 0v-6'],
+  'credit-card': ['M3 4.5h16a2 2 0 0 1 2 2V21a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2ZM1 10h20', 'M4 13h.25M7 13h.4M10 13h.25M13 13h.4M16 13h.25M18 13h.3M4 15.5h.3M7 15.5h.25M10 15.5h.5M13 15.5h.25M16 15.5h.4M18 15.5h.25M4 18h.25M7 18h.5M10 18h.25M13 18h.3M16 18h.25M18 18h.4M4 20h.3M7 20h.25M10 20h.3M13 20h.25M16 20h.4M18 20h.25'],
+}
 const headerBox = computed(() => {
   const n = scene.value
   if (n === 2) return { left: 14, width: 718 }
@@ -191,6 +198,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <nav aria-label="主导航">
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
+              <svg v-else-if="scene === 14 && bankNavPaths[item.icon]" class="r-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="item.icon === 'refresh-cw' ? 1.9 : 1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in bankNavPaths[item.icon]" :key="index" :d="d" :fill="(item.icon === 'refresh-cw' && index === 2) || (item.icon === 'chart-no-axes-combined' && index === 0) ? 'currentColor' : undefined" :stroke-width="item.icon === 'refresh-cw' && index === 2 ? .4 : undefined" /></svg>
               <RIcon v-else-if="[3, 4, 5, 6, 7, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 3 ? 'target' : scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
               <RIcon v-else :name="item.icon" :variant="scene === 2 ? 'today' : scene === 8 ? 'schedule' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="scene === 9 ? 34 : [2, 8, 16, 18, 19, 21, 22, 23, 24, 25].includes(scene) ? 30 : 28" :stroke-width="[8, 14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
@@ -199,6 +207,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <span v-if="scene === 15" class="r-tools-heading">工具</span>
               <a v-for="item in secondary" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item r-secondary" @click.prevent="navigate(item.id)">
                 <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
+                <svg v-else-if="scene === 14 && bankNavPaths[item.icon]" class="r-icon" width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="item.icon === 'credit-card' ? 1.9 : 1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in bankNavPaths[item.icon]" :key="index" :d="d" :stroke-width="item.icon === 'credit-card' && index === 1 ? .7 : undefined" :stroke-opacity="item.icon === 'credit-card' && index === 1 ? .45 : undefined" /></svg>
                 <RIcon v-else-if="[3, 4, 5, 6, 7, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 3 ? 'target' : scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 29" :stroke-width="scene === 30 ? 1.7 : 1.9" />
                 <RIcon v-else :name="item.icon" :variant="scene === 2 ? 'today' : scene === 8 ? 'schedule' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 && item.id !== 14 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="[2, 8, 18, 21, 23, 24, 25].includes(scene) ? 30 : scene === 22 ? 28 : 27" :stroke-width="[8, 14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
               </a>
