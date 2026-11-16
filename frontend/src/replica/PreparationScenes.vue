@@ -82,7 +82,7 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
     <div class="p-actions"><button class="r-btn" @click="emit('notify', '当前事实 v2 · 2026.11.06')"><RIcon name="history" variant="facts" />历史</button><button class="r-btn r-primary" @click="emit('notify', '新增事实的业务流程待确认')">新增事实<RIcon name="plus" /></button></div>
     <div class="r-tabs facts-tabs"><button class="r-active">事实</button><button @click="emit('navigate', 5)">表达素材</button><button @click="emit('navigate', 6)">来源</button></div>
     <aside class="r-panel project-tree"><h3>项目目录</h3><button class="r-row tree-root" :aria-expanded="projectExpanded" @click="projectExpanded = !projectExpanded"><RIcon :name="projectExpanded ? 'chevron-down' : 'chevron-right'" :size="20" /><RIcon name="building" variant="facts" />营销交易平台</button><template v-if="projectExpanded"><button v-for="(item, i) in facts" :key="item.name" class="project-leaf r-row" :class="{ selected: project === i }" @click="project = i"><RIcon :name="item.icon" variant="facts" />{{ item.name }}</button></template><button class="r-row tree-root" @click="emit('navigate', 6)"><RIcon name="chevron-right" :size="20" /><RIcon name="folder" variant="facts" />简历导入</button><button class="r-row tree-root" @click="emit('notify', '手工项目暂无展开内容')"><RIcon name="chevron-right" :size="20" /><RIcon name="folder" variant="facts" />手工项目</button></aside>
-    <article class="r-panel fact-body"><div class="r-between fact-heading"><h3 class="r-row"><span class="fact-document"><RIcon name="file-text" variant="facts" :size="31" /></span>{{ facts[project]!.title }}</h3><div class="r-row"><span class="r-pill amber">● 待核实 1 项</span><span class="r-pill"><RIcon name="users" variant="facts" :size="22" />参与排查</span></div></div><div class="r-rule" /><dl><dt>场景</dt><dd>大促期间，发奖链路出现延迟</dd><dt>问题</dt><dd>部分用户未能及时收到奖励，系统显示<br>发奖超时，结果未知</dd><dt>我的动作</dt><dd>参与排查，定位到是下游服务响应较慢，<br>已推动优化降级策略</dd><dt>结果与证据</dt><dd>问题已修复，补发任务已完成，用户可正常<br>领取奖励；关联日志与监控截图已留存</dd></dl><button class="fact-source r-between" @click="emit('navigate', 6)"><span class="r-row"><RIcon name="file-text" variant="facts" />来源：2026.11.06 项目复盘</span><RIcon name="chevron-right" /></button></article>
+    <article class="r-panel fact-body"><div class="r-between fact-heading"><h3 class="r-row"><span class="fact-document"><RIcon name="file-text" variant="facts" :size="31" /></span>{{ facts[project]!.title }}</h3><div class="r-row"><span class="r-pill amber"><i class="fact-status-dot" aria-hidden="true" />待核实 1 项</span><span class="r-pill"><RIcon name="users" variant="facts" :size="22" />参与排查</span></div></div><div class="r-rule" /><dl><dt>场景</dt><dd>大促期间，发奖链路出现延迟</dd><dt>问题</dt><dd>部分用户未能及时收到奖励，系统显示<br>发奖超时，结果未知</dd><dt>我的动作</dt><dd>参与排查，定位到是下游服务响应较慢，<br>已推动优化降级策略</dd><dt>结果与证据</dt><dd>问题已修复，补发任务已完成，用户可正常<br>领取奖励；关联日志与监控截图已留存</dd></dl><button class="fact-source r-between" @click="emit('navigate', 6)"><span class="r-row"><RIcon name="file-text" variant="facts" />来源：2026.11.06 项目复盘</span><RIcon name="chevron-right" /></button></article>
     <div class="fact-links"><button class="r-panel r-row" @click="emit('navigate', 5)"><RIcon name="link" variant="facts" class="r-amber" />关联表达 2<RIcon name="chevron-right" class="r-muted" /></button><button class="r-panel r-row" @click="emit('navigate', 19)"><RIcon name="graduation-cap" variant="facts" class="r-amber" />关联训练 3<RIcon name="chevron-right" class="r-muted" /></button></div>
     <aside class="r-panel expressions"><h2>表达素材</h2><button v-for="(row, i) in [['项目介绍 · v3', 'file-text'], ['STAR 表达 · v2', 'file-text'], ['技术取舍 · v1', 'file-text']]" :key="row[0]" class="expression-row r-row" :class="{ selected: i === 0 }" @click="emit('navigate', 5)"><RIcon :name="row[1]!" variant="facts" :size="27" :class="i === 0 ? 'r-amber' : 'cyan'" />{{ row[0] }}<span v-if="i === 0" class="r-pill amber">当前</span><RIcon name="chevron-right" /></button><div class="r-rule" /><div class="expression-preview"><h3>项目介绍 · v3 <span class="r-pill amber">当前</span></h3><p>营销交易平台致力于为用户提供高效、安全的交易与奖励服务...</p><div class="r-row"><span class="r-pill teal">依据 事实 v2</span><span class="r-pill">未外发</span></div></div><div class="r-row expression-actions"><button class="r-btn" @click="emit('navigate', 5)"><RIcon name="pencil" />编辑</button><button class="r-btn r-primary" @click="emit('navigate', 5)"><RIcon name="plus" />新建版本</button></div><p class="r-row r-muted fact-foot"><RIcon name="info" variant="facts" />事实与表达分开保存</p></aside>
   </section>
@@ -408,10 +408,14 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .project-leaf { height: 58px; border-radius: 11px; }
 .prep-facts .project-leaf.selected { background: linear-gradient(110deg, #9b6b4373, #60442d70) !important; }
 .prep-facts .fact-heading h3 { font-size: 22px; font-weight: 500; -webkit-text-stroke: .15px currentColor; transform: scaleY(1.07); transform-origin: left center; }
-.prep-facts .fact-heading .r-pill { font-size: 18px; padding: 10px 14px; }
+/* 标题行高度独立于状态标签，标签尺寸不改变正文基线。 */
+.prep-facts .fact-heading { height: 50.6px; }
+.prep-facts .fact-heading .r-pill { width: 127px; height: 49px; font-size: 18px; padding: 0; }
+.prep-facts .fact-heading .r-pill.amber { width: 144px; gap: 10px; background: linear-gradient(110deg, #4a321b, #342414); color: #ffc67f; }
+.fact-status-dot { width: 13px; height: 15px; border-radius: 50%; background: linear-gradient(120deg, #ffc580, #eea654); flex: none; }
 .prep-facts .fact-body dt { color: #aaa6a0; }
 /* 固定21px字面宽度与23px字高，原有显式换行不参与缩放计算。 */
-.prep-facts .fact-body dd { font-size: 23px; transform: scaleX(.9130434783); transform-origin: left top; }
+.prep-facts .fact-body dd { font-size: 23px; font-weight: 400; transform: scaleX(.9130434783); transform-origin: left top; }
 .prep-facts .fact-source { left: 20px; right: 20px; height: 70px; background: linear-gradient(110deg, #ffffff0b, #ffffff07) !important; }
 .prep-facts .fact-links { height: 86px; }
 .prep-facts .fact-links button { position: relative; padding: 21px 27px !important; border-color: #50453a66; background: linear-gradient(120deg, #191613, #151311); }
@@ -429,8 +433,9 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .expression-preview { margin-left: 2px; padding-bottom: 22px; background: linear-gradient(115deg, #211e1b, #1b1815); }
 .prep-facts .expression-preview h3 { font-size: 22px; font-weight: 400; }
 .prep-facts .expression-preview h3 .r-pill { margin-left: 17px; }
+.prep-facts .expression-preview p { transform: translate(2px, 2px) scaleY(1.09); }
 .prep-facts .expression-actions { gap: 10px; margin-top: 18px; margin-left: 2px; }
-.prep-facts .expression-actions .r-btn { height: 55px; padding: 8px 27px !important; font-weight: 400; }
+.prep-facts .expression-actions .r-btn { height: 55px; padding: 8px 27px !important; font-weight: 500; -webkit-text-stroke: .2px currentColor; }
 .prep-facts .expression-actions .r-btn:first-child { width: 148px; justify-content: center; padding-inline: 0 !important; background: linear-gradient(125deg, #171513, #141210) !important; }
 .prep-facts .expression-actions .r-btn:last-child { width: 162px; justify-content: center; padding-inline: 0 !important; }
 .prep-facts .fact-foot { font-size: 21px; gap: 12px; }

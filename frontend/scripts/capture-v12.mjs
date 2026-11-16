@@ -506,7 +506,7 @@ try {
         for (const [selector, weight] of [
           ['.r-scene-04', '300'], ['.prep-facts .p-title', '500'], ['.facts-tabs button.r-active', '500'],
           ['.project-tree h3', '400'], ['.fact-heading h3', '500'], ['.expressions > h2', '500'],
-          ['.expression-row', '300'], ['.expression-preview h3', '400'], ['.expression-actions .r-btn', '400'],
+          ['.expression-row', '300'], ['.expression-preview h3', '400'], ['.expression-actions .r-btn', '500'],
         ]) ensure(typography.styles[selector].weight === weight, '04字重不符：' + selector)
         ensure(typography.styles['.prep-facts .p-title'].stroke === '0.6px'
           && typography.styles['.fact-heading h3'].stroke === '0.15px'
@@ -515,12 +515,46 @@ try {
           && typography.title.top === '92px' && typography.title.left === '27px'
           && typography.title.transform === 'matrix(1, 0, 0, 1.1, 0, 0)' && typography.tabPadding === '19px',
         '04标题、目录字面或页签基线不符')
-        ensure(typography.body.length === 4 && typography.body.every(item => item.size === '23px' && item.weight === '300'
+        ensure(typography.body.length === 4 && typography.body.every(item => item.size === '23px' && item.weight === '400'
           && item.lineHeight === '35px' && item.transform === 'matrix(0.913044, 0, 0, 1, 0, 0)' && item.origin === '0px 0px'),
         '04事实正文的字高、行宽或换行基线不符')
         ensure(typography.source === 'linear-gradient(110deg, rgba(255, 255, 255, 0.043), rgba(255, 255, 255, 0.027))'
           && typography.links === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(21, 19, 17))', '04来源或关联入口底色不符')
         checks.push({ check: 'fact-scoped-type-weights-body-aspect-tab-baseline-source-link-surfaces', scene: scene.id, typography, passed: true })
+        const status = await page.evaluate(() => {
+          const box = node => { const b = node.getBoundingClientRect(); return [b.x, b.y, b.width, b.height] }
+          const pills = [...document.querySelectorAll('.fact-heading .r-pill')].map(node => ({
+            text: node.textContent, box: box(node), size: getComputedStyle(node).fontSize,
+            padding: getComputedStyle(node).padding, background: getComputedStyle(node).backgroundImage,
+          }))
+          const dot = document.querySelector('.fact-status-dot')
+          return { pills, dot: { box: box(dot), hidden: dot.getAttribute('aria-hidden'), background: getComputedStyle(dot).backgroundImage },
+            headingHeight: document.querySelector('.fact-heading').getBoundingClientRect().height,
+            bodyTop: document.querySelector('.fact-body dd').getBoundingClientRect().top }
+        })
+        ensure(status.headingHeight === 50.59375 && status.bodyTop === 409.59375
+          && status.pills.length === 2 && status.pills[0].text === '待核实 1 项' && status.pills[1].text === '参与排查'
+          && JSON.stringify(status.pills[0].box) === '[825,297.796875,144,49]'
+          && JSON.stringify(status.pills[1].box) === '[977,297.796875,127,49]'
+          && status.pills.every(item => item.size === '18px' && item.padding === '0px')
+          && status.pills[0].background === 'linear-gradient(110deg, rgb(74, 50, 27), rgb(52, 36, 20))'
+          && status.dot.box[2] === 13 && status.dot.box[3] === 15 && status.dot.hidden === 'true'
+          && status.dot.background === 'linear-gradient(120deg, rgb(255, 197, 128), rgb(238, 166, 84))',
+        '04状态标签、圆点或正文基线不符')
+        checks.push({ check: 'fact-status-native-dot-pill-geometry-stable-body-baseline', scene: scene.id, status, passed: true })
+        const previewStyle = await page.evaluate(() => {
+          const node = document.querySelector('.expression-preview p'), b = node.getBoundingClientRect()
+          return { box: [b.x, b.y, b.width, b.height], transform: getComputedStyle(node).transform,
+            actions: [...document.querySelectorAll('.expression-actions .r-btn')].map(button => {
+              const s = getComputedStyle(button), a = button.getBoundingClientRect()
+              return { weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, height: a.height }
+            }) }
+        })
+        ensure(previewStyle.box[0] === 1185 && previewStyle.box[1] === 623.09375 && previewStyle.box[2] === 289
+          && previewStyle.transform === 'matrix(1, 0, 0, 1.09, 2, 2)'
+          && previewStyle.actions.length === 2 && previewStyle.actions.every(item => item.weight === '500' && item.stroke === '0.2px' && item.height === 55),
+        '04预览文字基线或编辑／新建版本字重不符')
+        checks.push({ check: 'fact-preview-baseline-action-weight-stroke-geometry', scene: scene.id, previewStyle, passed: true })
         const preview = page.locator('.expression-preview p')
         const lines = await preview.evaluate(node => {
           const text = node.firstChild, rows = new Map()
