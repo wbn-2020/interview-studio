@@ -370,13 +370,43 @@ try {
           ['.r-sidebar',[0,0,208,994]], ['.r-sidebar > a',[34,34,160,56]], ['.r-top-search',[645,26,500,53]],
           ['.r-top-status > .r-avatar',[1455,26,47,52]], ['.r-sidebar-avatar .r-avatar',[32,919,53,57]],
           ['.p-actions .r-btn:first-child',[1173,135,169,57]], ['.p-actions .r-btn:last-child',[1360,135,142,57]],
-          ['.target-list',[223,284,295,694]], ['.requirements',[529,429,630,328]], ['.recent-materials',[529,765,630,213]],
+          ['.target-list',[223,284,295,694]], ['.requirements',[529,429,630,327]], ['.recent-materials',[529,765,630,213]],
           ['.target-route',[1184,284,329,495]], ['.target-budget',[1184,788,329,190]],
         ]) ensure(JSON.stringify(layout.boxes[selector]) === JSON.stringify(expected), '03布局不符：' + selector)
         ensure(layout.brandPaths === 2 && layout.brandCircles === 2 && layout.headingClear && !layout.overflow
           && layout.navigation.length === 10 && layout.navigation.every(item => item.lines === 1), '03品牌、导航换行或标题／内容溢出')
         await writeJson(path.join(values.output,'records','03-target-layout.json'),layout)
         checks.push({check:'target-brand-three-columns-single-line-navigation-title-table-materials-route-budget-geometry',scene:scene.id,layout,passed:true})
+        const typography = await page.evaluate(() => {
+          const styles = Object.fromEntries(['.r-scene-03','.p-title','.prep-tabs button','.prep-tabs .r-active','.target-list h3',
+            '.target-item strong','.target-item small','.target-name h2','.target-meta','.requirements .r-table','.requirements td',
+            '.requirements td:nth-child(2)','.requirements .r-pill','.recent-materials','.recent-materials h3','.recent-materials button',
+            '.recent-materials .r-muted','.timeline-item strong','.timeline-item.current strong','.target-budget b','.r-nav-separator'].map(selector => {
+              const node = document.querySelector(selector), s = getComputedStyle(node)
+              return [selector, {weight:s.fontWeight,size:s.fontSize,stroke:s.webkitTextStrokeWidth,top:s.top,
+                transform:s.transform,marginTop:s.marginTop,marginBottom:s.marginBottom,padding:s.padding,
+                height:s.height,background:s.backgroundImage}]
+            }))
+          return {styles,materialRows:[...document.querySelectorAll('.recent-materials button')].map(node => node.getBoundingClientRect().height)}
+        })
+        const ts = typography.styles
+        ensure(ts['.r-scene-03'].weight === '300' && ts['.p-title'].weight === '500' && ts['.p-title'].size === '58px'
+          && ts['.p-title'].stroke === '0.9px' && ts['.p-title'].transform === 'matrix(0.94, 0, 0, 1, 0, 0)'
+          && ts['.prep-tabs button'].weight === '500' && ts['.prep-tabs .r-active'].stroke === '0.2px'
+          && ['.target-list h3','.target-name h2'].every(selector => ts[selector].weight === '500' && ts[selector].stroke === '0.4px')
+          && ['.target-item strong','.target-item small'].every(selector => ts[selector].weight === '400' && ts[selector].top === '-2px')
+          && ts['.target-meta'].weight === '400' && ts['.requirements .r-table'].marginTop === '14px'
+          && ts['.requirements td'].weight === '300' && ts['.requirements td'].height === '47px'
+          && ts['.requirements td'].padding === '6px 3px' && ts['.requirements td:nth-child(2)'].weight === '400'
+          && ts['.requirements .r-pill'].size === '19px' && ts['.requirements .r-pill'].weight === '400'
+          && ts['.recent-materials'].padding === '16px 34px 18px 21px' && ts['.recent-materials h3'].top === '1px'
+          && ts['.recent-materials button'].weight === '400' && ts['.recent-materials .r-muted'].size === '20px'
+          && typography.materialRows.join(',') === '47,47,47' && ts['.timeline-item strong'].weight === '400'
+          && ts['.timeline-item.current strong'].weight === '500' && ts['.timeline-item.current strong'].size === '21px'
+          && ts['.timeline-item.current strong'].top === '-1px' && ts['.target-budget b'].weight === '500'
+          && ts['.r-nav-separator'].marginBottom === '27px','03字重、表格基线、材料留白或路线／次导航间距不符')
+        await writeJson(path.join(values.output,'records','03-target-typography.json'),typography)
+        checks.push({check:'target-typography-table-baselines-material-spacing-current-route-secondary-navigation',scene:scene.id,typography,passed:true})
         ensure(JSON.stringify(layout.rows) === JSON.stringify([
           ['分析异常与恢复','2 条','● 有证据','11.08'], ['讲清本人职责','1 条','● 待补','11.06'],
           ['缓存一致性','3 条','● 有证据','11.10'], ['系统设计取舍','0 条','● 无记录','—'],

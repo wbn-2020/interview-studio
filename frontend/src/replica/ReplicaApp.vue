@@ -252,7 +252,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-02 .r-saved svg { background: linear-gradient(130deg, #60c59e, #389a80); color: #123f31; fill: none; padding: 5px; }
 .r-scene-02 .r-top-status .r-icon-btn { width: 56px; height: 56px; background: #1a1712b3; color: #e9e2d8; }
 .r-scene-02 .r-top-status > .r-avatar { width: 54px; height: 56px; background: radial-gradient(ellipse at 26% 12%, #baaa96, #8c7763 43%, #5b4a3b 73%, #b7a18a); border-color: #cfb89e80; }
-.r-scene-03 { will-change: transform; background: radial-gradient(ellipse 470px 800px at 0 50%, #33261a22, transparent), radial-gradient(ellipse at 95% 100%, #2b21151a, transparent 55%), #090807; }
+.r-scene-03 { will-change: transform; font-weight: 300; background: radial-gradient(ellipse 470px 800px at 0 50%, #33261a22, transparent), radial-gradient(ellipse at 95% 100%, #2b21151a, transparent 55%), #090807; }
 .r-scene-03 .r-sidebar { width: 208px; border-radius: 36px; border-color: #24201966; bottom: 30px; background: linear-gradient(110deg, #191613d9, #151310e8 70%, #1b1713); }
 .r-scene-03 .r-sidebar > a { position: absolute; left: 33px; top: 33px; width: 160px; height: 56px; }
 .r-scene-03 .r-sidebar :deep(.r-brand) { top: 0; left: 0; gap: 10px; }
@@ -262,7 +262,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-03 .r-sidebar nav { left: 15px; right: 15px; top: 149px; gap: 9px; }
 .r-scene-03 .r-nav-item { height: 60px; padding: 0 0 0 21px; gap: 19px; white-space: nowrap; font-size: 23px; }
 .r-scene-03 .r-nav-item.r-selected { height: 64px; border-radius: 22px; border-color: #bd875b8c; background: linear-gradient(110deg, #a7734ca6, #694b34ab); box-shadow: inset 1px 0 3px #ffd0a370, -4px 0 20px #e6a05d33; }
-.r-scene-03 .r-nav-separator { margin: 18px 17px 19px; }
+.r-scene-03 .r-nav-separator { margin: 18px 17px 27px; }
 .r-scene-03 .r-nav-item.r-secondary { height: 49px; font-size: 23px; }
 .r-scene-03 .r-sidebar-avatar { left: 31px; bottom: 17px; }
 .r-scene-03 .r-sidebar-avatar .r-avatar { width: 53px; height: 57px; background: linear-gradient(120deg, #7d766d, #504b43); border-color: #a3988740; }
