@@ -719,6 +719,40 @@ try {
         ensure(libraryBox && libraryBox.x === 253 && libraryBox.y === 196 && libraryBox.width === 323
           && libraryBox.height === 784, '06文件库外框不符')
         checks.push({ check: 'attachment-library-box-and-semantic-lists', scene: scene.id, parsingLists, resultLines, libraryBox, passed: true })
+        const typography = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), r = node.getBoundingClientRect()
+            return { weight: s.fontWeight, size: s.fontSize, lineHeight: s.lineHeight, stroke: s.webkitTextStrokeWidth,
+              transform: s.transform, leftPadding: s.paddingLeft, display: s.display, decoration: s.boxDecorationBreak,
+              box: [r.x, r.y, r.width, r.height] }
+          }
+          const mark = document.querySelector('.parsing-content mark')
+          return {
+            root: style('.r-scene-06'), title: style('.prep-materials .p-title'), brand: style('.r-brand-word'),
+            selected: style('.r-nav-item.r-selected'), library: style('.file-library h3'), parsing: style('.parsing h3'),
+            paper: style('.pdf-page-wrap'), heading: style('.pdf-paper h2'), subheading: style('.pdf-paper h3'),
+            body: style('.pdf-paper p'), list: style('.pdf-paper ul'), item: style('.pdf-paper li'),
+            excerpt: style('.parsing-content mark'), action: style('.parsing-content section:nth-child(3) p'),
+            excerptBreaks: mark.parentElement.querySelectorAll('br').length,
+            excerptFragments: [...mark.getClientRects()].map(r => [r.x, r.y, r.width, r.height]),
+          }
+        })
+        ensure(typography.root.weight === '300' && typography.title.weight === '650'
+          && typography.title.transform === 'matrix(0.98, 0, 0, 1, 0, 0)' && sameBox(typography.title.box, [266,107,98,65])
+          && typography.brand.weight === '500' && typography.selected.weight === '500'
+          && [typography.library, typography.parsing].every(s => s.weight === '500' && s.stroke === '0.4px')
+          && sameBox(typography.paper.box, [721,272,429,684]) && typography.heading.weight === '650'
+          && typography.subheading.weight === '600' && typography.body.size === '15px' && typography.body.weight === '400'
+          && typography.list.leftPadding === '21px' && typography.item.leftPadding === '10px'
+          && typography.list.transform === 'matrix(0.98, 0, 0, 1, 0, 0)'
+          && typography.excerpt.display === 'inline' && typography.excerpt.decoration === 'clone'
+          && typography.excerpt.size === '16px' && typography.excerpt.weight === '400'
+          && typography.action.lineHeight === '24.5px' && typography.excerptBreaks === 1
+          && typography.excerptFragments.length === 2
+          && typography.excerptFragments[1][2] < typography.excerptFragments[0][2]
+          && typography.excerptFragments.every(r => Math.abs(r[0] - 1214) < 1),
+          '06字重、纸面基线、原生列表标记间距或两行摘录高亮不符')
+        checks.push({ check: 'attachment-typography-native-list-spacing-inline-highlight-fragments', scene: scene.id, typography, passed: true })
         await viewer.getByRole('button', { name: '下一页', exact: true }).click()
         ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible(), '06下一页未更新')
         await viewer.getByRole('button', { name: '上一页', exact: true }).click()
