@@ -3092,9 +3092,36 @@ try {
           && mobileStyle.task.transform === 'matrix(1, 0, 0, 1, 0, 1)' && mobileStyle.note.margin === '15px'
           && mobileStyle.wave.background.startsWith('repeating-radial-gradient(') && mobileStyle.wave.shadow === 'none'
           && mobileStyle.screen.background.includes('60px 115px') && mobileStyle.screen.background.includes('60px 130px')
-          && mobileStyle.practice.background.includes('rgb(208, 154, 105)'),
+          && mobileStyle.practice.background === 'linear-gradient(112deg, rgb(211, 156, 106), rgb(188, 128, 83) 52%, rgb(168, 106, 67))',
         '29正文字面、学习标题、细纹、局部光照或按钮渐变不符')
         checks.push({ check:'mobile-type-baselines-wave-light-and-practice-surface',scene:scene.id,mobileStyle,passed:true })
+        const mobileRefinement = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+            return { weight:s.fontWeight,size:s.fontSize,stroke:s.webkitTextStrokeWidth,transform:s.transform,
+              box:[b.x,b.y,b.width,b.height],text:node.innerText }
+          }
+          return { time:style('.phone-time'), brand:style('.mobile-home-header .r-brand-word small'),
+            subtitle:style('.mobile-home-title p'), heading:style('.mobile-detail-title'),
+            question:style('.mobile-recall-question'), recent:style('.mobile-recent-note strong'),
+            note:style('.mobile-linked-note strong'), practice:style('.mobile-practice') }
+        })
+        ensure(mobileRefinement.time.weight === '500' && mobileRefinement.time.size === '20px'
+          && mobileRefinement.brand.weight === '300' && mobileRefinement.recent.weight === '300'
+          && mobileRefinement.note.weight === '300' && mobileRefinement.heading.weight === '500'
+          && mobileRefinement.heading.size === '39.5px' && mobileRefinement.heading.stroke === '0.6px'
+          && mobileRefinement.question.weight === '500' && mobileRefinement.question.size === '36.5px'
+          && mobileRefinement.question.stroke === '0.6px', '29状态栏、笔记与知识／回忆标题字重或字面不符')
+        checks.push({ check:'mobile-status-notes-and-title-weight-stroke',scene:scene.id,mobileRefinement,passed:true })
+        ensure(mobileRefinement.subtitle.transform === 'matrix(1, 0, 0, 1, 0, -4)'
+          && mobileRefinement.question.transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && JSON.stringify(mobileRefinement.heading.box) === '[578,205,197.5,60]'
+          && JSON.stringify(mobileRefinement.question.box) === '[1072,323,377,104]'
+          && JSON.stringify(mobileRefinement.note.box) === '[648,617,265,28]'
+          && JSON.stringify(mobileRefinement.practice.box) === '[578,882,383,59]'
+          && mobileRefinement.question.text === '缓存删除失败后，\n如何确认恢复？',
+        '29说明／题面基线、笔记／练习按钮几何或题面换行不符')
+        checks.push({ check:'mobile-subtitle-question-baselines-and-preserved-detail-geometry',scene:scene.id,passed:true })
         const writes = [], onWrite = request => {
           if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method() + ' ' + new URL(request.url()).pathname)
         }
