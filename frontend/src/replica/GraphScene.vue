@@ -238,7 +238,15 @@ function practice() {
     <nav class="graph-view-switch" aria-label="知识视图">
       <button v-for="item in [{ label: '星图', icon: 'star' }, { label: '列表', icon: 'list' }, { label: '白板', icon: 'square' }]"
         :key="item.label" :class="{ selected: view === item.label }" :aria-pressed="view === item.label" @click="chooseView(item.label)">
-        <RIcon :name="item.icon" :size="23" />{{ item.label }}
+        <svg v-if="item.label === '列表'" class="r-icon" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 5h12M9 12h12M9 19h12" stroke-width="2.2" />
+          <circle v-for="y in [5, 12, 19]" :key="y" cx="3.5" :cy="y" r="1.4" fill="currentColor" stroke="none" />
+        </svg>
+        <svg v-else-if="item.label === '白板'" class="r-icon" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="3" width="20" height="18" rx=".7" stroke-width="1.7" />
+          <path d="M5 6h14v12H5Z" stroke-width=".6" opacity=".35" />
+        </svg>
+        <RIcon v-else :name="item.icon" :size="23" :stroke-width="2.3" />{{ item.label }}
       </button>
     </nav>
 
@@ -359,16 +367,16 @@ function practice() {
 .graph-topic-summary { position: absolute; top: 345px; left: 18px; z-index: 3; width: 215px; display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; border: 1px solid #7d6748; border-radius: 12px; background: #262019; box-shadow: 0 5px 8px #0008; }
 .graph-topic-summary span { font-size: 16px; }
 .graph-view-switch { position: absolute; z-index: 2; left: 454px; top: 110px; width: 392px; height: 57px; display: flex; align-items: center; padding: 4px; border: 1px solid #4f42305c; border-radius: 31px; background: linear-gradient(125deg, #26201566, #17151080); }
-.graph-view-switch > button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 11px; height: 47px; color: #d6d2c7; font-size: 21px; border-radius: 25px; }
-.graph-view-switch > button.selected { background: linear-gradient(120deg, #a87935be, #99652caa); box-shadow: inset 0 0 0 1px #cda45c80; color: #fff7e6; font-weight: 500; }
+.graph-view-switch > button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 11px; height: 47px; color: #d6d2c7; font-size: 20px; border-radius: 25px; }
+.graph-view-switch > button.selected { flex: 0 0 124px; background: linear-gradient(120deg, #a87935be, #99652caa); box-shadow: inset 0 0 0 1px #cda45c80; color: #fff7e6; font-weight: 500; }
 .graph-detail { position: absolute; z-index: 2; top: 131px; left: 976px; width: 415px; height: 777px; border: 1px solid #796447; border-radius: 22px; background: linear-gradient(120deg, #31271480, #14120ee8 25%, #171510f0); overflow: hidden; }
 .graph-detail-heading { padding: 24px 22px 0; height: 131px; }
-.graph-detail-title { display: flex; align-items: center; gap: 16px; height: 47px; }
-.graph-detail-star { width: 47px; height: 53px; flex: none; filter: drop-shadow(0 0 12px #eeab43a6); }
-.graph-detail-title h1 { margin: 0; font-size: 30px; font-weight: 500; -webkit-text-stroke: .3px currentColor; white-space: nowrap; transform: translateY(-3px); }
+.graph-detail-title { display: flex; align-items: center; gap: 19px; height: 47px; }
+.graph-detail-star { width: 44px; height: 49px; flex: none; transform: translate(3px, 2px); filter: drop-shadow(0 0 12px #eeab43a6); }
+.graph-detail-title h1 { margin: 0; font-size: 28.5px; font-weight: 500; -webkit-text-stroke: .3px currentColor; white-space: nowrap; transform: translateY(-3px); }
 .graph-open { margin-left: auto; display: grid; place-items: center; width: 35px; height: 37px; color: #f0eee6; background: #ffffff05 !important; border-radius: 9px; }
-.graph-detail-heading > p { color: #aaa697; font-size: 18px; padding-top: 6px; }
-.graph-detail-heading > p span { margin-left: 18px; }
+.graph-detail-heading > p { color: #aaa697; font-size: 18px; padding-top: 4px; transform: translateX(1px); }
+.graph-detail-heading > p span { margin-left: 20px; word-spacing: 6px; }
 .graph-detail-tabs { display: flex; gap: 0; align-items: center; height: 49px; padding: 0 22px 3px; border-bottom: 1px solid #b7a27b0d; }
 .graph-detail-tabs button { flex: 1; height: 43px; color: #ddd8cd; font-size: 19px; white-space: nowrap; border-radius: 24px; }
 .graph-detail-tabs button.selected { flex: 1.06; color: #fff4dc; background: linear-gradient(120deg, #8d622ca6, #67431c9c); box-shadow: inset 0 1px 1px #b58c4f70; font-weight: 500; }
@@ -378,8 +386,8 @@ function practice() {
 .graph-definition { padding-top: 23px; padding-bottom: 22px; border-bottom: 1px solid #a690661a; }
 .graph-definition p { margin-top: 12px; color: #eae5da; font-size: 18px; line-height: 34px; }
 .graph-core-notes { padding-top: 18px; padding-bottom: 21px; border-bottom: 1px solid #a690661a; }
-.graph-core-notes ul { margin: 12px 0 0; padding: 0; list-style: none; color: #e6e0d4; font-size: 18px; line-height: 35px; white-space: nowrap; }
-.graph-core-notes li::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 12px 2px 2px; border-radius: 50%; background: #d49b4e; }
+.graph-core-notes ul { margin: 12px 0 0; padding: 0; list-style: none; color: #e6e0d4; font-size: 17.3px; line-height: 35px; white-space: nowrap; transform: translateY(-2px); }
+.graph-core-notes li::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 15px 2px 3px; border-radius: 50%; background: #d49b4e; }
 .graph-evidence { padding-top: 17px; }
 .graph-evidence > button { display: flex; align-items: center; gap: 11px; width: 100%; height: 58px; margin-top: 12px; padding: 0 15px; border: 1px solid #ffffff05; border-radius: 13px; background: linear-gradient(120deg, #28251dd9, #24221bd9); font-size: 19px; }
 .graph-evidence > button span { flex: 1; text-align: left; white-space: nowrap; }

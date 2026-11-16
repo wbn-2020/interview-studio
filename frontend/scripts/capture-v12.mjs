@@ -2814,8 +2814,8 @@ try {
             }
           })
           ensure(graphPolish.labelFont === 'Arial, "Microsoft YaHei", sans-serif'
-            && graphPolish.titleSize === '30px' && graphPolish.titleOffset === 'matrix(1, 0, 0, 1, 0, -3)'
-            && graphPolish.titleGap === '16px' && graphPolish.zoomWidth === '66px' && graphPolish.zoomSize === '20px'
+            && graphPolish.titleSize === '28.5px' && graphPolish.titleOffset === 'matrix(1, 0, 0, 1, 0, -3)'
+            && graphPolish.titleGap === '19px' && graphPolish.zoomWidth === '66px' && graphPolish.zoomSize === '20px'
             && graphPolish.practiceBackground === 'linear-gradient(120deg, rgb(172, 126, 56), rgb(173, 121, 50) 67%, rgb(168, 117, 48))'
             && graphPolish.orbitOpacity === '.19'
             && JSON.stringify(graphPolish.definitionIcon) === JSON.stringify(['M6 2h9l5 5v15H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z', 'M14 2v6h6M8 12h8M8 16h5M2 5v17a2 2 0 0 0 2 2h11'])
@@ -2848,6 +2848,36 @@ try {
             && graphContours.markFilter === 'drop-shadow(rgba(228, 184, 113, 0.2) 0px 0px 2px)',
           '09依赖曲线或专用罗盘标志轮廓不符')
           checks.push({ check: 'graph-dependency-curve-and-scoped-compass-contours', scene: scene.id, graphContours, passed: true })
+          const graphDetailFit = await page.evaluate(() => {
+            const style = selector => getComputedStyle(document.querySelector(selector))
+            const meta = style('.graph-detail-heading > p'), count = style('.graph-detail-heading > p span')
+            const notes = style('.graph-core-notes ul'), star = style('.graph-detail-star')
+            const bullet = getComputedStyle(document.querySelector('.graph-core-notes li'), '::before')
+            const views = [...document.querySelectorAll('.graph-view-switch > button')]
+            return {
+              metadata: { padding: meta.paddingTop, transform: meta.transform, margin: count.marginLeft, spacing: count.wordSpacing },
+              notes: { size: notes.fontSize, transform: notes.transform, lineHeight: notes.lineHeight, bulletMargin: bullet.margin },
+              star: { width: star.width, height: star.height, transform: star.transform },
+              viewSizes: views.map(node => [getComputedStyle(node).fontSize, node.getBoundingClientRect().width]),
+              starStroke: style('.graph-view-switch > button:first-child svg').strokeWidth,
+              listPath: views[1].querySelector('path').getAttribute('d'),
+              listDots: [...views[1].querySelectorAll('circle')].map(node => ['cx', 'cy', 'r'].map(name => node.getAttribute(name))),
+              boardRect: ['x', 'y', 'width', 'height', 'rx'].map(name => views[2].querySelector('rect').getAttribute(name)),
+              boardPath: views[2].querySelector('path').getAttribute('d'),
+            }
+          })
+          ensure(JSON.stringify(graphDetailFit.metadata) === JSON.stringify({
+            padding: '4px', transform: 'matrix(1, 0, 0, 1, 1, 0)', margin: '20px', spacing: '6px',
+          }) && JSON.stringify(graphDetailFit.notes) === JSON.stringify({
+            size: '17.3px', transform: 'matrix(1, 0, 0, 1, 0, -2)', lineHeight: '35px', bulletMargin: '0px 15px 2px 3px',
+          }) && JSON.stringify(graphDetailFit.star) === JSON.stringify({
+            width: '44px', height: '49px', transform: 'matrix(1, 0, 0, 1, 3, 2)',
+          }) && JSON.stringify(graphDetailFit.viewSizes) === '[["20px",124],["20px",129],["20px",129]]'
+            && graphDetailFit.starStroke === '2.3px' && graphDetailFit.listPath === 'M9 5h12M9 12h12M9 19h12'
+            && JSON.stringify(graphDetailFit.listDots) === '[["3.5","5","1.4"],["3.5","12","1.4"],["3.5","19","1.4"]]'
+            && graphDetailFit.boardRect.join(',') === '2,3,20,18,.7' && graphDetailFit.boardPath === 'M5 6h14v12H5Z',
+          '09详情星形、版本间距、笔记基线或视图切换几何不符')
+          checks.push({ check: 'graph-detail-star-metadata-notes-and-view-control-fit', scene: scene.id, graphDetailFit, passed: true })
           const detailTabs = page.getByRole('navigation', { name: '知识详情标签' })
           for (const tab of ['笔记', '关系', '练习', '证据', '概览']) {
             await detailTabs.getByRole('button', { name: tab, exact: true }).click()
