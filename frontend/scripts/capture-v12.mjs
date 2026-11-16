@@ -2780,6 +2780,21 @@ try {
             && graphStyle.title.stroke === '0.3px' && graphStyle.definition.size === '18px'
             && graphStyle.practice.weight === '500', '09实际字重、字号或描边不符')
           checks.push({ check: 'graph-typography-computed-style', scene: scene.id, graphStyle, passed: true })
+          const graphLight = await page.evaluate(() => ({
+            filter: getComputedStyle(document.querySelector('.graph-filters')).backgroundImage,
+            tools: getComputedStyle(document.querySelector('.graph-bottom-tools')).backgroundImage,
+            haloRadius: document.querySelector('.graph-core > circle').getAttribute('r'),
+            haloOpacity: [...document.querySelectorAll('#g9-halo stop')].map(node => node.getAttribute('stop-opacity')),
+            corePath: document.querySelector('.graph-core path:not([filter])').getAttribute('d'),
+            detailPath: document.querySelector('.graph-detail-star path').getAttribute('d'),
+          }))
+          ensure(graphLight.filter === 'linear-gradient(120deg, rgba(24, 21, 15, 0.91), rgba(17, 16, 13, 0.91))'
+            && graphLight.tools === 'linear-gradient(115deg, rgba(41, 30, 12, 0.5), rgba(12, 11, 9, 0.92) 60%)'
+            && graphLight.haloRadius === '150' && graphLight.haloOpacity.join(',') === '.28,.12,0'
+            && graphLight.corePath === 'M703 443C707 459 712 465 726 469C712 473 707 478 703 494C698 478 694 474 680 469C694 464 698 459 703 443Z'
+            && graphLight.detailPath === 'M24 1C28 18 32 22 47 27C32 31 28 35 24 53C20 35 16 31 1 27C16 22 20 18 24 1Z',
+          '09筛选、图例光照或弧面星形不符')
+          checks.push({ check: 'graph-panel-light-halo-and-curved-star-paths', scene: scene.id, graphLight, passed: true })
           const detailTabs = page.getByRole('navigation', { name: '知识详情标签' })
           for (const tab of ['笔记', '关系', '练习', '证据', '概览']) {
             await detailTabs.getByRole('button', { name: tab, exact: true }).click()

@@ -137,7 +137,7 @@ function practice() {
       <defs>
         <radialGradient id="g9-node"><stop stop-color="white" stop-opacity=".35" /><stop offset="1" stop-color="white" stop-opacity="0" /></radialGradient>
         <radialGradient id="g9-amber"><stop stop-color="#ffe3a1" /><stop offset=".55" stop-color="#ffc45e" /><stop offset="1" stop-color="#c47d24" /></radialGradient>
-        <radialGradient id="g9-halo"><stop stop-color="#ffb737" stop-opacity=".22" /><stop offset=".4" stop-color="#b87718" stop-opacity=".08" /><stop offset="1" stop-color="#b87718" stop-opacity="0" /></radialGradient>
+        <radialGradient id="g9-halo"><stop stop-color="#ffb737" stop-opacity=".28" /><stop offset=".4" stop-color="#b87718" stop-opacity=".12" /><stop offset="1" stop-color="#b87718" stop-opacity="0" /></radialGradient>
         <linearGradient id="g9-star" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff7cf" /><stop offset=".5" stop-color="#ffcf76" /><stop offset="1" stop-color="#e19a30" /></linearGradient>
         <filter id="g9-glow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="5" /></filter>
         <marker id="g9-arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 10 5 0 10 3 5Z" fill="#efac4e" /></marker>
@@ -196,10 +196,10 @@ function practice() {
         </g>
         <g data-node class="graph-core" role="button" tabindex="0" aria-label="缓存一致性" :aria-pressed="isCache"
           @click="selectNode('cache')" @keydown.enter.prevent="selectNode('cache')" @keydown.space.prevent="selectNode('cache')">
-          <circle cx="703" cy="469" r="116" fill="url(#g9-halo)" />
+          <circle cx="703" cy="469" r="150" fill="url(#g9-halo)" />
           <ellipse cx="705" cy="464" rx="115" ry="19" transform="rotate(-20 705 464)" fill="none" stroke="#ffc65a" stroke-width="1.25" />
           <path d="m703 442 7 18 18 9-18 7-7 20-8-20-17-7 17-8Z" fill="#ffcf72" filter="url(#g9-glow)" />
-          <path d="m703 443 6 17 17 9-17 7-6 18-7-18-17-7 17-8Z" fill="url(#g9-star)" />
+          <path d="M703 443C707 459 712 465 726 469C712 473 707 478 703 494C698 478 694 474 680 469C694 464 698 459 703 443Z" fill="url(#g9-star)" />
           <rect x="729" y="438" width="160" height="57" rx="19" />
           <text x="809" y="476" text-anchor="middle">缓存一致性</text>
         </g>
@@ -245,7 +245,7 @@ function practice() {
     <aside class="graph-detail" aria-label="知识点详情">
       <header class="graph-detail-heading">
         <div class="graph-detail-title">
-          <svg class="graph-detail-star" viewBox="0 0 48 54" aria-hidden="true"><path d="m24 1 7 18 16 8-17 6-6 20-7-20-16-6 16-7Z" fill="url(#g9-star)" /></svg>
+          <svg class="graph-detail-star" viewBox="0 0 48 54" aria-hidden="true"><path d="M24 1C28 18 32 22 47 27C32 31 28 35 24 53C20 35 16 31 1 27C16 22 20 18 24 1Z" fill="url(#g9-star)" /></svg>
           <h1>{{ selectedTitle }}</h1>
           <button class="graph-open" aria-label="打开知识点" title="打开知识点" @click="emit('navigate', 12)"><RIcon name="external-link" :size="29" /></button>
         </div>
@@ -326,7 +326,7 @@ function practice() {
 .graph-core rect { fill: #49301066; stroke: #c78e32; stroke-width: .8; }
 .graph-core text { fill: #fff6e0; font-size: 24px; font-weight: 500; stroke: currentColor; stroke-width: .15px; }
 .graph-core:focus-visible rect { stroke: #ffe3aa; stroke-width: 2; }
-.graph-filters { position: absolute; z-index: 2; left: 18px; top: 121px; width: 253px; height: 707px; padding: 19px 20px; border: 1px solid #4d4437; border-radius: 22px; background: linear-gradient(120deg, #1b1913e8, #12110ee8); }
+.graph-filters { position: absolute; z-index: 2; left: 18px; top: 121px; width: 253px; height: 707px; padding: 19px 20px; border: 1px solid #4d4437; border-radius: 22px; background: linear-gradient(120deg, #18150fe8, #11100de8); }
 .graph-search { display: flex; align-items: center; gap: 11px; height: 46px; padding: 0 12px; color: #c1beb5; border: 1px solid #ffffff05; border-radius: 25px; background: #ffffff03; }
 .graph-search input { width: 155px; min-width: 0; padding: 0; color: #eee9dc; font-size: 18px; border: 0; outline: none; background: transparent; }
 .graph-search input::placeholder { color: #9d998f; }
@@ -386,7 +386,7 @@ function practice() {
 .graph-evidence > button > .r-icon:last-child { color: #aaa594; }
 .graph-practice { position: absolute; display: flex; align-items: center; justify-content: center; gap: 11px; left: 23px; right: 23px; bottom: 23px; height: 58px; border: 1px solid #b18136 !important; border-radius: 16px; color: #191207; font-size: 21px; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: linear-gradient(120deg, #b88a42, #ac7c35) !important; box-shadow: inset 0 1px 2px #efd39860; }
 .graph-practice:hover { filter: brightness(1.1); }
-.graph-bottom-tools { position: absolute; z-index: 2; left: 331px; top: 927px; width: 638px; height: 64px; display: flex; align-items: center; padding: 0 23px 0 29px; border: 1px solid #8c6c3f80; border-radius: 34px; background: linear-gradient(115deg, #3a2a10a3, #12110eeb 60%); }
+.graph-bottom-tools { position: absolute; z-index: 2; left: 331px; top: 927px; width: 638px; height: 64px; display: flex; align-items: center; padding: 0 23px 0 29px; border: 1px solid #8c6c3f80; border-radius: 34px; background: linear-gradient(115deg, #291e0c80, #0c0b09eb 60%); }
 .graph-legend { display: flex; align-items: center; gap: 29px; }
 .graph-legend > span { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 18px; color: #d4cfc3; }
 .graph-legend > span:first-child { color: #ffe4a2; }
