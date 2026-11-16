@@ -442,9 +442,11 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-09 .r-top-status > .r-icon-btn::before { content: ""; position: absolute; left: -22px; top: 9px; width: 1px; height: 26px; background: #8e7c6066; }
 .r-scene-09 .r-sidebar-avatar { left: 32px; bottom: 37px; }
 .r-scene-09 .r-sidebar-avatar .r-avatar { width: 54px; height: 56px; font-size: 24px; }
+.r-scene-10 { font-weight: 300; }
 .r-scene-10 .r-sidebar { left: 7px; width: 213px; top: 21px; bottom: 34px; border-radius: 20px; background: linear-gradient(115deg, #2b241b90, #1b1814ba); }
 .r-scene-10 .r-sidebar nav { top: 113px; left: 14px; right: 14px; gap: 5px; }
 .r-scene-10 .r-nav-item { height: 59px; padding: 0 18px; font-size: 22px; }
+.r-scene-10 .r-nav-item.r-selected { background: linear-gradient(120deg, #a2653188, #50321fa6); border-color: #ae7b4a77; box-shadow: inset 1px 1px 7px #f7c49212, -3px 0 15px #e49c550b; }
 .r-scene-10 .r-nav-separator { margin-top: 18px; }
 .r-scene-10 .r-nav-item.r-secondary { height: 56px; font-size: 21px; }
 .r-scene-10 .r-sidebar-avatar { left: 27px; bottom: 24px; }

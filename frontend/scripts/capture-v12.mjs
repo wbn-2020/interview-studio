@@ -2133,6 +2133,52 @@ try {
         checks.push({ check: 'follow-up-shell-geometry-search-brand-return', scene: scene.id, shell, passed: true, scope: 'fixed-reference-state-only' })
       }
       if (scene.id === '10') {
+        const listPresentation = await page.evaluate(() => {
+          const measure = selector => {
+            const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+            return { box: [box.x, box.y, box.width, box.height], weight: style.fontWeight, background: style.backgroundImage,
+              fontSize: style.fontSize, color: style.color, transform: style.transform, stroke: style.webkitTextStrokeWidth,
+              paddingInline: style.paddingInline, gap: style.gap, border: style.borderColor, shadow: style.boxShadow }
+          }
+          return Object.fromEntries(['.r-scene-10', '.r-nav-item.r-selected', '.kl-views button.r-active', '.kl-folders',
+            '.kl-table', '.kl-detail', '.kl-table tbody tr:first-child .r-pill', '.kl-table .r-pill.amber',
+            '.kl-excerpt', '.kl-tags', '.kl-tags .r-pill', '.kl-detail > .r-primary'].map(selector => [selector, measure(selector)]))
+        })
+        ensure(listPresentation['.r-scene-10'].weight === '300'
+          && listPresentation['.r-nav-item.r-selected'].background === 'linear-gradient(120deg, rgba(162, 101, 49, 0.533), rgba(80, 50, 31, 0.65))'
+          && listPresentation['.kl-views button.r-active'].background === 'linear-gradient(130deg, rgba(103, 65, 32, 0.66), rgba(62, 39, 24, 0.74))'
+          && listPresentation['.r-nav-item.r-selected'].border.startsWith('rgba(174, 123, 74,')
+          && ['247, 196, 146', '228, 156, 85', '7px', '15px'].every(value => listPresentation['.r-nav-item.r-selected'].shadow.includes(value))
+          && listPresentation['.kl-views button.r-active'].shadow.includes('156, 105, 59'), '10字重或两处选中底色、边框与阴影不符')
+        for (const [selector, expected] of [['.kl-folders', [232, 251, 248, 676]], ['.kl-table', [491, 251, 641, 676]], ['.kl-detail', [1144, 251, 373, 685]]]) {
+          ensure(listPresentation[selector].box.every((value, index) => Math.abs(value - expected[index]) < .1), '10三栏外框发生漂移：' + selector)
+        }
+        ensure(listPresentation['.kl-table tbody tr:first-child .r-pill'].transform === 'matrix(1, 0, 0, 1, 0, -4)'
+          && listPresentation['.kl-table tbody tr:first-child .r-pill'].box[1] >= 406
+          && listPresentation['.kl-table tbody tr:first-child .r-pill'].box[1] <= 408
+          && listPresentation['.kl-table .r-pill.amber'].fontSize === '18px'
+          && listPresentation['.kl-table .r-pill.amber'].paddingInline === '10px', '10表格主题标签尺寸或基线不符')
+        checks.push({ check: 'knowledge-list-selection-surfaces-column-geometry-topic-baseline', scene: scene.id, listPresentation, passed: true })
+        const detailCopy = await page.locator('.kl-detail').evaluate(detail => {
+          const excerpt = detail.querySelector('.kl-excerpt'), range = document.createRange(); range.selectNodeContents(excerpt)
+          return { title: detail.querySelector('h2').textContent, excerpt: excerpt.textContent, lines: range.getClientRects().length,
+            tags: [...detail.querySelectorAll('.kl-tags .r-pill')].map(node => node.textContent),
+            tagBoxes: [...detail.querySelectorAll('.kl-tags .r-pill')].map(node => node.getBoundingClientRect().toJSON()),
+            actions: [...detail.querySelectorAll(':scope > .r-btn')].map(node => node.textContent) }
+        })
+        ensure(detailCopy.title === '缓存更新失败时怎样定位'
+          && detailCopy.excerpt === '在分布式缓存场景中，更新失败往往不是单点问题，而是涉及多层原因。可以从以下几个方向进行排查：...'
+          && detailCopy.lines === 3 && JSON.stringify(detailCopy.tags) === JSON.stringify(['缓存', '分布式', '一致性'])
+          && JSON.stringify(detailCopy.actions) === JSON.stringify(['打开笔记', '创建回忆卡']), '10详情原文、三行摘要、概念或操作文案不符')
+        ensure(listPresentation['.kl-excerpt'].color === 'rgb(214, 207, 198)' && listPresentation['.kl-excerpt'].weight === '300'
+          && listPresentation['.kl-tags'].gap === '18px' && listPresentation['.kl-tags .r-pill'].paddingInline === '15px'
+          && listPresentation['.kl-detail > .r-primary'].weight === '500'
+          && listPresentation['.kl-detail > .r-primary'].stroke === '0.3px', '10详情摘要、标签间距或操作字重不符')
+        const [tagLeft, tagTop, tagWidth, tagHeight] = listPresentation['.kl-tags'].box
+        ensure(detailCopy.tagBoxes.every((box, index, boxes) => Math.abs(box.y - tagTop) < .1
+          && box.x >= tagLeft && box.right <= tagLeft + tagWidth && box.bottom <= tagTop + tagHeight
+          && (!index || Math.abs(box.x - boxes[index - 1].right - 18) < .1)), '10三个概念标签换行、重叠或越界')
+        checks.push({ check: 'knowledge-list-detail-copy-three-lines-tags-action-style', scene: scene.id, detailCopy, passed: true })
         const geometry = await page.locator('.kl-table').evaluate(table => {
           const headers = [...table.querySelectorAll('th')].map(cell => ({ text: cell.textContent, height: cell.getBoundingClientRect().height }))
           const titles = [...table.querySelectorAll('tbody td:first-child')].map(cell => {

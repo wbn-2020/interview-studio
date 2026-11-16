@@ -164,6 +164,7 @@ function endDrag(event: PointerEvent) {
 .kb-minimap { position: absolute; right: 22px; bottom: 21px; width: 258px; height: 167px; padding: 16px 18px; border-radius: 20px; border-color: #332a20; }.kb-minimap > div { border: 1px solid #4b4032; border-radius: 10px; height: 133px; background: #ffffff03; }.kb-minimap svg { width: 100%; height: 100%; }.kb-zoom { position: absolute; bottom: 21px; left: 715px; height: 59px; padding: 0 16px; border-color: #332a20; border-radius: 21px; gap: 16px; font-size: 18px; }.kb-zoom button { color: #b6aea2; }.kb-zoom button:nth-last-child(2) { border-left: 1px solid #3b3025 !important; padding-left: 15px !important; }
 .kl-heading { left: 33px; }
 .kl-heading p { font-size: 20px; }
+.kl-views button.r-active { background: linear-gradient(130deg, #674120a8, #3e2718bd); box-shadow: inset 0 0 0 1px #9c693b80; }
 .kl-actions { right: 26px; }
 .kl-actions .r-btn { width: 156px; font-size: 20px; border-radius: 20px; }
 .kl-actions .r-btn.r-primary { width: 173px; }
@@ -194,15 +195,18 @@ function endDrag(event: PointerEvent) {
 .kl-table .r-table tr.r-selected td:first-child { border-left-color: #ae7948; border-radius: 12px 0 0 12px; }
 .kl-table .r-table tr.r-selected td:last-child { border-right-color: #ae7948; border-radius: 0 12px 12px 0; }
 .kl-table .r-pill { font-size: 19.5px; }
+.kl-table tbody tr:first-child .r-pill { transform: translateY(-4px); }
+.kl-table .r-pill.amber { font-size: 18px; padding-inline: 10px; }
 .kl-detail { background: linear-gradient(180deg, #1b1713, #15120f 70%); }
 .kl-detail h2 { font-size: 27px; line-height: 39.2px; }
-.kl-excerpt { font-size: 18px; line-height: 36px !important; }
+.kl-excerpt { font-size: 18px; line-height: 36px !important; color: #d6cfc6; }
 .kl-detail h3 { font-size: 19px; }
-.kl-detail .kl-tags { margin-top: 18px !important; }
-.kl-tags .r-pill { line-height: 1.8; }
+.kl-detail .kl-tags { margin-top: 18px !important; gap: 18px !important; }
+.kl-tags .r-pill { line-height: 1.8; padding-inline: 15px; }
 .kl-detail .r-rule { margin-bottom: 24px; }
 .kl-backlinks { font-size: 19px; }
 .kl-detail > .r-btn { font-size: 20px; margin-top: 37px; }
+.kl-detail > .r-btn.r-primary { -webkit-text-stroke: .3px currentColor; }
 .kn-heading h1 { position: relative; top: 2px; font-weight: 500; -webkit-text-stroke: .6px currentColor; }
 .kn-heading p { margin-top: 13px; font-weight: 400; }
 .kn-actions button { font-weight: 400; }
