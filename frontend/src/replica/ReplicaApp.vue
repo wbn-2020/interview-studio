@@ -793,7 +793,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-25 .r-top-status .r-icon-btn { position: relative; }
 .r-scene-25 .r-top-status .r-icon-btn::before { content: ""; position: absolute; left: -21px; top: 7px; height: 30px; width: 1px; background: #ffffff16; }
 .r-scene-25 .r-top-status > .r-avatar { height: 53px; width: 49px; font-size: 25px; background: linear-gradient(125deg, #665c54, #49433d); }
-.r-scene-26 { will-change: transform; background: radial-gradient(ellipse at 0 63%, #402a193b, transparent 35%), #0b0a09; }
+.r-scene-26 { will-change: transform; font-weight: 300; background: radial-gradient(ellipse at 0 63%, #402a193b, transparent 35%), #0b0a09; }
 .r-scene-26::before { content: ""; position: absolute; left: 21px; right: 21px; top: 14px; height: 94px; border: 1px solid #5e514233; border-radius: 23px; background: linear-gradient(110deg, #10101044, #1e17113d); pointer-events: none; z-index: 1; }
 .r-scene-26 .r-sidebar { left: 21px; top: 130px; bottom: 27px; width: 201px; border-radius: 22px; z-index: 2; background: radial-gradient(ellipse at 0 65%, #3a281c70, transparent 80%), linear-gradient(115deg, #191818de, #181411ed); border-color: #62584b55; }
 .r-scene-26 .r-sidebar > a { position: fixed; top: 32px; left: 41px; width: 199px; height: 57px; display: flex; align-items: center; }

@@ -370,10 +370,10 @@ onMounted(drawHorizon)
 .utility-svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* 26：坐标均从原图 x 减去 224；行星为确定性程序绘制，缺少原始纹理素材。 */
-.recent-horizon { position: absolute; top: 0; left: 0; width: 1312px; height: 1024px; pointer-events: none; }
+.recent-horizon { position: absolute; top: 0; left: 0; width: 1312px; height: 1024px; pointer-events: none; mask-image: linear-gradient(90deg, transparent, #000 36%); }
 .recent-heading { position: absolute; top: 144px; left: 40px; }
-.recent-heading h1 { font-size: 54px; line-height: 1.3; font-weight: 500; color: #faf9f6; }
-.recent-heading p { margin-top: 5px; font-size: 22px; color: #d8c1aa; }
+.recent-heading h1 { font-size: 54px; line-height: 1.3; font-weight: 500; -webkit-text-stroke: .6px currentColor; color: #faf9f6; }
+.recent-heading p { margin-top: 5px; font-size: 22px; color: #d8c1aa; transform: translateY(4px); }
 .recent-actions { position: absolute; top: 196px; left: 970px; display: flex; gap: 20px; z-index: 2; }
 .recent-actions .utility-button { height: 55px; border-radius: 21px; }
 .recent-type-button { width: 161px; gap: 7px; padding: 0 12px !important; }
@@ -401,6 +401,7 @@ onMounted(drawHorizon)
 .recent-table-row.selected { border: 1px solid #ad7749 !important; border-right-color: #8a60383d !important; background: linear-gradient(120deg, #6a452b82, #37291d80) !important; border-radius: 15px; }
 .recent-table-row.selected::after { display: none; }
 .recent-table-row:hover { background-color: #ffffff05; }
+.recent-table-row .utility-tag { font-weight: 500; padding-inline: 13px; }
 .recent-object-name { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-weight: 400; }
 .recent-object-name .recent-pdf-name { font-size: 17px; }
 .recent-object-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 28px; border-radius: 6px; }
@@ -410,7 +411,7 @@ onMounted(drawHorizon)
 .recent-object-icon.red { color: #fff3ef; background: linear-gradient(135deg, #ff9082, #df413d); }
 .recent-visit-time { white-space: nowrap; }
 .recent-row-chevron { color: #aaa59d; }
-.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(115deg, #30231b45, transparent 70%), #1c1713; border-color: #81715a88; }
+.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(115deg, #30231b45, transparent 70%), #15120f; border-color: #81715a88; }
 .recent-detail-art { display: flex; align-items: center; justify-content: center; width: 94px; height: 94px; border: 1px solid #45728d7a; border-radius: 23px; color: #a7dcf5; background: linear-gradient(130deg, #35566a, #293f4c); }
 .recent-detail-art.purple { color: #cc9cf5; background: #392a4a; border-color: #6b4b86; }
 .recent-detail-art.indigo { color: #c6d4ff; background: #303e70; border-color: #4f6097; }
@@ -425,6 +426,7 @@ onMounted(drawHorizon)
 .recent-state-box .utility-tag { padding: 2px 4px; background: #25403753; font-size: 22px; font-weight: 400; }
 .recent-learning-note { display: flex; align-items: center; gap: 9px; height: 55px; margin: 16px -6px 0 !important; padding: 0 15px; border: 1px solid #ffffff04; border-radius: 15px; font-size: 19px; white-space: nowrap; }
 .recent-open { width: 265px; margin: 23px -6px 0; font-weight: 500; }
+.utility-scene-26 .recent-open { font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; transform: translateY(2px); }
 .recent-open .r-icon { fill: #86552a; color: #86552a; }
 .recent-version-note { display: flex; align-items: center; gap: 8px; height: 46px; margin: 16px -6px 0 !important; padding: 0 9px; border: 1px solid #ffffff07; border-radius: 15px; font-size: 17px; white-space: nowrap; color: #aba195; }
 

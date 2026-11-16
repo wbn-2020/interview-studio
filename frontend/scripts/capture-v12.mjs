@@ -2534,6 +2534,38 @@ try {
           && await page.locator('.recent-table-row.selected .recent-object-name').innerText() === '缓存一致性'
           && await page.locator('.recent-detail h2').innerText() === '缓存一致性', '26初始选择或可访问开关不符')
         checks.push({ check: 'recent-five-rows-counts-single-line-shell-fixed-canvas-geometry', scene: scene.id, layout, passed: true })
+        const recentType = await page.evaluate(() => Object.fromEntries([
+          '.r-scene-26', '.recent-heading h1', '.recent-heading p', '.recent-table-row .utility-tag', '.recent-open',
+        ].map(selector => {
+          const s = getComputedStyle(document.querySelector(selector))
+          return [selector, { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth,
+            transform: s.transform, padding: s.paddingLeft }]
+        })))
+        ensure(recentType['.r-scene-26'].weight === '300'
+          && recentType['.recent-heading h1'].weight === '500' && recentType['.recent-heading h1'].size === '54px'
+          && recentType['.recent-heading h1'].stroke === '0.6px'
+          && recentType['.recent-heading p'].transform === 'matrix(1, 0, 0, 1, 0, 4)'
+          && recentType['.recent-table-row .utility-tag'].weight === '500'
+          && recentType['.recent-table-row .utility-tag'].padding === '13px'
+          && recentType['.recent-open'].weight === '500' && recentType['.recent-open'].stroke === '0.3px'
+          && recentType['.recent-open'].transform === 'matrix(1, 0, 0, 1, 0, 2)',
+        '26正文字重、标题描边、说明基线、标签内距或打开按钮样式不符')
+        checks.push({ check: 'recent-copy-heading-subtitle-tags-open-typography-baselines', scene: scene.id, recentType, passed: true })
+        const recentSurface = await page.evaluate(() => {
+          const canvas = document.querySelector('.recent-horizon'), detail = document.querySelector('.recent-detail')
+          const open = document.querySelector('.recent-open').getBoundingClientRect()
+          const tag = document.querySelector('.recent-table-row .utility-tag').getBoundingClientRect()
+          return { mask: getComputedStyle(canvas).maskImage, detailColor: getComputedStyle(detail).backgroundColor,
+            columns: getComputedStyle(document.querySelector('.recent-table-row')).gridTemplateColumns,
+            open: [open.x, open.y, open.width, open.height], tag: [tag.x, tag.y, tag.width, tag.height] }
+        })
+        ensure(recentSurface.mask === 'linear-gradient(90deg, rgba(0, 0, 0, 0), rgb(0, 0, 0) 36%)'
+          && recentSurface.detailColor === 'rgb(21, 18, 15)'
+          && recentSurface.columns === '260px 118px 160px 109px 19px'
+          && JSON.stringify(recentSurface.open) === '[1225,758,265,57]'
+          && recentSurface.tag.every((v, i) => Math.abs(v - [748,379.59375,64,42.296875][i]) < .02),
+        '26地平线渐隐、详情底色、列宽、标签或打开按钮几何不符')
+        checks.push({ check: 'recent-horizon-mask-detail-surface-tag-and-open-geometry', scene: scene.id, recentSurface, passed: true })
         const writes = []
         const onWrite = request => {
           if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method())
