@@ -1989,6 +1989,51 @@ try {
         ensure((await candidate.locator('.candidate-badge').textContent()).trim() === '候选', '18初态不是候选')
         const evidence = candidate.locator('.candidate-evidence span')
         ensure(await evidence.evaluate(node => node.scrollWidth <= node.clientWidth), '18依据文字被额外截断')
+        const typography = await page.evaluate(() => {
+          const selectors = ['.r-scene-18', '.follow-title h1', '.follow-title h1 > span', '.follow-original p',
+            '.follow-original h2', '.follow-candidate h2', '.follow-candidate h3', '.candidate-actions .ts-button', '.follow-end.ts-button']
+          const styles = Object.fromEntries(selectors.map(selector => {
+            const s = getComputedStyle(document.querySelector(selector))
+            return [selector, { size: s.fontSize, weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, transform: s.transform, willChange: s.willChange }]
+          }))
+          const node = document.querySelector('.follow-candidate h3'), walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Map()
+          let text
+          while ((text = walker.nextNode())) for (let i = 0; i < text.length; i++) {
+            const range = document.createRange(); range.setStart(text, i); range.setEnd(text, i + 1)
+            const y = range.getBoundingClientRect().y
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[i])
+          }
+          return { styles, questionLines: [...rows.values()] }
+        })
+        const styles18 = typography.styles
+        ensure(styles18['.r-scene-18'].weight === '300' && styles18['.r-scene-18'].willChange === 'transform'
+          && styles18['.follow-title h1'].size === '32px' && styles18['.follow-title h1 > span'].weight === '400'
+          && styles18['.follow-original p'].size === '23.5px' && styles18['.follow-original p'].weight === '300'
+          && styles18['.follow-original p'].transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && ['.follow-title h1', '.follow-original h2', '.follow-candidate h2', '.follow-candidate h3', '.candidate-actions .ts-button', '.follow-end.ts-button']
+            .every(selector => styles18[selector].weight === '500' && styles18[selector].stroke === '0.3px')
+          && JSON.stringify(typography.questionLines) === JSON.stringify(['如果补偿请求也超时，你如何判断', '是否应该继续重试？']), '18字重、标题字号、正文基线或追问两行不符')
+        checks.push({ check: 'follow-up-typography-body-baseline-question-lines', scene: scene.id, typography, passed: true })
+        const layout = await page.evaluate(() => {
+          const selectors = ['.follow-original', '.follow-candidate', '.follow-candidate h3', '.candidate-evidence', '.candidate-actions']
+          const boxes = Object.fromEntries(selectors.map(selector => {
+            const b = document.querySelector(selector).getBoundingClientRect()
+            return [selector, [b.x, b.y, b.width, b.height]]
+          }))
+          const evidence = getComputedStyle(document.querySelector('.candidate-evidence'))
+          const action = getComputedStyle(document.querySelector('.candidate-actions'))
+          const primary = getComputedStyle(document.querySelector('.candidate-actions .primary'))
+          return { boxes, evidencePadding: evidence.paddingLeft, actionsMargin: action.marginTop,
+            primaryFlex: primary.flexGrow, primaryBackground: primary.backgroundImage }
+        })
+        ensure(Object.entries({
+          '.follow-original': [253, 195, 695, 713], '.follow-candidate': [961, 195, 552, 713],
+          '.follow-candidate h3': [998, 300.796875, 485, 94], '.candidate-evidence': [990, 425.796875, 496, 83],
+          '.candidate-actions': [990, 620.390625, 496, 71],
+        }).every(([selector, box]) => box.every((n, i) => Math.abs(layout.boxes[selector][i] - n) < .02))
+          && layout.evidencePadding === '24px' && layout.actionsMargin === '47px' && layout.primaryFlex === '1.05'
+          && layout.primaryBackground === 'linear-gradient(120deg, rgb(239, 191, 142), rgb(195, 137, 82) 75%, rgb(189, 130, 76))', '18两栏、引用条、追问位置或按钮几何／渐变不符')
+        checks.push({ check: 'follow-up-panels-evidence-actions-geometry-gradient', scene: scene.id, layout, passed: true })
         await candidate.getByRole('button', { name: '依据：原答第 2 段 — 补偿失败后再次确认...', exact: true }).click()
         ensure(await original.locator('.original-second.located').count() === 1, '18依据未定位第2段')
         await candidate.getByRole('button', { name: '作为正式追问', exact: true }).click()

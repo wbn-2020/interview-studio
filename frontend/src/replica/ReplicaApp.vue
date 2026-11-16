@@ -600,6 +600,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-17 .r-sidebar-avatar { left: 22px; bottom: 18px; }
 .r-scene-17 .r-sidebar-avatar .r-avatar { width: 45px; height: 47px; font-size: 24px; background: linear-gradient(120deg, #806f61, #5e5044); }
 .r-scene-17 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -25px; width: 166px; height: 1px; background: #7c69564d; }
+.r-scene-18 { will-change: transform; font-weight: 300; }
 .r-scene-18 .r-sidebar { top: 8px; bottom: 8px; width: 229px; border-radius: 22px; background: linear-gradient(150deg, #171411, #241b13); border-color: #342b22; }
 .r-scene-18 .r-sidebar nav { top: 159px; left: 17px; right: 18px; gap: 3px; }
 .r-scene-18 .r-nav-item { height: 59px; padding-left: 16px; }
