@@ -491,11 +491,11 @@ watch(() => props.scene, () => {
 .ts-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 8px 20px; border: 1px solid #453c32 !important; border-radius: 17px; background: linear-gradient(125deg, #29251f9c, #211d18b5) !important; white-space: nowrap; line-height: 1.3; }
 .ts-button.primary { color: #241407; background: linear-gradient(135deg, #f3c28d, #dfaa73 45%, #b77d4d) !important; border-color: #edbd89 !important; font-weight: 600; }
 .ts-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
-.bank-title { position: absolute; left: 24px; top: 95px; }
-.bank-title h1 { font-size: 44px; line-height: 1.25; }
+.bank-title { position: absolute; left: 24px; top: 97px; }
+.bank-title h1 { font-size: 43px; line-height: 1.25; font-weight: 500; -webkit-text-stroke: .5px currentColor; }
 .bank-tabs { position: absolute; top: 162px; left: 20px; display: flex; width: 310px; height: 47px; border-radius: 13px; background: #18161382; }
 .bank-tabs button { flex: 1; color: #ded9d3; font-size: 21px; border-radius: 13px; }
-.bank-tabs button.active { position: relative; color: #fff3e4; font-weight: 600; background: linear-gradient(#3a3128a1, #332b2380); }
+.bank-tabs button.active { position: relative; color: #fff3e4; font-weight: 500; -webkit-text-stroke: .2px currentColor; background: linear-gradient(#3a3128a1, #332b2380); }
 .bank-tabs button.active { flex: 0 0 100px; }
 .bank-tabs button.active::after { content: ''; position: absolute; bottom: 0; left: 6px; right: 6px; height: 2px; background: #e6ab72; box-shadow: 0 0 7px #d7965266; }
 .bank-tools { position: absolute; top: 112px; right: 30px; display: flex; gap: 13px; align-items: center; }
@@ -510,6 +510,7 @@ watch(() => props.scene, () => {
 .bank-filter-group:nth-child(3) { padding-top: 6px; margin-top: -11px; margin-bottom: 15px; border-top: 1px solid #ffffff08; }
 .bank-filter-group:nth-child(4) { margin-bottom: 0; }
 .filter-heading { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 19px !important; font-weight: 600; line-height: 28px; }
+.scene-14 .filter-heading { font-weight: 500; -webkit-text-stroke: .2px currentColor; }
 .filter-heading .r-icon { color: #8a8279; }
 .filter-options { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
 .bank-filter-group:nth-child(3) .filter-options, .bank-filter-group:nth-child(4) .filter-options { gap: 1px; }
@@ -547,27 +548,29 @@ watch(() => props.scene, () => {
 .standard-badge.unreviewed { background: #ffffff13; color: #e8e4df; }
 .bank-list .empty-row { color: #aaa49b; text-align: center; height: 100px; }
 .bank-detail { left: 934px; top: 230px; width: 350px; height: 614px; padding: 16px 19px; border-radius: 14px; }
-.bank-detail h2 { max-width: 300px; font-size: 28px; line-height: 1.3; font-weight: 600; min-height: 76px; }
-.bank-tags { display: flex; gap: 7px; margin-top: 12px; margin-bottom: 24px; }
-.bank-tags span { font-size: 16px; padding: 4px 12px; line-height: 24px; border-radius: 15px; background: #ffffff0b; }
+.bank-detail h2 { max-width: 300px; font-size: 28px; line-height: 1.3; font-weight: 500; -webkit-text-stroke: .25px currentColor; min-height: 76px; }
+.bank-tags { display: flex; gap: 8px; margin-top: 12px; margin-bottom: 24px; }
+.bank-tags span { font-size: 16px; padding: 4px 13px; line-height: 24px; border-radius: 15px; background: #ffffff0b; }
 .bank-tags span:first-child { background: #68452278; }
-.bank-detail h3 { font-size: 20px; margin-top: 14px; margin-bottom: 3px; }
-.bank-detail p { font-size: 16px; line-height: 1.55; }
+.bank-detail h3 { font-size: 20px; font-weight: 500; -webkit-text-stroke: .2px currentColor; margin-top: 14px; margin-bottom: 3px; }
+.bank-detail p { position: relative; top: 4px; font-size: 16px; line-height: 1.55; }
 .scene-14 .bank-condition, .scene-14 .bank-hidden-answer { font-size: 16px; }
 .scene-14 .bank-start, .scene-14 .bank-add { font-size: 17px; }
 .bank-condition { position: absolute; left: 18px; right: 18px; top: 381px; height: 46px; min-height: 0; justify-content: flex-start; gap: 7px; padding: 6px 10px; border-radius: 11px; font-size: 16px; }
+.bank-condition > .r-icon:first-child { fill: currentColor; stroke-width: 0; }
 .bank-condition > .r-icon:last-child { margin-left: auto; }
 .bank-hidden-answer { position: absolute; left: 18px; right: 18px; top: 439px; height: 45px; min-height: 0; justify-content: flex-start; padding: 6px 14px; border-radius: 11px; color: #928b81 !important; font-size: 16px; }
 .bank-hidden-answer span { display: flex; gap: 7px; align-items: center; margin-left: 45px; }
 .bank-start { position: absolute; left: 18px; right: 18px; top: 498px; height: 44px; min-height: 0; border-radius: 12px; font-size: 17px; font-weight: 500 !important; }
-.bank-start .r-icon { fill: #68431d; }
+.bank-start .r-icon { fill: #68431d; stroke-width: 0; }
+.scene-14 .bank-tools .primary, .scene-14 .bank-start { background: linear-gradient(180deg, #eebc8b, #d29a68 55%, #b17d51) !important; }
 .bank-add { position: absolute; left: 18px; right: 18px; top: 553px; height: 43px; min-height: 0; border-color: #dda36b !important; border-radius: 12px; font-size: 17px; }
 .bank-unknown { display: flex; gap: 10px; color: #aaa299; font-size: 17px; margin-top: 40px; }
 .bank-route { left: 934px; top: 842px; width: 350px; height: 138px; border-radius: 15px; padding: 12px 29px; background: #1b1815; }
 .bank-route::before { content: ''; position: absolute; inset: 0 10px 1px; border: 1px solid #4c40323d; border-radius: 18px; background: linear-gradient(120deg, #2b251ed6, #29231dd0); pointer-events: none; }
 .bank-route > * { position: relative; }
 .bank-route-head { display: flex; width: 100%; align-items: center; gap: 7px; white-space: nowrap; }
-.bank-route-head strong { font-size: 18px; }
+.bank-route-head strong { font-size: 18px; font-weight: 500; -webkit-text-stroke: .2px currentColor; }
 .bank-route-head span { font-size: 16px; color: #c5beb5; }
 .bank-route-head .r-icon { margin-left: auto; color: #c5beb5; }
 .bank-route ol { position: relative; list-style: none; padding: 6px 0 0 33px; margin: 0; font-size: 16px; line-height: 25px; }

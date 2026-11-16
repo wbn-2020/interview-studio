@@ -1048,6 +1048,52 @@ try {
           && Math.abs(geometry.separator?.[1] - 513) <= 1 && geometry.brandPaths === 2 && geometry.briefcasePaths === 2,
           '14面板、工具组、侧栏分隔或专用图标几何不符')
         checks.push({ check: 'question-bank-five-rows-columns-title-lines-shell-tools-geometry', scene: scene.id, geometry, passed: true })
+        const bankStyle = await page.evaluate(() => {
+          const selectors = ['.r-scene-14', '.r-nav-item', '.bank-title h1', '.bank-tabs button.active', '.filter-heading',
+            '.bank-list td', '.bank-detail h2', '.bank-detail h3', '.bank-detail p', '.bank-route-head strong',
+            '.bank-tools .primary', '.bank-start', '.bank-condition .r-icon:first-child', '.bank-condition .r-icon:last-child', '.bank-start .r-icon']
+          return Object.fromEntries(selectors.map(selector => {
+            const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+            return [selector, { box: [box.x, box.y, box.width, box.height], weight: style.fontWeight, size: style.fontSize,
+              stroke: style.webkitTextStrokeWidth, svgStroke: style.strokeWidth, fill: style.fill, background: style.backgroundImage }]
+          }))
+        })
+        ensure(bankStyle['.r-scene-14'].weight === '400' && bankStyle['.r-nav-item'].weight === '300'
+          && bankStyle['.bank-list td'].weight === '400' && bankStyle['.bank-detail p'].weight === '400'
+          && bankStyle['.bank-title h1'].size === '43px' && closeBox(bankStyle['.bank-title h1'].box, [254, 97, 86, 53.75])
+          && bankStyle['.bank-title h1'].stroke === '0.5px'
+          && ['.bank-title h1', '.bank-tabs button.active', '.filter-heading', '.bank-detail h2', '.bank-detail h3', '.bank-route-head strong']
+            .every(selector => bankStyle[selector].weight === '500'), '14导航、正文或标题视觉重量及主标题基线不符')
+        ensure(['.bank-tools .primary', '.bank-start'].every(selector => bankStyle[selector].background
+          === 'linear-gradient(rgb(238, 188, 139), rgb(210, 154, 104) 55%, rgb(177, 125, 81))')
+          && bankStyle['.bank-condition .r-icon:first-child'].fill === 'rgb(244, 240, 233)'
+          && bankStyle['.bank-start .r-icon'].fill === 'rgb(104, 67, 29)'
+          && ['.bank-condition .r-icon:first-child', '.bank-start .r-icon'].every(selector => bankStyle[selector].svgStroke === '0px')
+          && bankStyle['.bank-condition .r-icon:last-child'].fill === 'none', '14按钮纵向渐变或播放三角及空心箭头不符')
+        checks.push({ check: 'question-bank-reviewed-type-baseline-button-gradients-and-solid-play', scene: scene.id, styles: bankStyle, passed: true })
+        const bankCopy = await page.evaluate(() => {
+          const paragraphs = [...document.querySelectorAll('.bank-detail p')].map(node => {
+            const range = document.createRange(); range.selectNodeContents(node)
+            return { text: node.textContent, lines: [...range.getClientRects()].map(box => [box.x, box.y, box.width, box.height]),
+              top: getComputedStyle(node).top }
+          })
+          const container = document.querySelector('.bank-tags'), boundary = container.getBoundingClientRect()
+          return { paragraphs, gap: getComputedStyle(container).gap, boundary: [boundary.x, boundary.y, boundary.width, boundary.height],
+            tags: [...container.children].map(node => { const box = node.getBoundingClientRect(); return { text: node.textContent,
+              box: [box.x, box.y, box.width, box.height], padding: getComputedStyle(node).paddingInline } }) }
+        })
+        ensure(bankCopy.paragraphs.length === 2
+          && bankCopy.paragraphs[0].text === '在分布式系统中，缓存删除失败可能导致数据不一致，请分析可能的原因，并给出恢复方案。'
+          && bankCopy.paragraphs[1].text === '能够从一致性、可用性、可观测性等角度，给出完整的分析与解决思路。'
+          && bankCopy.paragraphs[0].lines.length === 3 && bankCopy.paragraphs[1].lines.length === 2
+          && bankCopy.paragraphs.every(item => item.top === '4px') && closeBox(bankStyle['.bank-detail p'].box, [1184, 427, 310, 74.390625]),
+          '14右栏原文、三行题干／两行要求或正文基线不符')
+        ensure(bankCopy.gap === '8px' && JSON.stringify(bankCopy.tags.map(item => item.text)) === JSON.stringify(['分布式', '缓存', '故障恢复'])
+          && bankCopy.tags.every((item, index) => item.padding === '13px' && item.box[1] === 335 && item.box[3] === 32
+            && item.box[0] >= bankCopy.boundary[0] && item.box[0] + item.box[2] <= bankCopy.boundary[0] + bankCopy.boundary[2]
+            && (index === 0 || item.box[0] - bankCopy.tags[index - 1].box[0] - bankCopy.tags[index - 1].box[2] === 8)),
+          '14三标签间距、内距、同行或边界不符')
+        checks.push({ check: 'question-bank-original-paragraph-lines-and-tag-spacing-boundaries', scene: scene.id, copy: bankCopy, passed: true })
         const search = page.getByRole('textbox', { name: '搜索题目', exact: true })
         await search.fill('ThreadLocal')
         ensure(await rows.count() === 1 && (await rows.first().textContent()).includes('ThreadLocal'), '14标题搜索未筛选')
