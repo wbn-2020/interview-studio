@@ -222,10 +222,10 @@ function endDrag(event: PointerEvent) {
 .kd-left .kd-definition { height: 218px; margin-bottom: 13px; padding-top: 14px; }
 .kd-definition h3 { gap: 15px; }
 .kd-left p { font-size: 19.5px; line-height: 35px; margin-top: 7px; }
-.kd-definition p { position: relative; left: 1px; height: 146px; margin-top: 10px; padding: 0 10px 8px 0; overflow-y: scroll; overscroll-behavior: contain; }
+.kd-definition p { position: relative; left: 1px; top: -9px; width: 662px; height: 150px; margin-top: 10px; padding: 9px 10px 8px 0; overflow-y: scroll; overscroll-behavior: contain; }
 .kd-definition p::-webkit-scrollbar { width: 5px; }
 .kd-definition p::-webkit-scrollbar-track { background: transparent; }
-.kd-definition p::-webkit-scrollbar-thumb { border-radius: 5px; background: #82776b66; }
+.kd-definition p::-webkit-scrollbar-thumb { border-radius: 5px; background: #82776f5c; }
 .kd-left .kd-main-note { height: 138px; margin-bottom: 12px; }
 .kd-main-note p { position: relative; left: 1px; margin-top: 5px; line-height: 33px; }
 .kd-main-note .r-pill { width: 153px; height: 35px; bottom: 10px; font-size: 17px; padding: 0; }

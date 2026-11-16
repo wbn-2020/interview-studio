@@ -84,7 +84,8 @@ const results = [], checks = [], failures = []
 let browser
 const startedAt = new Date().toISOString()
 try {
-  browser = await chromium.launch({ headless: true, ...(values.channel === 'chromium' ? {} : { channel: values.channel }),
+  // 参考图包含原生滚动条，移除无头浏览器默认的隐藏参数才能记录真实控件。
+  browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'], ...(values.channel === 'chromium' ? {} : { channel: values.channel }),
     args: ['--force-color-profile=srgb', '--force-device-scale-factor=1', '--disable-gpu'] })
   const context = await browser.newContext({ viewport: { width: 1536, height: 1024 }, deviceScaleFactor: 1,
     colorScheme: 'dark', reducedMotion: 'reduce', ignoreHTTPSErrors: values['allow-self-signed'] })
@@ -1991,7 +1992,7 @@ try {
           && detailTypography.path.weight === '500' && detailTypography.path.stroke === '0.15px'
           && detailTypography.action.weight === '400' && detailTypography.selected.weight === '500'
           && detailTypography.evidence.weight === '400' && detailTypography.evidence.stroke === '0.05px', '12标题、正文或操作字重不符')
-        ensure(JSON.stringify(detailTypography.definition.box) === '[270,286,648,146]'
+        ensure(JSON.stringify(detailTypography.definition.box) === '[270,277,662,150]'
           && JSON.stringify(detailTypography.note.box) === '[270,514,648,66]' && detailTypography.note.line === '33px'
           && JSON.stringify(detailTypography.open.box) === '[763,552,153,35]' && detailTypography.open.size === '17px'
           && detailTypography.date.weight === '400' && detailTypography.date.box[1] === 949, '12正文、笔记入口或日期基线不符')
@@ -2000,6 +2001,17 @@ try {
           && detailTypography.rows[2].border === 'rgba(0, 0, 0, 0)'
           && JSON.stringify(detailTypography.footer.box) === '[988,841,496,48]', '12证据累计行高或底部分隔线不符')
         checks.push({ check: 'detail-typography-copy-baselines-note-link-evidence-row-rhythm', scene: scene.id, detailTypography, passed: true })
+        const scrollbarPixels = [...await sharp(captured).toColourspace('srgb')
+          .extract({ left: 927, top: 300, width: 5, height: 1 }).removeAlpha().raw().toBuffer()]
+        ensure(scrollbarPixels.length === 15 && scrollbarPixels.every((value, index) =>
+          index % 3 === 0 ? value > 55 && value < 80 : index % 3 === 1 ? value > 48 && value < 70 : value > 44 && value < 65), '12原生滚动条未在实际截图中绘出')
+        await definitionScroll.focus()
+        await definitionScroll.press('End')
+        await page.waitForFunction(() => document.querySelector('.kd-definition p').scrollTop > 0)
+        await definitionScroll.press('Home')
+        await page.waitForFunction(() => document.querySelector('.kd-definition p').scrollTop === 0)
+        await definitionScroll.evaluate(node => node.blur())
+        checks.push({ check: 'detail-native-scrollbar-visible-pixels-and-keyboard', scene: scene.id, scrollbarPixels, passed: true })
         const paragraphs = await page.locator('.kd-definition p, .kd-main-note p').evaluateAll(nodes => nodes.map(node => {
           const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), lines = new Map()
           while (walker.nextNode()) {
@@ -2866,6 +2878,13 @@ try {
         screenshotSha256: hash(png), referenceSha256: hash(await fs.readFile(path.join(values.references, scene.file))),
         stable: true, refreshRestored: true, pageErrors, resourcesChecked: resourceTasks.length,
         measuredViewport,
+        nativeScrollAreas: await page.evaluate(() => [...document.querySelectorAll('.r-canvas *')].flatMap(node => {
+          const s = getComputedStyle(node), b = node.getBoundingClientRect()
+          return b.width && b.height && ((/^(auto|scroll)$/.test(s.overflowY) && node.scrollHeight > node.clientHeight)
+            || (/^(auto|scroll)$/.test(s.overflowX) && node.scrollWidth > node.clientWidth))
+            ? [{ tag: node.tagName, className: String(node.className), box: [b.x, b.y, b.width, b.height],
+              clientWidth: node.clientWidth, clientHeight: node.clientHeight, scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight }] : []
+        })),
         interactionStatus: interactionError ? '失败' : checks.some(check => check.scene === scene.id && check.passed) ? '本页已配置交互检查通过' : '仅初态与刷新检查通过', interactionError,
         comparison: { pixelExact: differentPixels === 0, differentPixels, pixelsOver10, meanAbsoluteChannelError: absoluteError / actual.length },
         visualReview: '待人工逐页复核；差异数值不替代视觉与完整交互验收' }
@@ -2895,7 +2914,8 @@ try {
 } finally {
   try { await browser?.close() } catch (error) { failures.push({ error: `浏览器关闭失败：${error.message}` }); process.exitCode = 1 }
   await writeJson(path.join(values.output, 'results.json'), { startedAt, finishedAt: new Date().toISOString(), baseUrl: base.origin,
-    candidateInputSha256: manifest.inputSha256, expected: selectedScenes.length, referenceCount: 30, captured: results.length, checks, failures,
+    candidateInputSha256: manifest.inputSha256, browserConfiguration: { channel: values.channel, headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] },
+    expected: selectedScenes.length, referenceCount: 30, captured: results.length, checks, failures,
     status: results.length === selectedScenes.length && !failures.length ? '本次范围截图与自动检查完成，待人工逐页复核' : '本次范围取证未完成',
     scenes: results })
 }
