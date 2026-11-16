@@ -2144,7 +2144,7 @@ try {
             '.kl-table', '.kl-detail', '.kl-table tbody tr:first-child .r-pill', '.kl-table .r-pill.amber',
             '.kl-excerpt', '.kl-tags', '.kl-tags .r-pill', '.kl-detail > .r-primary'].map(selector => [selector, measure(selector)]))
         })
-        ensure(listPresentation['.r-scene-10'].weight === '300'
+        ensure(listPresentation['.r-scene-10'].weight === '400'
           && listPresentation['.r-nav-item.r-selected'].background === 'linear-gradient(120deg, rgba(162, 101, 49, 0.533), rgba(80, 50, 31, 0.65))'
           && listPresentation['.kl-views button.r-active'].background === 'linear-gradient(130deg, rgba(103, 65, 32, 0.66), rgba(62, 39, 24, 0.74))'
           && listPresentation['.r-nav-item.r-selected'].border.startsWith('rgba(174, 123, 74,')
@@ -2170,7 +2170,7 @@ try {
           && detailCopy.excerpt === '在分布式缓存场景中，更新失败往往不是单点问题，而是涉及多层原因。可以从以下几个方向进行排查：...'
           && detailCopy.lines === 3 && JSON.stringify(detailCopy.tags) === JSON.stringify(['缓存', '分布式', '一致性'])
           && JSON.stringify(detailCopy.actions) === JSON.stringify(['打开笔记', '创建回忆卡']), '10详情原文、三行摘要、概念或操作文案不符')
-        ensure(listPresentation['.kl-excerpt'].color === 'rgb(214, 207, 198)' && listPresentation['.kl-excerpt'].weight === '300'
+        ensure(listPresentation['.kl-excerpt'].color === 'rgb(214, 207, 198)' && listPresentation['.kl-excerpt'].weight === '400'
           && listPresentation['.kl-tags'].gap === '18px' && listPresentation['.kl-tags .r-pill'].paddingInline === '15px'
           && listPresentation['.kl-detail > .r-primary'].weight === '500'
           && listPresentation['.kl-detail > .r-primary'].stroke === '0.3px', '10详情摘要、标签间距或操作字重不符')
