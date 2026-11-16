@@ -409,19 +409,27 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-08 .r-saved svg { width: 27px; height: 27px; padding: 5px; color: #06341b; fill: none; background: linear-gradient(115deg, #68c88b, #3c985c); }
 .r-scene-08 .r-top-status > .r-avatar { width: 51px; height: 53px; font-size: 24px; margin-left: -18px; background: linear-gradient(120deg, #997b74, #715b58); border-color: #ab918955; }
 .r-scene-08 .r-top-status .r-icon-btn { color: #f2e9de; }
-.r-scene-09 .r-sidebar { top: 92px; bottom: 1px; width: 118px; }
+.r-scene-09 { will-change: transform; font-weight: 300; }
+.r-scene-09 .r-sidebar { top: 92px; bottom: 1px; width: 117px; }
 .r-scene-09 .r-sidebar .r-brand { position: fixed; left: 30px; top: 23px; gap: 10px; }
-.r-scene-09 .r-sidebar .r-brand-word { font-size: 26px; }
+.r-scene-09 .r-sidebar :deep(.r-brand-word) { font-size: 26px; line-height: 31px; font-weight: 500; }
 .r-scene-09 .r-sidebar nav { top: 40px; left: 13px; right: 13px; gap: 9px; }
 .r-scene-09 .r-nav-item { height: 91px; flex-direction: column; justify-content: center; gap: 3px; padding: 0; font-size: 21px; border-radius: 18px; }
 .r-scene-09 .r-nav-item.r-selected { height: 83px; margin-bottom: 8px; background: linear-gradient(120deg,#a77a36,#80541f); }
 .r-scene-09::before { content: ""; position: absolute; left: 0; top: 0; width: 248px; height: 93px; border: 1px solid #5d503233; border-radius: 26px 0 0; pointer-events: none; }
 .r-scene-09::after { content: ""; position: absolute; left: 248px; right: 0; top: 92px; border-top: 1px solid #5d503226; pointer-events: none; }
-.r-scene-09 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; }
-.r-scene-09 .r-topbar { left: 280px; top: 14px; height: 70px; }
-.r-scene-09 .r-top-search { left: 336px !important; top: 11px; height: 49px; }
-.r-scene-09 .r-breadcrumb { font-size: 19px; }
-.r-scene-09 .r-sidebar-avatar { left: 30px; bottom: 37px; }
+.r-scene-09 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 16px; line-height: 22px; }
+.r-scene-09 .r-topbar { left: 280px; top: 14px; right: 36px; height: 70px; }
+.r-scene-09 .r-top-search { left: 336px !important; top: 11px; height: 49px; font-size: 18px; }
+.r-scene-09 .r-breadcrumb { font-size: 19px; gap: 22px; }
+.r-scene-09 .r-top-status { gap: 21px; }
+.r-scene-09 .r-saved { margin-right: 23px; }
+.r-scene-09 .r-saved svg { color: #fff7e7; fill: none; background: linear-gradient(130deg, #71be8b, #398557); }
+.r-scene-09 .r-top-status > .r-avatar { width: 49px; height: 51px; font-size: 24px; background: linear-gradient(120deg, #776956, #4e4438); }
+.r-scene-09 .r-top-status > .r-icon-btn { position: relative; }
+.r-scene-09 .r-top-status > .r-icon-btn::before { content: ""; position: absolute; left: -22px; top: 9px; width: 1px; height: 26px; background: #8e7c6066; }
+.r-scene-09 .r-sidebar-avatar { left: 32px; bottom: 37px; }
+.r-scene-09 .r-sidebar-avatar .r-avatar { width: 54px; height: 56px; font-size: 24px; }
 .r-scene-10 .r-sidebar { left: 7px; width: 213px; top: 21px; bottom: 34px; border-radius: 20px; background: linear-gradient(115deg, #2b241b90, #1b1814ba); }
 .r-scene-10 .r-sidebar nav { top: 113px; left: 14px; right: 14px; gap: 5px; }
 .r-scene-10 .r-nav-item { height: 59px; padding: 0 18px; font-size: 22px; }

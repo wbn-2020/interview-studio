@@ -2730,6 +2730,78 @@ try {
           businessWrites: writes, limitations: '固定偏好仅当前组件内存；不导出实际数据，不替代正式设置修订、持久保存或完整视觉验收；原字体与品牌素材缺失' })
       }
       if (scene.id === '09') {
+          const graphLayout = await page.evaluate(() => {
+            const box = selector => {
+              const r = document.querySelector(selector).getBoundingClientRect()
+              return [r.x, r.y, r.width, r.height]
+            }
+            const p = document.querySelector('.graph-definition p'), text = p.firstChild, lines = new Map()
+            for (let i = 0; i < text.length; i++) {
+              const range = document.createRange(); range.setStart(text, i); range.setEnd(text, i + 1)
+              const y = range.getBoundingClientRect().y
+              lines.set(y, (lines.get(y) ?? '') + text.textContent[i])
+            }
+            return {
+              lines: [...lines.values()], detail: box('.graph-detail'), tabs: box('.graph-detail-tabs'),
+              definition: box('.graph-definition'), notes: box('.graph-core-notes'),
+              evidence: box('.graph-evidence > button'), candidateToggle: box('.graph-candidate-toggle'),
+              labels: [...document.querySelectorAll('.graph-node-label text')].map(node => node.textContent),
+              transform: document.querySelector('.graph-map > g:last-child').getAttribute('transform'),
+              selectedTab: document.querySelector('.graph-detail-tabs .selected').textContent,
+            }
+          })
+          ensure(JSON.stringify(graphLayout.lines) === JSON.stringify([
+            '缓存一致性是指在分布式系统中，缓存与数据',
+            '源之间的数据保持一致的能力，常见策略包括 ',
+            'Cache Aside、Write Through、Write Back 等。',
+          ]), '09定义未保持参考三行')
+          ensure(JSON.stringify(graphLayout.detail) === '[1094,131,415,777]'
+            && JSON.stringify(graphLayout.tabs) === '[1095,263,413,49]'
+            && JSON.stringify(graphLayout.definition) === '[1118,312,367,190]'
+            && JSON.stringify(graphLayout.notes) === '[1118,502,367,187]'
+            && JSON.stringify(graphLayout.evidence) === '[1118,748,367,58]'
+            && JSON.stringify(graphLayout.candidateToggle) === '[157,744,211,31]',
+          '09详情、笔记、证据或筛选几何不符')
+          ensure(graphLayout.labels.join(',') === '分布式,JVM,数据库,Spring,项目'
+            && graphLayout.transform === 'translate(585 469) scale(1) translate(-703 -469)'
+            && graphLayout.selectedTab === '概览', '09初始节点、视图或标签不符')
+          checks.push({ check: 'graph-definition-three-lines-detail-filter-geometry-fixed-nodes', scene: scene.id, graphLayout, passed: true })
+          const graphStyle = await page.evaluate(() => {
+            const style = selector => {
+              const s = getComputedStyle(document.querySelector(selector))
+              return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth }
+            }
+            return { body: style('.r-canvas'), label: style('.graph-node-label text'),
+              core: style('.graph-core text'), title: style('.graph-detail-title h1'),
+              definition: style('.graph-definition p'), practice: style('.graph-practice') }
+          })
+          ensure(graphStyle.body.weight === '300' && graphStyle.label.weight === '400'
+            && graphStyle.core.weight === '500' && graphStyle.title.weight === '500'
+            && graphStyle.title.stroke === '0.3px' && graphStyle.definition.size === '18px'
+            && graphStyle.practice.weight === '500', '09实际字重、字号或描边不符')
+          checks.push({ check: 'graph-typography-computed-style', scene: scene.id, graphStyle, passed: true })
+          const detailTabs = page.getByRole('navigation', { name: '知识详情标签' })
+          for (const tab of ['笔记', '关系', '练习', '证据', '概览']) {
+            await detailTabs.getByRole('button', { name: tab, exact: true }).click()
+            ensure(await detailTabs.locator('.selected').textContent() === tab, '09详情标签未切换：' + tab)
+          }
+          await page.getByRole('button', { name: '分布式', exact: true }).click()
+          ensure(await page.locator('.graph-detail-title h1').textContent() === '分布式', '09节点选择未更新详情')
+          await page.getByRole('button', { name: '缓存一致性', exact: true }).click()
+          const graphSearch = page.getByRole('textbox', { name: '搜索知识点', exact: true })
+          await graphSearch.fill('JVM')
+          ensure(await page.locator('.graph-node-label').count() === 1
+            && await page.locator('.graph-node-label text').textContent() === 'JVM', '09知识搜索未筛选节点')
+          await graphSearch.fill('')
+          ensure(await page.locator('.graph-node-label').count() === 5, '09清空搜索未恢复节点')
+          await page.mouse.move(900, 900); await page.mouse.down()
+          await page.mouse.move(930, 920); await page.mouse.up()
+          ensure((await page.locator('.graph-map > g:last-child').getAttribute('transform')).startsWith('translate(615 489)'),
+            '09画布平移未更新')
+          await page.getByRole('button', { name: '重置星图视图' }).click()
+          ensure(await page.locator('.graph-map > g:last-child').getAttribute('transform') === graphLayout.transform,
+            '09重置未恢复节点坐标')
+          checks.push({ check: 'graph-tabs-node-selection-search-pan-reset', scene: scene.id, passed: true })
         const candidates = page.getByRole('switch', { name: '显示候选关系' })
         ensure(await candidates.getAttribute('aria-checked') === 'true', '09初始候选关系未打开')
         await candidates.click()
