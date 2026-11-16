@@ -2102,6 +2102,31 @@ try {
         checks.push({ check: 'whiteboard-positions-warning-lines-grid-boundary-zoom-drag-refresh', scene: scene.id, positions, warningLines, sidebar, navigation, passed: true })
       }
       if (scene.id === '11') {
+        const typography = await page.evaluate(() => {
+          const get = selector => {
+            const node = document.querySelector(selector), style = getComputedStyle(node)
+            return { weight: style.fontWeight, size: style.fontSize, stroke: style.webkitTextStrokeWidth, top: style.top,
+              left: style.left, margin: style.marginTop, lineHeight: style.lineHeight }
+          }
+          return Object.fromEntries(['.r-scene-11', '.kn-heading h1', '.kn-heading p', '.kn-actions button', '.kn-folders > button',
+            '.kn-notes > button strong', '.kn-notes > button p', '.kn-prose h2', '.kn-prose p', '.kn-prose ul',
+            '.kn-relations h3', '.kn-tags', '.kn-tags button', '.kn-backlink + .kn-backlink'].map(selector => [selector, get(selector)]))
+        })
+        ensure(typography['.r-scene-11'].weight === '300'
+          && typography['.kn-heading h1'].weight === '500' && typography['.kn-heading h1'].stroke === '0.6px'
+          && typography['.kn-heading h1'].top === '2px'
+          && typography['.kn-heading p'].weight === '400' && typography['.kn-heading p'].margin === '13px'
+          && typography['.kn-actions button'].weight === '400' && typography['.kn-folders > button'].top === '-3px'
+          && typography['.kn-notes > button strong'].weight === '400' && typography['.kn-notes > button p'].weight === '400'
+          && typography['.kn-prose h2'].weight === '500' && typography['.kn-prose h2'].stroke === '0.3px'
+          && typography['.kn-prose h2'].left === '2px' && typography['.kn-prose p'].left === '2px'
+          && typography['.kn-prose p'].size === '19.4px' && typography['.kn-prose p'].lineHeight === '32px'
+          && typography['.kn-prose ul'].top === '-6px' && typography['.kn-prose ul'].lineHeight === '43px'
+          && typography['.kn-relations h3'].weight === '500' && typography['.kn-relations h3'].stroke === '0.15px'
+          && typography['.kn-tags'].margin === '22px' && typography['.kn-tags button'].weight === '500'
+          && typography['.kn-tags button'].stroke === '0.1px' && typography['.kn-backlink + .kn-backlink'].margin === '15px',
+          '11字重、标题／正文／清单基线、概念标签或反向链接间距不符')
+        checks.push({ check: 'note-typography-title-body-list-baselines-tags-backlink-spacing', scene: scene.id, typography, passed: true })
         const layout = await page.evaluate(() => {
           const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON()
           const chrome = getComputedStyle(document.querySelector('.r-main'), '::before')

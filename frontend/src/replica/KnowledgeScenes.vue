@@ -203,6 +203,19 @@ function endDrag(event: PointerEvent) {
 .kl-detail .r-rule { margin-bottom: 24px; }
 .kl-backlinks { font-size: 19px; }
 .kl-detail > .r-btn { font-size: 20px; margin-top: 37px; }
+.kn-heading h1 { position: relative; top: 2px; font-weight: 500; -webkit-text-stroke: .6px currentColor; }
+.kn-heading p { margin-top: 13px; font-weight: 400; }
+.kn-actions button { font-weight: 400; }
+.kn-folders > button { top: -3px; }
+.kn-notes > button strong { font-weight: 400; }
+.kn-notes > button p { font-weight: 400; }
+.kn-prose h2 { font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.kn-prose h2, .kn-prose p { position: relative; left: 2px; }
+.kn-prose ul { position: relative; top: -6px; line-height: 43px; }
+.kn-relations h3 { font-weight: 500; -webkit-text-stroke: .15px currentColor; }
+.kn-tags { margin-top: 22px; }
+.kn-tags button { font-weight: 500; -webkit-text-stroke: .1px currentColor; }
+.kn-backlink + .kn-backlink { margin-top: 15px; }
 .kd-heading { top: 107px; left: 33px; gap: 22px; }
 .kd-heading h1 { position: relative; left: 2px; top: -4px; font-size: 39px; font-weight: 500; -webkit-text-stroke: .6px currentColor; line-height: 56px; margin-bottom: 12px; }
 .kd-heading > div > .r-row { position: relative; left: 1px; top: -2px; gap: 11px; }
