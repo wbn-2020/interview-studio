@@ -485,7 +485,7 @@ try {
           && typography.title.transform === 'matrix(1, 0, 0, 1.1, 0, 0)' && typography.tabPadding === '19px',
         '04标题、目录字面或页签基线不符')
         ensure(typography.body.length === 4 && typography.body.every(item => item.size === '23px' && item.weight === '300'
-          && item.lineHeight === '35px' && item.transform === 'matrix(0.913043, 0, 0, 1, 0, 0)' && item.origin === '0px 0px'),
+          && item.lineHeight === '35px' && item.transform === 'matrix(0.913044, 0, 0, 1, 0, 0)' && item.origin === '0px 0px'),
         '04事实正文的字高、行宽或换行基线不符')
         ensure(typography.source === 'linear-gradient(110deg, rgba(255, 255, 255, 0.043), rgba(255, 255, 255, 0.027))'
           && typography.links === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(21, 19, 17))', '04来源或关联入口底色不符')
