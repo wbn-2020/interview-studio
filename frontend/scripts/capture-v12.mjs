@@ -2802,7 +2802,7 @@ try {
           }
           await page.getByRole('button', { name: '分布式', exact: true }).click()
           ensure(await page.locator('.graph-detail-title h1').textContent() === '分布式', '09节点选择未更新详情')
-          await page.getByRole('button', { name: '缓存一致性', exact: true }).click()
+          await page.locator('.graph-map').getByRole('button', { name: '缓存一致性', exact: true }).click()
           const graphSearch = page.getByRole('textbox', { name: '搜索知识点', exact: true })
           await graphSearch.fill('JVM')
           ensure(await page.locator('.graph-node-label').count() === 1
