@@ -649,9 +649,9 @@ watch(() => props.scene, () => {
 .linked-question-lists button { width: 100%; height: 47px; display: flex; align-items: center; gap: 13px; padding-left: 1px; font-size: 18px; white-space: nowrap; }
 .linked-question-lists button > .r-icon:last-child { margin-left: auto; margin-right: 12px; }
 .route-reorder { width: 100%; height: 49px; margin-top: 9px; border-radius: 19px; padding: 5px; font-size: 20px; }
-.recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 245px; width: 1600px; height: 1120px; border-top: 1px solid #9c6b445c; border-radius: 50%; box-shadow: 0 -8px 28px #c7803126, inset 0 14px 35px #c7803122; }
+.recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 305px; width: 1480px; height: 1120px; border-top: 1px solid #b37a4a73; border-radius: 50%; box-shadow: 0 -8px 28px #c7803138, inset 0 14px 35px #c7803122; }
 .recall-title { position: absolute; top: 118px; left: 34px; }
-.recall-title h1 { font-size: 50px; }
+.recall-title h1 { font-size: 50px; font-weight: 500; -webkit-text-stroke: .45px currentColor; }
 .recall-title p { display: flex; gap: 10px; align-items: center; margin-top: 6px; color: #bdb6ad; font-size: 24px; }
 .recall-tools { position: absolute; right: 34px; top: 160px; display: flex; align-items: center; gap: 14px; }
 .recall-tools > .ts-button { min-width: 145px; height: 54px; border-radius: 29px; font-size: 22px; background: linear-gradient(125deg, #211d1b, #191614) !important; border-color: #3c3530 !important; }
@@ -661,14 +661,14 @@ watch(() => props.scene, () => {
 .recall-tabs { display: flex; justify-content: space-between; gap: 18px; height: 61px; margin-bottom: 24px; }
 .recall-tabs button { position: relative; flex: 1; color: #9b958f; font-size: 22px; white-space: nowrap; }
 .recall-tabs button:first-child { transform: translateX(7px); }
-.recall-tabs .active { color: #fff2e0; font-weight: 600; }
+.recall-tabs .active { color: #fff2e0; font-weight: 500; }
 .recall-tabs .active::after { content: ''; position: absolute; bottom: 1px; left: 0; right: 0; height: 2px; background: #f1b773; box-shadow: 0 0 10px #ffb15977; }
 .recall-queue-item { position: relative; display: flex; width: 100%; gap: 16px; align-items: flex-start; height: 103px; margin-bottom: 1px; padding: 17px 13px !important; text-align: left; border: 1px solid transparent !important; border-radius: 13px; }
 .recall-queue-item.current { height: 103px; border-color: #c78c50 !important; background: linear-gradient(110deg, #84532f47, #32261c73) !important; box-shadow: inset 1px 0 2px #efb074, -4px 0 13px #ee9c4c33; margin-bottom: 5px; }
 .recall-queue-item i { width: 15px; height: 15px; border-radius: 50%; flex: none; margin-top: 10px; }
 .recall-queue-item i.orange { background: linear-gradient(135deg, #bc793d, #de9661); }
 .recall-queue-item i.green { background: linear-gradient(135deg, #427655, #74b082); }
-.recall-queue-item strong { display: block; font-size: 23px; font-weight: 500; white-space: nowrap; line-height: 1.5; }
+.recall-queue-item strong { display: block; font-size: 22px; font-weight: 400; white-space: nowrap; line-height: 34.5px; }
 .recall-queue-item small { display: block; margin-top: 3px; color: #a69e93; font-size: 21px; white-space: nowrap; }
 .recall-queue-item.current small { color: #efc18f; }
 .recall-card-badge { position: absolute; right: 10px; top: 20px; border-radius: 19px; padding: 1px 12px; line-height: 31px; font-size: 18px; background: #ffffff13; white-space: nowrap; }
@@ -679,11 +679,11 @@ watch(() => props.scene, () => {
 .recall-workspace header span:first-child { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
 .recall-workspace header span:last-child { color: #aaa297; white-space: nowrap; }
 .recall-workspace h2 { margin-top: 29px; margin-left: 6px; font-size: 36px; line-height: 1.45; font-weight: 500; }
-.recall-workspace textarea { position: absolute; top: 270px; left: 27px; width: 568px; height: 266px; padding: 20px 18px; resize: none; border: 2px solid #48413c; border-radius: 14px; background: linear-gradient(135deg, #1e1c1b, #1b1918); font-size: 26px; line-height: 1.65; color: #f3eadc; }
+.recall-workspace textarea { position: absolute; top: 270px; left: 27px; width: 568px; height: 266px; padding: 18px 20px; resize: none; border: 2px solid #48413c; border-radius: 14px; background: linear-gradient(135deg, #1e1c1b, #1b1918); font-size: 25px; line-height: 1.65; color: #f3eadc; }
 .recall-workspace textarea::placeholder { color: #7c756a; }
 .recall-workspace footer { position: absolute; left: 33px; right: 40px; bottom: 29px; padding-top: 28px; border-top: 1px solid #ffffff0b; display: flex; gap: 15px; }
-.recall-workspace footer .ts-button { height: 65px; border-radius: 36px; font-size: 24px; font-weight: 600; }
-.recall-workspace footer .primary { width: 305px; }
+.recall-workspace footer .ts-button { height: 65px; border-radius: 36px; font-size: 24px; font-weight: 500; }
+.recall-workspace footer .primary { width: 305px; background: radial-gradient(ellipse 42% 85% at 10% 25%, #ffe2af66, transparent 90%), radial-gradient(ellipse 40% 70% at 95% 110%, #ffad6080, transparent 90%), linear-gradient(130deg, #e5ab75, #c38654 65%, #ac7149) !important; box-shadow: inset 0 1px 2px #ffe1b3b0, inset 0 0 8px #f9c3825c; border: 1px solid #eab981 !important; }
 .recall-workspace footer .ts-button:last-child { flex: 1; border: 2px solid #4c4641 !important; background: linear-gradient(125deg, #24211f, #1c1917) !important; }
 .recall-card-details { left: 979px; top: 258px; width: 314px; height: 692px; padding: 31px 31px; background: linear-gradient(125deg, #191614, #181413 78%); border-color: #302a26; }
 .recall-card-details h3 { font-size: 25px; font-weight: 500; }

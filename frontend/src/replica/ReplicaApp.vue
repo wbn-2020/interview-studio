@@ -589,12 +589,12 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-16 .r-sidebar > a { position: absolute; left: 29px; top: 29px; }
 .r-scene-16 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
 .r-scene-16 .r-sidebar :deep(.r-emblem) { width: 49px; height: 54px; color: #f2ede6; filter: none; }
-.r-scene-16 .r-sidebar :deep(.r-brand-word) { font-size: 28px; line-height: 33px; }
+.r-scene-16 .r-sidebar :deep(.r-brand-word) { font-size: 28px; line-height: 33px; font-weight: 500; }
 .r-scene-16 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 18px; }
 .r-scene-16 .r-sidebar::after { content: ""; position: absolute; top: 105px; left: 30px; right: 29px; height: 1px; background: #ffffff06; }
 .r-scene-16 .r-sidebar nav { top: 138px; left: 17px; right: 16px; gap: 13px; }
-.r-scene-16 .r-nav-item { height: 60px; padding: 0 18px; gap: 18px; }
-.r-scene-16 .r-nav-item.r-selected { border-radius: 16px; background: radial-gradient(ellipse at 14% 55%, #d69b6699, transparent 55%), linear-gradient(110deg, #5e3c26, #35261c); }
+.r-scene-16 .r-nav-item { height: 60px; padding: 0 18px; gap: 18px; font-weight: 400; }
+.r-scene-16 .r-nav-item.r-selected { border-radius: 16px; background: radial-gradient(ellipse at 14% 55%, #d69b6699, transparent 55%), linear-gradient(110deg, #5e3c26, #2d2119); border-color: #74533477; box-shadow: inset 1px 0 4px #f5be7c55, -4px 0 12px #e8974330; }
 .r-scene-16 .r-nav-separator { margin: 15px 13px 23px; }
 .r-scene-16 .r-nav-item.r-secondary { height: 49px; font-size: 23px; }
 .r-scene-16 .r-sidebar-avatar { left: 42px; bottom: 32px; width: 137px; text-align: left; }

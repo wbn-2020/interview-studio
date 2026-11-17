@@ -1328,6 +1328,42 @@ try {
         ensure(JSON.stringify(await page.locator('.recall-card-details strong').allTextContents()) === JSON.stringify(['11.13', '11.08 · 困难', '11.20']), '16固定复习日期不符')
         ensure((await page.locator('.r-breadcrumb').textContent()).trim() === '回忆卡 / 今日队列', '16面包屑不符')
         checks.push({ check: 'recall-five-cards-two-lines-fixed-dates-panel-geometry', scene: scene.id, geometry, lines, passed: true })
+        const recallType = await page.evaluate(() => Object.fromEntries(['.recall-title h1', '.r-brand-word', '.r-nav-item', '.recall-tabs .active',
+          '.recall-queue-item strong', '.recall-workspace textarea', '.recall-workspace footer .primary', '.recall-workspace footer .ts-button:last-child']
+          .map(selector => {
+            const node = document.querySelector(selector), style = getComputedStyle(node)
+            return [selector, { size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight,
+              stroke: style.webkitTextStrokeWidth, padding: style.padding }]
+          })))
+        ensure(recallType['.recall-title h1'].size === '50px' && recallType['.recall-title h1'].weight === '500'
+          && recallType['.recall-title h1'].stroke === '0.45px' && recallType['.r-brand-word'].weight === '500'
+          && recallType['.r-nav-item'].weight === '400' && recallType['.recall-tabs .active'].weight === '500'
+          && recallType['.recall-queue-item strong'].size === '22px' && recallType['.recall-queue-item strong'].weight === '400'
+          && recallType['.recall-queue-item strong'].lineHeight === '34.5px'
+          && recallType['.recall-workspace textarea'].size === '25px' && recallType['.recall-workspace textarea'].padding === '18px 20px'
+          && ['.recall-workspace footer .primary', '.recall-workspace footer .ts-button:last-child'].every(selector => recallType[selector].weight === '500'),
+          '16标题、品牌、导航、队列或输入提示视觉重量／基线不符')
+        checks.push({ check: 'recall-heading-queue-regular-type-and-placeholder-baseline', scene: scene.id, styles: recallType, passed: true })
+        const recallSurface = await page.evaluate(() => {
+          const box = node => { const rect = node.getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height] }
+          const horizon = document.querySelector('.recall-horizon'), style = getComputedStyle(horizon)
+          const button = document.querySelector('.recall-workspace footer .primary'), buttonStyle = getComputedStyle(button)
+          const selected = document.querySelector('.r-nav-item.r-selected'), selectedStyle = getComputedStyle(selected)
+          return { horizon: { box: box(horizon), shadow: style.boxShadow, pointerEvents: style.pointerEvents, border: style.borderTopColor },
+            button: { box: box(button), background: buttonStyle.backgroundImage, shadow: buttonStyle.boxShadow, border: buttonStyle.borderTopColor },
+            selected: { box: box(selected), background: selectedStyle.backgroundImage, border: selectedStyle.borderTopColor } }
+        })
+        ensure(JSON.stringify(recallSurface.horizon.box) === JSON.stringify([525, 95, 1480, 1120])
+          && recallSurface.horizon.pointerEvents === 'none' && recallSurface.horizon.shadow.includes('28px')
+          && recallSurface.horizon.border === 'rgba(179, 122, 74, 0.45)'
+          && JSON.stringify(recallSurface.button.box) === JSON.stringify([599, 855, 305, 65])
+          && recallSurface.button.background.includes('radial-gradient(42% 85%')
+          && recallSurface.button.background.includes('rgb(195, 134, 84) 65%') && recallSurface.button.shadow.includes('8px')
+          && recallSurface.button.border === 'rgb(234, 185, 129)'
+          && JSON.stringify(recallSurface.selected.box) === JSON.stringify([18, 285, 185, 60])
+          && recallSurface.selected.background.includes('rgb(45, 33, 25)') && recallSurface.selected.border === 'rgba(116, 83, 52, 0.467)',
+          '16弧光曲率／光照、主按钮渐变或导航高光不符')
+        checks.push({ check: 'recall-fixed-horizon-layered-button-and-local-navigation-highlight', scene: scene.id, visual: recallSurface, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
