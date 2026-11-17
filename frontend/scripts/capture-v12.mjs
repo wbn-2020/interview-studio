@@ -1424,7 +1424,7 @@ try {
           text: node.textContent, size: getComputedStyle(node).fontSize, weight: getComputedStyle(node).fontWeight,
           overflow: node.scrollWidth > node.clientWidth,
         }))
-        ensure(heading.text === '缓存删除失败后，你会先确认哪些条件？' && heading.size === '35px'
+        ensure(heading.text === '缓存删除失败后，你会先确认哪些条件？' && heading.size === '34.5px'
           && heading.weight === '500' && !heading.overflow, '17题面文字、字重或溢出不符')
         ensure(await page.locator('.writing-topic span').textContent() === '分布式系统 · 异常恢复'
           && (await page.locator('.writing-timer').textContent()).trim() === '18:42'
@@ -1434,6 +1434,38 @@ try {
         ensure(await page.locator('.r-brand path').count() === 4 && await page.locator('.r-brand circle').count() === 0
           && await page.locator('.r-nav-item.r-selected span').textContent() === '训练', '17品牌或侧栏选择不符')
         checks.push({ check: 'writing-question-fixed-time-five-conditions-panel-geometry', scene: scene.id, geometry, heading, passed: true })
+        const typography = await page.evaluate(() => Object.fromEntries(['.writing-question h1', '.writing-question p', '.writing-crumb',
+          '.r-nav-item', '.r-secondary', '.writing-editor textarea', '.writing-conditions h3', '.condition-warning dd', '.writing-condition-button'].map(selector => {
+          const node = document.querySelector(selector), style = getComputedStyle(node)
+          return [selector, { size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight,
+            padding: style.padding, stroke: style.webkitTextStrokeWidth, transform: style.transform, wordSpacing: style.wordSpacing }]
+        })))
+        ensure(typography['.writing-question h1'].stroke === '0.65px' && typography['.writing-question h1'].lineHeight === '52.5px'
+          && typography['.writing-question h1'].transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && typography['.writing-question p'].size === '23.5px' && typography['.writing-question p'].transform === 'matrix(1, 0, 0, 1, 0, 4)'
+          && typography['.writing-crumb'].wordSpacing === '1.5px'
+          && typography['.r-nav-item'].size === '20px' && typography['.r-secondary'].size === '20px'
+          && typography['.writing-editor textarea'].padding === '18px 24px 21px'
+          && typography['.writing-conditions h3'].stroke === '0.25px'
+          && typography['.condition-warning dd'].transform === 'matrix(1, 0, 0, 1, 0, 3)'
+          && typography['.writing-condition-button'].size === '17px', '17文字或输入提示基线不符')
+        checks.push({ check: 'writing-heading-navigation-placeholder-and-condition-baselines', scene: scene.id, typography, passed: true })
+        const surfaces = await page.evaluate(() => Object.fromEntries(['.r-sidebar', '.writing-editor textarea', '.writing-conditions',
+          '.writing-condition-button', '.writing-footer .primary', '.fixed-caret'].map(selector => {
+          const node = document.querySelector(selector), style = getComputedStyle(node), box = node.getBoundingClientRect()
+          return [selector, { background: style.backgroundImage, shadow: style.boxShadow, pointerEvents: style.pointerEvents,
+            box: [box.x, box.y, box.width, box.height] }]
+        })))
+        ensure(surfaces['.r-sidebar'].background.includes('107, 67, 43')
+          && surfaces['.writing-editor textarea'].background.includes('26, 23, 20')
+          && surfaces['.writing-conditions'].background.includes('56, 48, 42')
+          && surfaces['.writing-condition-button'].background.includes('81, 70, 60')
+          && surfaces['.writing-footer .primary'].background.includes('233, 165, 100')
+          && surfaces['.writing-footer .primary'].shadow.includes('inset')
+          && JSON.stringify(surfaces['.writing-footer .primary'].box) === JSON.stringify([1034, 875, 159, 57])
+          && JSON.stringify(surfaces['.fixed-caret'].box) === JSON.stringify([265, 344, 2, 31])
+          && surfaces['.fixed-caret'].pointerEvents === 'none', '17材质、按钮或静止光标尺寸不符')
+        checks.push({ check: 'writing-sidebar-editor-and-footer-surfaces-fixed-caret', scene: scene.id, surfaces, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)

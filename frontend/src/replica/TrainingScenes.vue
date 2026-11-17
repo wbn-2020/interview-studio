@@ -703,7 +703,7 @@ watch(() => props.scene, () => {
 .training-frame { position: absolute; top: 24px; left: 0; width: 1292px; height: 926px; border: 1px solid #50443c; border-radius: 23px; background: linear-gradient(110deg, #15121055, #211a1655); }
 .writing-header { position: absolute; left: 0; top: 24px; width: 1292px; height: 79px; display: flex; align-items: center; border-bottom: 1px solid #ffffff03; background: linear-gradient(120deg, #29231e88, #211a1566); border-radius: 23px 23px 0 0; font-size: 18px; white-space: nowrap; }
 .writing-back { position: absolute; left: 8px; top: 20px; }
-.writing-crumb { position: absolute; left: 67px; top: 26px; }
+.writing-crumb { position: absolute; left: 67px; top: 26px; word-spacing: 1.5px; }
 .writing-search { position: absolute; left: 334px; top: 18px; width: 281px; height: 44px; border-radius: 25px; display: flex; align-items: center; gap: 10px; padding: 0 17px !important; background: #34302b9e !important; color: #b9b0a5 !important; font-size: 16px !important; }
 .writing-timer { position: absolute; left: 663px; top: 22px; display: flex; align-items: center; gap: 7px; font-size: 24px; font-weight: 600; }
 .writing-header-divider { position: absolute; left: 779px; top: 25px; width: 1px; height: 31px; background: #9c8c764f; }
@@ -721,31 +721,31 @@ watch(() => props.scene, () => {
 .writing-topic > span { display: inline-flex; align-items: center; gap: 16px; height: 41px; padding: 0 13px; border-radius: 23px; background: linear-gradient(120deg, #3d3630, #2e2925); font-size: 20px; }
 .writing-topic .r-icon { color: #eaa060; fill: #a66b3a33; }
 .writing-question { position: absolute; left: 25px; top: 193px; }
-.writing-question h1 { font-size: 35px; line-height: 1.5; font-weight: 500; }
-.writing-question p { margin-top: 3px; font-size: 24px; color: #aaa5a0; }
+.writing-question h1 { font-size: 34.5px; line-height: 52.5px; font-weight: 500; -webkit-text-stroke: .65px currentColor; transform: translateY(1px); }
+.writing-question p { margin-top: 3px; font-size: 23.5px; color: #aaa5a0; transform: translateY(4px); }
 .writing-editor { position: absolute; left: 23px; top: 318px; width: 941px; height: 542px; }
-.writing-editor textarea { height: 100%; width: 100%; padding: 21px 24px; resize: none; border: 1px solid #78736d; border-bottom-color: #3d3732; border-radius: 15px; outline: none; background: linear-gradient(120deg, #191716, #1c1917); color: #f4eee4; font-size: 24px; line-height: 1.7; }
-.writing-editor textarea::placeholder { color: #999287; }
+.writing-editor textarea { height: 100%; width: 100%; padding: 18px 24px 21px; resize: none; border: 1px solid #78736d; border-bottom-color: #3d3732; border-radius: 15px; outline: none; background: radial-gradient(ellipse at 50% 45%, #1a1714, #191613 85%); color: #f4eee4; font-size: 24px; line-height: 1.7; }
+.writing-editor textarea::placeholder { color: #9b9690; }
 .writing-editor textarea:disabled { opacity: .45; }
-.fixed-caret { position: absolute; left: 16px; top: 25px; width: 2px; height: 31px; background: #eee8df; pointer-events: none; }
+.fixed-caret { position: absolute; left: 16px; top: 26px; width: 2px; height: 31px; background: #eee8df; pointer-events: none; }
 .writing-paused { position: absolute; inset: 1px; border-radius: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; background: #18140fb5; color: #e6d3ba; }
-.writing-conditions { left: 983px; top: 114px; width: 302px; height: 368px; background: linear-gradient(120deg, #211d1a, #1d1916); border-color: #3c342e; }
-.writing-conditions h3 { font-size: 23px; font-weight: 500; padding: 16px 21px; border-bottom: 1px solid #ffffff0c; }
+.writing-conditions { left: 983px; top: 114px; width: 302px; height: 368px; background: radial-gradient(ellipse at 72% 70%, #38302a22, transparent 75%), linear-gradient(120deg, #1e1a17, #191613); border-color: #3c342e; }
+.writing-conditions h3 { font-size: 23px; font-weight: 500; -webkit-text-stroke: .25px currentColor; padding: 16px 21px; border-bottom: 1px solid #ffffff0c; }
 .writing-conditions dl { margin: 10px 23px 0; font-size: 18px; }
 .writing-conditions dl > div { height: 49px; display: flex; align-items: center; border-bottom: 1px solid #ffffff0b; }
 .writing-conditions dt { display: flex; align-items: center; gap: 16px; color: #bcb4a9; }
 .writing-conditions dt > .r-icon { color: #e6e0d6; }
 .writing-conditions dd { margin: 0 0 0 auto; white-space: nowrap; }
 .writing-conditions dl > .condition-warning { display: block; height: auto; padding-top: 10px; border: 0; }
-.condition-warning dd { margin: 2px 0 0 40px; color: #dfd6c8; }
+.condition-warning dd { margin: 2px 0 0 40px; color: #dfd6c8; transform: translateY(3px); }
 .writing-footer { position: absolute; left: 24px; top: 875px; width: 943px; height: 57px; display: flex; justify-content: space-between; align-items: center; }
 .writing-count { display: flex; align-items: center; gap: 13px; font-size: 19px; color: #bab0a2; }
 .writing-count > span { display: block; margin: 0 16px 0 19px; height: 30px; width: 1px; background: #786d5e; }
 .writing-count strong { margin-left: -1px; font-size: 18px; font-weight: 400; color: #76c8ad; }
 .writing-footer > div:last-child { display: flex; gap: 12px; }
 .writing-footer .ts-button { height: 57px; font-size: 18px; border-radius: 25px; padding: 8px 20px; }
-.writing-condition-button { width: 181px; padding-inline: 18px; }
-.writing-footer .primary { min-width: 159px; background: radial-gradient(ellipse at 50% 10%, #f9b26f88, transparent 70%), linear-gradient(170deg, #efb779, #ca8b55) !important; border-color: #ffd0a0 !important; box-shadow: inset 0 0 7px #ffcc8855; }
+.writing-footer .writing-condition-button { width: 181px; font-size: 17px; padding-inline: 20px; background: radial-gradient(ellipse at 32% 12%, #51463c55, transparent 80%), linear-gradient(130deg, #26211db5, #25201c) !important; }
+.writing-footer .primary { min-width: 159px; background: radial-gradient(ellipse 60% 110% at 10% 18%, #ffd29866, transparent 88%), radial-gradient(ellipse 55% 90% at 97% 110%, #ec9b5880, transparent), linear-gradient(125deg, #e9a564, #cc884f 65%, #b97846) !important; border-color: #ffd0a0 !important; box-shadow: inset 0 1px 2px #ffe1b3a0, inset 0 0 7px #ffc68455; }
 .follow-title { position: absolute; left: 23px; top: 115px; }
 .follow-title h1 { font-size: 32px; line-height: 1.4; font-weight: 500; }
 .follow-title h1 > span { font-size: 30px; color: #b7b2aa; margin-left: 10px; font-weight: 400; }

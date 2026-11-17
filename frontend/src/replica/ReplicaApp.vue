@@ -611,17 +611,18 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-16 .r-saved { color: #b1d5bd; }
 .r-scene-16 .r-saved svg { background: #60a880; fill: #60a880; }
 .r-scene-17 { will-change: transform; background: radial-gradient(ellipse at 70% 35%, #15110f44, transparent 85%), linear-gradient(180deg, #100e0d, #0c0b0a); }
-.r-scene-17 .r-sidebar { top: 23px; left: 19px; bottom: 55px; width: 198px; border-radius: 21px; background: linear-gradient(125deg, #25211f, #201b18 80%, #2c241f); border-color: #55493f; }
+.r-scene-17 .r-sidebar { top: 23px; left: 19px; bottom: 55px; width: 198px; border-radius: 21px; background: radial-gradient(ellipse 140px 700px at 0 85%, #6b432b22, transparent 85%), linear-gradient(110deg, #211c19, #1b1715 80%, #201b17); border-color: #55493f; }
 .r-scene-17 .r-sidebar > a { position: absolute; left: 26px; top: 30px; }
 .r-scene-17 .r-sidebar :deep(.r-brand) { position: static; gap: 12px; }
 .r-scene-17 .r-sidebar :deep(.r-emblem) { width: 44px; height: 48px; color: #bd8956; filter: none; }
 .r-scene-17 .r-sidebar :deep(.r-brand-word) { font-size: 22px; line-height: 26px; font-weight: 500; transform: translateY(5px); }
 .r-scene-17 .r-sidebar :deep(.r-brand-word small) { font-size: 12px; line-height: 18px; margin-top: 0; }
 .r-scene-17 .r-sidebar nav { top: 123px; left: 6px; right: 6px; gap: 4px; }
-.r-scene-17 .r-nav-item { height: 58px; padding-left: 21px; font-size: 22px; gap: 21px; }
+.r-scene-17 .r-nav-item { height: 58px; padding-left: 21px; font-size: 20px; line-height: 33px; gap: 21px; }
+.r-scene-17 .r-nav-item span { transform: translateY(-1px); }
 .r-scene-17 .r-nav-item.r-selected { background: radial-gradient(ellipse at 50% 80%, #c88b5377, transparent), linear-gradient(120deg, #98653f, #5f412b); border-color: #d79961; box-shadow: inset 0 0 7px #efb57966, 0 0 17px #c98d5022; }
 .r-scene-17 .r-nav-separator { margin: 12px 8px 13px; background: #74645755; }
-.r-scene-17 .r-nav-item.r-secondary { font-size: 21px; height: 55px; }
+.r-scene-17 .r-nav-item.r-secondary { font-size: 20px; height: 55px; }
 .r-scene-17 .r-sidebar-avatar { left: 22px; bottom: 18px; }
 .r-scene-17 .r-sidebar-avatar .r-avatar { width: 45px; height: 47px; font-size: 24px; background: linear-gradient(120deg, #806f61, #5e5044); }
 .r-scene-17 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -25px; width: 166px; height: 1px; background: #7c69564d; }
