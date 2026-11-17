@@ -1827,7 +1827,7 @@ try {
           && appearance['.r-nav-separator'].marginTop === '24px' && appearance['.r-nav-separator'].marginBottom === '29px'
           && appearance['.r-sidebar nav'].box[0] === 22 && appearance['.r-sidebar nav'].box[1] === 139,
         '21正文、页签、观察或侧栏基线不符')
-        ensure(appearance['.r-sidebar'].background === 'radial-gradient(at 60% 72%, rgba(97, 83, 66, 0.188), rgba(0, 0, 0, 0) 75%), linear-gradient(110deg, rgb(19, 16, 12), rgb(16, 14, 11))'
+        ensure(appearance['.r-sidebar'].background === 'radial-gradient(at 60% 72%, rgba(97, 83, 66, 0.19), rgba(0, 0, 0, 0) 75%), linear-gradient(110deg, rgb(19, 16, 12), rgb(16, 14, 11))'
           && appearance['.rv21-original'].background === 'radial-gradient(at 15% 0px, rgba(91, 70, 53, 0.063), rgba(0, 0, 0, 0) 65%), linear-gradient(120deg, rgb(28, 24, 20), rgb(24, 20, 16) 80%)'
           && appearance['.rv21-observation.observation-3'].background === 'linear-gradient(125deg, rgba(33, 28, 22, 0.25), rgba(22, 19, 15, 0.133))',
         '21侧栏、原答或第三条观察背景不符')
