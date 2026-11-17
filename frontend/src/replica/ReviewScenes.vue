@@ -486,61 +486,64 @@ watch(() => props.scene, () => {
 .rv21-source-view { position: absolute; left: 27px; right: 25px; top: 331px; height: 564px; padding: 26px; }
 .rv21-source-view p { margin-top: 22px; }
 .rv22 .rv-heading { left: 28px; top: 121px; }
-.rv22 .rv-heading h1 { font-size: 49px; font-weight: 500; -webkit-text-stroke: .6px currentColor; }
-.rv22 .rv-subheading { margin-top: 6px; font-size: 25px; color: #c7c2ba; gap: 15px; }
-.rv22-source { position: absolute; top: 141px; right: 35px; height: 56px; width: 204px; min-height: 0; padding: 8px 17px !important; font-size: 22px; border-radius: 30px; border-color: #3c352d !important; background: linear-gradient(130deg, #211e1988, #16141188) !important; }
+.rv22 .rv-heading h1 { font-size: 49px; font-weight: 500; -webkit-text-stroke: .6px currentColor; transform-origin: 0 0; transform: translateX(2px) scale(.98, 1.02); }
+.rv22 .rv-subheading { margin-top: 6px; font-size: 24px; color: #c7c2ba; gap: 16px; word-spacing: 4px; transform: translateY(-1px); -webkit-text-stroke: .18px currentColor; }
+.rv22-source { position: absolute; top: 141px; right: 35px; height: 56px; width: 204px; min-height: 0; padding: 8px 17px !important; font-size: 21px; font-weight: 400; border-radius: 30px; border-color: #3c352d !important; background: linear-gradient(130deg, #211e1988, #16141188) !important; }
 .rv22-old, .rv22-new, .rv22-conditions { position: absolute; top: 259px; height: 525px; border-radius: 22px; padding: 23px 26px; }
 .rv22-old { left: 28px; width: 442px; }
 .rv22-conditions { left: 490px; width: 288px; padding-left: 26px; padding-right: 24px; }
 .rv22-new { left: 798px; width: 481px; }
-.rv22-old, .rv22-conditions, .rv22-judgment { background: linear-gradient(115deg, #1d1b17, #181612 72%, #1d1a16); }
+.rv22-old, .rv22-conditions, .rv22-new, .rv22-judgment { background: linear-gradient(115deg, #191713, #181612 72%, #191713); }
 .rv22-new h2, .rv22-new h3 { font-weight: 500; }
 .rv22-old .rv22-panel-heading, .rv22-old .rv22-answer-heading, .rv22-conditions .rv22-panel-heading { font-weight: 500; }
 .rv22-panel-heading { height: 54px; border-bottom: 1px solid #64544366; font-size: 24px; gap: 15px !important; white-space: nowrap; align-items: flex-start !important; padding-top: 1px; }
 .rv22-panel-heading > .r-icon { margin-top: 4px; color: #e3bc90 !important; }
 .rv22-history-icons { display: flex; align-items: center; gap: 5px; height: 35px; color: #d0ab83; }
 .rv22-history-icons .r-icon:first-child { color: #8a8071; }
-.rv22-answer-heading { font-size: 24px; margin-top: 18px !important; margin-bottom: 18px !important; }
-.rv22-answer-intro { font-size: 22px; font-weight: 300; white-space: nowrap; line-height: 1.6 !important; transform: translateY(1px); }
+.rv22-answer-heading { font-size: 23px; line-height: 34.8px; margin-top: 18px !important; margin-bottom: 18px !important; transform-origin: 0 0; transform: scaleX(.97); }
+.rv22-answer-intro { font-size: 22.5px; font-weight: 300; white-space: nowrap; line-height: 35.2px !important; -webkit-text-stroke: .2px currentColor; transform-origin: 0 0; transform: translate(1px, 2px) scale(.96, 1.045); }
 .rv22-answer-list { font-size: 22px; margin: 14px 0 0; padding-left: 32px; line-height: 2.04; }
-.rv22-old .rv22-answer-list { margin-top: 10px; transform: translateY(-1px); }
+.rv22-old .rv22-answer-list { margin-top: 10px; padding-left: 34px; line-height: 44.5px; transform: translateY(-1px); }
 .rv22-answer-list li { padding-left: 1px; white-space: nowrap; }
-.rv22-answer-list li::marker { font-family: Arial, sans-serif; font-size: 24px; }
+.rv22-old .rv22-answer-list li { transform-origin: 0 0; transform: scale(.99, 1.07); }
+.rv22-old .rv22-answer-list li:nth-child(2) { transform: translateY(-1px) scale(.99, 1.07); }
+.rv22-old .rv22-answer-list li:nth-child(3) { transform: translateY(-2px) scaleY(1.07); }
+.rv22-answer-list li::marker { font-family: "Segoe UI", sans-serif; font-size: 24px; font-weight: 300; }
 .rv22-answer-rule { position: absolute; top: 358px; left: 26px; right: 26px; height: 1px; background: #5d4d3e55; }
 .rv22-detail-heading { position: absolute; top: 386px; left: 27px; display: flex; align-items: center; gap: 11px; font-size: 23px; color: #bcb7ae; font-weight: 500; }
 .rv22-detail-heading .r-icon { color: #e0b98e; }
-.rv22-keywords { position: absolute; left: 26px; top: 433px; display: flex; gap: 9px; }
-.rv22-keywords button { font-size: 20px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff17, #ffffff0f) !important; }
+.rv22-keywords { position: absolute; left: 26px; top: 432px; display: flex; gap: 9px; }
+.rv22-keywords button { font-size: 20px; line-height: 32px; padding: 8px 16px !important; border-radius: 25px; background: linear-gradient(110deg, #ffffff17, #ffffff0f) !important; -webkit-text-stroke: .1px currentColor; }
 .rv22-conditions dl { margin: 16px 0 0; }
 .rv22-conditions dl > div { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 18px; }
 .rv22-conditions dt { width: 91px; flex: none; font-size: 22px; font-weight: 400; line-height: 50px; white-space: nowrap; }
-.rv22-conditions dd { margin: 0; padding: 9px 14px; border-radius: 16px; background: #ffffff0c; font-size: 22px; line-height: 1.5; white-space: nowrap; }
+.rv22-conditions dd { margin: 0; padding: 9px 14px; border-radius: 16px; background: #dbcdbd16; font-size: 22px; line-height: 1.5; white-space: nowrap; -webkit-text-stroke: .1px currentColor; }
 .rv22-conditions dl > div:nth-child(2) { margin-bottom: 16px; }
 .rv22-conditions dl > div:nth-child(3) dd { padding-left: 13px; padding-right: 13px; }
 .rv22-conditions dl > div:nth-child(4) { margin-top: 1px; }
 .rv22-conditions dl > div:nth-child(4) dd { min-width: 137px; }
-.rv22-new .rv22-answer-list { margin-top: 14px; line-height: 1.6; }
-.rv22-new .rv22-answer-list li + li { margin-top: 10px; }
-.rv22-new .rv22-answer-intro { font-size: 22px; }
+.rv22-new .rv22-answer-list { margin-top: 14px; font-size: 23.1px; line-height: 36px; -webkit-text-stroke: .04px currentColor; }
+.rv22-new .rv22-answer-list li + li { margin-top: 10px; font-size: 22px; transform-origin: 0 0; transform: translateY(-3px) scale(.99, 1.07); }
+.rv22-new .rv22-answer-intro { font-size: 22.5px; transform: translate(2px, 2px); -webkit-text-stroke: .12px currentColor; }
 .rv22-underlined { text-decoration: underline; text-decoration-color: #b07a3f; text-underline-offset: 9px; text-decoration-thickness: 1px; }
 .rv22-difference { position: absolute; left: 26px; right: 22px; top: 433px; padding: 9px 0 9px 26px; font-size: 22px; white-space: nowrap; line-height: 1.6 !important; }
 .rv22-difference::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; background: #bf680e; border-radius: 5px; }
 .rv22-judgment { position: absolute; left: 28px; top: 812px; width: 1251px; height: 156px; border-radius: 23px; }
-.rv22-judgment h2 { position: absolute; left: 26px; top: 24px; font-size: 23px; gap: 13px; font-weight: 500; }
+.rv22-judgment h2 { position: absolute; left: 26px; top: 24px; font-size: 22.5px; gap: 14px; font-weight: 500; }
 .rv22-judgment h2 .r-icon { color: #edba83; }
 .rv22-judgment::after { content: ""; position: absolute; top: 28px; bottom: 28px; left: 624px; width: 1px; background: #584b3a66; }
 .rv22-judgment-options { position: absolute; left: 18px; top: 73px; display: flex; gap: 10px; }
 .rv22-judgment-options > button { height: 54px; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 132px; border: 1px solid #ffffff03; border-radius: 30px; padding: 0 17px !important; color: #ded9d0; font-size: 21px; background: #ffffff02; }
 .rv22-judgment-options > button:nth-child(2) { min-width: 148px; }
 .rv22-judgment-options > button:nth-child(4) { min-width: 150px; }
-.rv22-judgment-options > button.selected { border-color: #dfa05b; background: linear-gradient(100deg, #76502b70, #3f2a1680); color: #f5d9b2; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.rv22-judgment-options > button.selected { border-color: #dfa05b; background: linear-gradient(100deg, #76502b70, #3f2a1680); color: #f5d9b2; font-weight: 500; -webkit-text-stroke: .1px currentColor; }
 .rv22-judgment-options .r-icon { color: #979887; }
 .rv22-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #625e52; }
 .rv22-radio.checked { background: #e3a56d; border-color: #edb985; }
 .rv22-basis { display: flex; align-items: center; gap: 10px; position: absolute; top: 59px; left: 644px; width: 434px; height: 69px; border: 1px solid #554b3e; border-radius: 15px; padding: 0 17px; font-size: 19px; background: #ffffff02; white-space: nowrap; }
-.rv22-basis strong { flex: none; font-weight: 500; }
-.rv22-basis input { min-width: 0; flex: 1; background: transparent; padding: 0; border: 0; color: #d7d0c6; font-size: 19px; outline-offset: 6px; }
-.rv22 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; font-weight: 500; -webkit-text-stroke: .3px currentColor; background: linear-gradient(120deg, #efbf8e, #c38952 75%, #bd824c) !important; box-shadow: inset 0 1px 2px #ffe1af4d, 0 0 16px #d8974e20; }
+.rv22-basis strong { flex: none; font-weight: 500; transform: translate(1px, -3px); }
+.rv22-basis input { min-width: 0; flex: 1; background: transparent; padding: 0; border: 0; color: #d7d0c6; font-size: 19px; outline-offset: 6px; transform-origin: 0 50%; transform: translate(1px, -3px) scale(.99, 1.05); -webkit-text-stroke: .04px currentColor; }
+.rv22 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; font-weight: 500; -webkit-text-stroke: .1px currentColor; background: linear-gradient(120deg, #e1ac7b, #b57843 75%, #ae7340) !important; border-color: #d7a36e66 !important; box-shadow: inset 0 1px 2px #ffe1af40, 0 0 16px #d8974e26; }
 .rv22-save::before { content: ""; position: absolute; left: -22px; top: 0; bottom: -10px; width: 1px; background: #4a3d2c66; }
 .rv23 .rv-heading { left: 32px; top: 117px; }
 .rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; font-weight: 500; }

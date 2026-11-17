@@ -231,6 +231,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
             <span v-if="scene === 6" class="r-material-breadcrumb-icon"><RIcon name="breadcrumb" variant="materials" :size="24" /></span>
             <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 7 ? 'tasks' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 7 ? 30 : [5, 27].includes(scene) ? 28 : 25" />
             <template v-if="scene === 20"><span>训练</span><span>/</span><span>系统设计</span><span>/</span><strong>秒杀发奖</strong></template>
+            <template v-else-if="scene === 22"><span>复盘</span><span>/</span><span>独立复练</span><span>/</span><strong>新旧对照</strong></template>
             <template v-else-if="scene === 24"><strong>成长</strong><span>/</span><span>Java 后端 · 技术一面</span></template>
             <template v-else-if="scene === 25"><RIcon name="calendar-days" variant="command" :size="28" /><span>今日</span><RIcon name="chevron-right" :size="15" /><span class="r-faint">任务总览</span></template>
             <template v-else-if="scene === 26"><RIcon class="r-recent-back" name="chevron-left" :size="19" /><span class="r-muted">工作台</span><span>/</span><span>最近访问</span></template>
@@ -723,8 +724,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-21 .r-saved { color: #36d77d; }
 .r-scene-21 .r-saved svg { width: 26px; height: 26px; padding: 0; fill: none; background: transparent; color: #36d77d; }
 .r-scene-21 .r-top-status > .r-avatar { width: 53px; height: 57px; background: linear-gradient(130deg, #787168, #504b44); }
-.r-scene-22 { will-change: transform; font-weight: 300; }
-.r-scene-22 .r-sidebar { left: 17px; top: 24px; bottom: 27px; width: 205px; }
+.r-scene-22 { will-change: transform; font-weight: 300; background: #0b0a09; }
+.r-scene-22 .r-sidebar { left: 17px; top: 24px; bottom: 27px; width: 205px; background: linear-gradient(115deg, #1e1a1690, #231f1aba); }
 .r-scene-22 .r-sidebar > a { position: absolute; left: 20px; top: 24px; }
 .r-scene-22 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
 .r-scene-22 .r-sidebar :deep(.r-emblem) { width: 49px; height: 56px; color: #e8a56b; filter: drop-shadow(0 0 8px #dfa06a55); }
@@ -732,15 +733,16 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-22 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 20px; }
 .r-scene-22 .r-sidebar::after { content: ""; position: absolute; left: 26px; right: 25px; top: 107px; height: 1px; background: #b59d7c22; }
 .r-scene-22 .r-sidebar nav { left: 15px; right: 15px; top: 131px; gap: 4px; }
-.r-scene-22 .r-nav-item { padding: 0 15px; height: 60px; gap: 14px; white-space: nowrap; }
-.r-scene-22 .r-nav-item.r-selected { height: 62px; background: linear-gradient(120deg, #ae7d4e99, #5c3d26aa); border-color: #bf8b5b77; }
+.r-scene-22 .r-nav-item { padding: 0 15px; height: 60px; gap: 14px; white-space: nowrap; font-size: 23px; -webkit-text-stroke: .04px currentColor; }
+.r-scene-22 .r-nav-item.r-selected { height: 62px; background: linear-gradient(120deg, #ae7d4e99, #5c3d26aa); border-color: #bf8b5b77; font-weight: 500; -webkit-text-stroke: .1px currentColor; }
 .r-scene-22 .r-nav-item.r-secondary { height: 52px; margin-bottom: 6px; }
 .r-scene-22 .r-nav-separator { margin: 24px 11px 22px; }
 .r-scene-22 .r-sidebar-avatar { left: 22px; bottom: 24px; }
 .r-scene-22 .r-sidebar-avatar .r-avatar { width: 57px; height: 61px; background: linear-gradient(130deg, #bd8e5d, #82532c); font-size: 27px; }
 .r-scene-22 .r-topbar { left: 252px; top: 27px; right: 43px; height: 73px; }
-.r-scene-22 .r-breadcrumb { font-size: 21px; gap: 17px; color: #bbb7af; }
-.r-scene-22 .r-breadcrumb strong { font-weight: 500; }
+.r-scene-22 .r-breadcrumb { font-size: 20px; gap: 12px; color: #bbb7af; font-weight: 300; }
+.r-scene-22 .r-breadcrumb > .r-icon { margin-right: 4px; }
+.r-scene-22 .r-breadcrumb strong { margin-left: -3px; font-weight: 500; color: #f4f0e9; }
 .r-scene-22 .r-top-search { left: 384px !important; top: 7px; height: 59px; background: linear-gradient(110deg, #26262199, #1c1c1988) !important; border-color: #625f5866 !important; }
 .r-scene-22 .r-top-status { gap: 18px; }
 .r-scene-22 .r-saved { width: 141px; height: 59px; justify-content: center; gap: 11px; border-radius: 32px; background: linear-gradient(110deg, #2a2924, #171614); font-size: 22px; color: #98e6af; }

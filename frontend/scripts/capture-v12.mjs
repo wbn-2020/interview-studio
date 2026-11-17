@@ -2029,10 +2029,10 @@ try {
           && typography.navigation.length === 10 && typography.navigation.every(item => item.lines === 1),
         '22文字合成、标题字重、面包屑或单行导航不符')
         ensure(typography.nativeList.oldMarginTop === '10px' && typography.nativeList.newMarginTop === '14px'
-          && typography.nativeList.markerSize === '24px' && typography.nativeList.markerFamily.startsWith('Arial')
+          && typography.nativeList.markerSize === '24px' && typography.nativeList.markerFamily.includes('Segoe UI')
           && typography.avatar[0] === 40 && typography.avatar[2] === 57 && typography.avatar[3] === 61
-          && ['.rv22-old', '.rv22-conditions', '.rv22-judgment'].every(selector => typography.panelPaint[selector].includes('rgb(29, 27, 23)'))
-          && !typography.panelPaint['.rv22-new'].includes('rgb(29, 27, 23)'), '22原生编号、列表间距、头像或分区材质不符')
+          && ['.rv22-old', '.rv22-conditions', '.rv22-new', '.rv22-judgment'].every(selector => typography.panelPaint[selector]
+            === 'linear-gradient(115deg, rgb(25, 23, 19), rgb(24, 22, 18) 72%, rgb(25, 23, 19))'), '22原生编号、列表间距、头像或分区材质不符')
         checks.push({ check: 'compare-composited-type-heading-weights-breadcrumb-single-line-navigation', scene: scene.id, ...typography, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({
@@ -2085,12 +2085,13 @@ try {
         })))
         ensure(detailType['.r-scene-22'].weight === '300'
           && detailType['.rv22 .rv-heading h1'].size === '49px' && detailType['.rv22 .rv-heading h1'].stroke === '0.6px'
-          && detailType['.rv22-answer-intro'].weight === '300' && detailType['.rv22-answer-intro'].size === '22px'
-          && detailType['.rv22-answer-intro'].transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && detailType['.rv22-answer-intro'].weight === '300' && detailType['.rv22-answer-intro'].size === '22.5px'
+          && detailType['.rv22-answer-intro'].stroke === '0.2px'
+          && detailType['.rv22-answer-intro'].transform === 'matrix(0.96, 0, 0, 1.045, 1, 2)'
           && detailType['.rv22-conditions dt'].weight === '400' && detailType['.rv22-keywords button'].size === '20px'
           && ['.rv22-judgment-options > button.selected', '.rv22-save']
-            .every(selector => detailType[selector].weight === '500' && detailType[selector].stroke === '0.3px')
-          && detailType['.rv22-save'].background === 'linear-gradient(120deg, rgb(239, 191, 142), rgb(195, 137, 82) 75%, rgb(189, 130, 76))',
+            .every(selector => detailType[selector].weight === '500' && detailType[selector].stroke === '0.1px')
+          && detailType['.rv22-save'].background === 'linear-gradient(120deg, rgb(225, 172, 123), rgb(181, 120, 67) 75%, rgb(174, 115, 64))',
         '22正文字重、引导句基线、关键词字号或选中／保存按钮样式不符')
         checks.push({ check: 'compare-copy-keywords-selected-save-typography-gradient', scene: scene.id, detailType, passed: true })
         const detailGeometry = await page.evaluate(() => {
@@ -2103,13 +2104,62 @@ try {
             listTransform: getComputedStyle(document.querySelector('.rv22-old .rv22-answer-list')).transform }
         })
         ensure(Object.entries({
-          '.rv22-old .rv22-answer-list': [277, 451.984375, 388, 137.625],
-          '.rv22-new .rv22-answer-list': [1047, 456.984375, 427, 117.5625],
-          '.rv22-keywords': [277, 693, 354, 46], '.rv22-basis': [895, 872, 434, 69], '.rv22-save': [1370, 872, 112, 59],
+          '.rv22-old .rv22-answer-list': [277, 452, 388, 136.5],
+          '.rv22-new .rv22-answer-list': [1047, 457, 427, 120],
+          '.rv22-keywords': [277, 692, 354, 48], '.rv22-basis': [895, 872, 434, 69], '.rv22-save': [1370, 872, 112, 59],
         }).every(([selector, box]) => box.every((n, i) => Math.abs(detailGeometry.boxes[selector][i] - n) < .02))
           && detailGeometry.conditionMargin === '16px' && detailGeometry.listTransform === 'matrix(1, 0, 0, 1, 0, -1)',
         '22新旧回答列表、关键词、条件间距或底部操作几何不符')
         checks.push({ check: 'compare-answer-list-baselines-keywords-conditions-footer-geometry', scene: scene.id, detailGeometry, passed: true })
+        const alignedType = await page.evaluate(() => {
+          const breadcrumb = document.querySelector('.r-breadcrumb')
+          const selectors = ['.r-breadcrumb', '.r-breadcrumb strong', '.rv22 .rv-heading h1', '.rv22 .rv-subheading',
+            '.rv22-old .rv22-answer-heading', '.rv22-old .rv22-answer-list', '.rv22-new .rv22-answer-list',
+            '.rv22-old .rv22-answer-list li', '.rv22-old .rv22-answer-list li:nth-child(2)',
+            '.rv22-old .rv22-answer-list li:nth-child(3)', '.rv22-new .rv22-answer-list li + li']
+          return { breadcrumb: [...breadcrumb.children].filter(node => node.tagName.toLowerCase() !== 'svg').map(node => node.textContent),
+            homeIcons: breadcrumb.querySelectorAll('svg').length,
+            styles: Object.fromEntries(selectors.map(selector => {
+              const s = getComputedStyle(document.querySelector(selector))
+              return [selector, { size: s.fontSize, weight: s.fontWeight, transform: s.transform, color: s.color,
+                lineHeight: s.lineHeight, paddingLeft: s.paddingLeft, gap: s.gap }]
+            })) }
+        })
+        ensure(JSON.stringify(alignedType.breadcrumb) === JSON.stringify(['复盘', '/', '独立复练', '/', '新旧对照'])
+          && alignedType.homeIcons === 1 && alignedType.styles['.r-breadcrumb'].gap === '12px'
+          && alignedType.styles['.r-breadcrumb strong'].weight === '500'
+          && alignedType.styles['.r-breadcrumb strong'].color === 'rgb(244, 240, 233)'
+          && alignedType.styles['.rv22 .rv-heading h1'].transform === 'matrix(0.98, 0, 0, 1.02, 2, 0)'
+          && alignedType.styles['.rv22 .rv-subheading'].size === '24px'
+          && alignedType.styles['.rv22-old .rv22-answer-heading'].size === '23px'
+          && alignedType.styles['.rv22-old .rv22-answer-list'].paddingLeft === '34px'
+          && alignedType.styles['.rv22-old .rv22-answer-list'].lineHeight === '44.5px'
+          && alignedType.styles['.rv22-new .rv22-answer-list'].size === '23.1px'
+          && alignedType.styles['.rv22-new .rv22-answer-list'].lineHeight === '36px'
+          && Object.entries({
+            '.rv22-old .rv22-answer-list li': 'matrix(0.99, 0, 0, 1.07, 0, 0)',
+            '.rv22-old .rv22-answer-list li:nth-child(2)': 'matrix(0.99, 0, 0, 1.07, 0, -1)',
+            '.rv22-old .rv22-answer-list li:nth-child(3)': 'matrix(1, 0, 0, 1.07, 0, -2)',
+            '.rv22-new .rv22-answer-list li + li': 'matrix(0.99, 0, 0, 1.07, 0, -3)',
+          }).every(([selector, transform]) => alignedType.styles[selector].transform === transform), '22分段面包屑、标题或逐行字框不符')
+        checks.push({ check: 'compare-segmented-breadcrumb-title-answer-line-transforms', scene: scene.id, alignedType, passed: true })
+        const surfaceType = await page.evaluate(() => Object.fromEntries([
+          '.r-scene-22', '.r-sidebar', '.r-nav-item', '.r-nav-item.r-selected', '.rv22-conditions dd',
+          '.rv22-keywords button', '.rv22-basis strong', '.rv22-basis input',
+        ].map(selector => {
+          const s = getComputedStyle(document.querySelector(selector))
+          return [selector, { color: s.backgroundColor, background: s.backgroundImage, size: s.fontSize,
+            stroke: s.webkitTextStrokeWidth, weight: s.fontWeight, lineHeight: s.lineHeight, transform: s.transform }]
+        })))
+        ensure(surfaceType['.r-scene-22'].color === 'rgb(11, 10, 9)'
+          && surfaceType['.r-sidebar'].background === 'linear-gradient(115deg, rgba(30, 26, 22, 0.565), rgba(35, 31, 26, 0.73))'
+          && surfaceType['.r-nav-item'].size === '23px' && surfaceType['.r-nav-item'].stroke === '0.04px'
+          && surfaceType['.r-nav-item.r-selected'].weight === '500' && surfaceType['.r-nav-item.r-selected'].stroke === '0.1px'
+          && surfaceType['.rv22-conditions dd'].color === 'rgba(219, 205, 189, 0.086)'
+          && surfaceType['.rv22-keywords button'].lineHeight === '32px' && surfaceType['.rv22-keywords button'].stroke === '0.1px'
+          && surfaceType['.rv22-basis strong'].transform === 'matrix(1, 0, 0, 1, 1, -3)'
+          && surfaceType['.rv22-basis input'].transform === 'matrix(0.99, 0, 0, 1.05, 1, -3)', '22侧栏、标签或判断依据光照／基线不符')
+        checks.push({ check: 'compare-surface-basis-keyword-font-r125', scene: scene.id, surfaceType, passed: true })
         const beforeAnswers = await page.locator('.rv22-answer-panel').allTextContents(), writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
