@@ -775,7 +775,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-23 .r-saved { color: #c0bbb4; font-size: 22px; gap: 12px; }
 .r-scene-23 .r-saved svg { background: transparent; fill: none; color: #70cb88; padding: 0; }
 .r-scene-23 .r-top-status > .r-avatar { width: 56px; height: 56px; font-size: 25px; }
-.r-scene-24 { background: radial-gradient(ellipse at 35% 0, #19150e55, transparent 45%), #080704; will-change: transform; }
+.r-scene-24 { background: radial-gradient(ellipse 340px 360px at 0 0, #483d334d, transparent), radial-gradient(ellipse at 35% 0, #19150e55, transparent 45%), #080704; will-change: transform; font-weight: 300; border-radius: 34px; box-shadow: inset 0 0 0 1px #39332760; }
 .r-scene-24 .r-sidebar { width: 208px; top: 106px; bottom: 0; border-color: #28211a; background: linear-gradient(120deg, #1a1611, #151210); }
 .r-scene-24 .r-sidebar > a { position: absolute; left: 34px; top: -74px; }
 .r-scene-24 .r-sidebar :deep(.r-brand) { position: static; gap: 12px; }
@@ -783,17 +783,20 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-24 .r-sidebar :deep(.r-brand-word) { font-size: 28px; font-weight: 500; line-height: 32px; }
 .r-scene-24 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; margin-top: 0; line-height: 22px; }
 .r-scene-24 .r-sidebar nav { top: 34px; left: 20px; right: 19px; gap: 7px; }
-.r-scene-24 .r-nav-item { padding-left: 23px; color: #c9bdac; gap: 16px; font-size: 23px; white-space: nowrap; }
-.r-scene-24 .r-nav-item.r-selected { border-radius: 32px; color: #fff1dd; background: linear-gradient(110deg, #945c2dbc, #4d351f); border-color: #a96c38; box-shadow: inset 1px 1px 7px #f7c49226, -3px 0 15px #e49c5530; }
-.r-scene-24 .r-nav-item.r-secondary { height: 58px; padding-right: 0; padding-left: 21px; font-size: 22px; white-space: nowrap; }
-.r-scene-24 .r-nav-separator { margin: 31px 13px 29px; }
+.r-scene-24 .r-nav-item { padding-left: 23px; color: #c9bdac; gap: 16px; font-size: 21.5px; line-height: 34.5px; font-weight: 400; white-space: nowrap; }
+.r-scene-24 .r-nav-item:not(.r-secondary) > span { display: inline-block; transform-origin: 0 50%; transform: translate(1px, -1px) scaleX(.94); }
+.r-scene-24 .r-nav-item.r-selected { border-radius: 32px; color: #fff1dd; background: radial-gradient(ellipse at 58% 76%, #b67c473b, transparent 78%), linear-gradient(110deg, #945c2db5, #654321bd); border-color: #a96c38; box-shadow: inset 0 1px 3px #f2bf8a30, -3px 0 15px #e49c5526; }
+.r-scene-24 .r-nav-item.r-secondary { height: 58px; padding-right: 0; padding-left: 21px; font-size: 21px; line-height: 33px; white-space: nowrap; }
+.r-scene-24 .r-nav-item.r-secondary > span { display: inline-block; transform: translate(2px, -1px); }
+.r-scene-24 .r-nav-separator { margin: 33px 13px 20px; }
 .r-scene-24 .r-sidebar-avatar { left: 35px; bottom: 36px; }
 .r-scene-24 .r-sidebar-avatar .r-avatar { width: 61px; height: 61px; font-size: 25px; background: linear-gradient(130deg, #62513e, #3f372c); }
 .r-scene-24 .r-sidebar-avatar::before { content: ""; position: absolute; top: -40px; left: 0; width: 140px; height: 1px; background: #ffffff10; }
 .r-scene-24 .r-topbar { left: 260px; right: 37px; top: 22px; height: 76px; }
+.r-scene-24 .r-topbar::before { content: ""; position: absolute; z-index: -1; left: -29px; right: -37px; top: -3px; bottom: -3px; border: 1px solid #211c1659; border-radius: 30px; background: linear-gradient(115deg, #14141166, #0d0c0b88); pointer-events: none; }
 .r-scene-24 .r-breadcrumb { font-size: 20px; gap: 16px; }
 .r-scene-24 .r-breadcrumb strong { font-weight: 500; }
-.r-scene-24 .r-top-search { left: 455px !important; top: 10px; height: 56px; background: linear-gradient(110deg, #201f1c, #191714) !important; border-color: #4a4640 !important; }
+.r-scene-24 .r-top-search { left: 455px !important; top: 10px; height: 56px; background: linear-gradient(110deg, #25231f, #1d1c19) !important; border-color: #6f685366 !important; }
 .r-scene-24 .r-top-status { gap: 36px; }
 .r-scene-24 .r-saved { margin-right: 40px; font-size: 22px; }
 .r-scene-24 .r-saved svg { width: 23px; height: 23px; padding: 5px; color: #edfff3; background: linear-gradient(120deg, #6bc9aa, #49a58c); fill: none; }

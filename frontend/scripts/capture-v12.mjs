@@ -2408,20 +2408,24 @@ try {
             '.rv24-directions', '.rv24-evidence', '.rv24-suggestions',
           ].map(selector => [selector, read(selector)]))
         })
-        ensure(style['.rv24 h1'].weight === '650' && style['.rv24 h1'].size === '54px'
-          && ['.rv24 h2', '.rv24-suggestion h3', '.rv24-evidence-filters legend', '.rv24-evidence-table tbody th', '.rv24-note strong']
+        ensure(style['.rv24 h1'].weight === '500' && style['.rv24 h1'].size === '54px' && style['.rv24 h1'].stroke === '1.05px'
+          && ['.rv24 h2', '.rv24-suggestion h3', '.rv24-evidence-filters legend', '.rv24-note strong']
             .every(selector => style[selector].weight === '500' && style[selector].stroke === '0.15px')
-          && style['.r-nav-item'].size === '23px' && style['.r-nav-item'].gap === '16px'
-          && style['.r-nav-item.r-secondary'].size === '22px' && style['.r-nav-item.r-secondary'].gap === '16px'
+          && style['.rv24-evidence-table tbody th'].weight === '500' && style['.rv24-evidence-table tbody th'].stroke === '0.2px'
+          && style['.rv24-evidence-table tbody th'].size === '19.7px' && style['.rv24-note strong'].size === '19.7px'
+          && style['.r-nav-item'].size === '21.5px' && style['.r-nav-item'].gap === '16px'
+          && style['.r-nav-item.r-secondary'].size === '21px' && style['.r-nav-item.r-secondary'].gap === '16px'
           && ['.rv24-suggestion-source', '.rv24-suggestion-text'].every(selector =>
-            style[selector].size === '15px' && style[selector].family === '"Microsoft YaHei", sans-serif')
+            style[selector].weight === '400' && style[selector].family === '"Microsoft YaHei", sans-serif')
+          && style['.rv24-suggestion-source'].size === '15.5px' && style['.rv24-suggestion-text'].size === '15px'
           && style['.rv24-suggestion-text'].lineHeight === '22.5px'
           && style['.rv24-suggestion-actions button'].size === '16px' && style['.rv24-suggestion-actions button'].padding === '0px 19px'
-          && style['.rv24-suggestion .priority'].background === 'linear-gradient(110deg, rgb(106, 75, 49), rgb(135, 83, 45))'
-          && style['.rv24-suggestion:nth-of-type(2) .priority'].background === 'linear-gradient(110deg, rgb(88, 75, 55), rgb(102, 77, 49))'
+          && style['.rv24-suggestion .priority'].size === '15px' && style['.rv24-suggestion .priority'].padding === '0px 14px 2px'
+          && style['.rv24-suggestion .priority'].background === 'radial-gradient(at 80% 63%, rgba(212, 157, 81, 0.34), rgba(0, 0, 0, 0) 73%), linear-gradient(110deg, rgba(99, 72, 43, 0.737), rgba(133, 87, 45, 0.74))'
+          && style['.rv24-suggestion:nth-of-type(2) .priority'].background === 'radial-gradient(at 82% 65%, rgba(180, 146, 85, 0.34), rgba(0, 0, 0, 0) 73%), linear-gradient(110deg, rgba(84, 75, 56, 0.737), rgba(111, 89, 58, 0.74))'
           && ['.rv24-directions', '.rv24-evidence'].every(selector =>
-            style[selector].background === 'linear-gradient(110deg, rgb(23, 21, 18), rgb(18, 17, 15))')
-          && style['.rv24-suggestions'].background === 'linear-gradient(115deg, rgb(25, 22, 17), rgb(18, 17, 14))',
+            style[selector].background === 'linear-gradient(110deg, rgb(25, 22, 18), rgb(20, 18, 15))')
+          && style['.rv24-suggestions'].background === 'linear-gradient(115deg, rgb(26, 23, 20), rgb(21, 19, 17))',
           '24标题层次、侧栏字距、建议说明／按钮或分区底色不符')
         checks.push({ check: 'growth-heading-weights-navigation-spacing-suggestion-copy-buttons-panel-surfaces',
           scene: scene.id, style, passed: true })
@@ -2481,6 +2485,59 @@ try {
           '24证据开关、建议初态或不输出能力总分边界不符')
         checks.push({ check: 'growth-four-row-ten-source-matrix-two-line-suggestions-single-line-sidebar-fixed-geometry',
           scene: scene.id, geometry, sidebarLines, rows, suggestionLines, passed: true })
+        const growthPixels = await sharp(captured).removeAlpha().raw().toBuffer()
+        const growthReference = await sharp(path.join(values.references, scene.file)).removeAlpha().raw().toBuffer()
+        // 只核对已辨认标题和日期的可见字框；字框相同不等于字形或整页像素相同。
+        const growthInk = (pixels, [x, y, width, height]) => {
+          let left = 1536, top = 1024, right = -1, bottom = -1, count = 0
+          for (let row = y; row < y + height; row++) for (let column = x; column < x + width; column++) {
+            const offset = (row * 1536 + column) * 3
+            if (pixels[offset] < 160 || pixels[offset + 1] < 150 || pixels[offset + 2] < 130) continue
+            count++; left = Math.min(left, column); top = Math.min(top, row); right = Math.max(right, column); bottom = Math.max(bottom, row)
+          }
+          return { count, bounds: count ? [left, top, right, bottom] : null }
+        }
+        const inkMarkers = Object.fromEntries(Object.entries({
+          title: [240, 130, 130, 68], matrixTitle: [493, 290, 170, 42], firstDate: [681, 475, 61, 40],
+        }).map(([name, region]) => {
+          const actual = growthInk(growthPixels, region), reference = growthInk(growthReference, region)
+          ensure(actual.count && reference.count && JSON.stringify(actual.bounds) === JSON.stringify(reference.bounds),
+            '24可见字框与原图不符：' + name)
+          return [name, { region, actual, reference }]
+        }))
+        checks.push({ check: 'growth-reference-ink-bounds-title-matrix-heading-first-date', scene: scene.id,
+          inkMarkers, limitations: '仅三个字框位置通过，不是字形或严格1:1通过', passed: true })
+        const growthDetail = await page.evaluate(() => {
+          const style = (selector, pseudo) => {
+            const s = getComputedStyle(document.querySelector(selector), pseudo)
+            return { radius: s.borderRadius, background: s.backgroundImage, shadow: s.boxShadow, transform: s.transform,
+              left: s.left, right: s.right, top: s.top, bottom: s.bottom, padding: s.padding, fontSize: s.fontSize }
+          }
+          const box = selector => { const b = document.querySelector(selector).getBoundingClientRect(); return [b.x, b.y, b.width, b.height] }
+          return { canvas: style('.r-canvas'), topbar: style('.r-topbar', '::before'),
+            title: style('.rv24 h1'), subtitle: style('.rv24 .rv-subheading'), tableWrap: box('.rv24-evidence-table-wrap'),
+            rowTitle: style('.rv24-evidence-table tbody th'), firstRow: box('.rv24-evidence-table tbody th'),
+            headerLabel: style('.rv24-evidence-table thead th > span'), date: style('.rv24-evidence-date'),
+            suggestions: [...document.querySelectorAll('.rv24-suggestion')].map(node => { const b = node.getBoundingClientRect(); return [b.y, b.height] }),
+            priority: style('.rv24-suggestion-actions .priority'), note: style('.rv24-note'),
+            infoCircleStroke: getComputedStyle(document.querySelector('.rv24-note-icon .r-icon path:first-child')).stroke }
+        })
+        ensure(growthDetail.canvas.radius === '34px'
+          && growthDetail.canvas.shadow === 'rgba(57, 51, 39, 0.376) 0px 0px 0px 1px inset'
+          && growthDetail.topbar.radius === '30px' && growthDetail.topbar.background === 'linear-gradient(115deg, rgba(20, 20, 17, 0.4), rgba(13, 12, 11, 0.533))'
+          && JSON.stringify([growthDetail.topbar.left, growthDetail.topbar.right, growthDetail.topbar.top, growthDetail.topbar.bottom]) === '["-29px","-37px","-3px","-3px"]'
+          && growthDetail.title.transform === 'matrix(0.972, 0, 0, 0.96, 0, 2)'
+          && growthDetail.subtitle.transform === 'matrix(0.993, 0, 0, 0.96, 1, -1)'
+          && JSON.stringify(growthDetail.tableWrap) === '[489,344,639,544]'
+          && growthDetail.rowTitle.transform === 'none' && growthDetail.rowTitle.padding === '0px 0px 4px 10px'
+          && JSON.stringify(growthDetail.firstRow) === '[489,451,148,85.25]'
+          && growthDetail.headerLabel.transform === 'matrix(1, 0, 0, 1, 0, 2)' && growthDetail.date.transform === 'matrix(1, 0, 0, 1, 0, -2)'
+          && JSON.stringify(growthDetail.suggestions) === '[[347,180],[535,171],[713,173]]'
+          && growthDetail.priority.shadow === 'rgba(248, 216, 155, 0.4) 0px 1px 2px 0px inset, rgba(240, 186, 96, 0.28) 0px -1px 3px 0px inset'
+          && growthDetail.note.fontSize === '19.7px' && growthDetail.note.padding === '0px 24px 2px'
+          && growthDetail.infoCircleStroke === 'rgba(0, 0, 0, 0)', '24顶部容器、矩阵边线、建议基线或材质不符')
+        checks.push({ check: 'growth-rounded-frame-topbar-stable-table-borders-suggestion-baselines-layered-controls',
+          scene: scene.id, growthDetail, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
