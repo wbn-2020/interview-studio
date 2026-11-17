@@ -188,6 +188,16 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               </svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
+            <div v-else-if="scene === 14" class="r-brand">
+              <svg class="r-emblem" viewBox="0 0 44 55" fill="none" aria-hidden="true">
+                <path d="M23 5C26 22 27 24 44 28 27 32 26 35 23 52 20 34 18 32 2 28 19 24 20 22 23 5Z" fill="#d3ab85" />
+                <path d="M23 5C23 20 24 24 23 28 21 27 18 28 2 28 19 24 20 22 23 5Z" fill="#e0bd9c" />
+                <path d="M23 28C23 32 23 37 23 52 20 34 18 32 2 28 18 29 20 29 23 28Z" fill="#c69c74" />
+                <path d="M23 20C24 25 26 27 31 28 25 29 25 32 23 37 21 32 20 31 14 28 20 27 21 25 23 20Z" fill="#4d4033" />
+                <path d="m10.5 17.5 3 1.2.4 2.5-2.6-1.7Zm22.5.2 2.5-.9-.3 2.4-2.5 1.7Zm-21.6 19.5 2.8-1.7-.3 2.7-3.2 1Zm22.1-1.5 1.8 2.8-2.3-.5-1-2.8Z" fill="#b69675" />
+              </svg>
+              <span class="r-brand-word">问阶<small>Interview Studio</small></span>
+            </div>
             <div v-else-if="scene === 18" class="r-brand">
               <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M50 2 61 37 94 50 61 63 50 98 39 63 6 50 39 37Z M50 29 44 44 29 50 44 56 50 72 56 56 71 50 56 44Z" fill="currentColor" fill-rule="evenodd" /></svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
@@ -527,10 +537,10 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-14::before { content: ""; position: absolute; left: 230px; right: 0; top: 7px; height: 74px; border: 1px solid #51433b66; border-bottom: 0; border-radius: 24px 24px 0 0; background: linear-gradient(110deg, #251f1b77, #1a17145c); pointer-events: none; }
 .r-scene-14 .r-sidebar { top: 7px; bottom: 8px; width: 230px; border-color: #62504799; background: radial-gradient(ellipse 180px 560px at -20% 72%, #80563b33, transparent), linear-gradient(150deg, #211c19, #211a17 60%, #191513); }
 .r-scene-14 .r-sidebar::before { content: ""; position: absolute; left: 28px; right: 26px; top: 125px; height: 1px; background: #8d736122; }
-.r-scene-14 .r-sidebar :deep(.r-brand) { left: 28px; top: 40px; gap: 12px; }
+.r-scene-14 .r-sidebar :deep(.r-brand) { left: 28px; top: 40px; gap: 13px; }
 .r-scene-14 .r-sidebar :deep(.r-emblem) { width: 44px; height: 55px; color: #dcb184; filter: none; }
 .r-scene-14 .r-sidebar :deep(.r-brand-word) { font-weight: 500; }
-.r-scene-14 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; color: #9c9188; }
+.r-scene-14 .r-sidebar :deep(.r-brand-word small) { font-size: 16px; line-height: 20px; margin-top: 4px; font-weight: 400; color: #918982; }
 .r-scene-14 .r-sidebar nav { top: 140px; left: 22px; right: 20px; gap: 4px; }
 .r-scene-14 .r-nav-item { height: 55px; padding-left: 17px; font-size: 20px; font-weight: 300; color: #efe8e1; }
 .r-scene-14 .r-nav-item span { position: relative; left: -2px; }

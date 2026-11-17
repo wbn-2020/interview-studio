@@ -1045,7 +1045,7 @@ try {
         ensure(closeBox(geometry.filters, [238, 230, 204, 750]) && closeBox(geometry.table, [448, 230, 709, 750])
           && closeBox(geometry.detail, [1164, 230, 350, 614]) && closeBox(geometry.search, [912, 112, 324, 54])
           && closeBox(geometry.filterButton, [1249, 112, 128, 54]) && closeBox(geometry.create, [1390, 112, 116, 54])
-          && Math.abs(geometry.separator?.[1] - 513) <= 1 && geometry.brandPaths === 2 && geometry.briefcasePaths === 2,
+          && Math.abs(geometry.separator?.[1] - 513) <= 1 && geometry.brandPaths === 5 && geometry.briefcasePaths === 2,
           '14面板、工具组、侧栏分隔或专用图标几何不符')
         checks.push({ check: 'question-bank-five-rows-columns-title-lines-shell-tools-geometry', scene: scene.id, geometry, passed: true })
         const bankStyle = await page.evaluate(() => {
@@ -1138,6 +1138,29 @@ try {
           && bankText.otherCells.every(item => item.size === '18px' && item.weight === '400'),
           '14五条题名原文、17px字面及首行基线或其他列字体不符')
         checks.push({ check: 'question-bank-navigation-and-five-title-text-metrics', scene: scene.id, text: bankText, passed: true })
+        const bankBrand = await page.evaluate(() => {
+          const measure = selector => {
+            const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+            return { text: node.textContent, box: [box.x, box.y, box.width, box.height], size: style.fontSize,
+              weight: style.fontWeight, line: style.lineHeight, margin: style.marginTop, color: style.color }
+          }
+          const svg = document.querySelector('.r-brand .r-emblem')
+          return { emblem: { ...measure('.r-brand .r-emblem'), viewBox: svg.getAttribute('viewBox'),
+            paths: [...svg.querySelectorAll('path')].map(node => ({ d: node.getAttribute('d'), fill: node.getAttribute('fill') })) },
+            subtitle: measure('.r-brand-word small'), source: measure('.bank-filter-group:nth-child(4)'),
+            options: measure('.bank-filter-group:nth-child(4) .filter-options') }
+        })
+        ensure(bankBrand.emblem.viewBox === '0 0 44 55' && bankBrand.emblem.paths.length === 5
+          && bankBrand.emblem.paths[0].d === 'M23 5C26 22 27 24 44 28 27 32 26 35 23 52 20 34 18 32 2 28 19 24 20 22 23 5Z'
+          && (bankBrand.emblem.paths[4].d.match(/Z/g) ?? []).length === 4
+          && bankBrand.emblem.paths[3].fill === '#4d4033' && closeBox(bankBrand.emblem.box, [29, 49.296875, 44, 55]),
+          '14品牌曲面四角、四个短芒或尺寸不符')
+        ensure(bankBrand.subtitle.text === 'Interview Studio' && bankBrand.subtitle.size === '16px' && bankBrand.subtitle.weight === '400'
+          && bankBrand.subtitle.line === '20px' && bankBrand.subtitle.margin === '4px' && bankBrand.subtitle.color === 'rgb(145, 137, 130)'
+          && closeBox(bankBrand.subtitle.box, [86, 85.59375, 113.65625, 20])
+          && closeBox(bankBrand.source.box, [262, 764.5, 156, 126.5]) && closeBox(bankBrand.options.box, [262, 799, 156, 92]),
+          '14英文副标实际字体及来源筛选基线不符')
+        checks.push({ check: 'question-bank-curved-brand-subtitle-and-source-filter-baseline', scene: scene.id, brand: bankBrand, passed: true })
         const search = page.getByRole('textbox', { name: '搜索题目', exact: true })
         await search.fill('ThreadLocal')
         ensure(await rows.count() === 1 && (await rows.first().textContent()).includes('ThreadLocal'), '14标题搜索未筛选')

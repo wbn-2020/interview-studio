@@ -507,7 +507,7 @@ watch(() => props.scene, () => {
 .bank-filters { left: 8px; top: 230px; width: 204px; height: 750px; border-radius: 14px; padding: 32px 23px; background: linear-gradient(160deg, #1d1a17, #1b1815 80%); }
 .bank-filter-group { margin-bottom: 30px; }
 .bank-filter-group:nth-child(2) { margin-bottom: 23px; }
-.bank-filter-group:nth-child(3) { padding-top: 6px; margin-top: -11px; margin-bottom: 15px; border-top: 1px solid #ffffff08; }
+.bank-filter-group:nth-child(3) { padding-top: 6px; margin-top: -11px; margin-bottom: 12px; border-top: 1px solid #ffffff08; }
 .bank-filter-group:nth-child(4) { margin-bottom: 0; }
 .filter-heading { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 19px !important; font-weight: 600; line-height: 28px; }
 .scene-14 .filter-heading { font-weight: 500; -webkit-text-stroke: .2px currentColor; }
