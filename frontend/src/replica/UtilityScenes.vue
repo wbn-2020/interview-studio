@@ -230,8 +230,8 @@ onMounted(drawHorizon)
             </span>
             <span :class="{ 'recent-pdf-name': item.color === 'red' }">{{ item.title }}</span>
           </span>
-          <span><span class="utility-tag" :class="item.typeColor">{{ item.type }}</span></span>
-          <span><span class="utility-tag" :class="item.stateColor">{{ item.state }}</span></span>
+          <span><span class="utility-tag" :class="item.typeColor"><span class="recent-tag-copy">{{ item.type }}</span></span></span>
+          <span><span class="utility-tag" :class="item.stateColor"><span class="recent-tag-copy">{{ item.state }}</span></span></span>
           <span class="recent-visit-time">{{ item.time }}</span>
           <RIcon name="chevron-right" :size="20" class="recent-row-chevron" />
         </button>
@@ -244,13 +244,13 @@ onMounted(drawHorizon)
           <RIcon v-else :name="currentObject.icon" :size="52" />
         </div>
         <h2 :title="currentObject.title">{{ currentObject.title }}</h2>
-        <span class="utility-tag recent-detail-type" :class="currentObject.typeColor">{{ currentObject.type }}</span>
+        <span class="utility-tag recent-detail-type" :class="currentObject.typeColor"><span class="recent-tag-copy">{{ currentObject.type }}</span></span>
         <div class="recent-detail-rule" />
         <p class="recent-state-label">当前状态</p>
-        <div class="recent-state-box"><span class="recent-state-dot" /><span class="utility-tag" :class="currentObject.stateColor">{{ currentObject.state }}</span></div>
-        <p class="recent-learning-note"><RIcon name="info" :size="23" />访问不构成学习完成</p>
-        <button class="utility-primary recent-open" @click="emit('navigate', currentObject.scene)"><RIcon name="play" :size="20" />打开当前对象</button>
-        <p class="recent-version-note"><RIcon name="info" :size="21" />不恢复历史版本或滚动位置</p>
+        <div class="recent-state-box"><span class="recent-state-dot" /><span class="utility-tag" :class="currentObject.stateColor"><span class="recent-tag-copy">{{ currentObject.state }}</span></span></div>
+        <p class="recent-learning-note"><RIcon name="info" :size="23" /><span class="recent-note-copy">访问不构成学习完成</span></p>
+        <button class="utility-primary recent-open" @click="emit('navigate', currentObject.scene)"><RIcon name="play" :size="20" /><span class="recent-open-copy">打开当前对象</span></button>
+        <p class="recent-version-note"><RIcon name="info" :size="21" /><span class="recent-note-copy">不恢复历史版本或滚动位置</span></p>
       </aside>
     </template>
 
@@ -372,63 +372,84 @@ onMounted(drawHorizon)
 /* 26：坐标均从原图 x 减去 224；行星为确定性程序绘制，缺少原始纹理素材。 */
 .recent-horizon { position: absolute; top: 0; left: 0; width: 1312px; height: 1024px; pointer-events: none; mask-image: linear-gradient(90deg, transparent, #000 36%); }
 .recent-heading { position: absolute; top: 144px; left: 40px; }
-.recent-heading h1 { font-size: 54px; line-height: 1.3; font-weight: 500; -webkit-text-stroke: .6px currentColor; color: #faf9f6; }
-.recent-heading p { margin-top: 5px; font-size: 22px; color: #d8c1aa; transform: translateY(4px); }
+.recent-heading h1 { font-size: 54px; line-height: 1.3; font-weight: 500; -webkit-text-stroke: .6px currentColor; color: #faf9f6; transform-origin: 0 0; transform: translateX(4px) scale(.98, .98); }
+.recent-heading p { margin-top: 5px; font-size: 22px; font-weight: 300; -webkit-text-stroke: .015px currentColor; color: #d8c1aa; transform-origin: 0 0; transform: translate(2px, 4px) scale(1.004, .96); }
 .recent-actions { position: absolute; top: 196px; left: 970px; display: flex; gap: 20px; z-index: 2; }
 .recent-actions .utility-button { height: 55px; border-radius: 21px; }
 .recent-type-button { width: 161px; gap: 7px; padding: 0 12px !important; }
 .recent-clear-button { width: 140px; padding: 0 12px !important; gap: 9px; }
-.recent-filters { top: 287px; left: 15px; width: 209px; height: 601px; padding: 19px 12px; background: linear-gradient(115deg, #211c18, #151211); border-color: #51483d66; }
+.recent-filters { top: 287px; left: 15px; width: 209px; height: 601px; padding: 19px 12px; background: linear-gradient(115deg, #211c18, #151210); border-color: #51483d66; }
 .recent-category { display: flex; align-items: center; gap: 19px; width: 183px; height: 60px; padding: 0 13px !important; border-radius: 15px; text-align: left; font-size: 22px; color: #c0bbb4; }
 .recent-category:first-child { height: 56px; margin-bottom: 5px; }
-.recent-category.selected { color: #fff8ef; background: linear-gradient(120deg, #795435bf, #573c29cf) !important; box-shadow: inset 0 0 0 1px #9c754b3d; }
+.recent-category.selected { color: #fff8ef; background: linear-gradient(120deg, #624930b8, #513a29b3) !important; box-shadow: inset 0 0 0 1px #9c754b20; }
 .recent-category:hover { background-color: #ffffff06; }
 .recent-all-label { padding-left: 1px; font-size: 23px; }
-.recent-count { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; min-width: 29px; height: 30px; padding: 0 7px; border-radius: 50%; background: #ffffff12; font-size: 19px; color: #d5ccc3; }
+.recent-category > span:not(.recent-count) { display: inline-block; transform-origin: 0 50%; transform: scaleX(.91); }
+.recent-category > .recent-all-label { transform: translateX(1px) scaleX(.945); }
+.recent-category:nth-child(2) > span:not(.recent-count) { transform: scale(.885, .95); }
+.recent-count { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; min-width: 29px; height: 30px; padding: 0 7px; border-radius: 50%; background: #ffffff12; font-size: 19px; color: #d5ccc3; transform: translateX(2px); }
 .recent-category.selected .recent-count { background: #b58a6633; color: #f8eee2; }
 .recent-filter-rule { margin: 13px 10px 21px; height: 1px; background: #ffffff12; }
 .recent-accessibility { display: flex; align-items: center; gap: 8px; padding-left: 13px; font-size: 18px; white-space: nowrap; }
+.recent-accessibility > span { transform-origin: 0 50%; transform: scaleX(.95); }
 .recent-accessibility input { appearance: none; display: inline-grid; place-items: center; width: 23px; height: 23px; margin: 0; border: 1px solid #a8a29b; border-radius: 5px; background: #c5c1ba; cursor: pointer; }
 .recent-accessibility input:checked::after { content: ""; width: 12px; height: 7px; border-left: 3px solid #292722; border-bottom: 3px solid #292722; transform: translateY(-2px) rotate(-45deg); }
 .recent-accessibility input:not(:checked) { background: transparent; }
-.recent-table { top: 287px; left: 241px; width: 721px; height: 613px; background: linear-gradient(115deg, #221c1877, transparent 45%), #171412; border-color: #71614e99; }
-.recent-table-head, .recent-table-row { display: grid; grid-template-columns: 260px 118px 160px 109px 19px; align-items: center; text-align: left; }
-.recent-table-head { height: 74px; padding-left: 21px; color: #d1ccc4; font-size: 20px; }
+.recent-table { top: 287px; left: 241px; width: 721px; height: 613px; background: linear-gradient(115deg, #221c1877, transparent 45%), #151211; border-color: #71614e99; }
+.recent-table-head, .recent-table-row { display: grid; grid-template-columns: 257px 118px 162px 110px 19px; align-items: center; text-align: left; }
+.recent-table-head { height: 74px; padding-left: 21px; color: #d1ccc4; font-size: 20px; font-weight: 400; }
+.recent-table-head > span { transform-origin: 0 50%; transform: translateY(1px) scaleX(.895); }
 .recent-table-head > span:not(:first-child) { position: relative; }
 .recent-table-head > span:not(:first-child)::before { content: ""; position: absolute; left: -15px; top: 0; height: 31px; width: 1px; background: #ffffff04; }
 .recent-table-row { position: relative; width: 706px; height: 77.5px; padding: 0 21px !important; border-top: 1px solid transparent !important; border-bottom: 1px solid transparent !important; font-size: 20px; }
 .recent-table-row::after { content: ""; position: absolute; left: 21px; right: 8px; bottom: -1px; height: 1px; background: #ffffff09; }
-.recent-table-row.selected { border: 1px solid #ad7749 !important; border-right-color: #8a60383d !important; background: linear-gradient(120deg, #6a452b82, #37291d80) !important; border-radius: 15px; }
+.recent-table-row.selected { border: 1px solid #ad7749a1 !important; border-right-color: #8a60383d !important; background: radial-gradient(ellipse at 22% 40%, #78533224, transparent 82%), linear-gradient(120deg, #5d402b6b, #37291d59) !important; border-radius: 15px; }
 .recent-table-row.selected::after { display: none; }
 .recent-table-row:hover { background-color: #ffffff05; }
-.recent-table-row .utility-tag { font-weight: 500; padding-inline: 13px; }
+.recent-table-row .utility-tag { height: 42.296875px; font-weight: 500; padding-inline: 13px; }
+.recent-tag-copy { display: inline-block; line-height: 26px; transform-origin: 50% 50%; transform: scaleX(.935); -webkit-text-stroke: .06px currentColor; }
 .recent-object-name { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-weight: 400; }
+.recent-object-name > span:last-child { display: inline-block; transform-origin: 0 50%; -webkit-text-stroke: .05px currentColor; transform: translateY(-2px) scale(.868, 1.03); }
+.recent-table-row:nth-of-type(2) .recent-object-name > span:last-child { transform: translate(.5px, .25px) scale(.894, 1); }
+.recent-table-row:nth-of-type(3) .recent-object-name > span:last-child { transform: translateX(1px) scaleX(.932); }
+.recent-table-row:nth-of-type(4) .recent-object-name > span:last-child { -webkit-text-stroke: .2px currentColor; transform: translate(1px, -.35px) scaleY(1.1); }
+.recent-table-row:nth-of-type(5) .recent-object-name > span:last-child { transform: translate(1px, -.5px) scale(.875, .97); }
 .recent-object-name .recent-pdf-name { font-size: 17px; }
 .recent-object-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 28px; border-radius: 6px; }
 .recent-object-icon.blue { color: #e0f7ff; background: linear-gradient(135deg, #75bfe7, #438ac2); }
 .recent-object-icon.purple { color: #c994ee; }
 .recent-object-icon.indigo { color: #d5dbff; background: linear-gradient(135deg, #8092ff, #4b58bc); }
 .recent-object-icon.red { color: #fff3ef; background: linear-gradient(135deg, #ff9082, #df413d); }
-.recent-visit-time { white-space: nowrap; }
+.recent-visit-time { white-space: nowrap; font-weight: 400; -webkit-text-stroke: .02px currentColor; transform-origin: 0 50%; transform: translate(-1px, -2px) scale(.91, 1.03); }
+.recent-table-row:nth-of-type(1) .recent-visit-time { -webkit-text-stroke: .05px currentColor; transform: translateY(-1.5px) scale(.925, 1.055); }
+.recent-table-row:nth-of-type(2) .recent-visit-time { transform: translateX(-1px) scaleX(.91); }
+.recent-table-row:nth-of-type(3) .recent-visit-time { transform: translate(-1px, -1px) scaleX(.98); }
+.recent-table-row:nth-of-type(4) .recent-visit-time { transform: translate(-1px, -1px) scaleX(.96); }
+.recent-table-row:nth-of-type(5) .recent-visit-time { transform: translate(-1px, -1px) scaleX(.94); }
 .recent-row-chevron { color: #aaa59d; }
-.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(115deg, #30231b45, transparent 70%), #15120f; border-color: #81715a88; }
+.recent-detail { top: 287px; left: 978px; width: 313px; height: 613px; padding: 28px 28px 23px; background: linear-gradient(115deg, #382b2b40, transparent 70%), linear-gradient(180deg, transparent 60%, #3b2c2626), #15120f; border-color: #81715a88; }
 .recent-detail-art { display: flex; align-items: center; justify-content: center; width: 94px; height: 94px; border: 1px solid #45728d7a; border-radius: 23px; color: #a7dcf5; background: linear-gradient(130deg, #35566a, #293f4c); }
 .recent-detail-art.purple { color: #cc9cf5; background: #392a4a; border-color: #6b4b86; }
 .recent-detail-art.indigo { color: #c6d4ff; background: #303e70; border-color: #4f6097; }
 .recent-detail-art.red { color: #ffc7ba; background: #6e3830; border-color: #ae6855; }
-.recent-detail h2 { height: 42px; margin-top: 16px; font-size: 29px; font-weight: 500; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.recent-detail-type { margin-top: 9px; padding: 4px 17px; font-size: 20px; }
+.recent-detail h2 { height: 42px; margin-top: 16px; font-size: 30.2px; font-weight: 500; line-height: 42px; -webkit-text-stroke: .06px currentColor; transform: translate(.5px, -1px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-detail-type { margin-top: 11px; padding: 3px 17px; font-size: 20px; }
+.recent-detail-type .recent-tag-copy { line-height: 34px; }
 .recent-detail-type.blue { background: #303758ab; color: #d2e5ff; }
 .recent-detail-rule { height: 1px; margin: 20px 0 18px; background: #ffffff13; }
-.recent-state-label { font-size: 20px; color: #ded7ce; }
-.recent-state-box { display: flex; align-items: center; height: 64px; margin: 7px -6px 0; padding: 0 20px; gap: 12px; border: 1px solid #ffffff03; border-radius: 17px; background: linear-gradient(100deg, #39332c73, #3b342d66); }
+.recent-state-label { font-size: 20px; font-weight: 400; color: #ded7ce; transform-origin: 0 50%; transform: translateY(-3px) scale(.975, 1.05); }
+.recent-state-box { display: flex; align-items: center; height: 64px; margin: 7px -6px 0; padding: 0 20px; gap: 12px; border: 1px solid #ffffff03; border-radius: 17px; background: linear-gradient(110deg, #39332c73, #3b342d66); }
 .recent-state-dot { flex: none; width: 18px; height: 19px; border: 1px solid #a9f4e1a3; border-radius: 50%; background: linear-gradient(130deg, #8aeddb, #57b9b0); }
-.recent-state-box .utility-tag { padding: 2px 4px; background: #25403753; font-size: 22px; font-weight: 400; }
-.recent-learning-note { display: flex; align-items: center; gap: 9px; height: 55px; margin: 16px -6px 0 !important; padding: 0 15px; border: 1px solid #ffffff04; border-radius: 15px; font-size: 19px; white-space: nowrap; }
+.recent-state-box .utility-tag { padding: 2px 4px; background: #25403753; font-size: 22px; font-weight: 400; color: #9ef0e7; }
+.recent-state-box .recent-tag-copy { line-height: 37.4px; transform: translateY(-.5px) scaleX(.945); -webkit-text-stroke: .1px currentColor; }
+.recent-learning-note { display: flex; align-items: center; gap: 9px; height: 55px; margin: 16px -6px 0 !important; padding: 0 15px; border: 1px solid #ffffff04; border-radius: 15px; background: linear-gradient(115deg, #201a150f, #221b1711); font-size: 19px; font-weight: 400; white-space: nowrap; }
+.recent-note-copy { display: inline-block; line-height: 26px; -webkit-text-stroke: .025px currentColor; transform-origin: 0 50%; transform: translateY(-.5px) scale(.918, .98); }
 .recent-open { width: 265px; margin: 23px -6px 0; font-weight: 500; }
-.utility-scene-26 .recent-open { font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; transform: translateY(2px); }
+.utility-scene-26 .recent-open { font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; transform: translateY(2px); background: linear-gradient(110deg, #edb481, #d79965 55%, #bd8357) !important; }
+.recent-open-copy { display: inline-block; line-height: 28px; transform: translateX(2px); }
 .recent-open .r-icon { fill: #86552a; color: #86552a; }
-.recent-version-note { display: flex; align-items: center; gap: 8px; height: 46px; margin: 16px -6px 0 !important; padding: 0 9px; border: 1px solid #ffffff07; border-radius: 15px; font-size: 17px; white-space: nowrap; color: #aba195; }
+.recent-version-note { display: flex; align-items: center; gap: 8px; height: 46px; margin: 16px -6px 0 !important; padding: 0 9px; border: 1px solid #ffffff07; border-radius: 15px; background: linear-gradient(110deg, #221b161f, #33271a17); font-size: 17px; white-space: nowrap; color: #a59b90; }
+.recent-version-note .recent-note-copy { line-height: 22px; -webkit-text-stroke: 0; transform: translateY(-1.5px) scale(.98, 1.08); }
 
 /* 27：坐标均从原图 x 减去 216。 */
 .task-heading { position: absolute; top: 114px; left: 36px; }

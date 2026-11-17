@@ -3235,7 +3235,7 @@ try {
         ensure(recentType['.r-scene-26'].weight === '300'
           && recentType['.recent-heading h1'].weight === '500' && recentType['.recent-heading h1'].size === '54px'
           && recentType['.recent-heading h1'].stroke === '0.6px'
-          && recentType['.recent-heading p'].transform === 'matrix(1, 0, 0, 1, 0, 4)'
+          && recentType['.recent-heading p'].transform === 'matrix(1.004, 0, 0, 0.96, 2, 4)'
           && recentType['.recent-table-row .utility-tag'].weight === '500'
           && recentType['.recent-table-row .utility-tag'].padding === '13px'
           && recentType['.recent-open'].weight === '500' && recentType['.recent-open'].stroke === '0.3px'
@@ -3252,11 +3252,60 @@ try {
         })
         ensure(recentSurface.mask === 'linear-gradient(90deg, rgba(0, 0, 0, 0), rgb(0, 0, 0) 36%)'
           && recentSurface.detailColor === 'rgb(21, 18, 15)'
-          && recentSurface.columns === '260px 118px 160px 109px 19px'
+          && recentSurface.columns === '257px 118px 162px 110px 19px'
           && JSON.stringify(recentSurface.open) === '[1225,758,265,57]'
-          && recentSurface.tag.every((v, i) => Math.abs(v - [748,379.59375,64,42.296875][i]) < .02),
+          && recentSurface.tag.every((v, i) => Math.abs(v - [745,379.59375,64,42.296875][i]) < .02),
         '26地平线渐隐、详情底色、列宽、标签或打开按钮几何不符')
         checks.push({ check: 'recent-horizon-mask-detail-surface-tag-and-open-geometry', scene: scene.id, recentSurface, passed: true })
+        const recentReferenceCopy = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node)
+            return { size: s.fontSize, weight: s.fontWeight, transform: s.transform, stroke: s.webkitTextStrokeWidth }
+          }
+          return {
+            heading: style('.recent-heading h1'), nav: style('.r-nav-item'), selectedLabel: style('.r-nav-item.r-selected > span'),
+            breadcrumb: style('.r-breadcrumb > span:last-child'), detail: style('.recent-detail h2'),
+            rows: [...document.querySelectorAll('.recent-object-name > span:last-child')].map(node => ({
+              text: node.textContent, transform: getComputedStyle(node).transform,
+            })),
+            tagCopies: document.querySelectorAll('.recent-table-row .recent-tag-copy').length,
+            detailCopies: document.querySelectorAll('.recent-detail .recent-tag-copy').length,
+            noteCopies: [...document.querySelectorAll('.recent-note-copy')].map(node => node.textContent),
+            openCopy: document.querySelector('.recent-open-copy')?.textContent,
+          }
+        })
+        ensure(recentReferenceCopy.heading.transform === 'matrix(0.98, 0, 0, 0.98, 4, 0)'
+          && recentReferenceCopy.nav.size === '22.5px' && recentReferenceCopy.nav.weight === '400'
+          && recentReferenceCopy.selectedLabel.transform === 'matrix(0.935, 0, 0, 1, 0, 1)'
+          && recentReferenceCopy.breadcrumb.size === '19px' && recentReferenceCopy.breadcrumb.weight === '400'
+          && recentReferenceCopy.detail.size === '30.2px' && recentReferenceCopy.detail.stroke === '0.06px'
+          && JSON.stringify(recentReferenceCopy.rows.map(row => row.transform)) === JSON.stringify([
+            'matrix(0.868, 0, 0, 1.03, 0, -2)', 'matrix(0.894, 0, 0, 1, 0.5, 0.25)',
+            'matrix(0.932, 0, 0, 1, 1, 0)', 'matrix(1, 0, 0, 1.1, 1, -0.35)', 'matrix(0.875, 0, 0, 0.97, 1, -0.5)',
+          ]) && recentReferenceCopy.tagCopies === 10 && recentReferenceCopy.detailCopies === 2
+          && JSON.stringify(recentReferenceCopy.noteCopies) === JSON.stringify(['访问不构成学习完成', '不恢复历史版本或滚动位置'])
+          && recentReferenceCopy.openCopy === '打开当前对象', '26标题、导航、逐行字框或标签文字包装不符')
+        checks.push({ check: 'recent-reference-heading-navigation-row-copy-and-tags', scene: scene.id, recentReferenceCopy, passed: true })
+        const recentReferenceSurface = await page.evaluate(() => {
+          const background = (selector, pseudo) => getComputedStyle(document.querySelector(selector), pseudo).backgroundImage
+          const leftPanel = getComputedStyle(document.querySelector('.r-canvas'), '::after')
+          return {
+            leftPanel: [leftPanel.left, leftPanel.top, leftPanel.width, leftPanel.height, leftPanel.borderRadius],
+            selectedNav: background('.r-nav-item.r-selected'), selectedRow: background('.recent-table-row.selected'),
+            detail: background('.recent-detail'), state: background('.recent-state-box'), open: background('.recent-open'),
+            stateCopyColor: getComputedStyle(document.querySelector('.recent-state-box .recent-tag-copy')).color,
+            versionColor: getComputedStyle(document.querySelector('.recent-version-note')).color,
+          }
+        })
+        ensure(JSON.stringify(recentReferenceSurface.leftPanel) === JSON.stringify(['21px', '14px', '615px', '94px', '23px'])
+          && recentReferenceSurface.selectedNav.includes('rgba(212, 174, 121, 0.2)')
+          && recentReferenceSurface.selectedRow.includes('rgba(120, 83, 50, 0.14)')
+          && recentReferenceSurface.detail.includes('rgba(56, 43, 43, 0.25)')
+          && recentReferenceSurface.state === 'linear-gradient(110deg, rgba(57, 51, 44, 0.45), rgba(59, 52, 45, 0.4))'
+          && recentReferenceSurface.open === 'linear-gradient(110deg, rgb(237, 180, 129), rgb(215, 153, 101) 55%, rgb(189, 131, 87))'
+          && recentReferenceSurface.stateCopyColor === 'rgb(158, 240, 231)' && recentReferenceSurface.versionColor === 'rgb(165, 155, 144)',
+        '26顶栏分层、选中项、详情与打开按钮材质不符')
+        checks.push({ check: 'recent-reference-topbar-selection-detail-and-open-materials', scene: scene.id, recentReferenceSurface, passed: true })
         const writes = []
         const onWrite = request => {
           if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method())
