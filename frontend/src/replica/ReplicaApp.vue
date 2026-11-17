@@ -674,17 +674,17 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-19 .r-saved { color: #b1b0a1; font-size: 20px; gap: 10px; }
 .r-scene-19 .r-saved svg { width: 24px; height: 24px; background: #79b26d; fill: #79b26d; color: #203e20; }
 .r-scene-20 .r-sidebar { top: 10px; bottom: 18px; width: 216px; }
-.r-scene-20 { background: radial-gradient(ellipse at 0 67%, #2d211820, transparent 37%), #0b0a09; }
-.r-scene-20 .r-sidebar { border-color: #302922; border-radius: 24px; background: radial-gradient(ellipse at 0 27%, #65462c44, transparent 75%), linear-gradient(115deg, #171310, #11100f); }
+.r-scene-20 { will-change: transform; background: radial-gradient(ellipse at 0 67%, #2d211820, transparent 37%), #070504; }
+.r-scene-20 .r-sidebar { border-color: #302922; border-radius: 24px; background: radial-gradient(ellipse at 0 27%, #65462c44, transparent 75%), linear-gradient(115deg, #161313, #11100f); }
 .r-scene-20 .r-sidebar > a { position: absolute; left: 30px; top: 29px; }
 .r-scene-20 .r-sidebar :deep(.r-brand) { position: static; gap: 12px; }
 .r-scene-20 .r-sidebar :deep(.r-emblem) { width: 42px; height: 50px; color: #d89559; filter: none; }
-.r-scene-20 .r-sidebar :deep(.r-brand-word) { font-size: 27px; line-height: 32px; font-weight: 500; }
-.r-scene-20 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; line-height: 20px; margin-top: 0; color: #9f9690; }
+.r-scene-20 .r-sidebar :deep(.r-brand-word) { font-size: 27px; line-height: 32px; font-weight: 500; transform: translateY(2px); }
+.r-scene-20 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; line-height: 20px; margin-top: 3px; color: #9f9690; }
 .r-scene-20 .r-sidebar::after { content: ""; position: absolute; left: 30px; right: 29px; top: 109px; height: 1px; background: #a9876730; }
 .r-scene-20 .r-sidebar nav { top: 131px; left: 18px; right: 22px; gap: 8px; }
-.r-scene-20 .r-nav-item { font-size: 22px; height: 59px; padding-left: 21px; gap: 13px; white-space: nowrap; }
-.r-scene-20 .r-nav-item.r-selected { height: 56px; margin-bottom: 3px; border-radius: 16px; background: linear-gradient(110deg, #b4824c8c, #64472e); border-color: #dc9d5d; }
+.r-scene-20 .r-nav-item { font-size: 21px; line-height: 33px; font-weight: 400; height: 59px; padding-left: 21px; gap: 13px; white-space: nowrap; }
+.r-scene-20 .r-nav-item.r-selected { height: 56px; margin-bottom: 3px; border-radius: 16px; font-weight: 500; -webkit-text-stroke: .2px currentColor; background: radial-gradient(ellipse at 0 40%, #c38b5660, transparent 90%), linear-gradient(110deg, #765535, #503924); border-color: #c28c56; box-shadow: inset 1px 1px 3px #f7c49226, -3px 0 15px #e49c5516; }
 .r-scene-20 .r-nav-separator { margin: 8px 11px 17px; }
 .r-scene-20 .r-nav-item.r-secondary { height: 52px; }
 .r-scene-20 .r-sidebar-avatar { left: 42px; bottom: 24px; }

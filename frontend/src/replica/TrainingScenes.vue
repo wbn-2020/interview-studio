@@ -441,11 +441,11 @@ watch(() => props.scene, () => {
         <svg v-if="designTab === '架构图'" ref="diagramSvg" class="architecture-svg" viewBox="0 0 865 699" width="865" height="699" role="group" aria-label="秒杀发奖架构图，可拖动节点" @pointermove="moveDrag" @pointerup="stopDrag" @pointercancel="stopDrag">
           <defs>
             <pattern id="training-design-grid" x="-2" y="-3" width="29.5" height="33" patternUnits="userSpaceOnUse"><path d="M29.5 0H0V33" fill="none" stroke="#565149" stroke-opacity=".16" stroke-width="1" /></pattern>
-            <marker id="training-arrow-white" markerWidth="19" markerHeight="25" refX="15" refY="12.5" orient="auto" markerUnits="userSpaceOnUse"><path d="m3 4 12 8.5L3 21" fill="none" stroke="#c9ccc8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" /></marker>
-            <marker id="training-arrow-amber" markerWidth="14" markerHeight="14" refX="9" refY="7" orient="auto" markerUnits="userSpaceOnUse"><path d="m1 1 8 6-8 6" fill="none" stroke="#efb850" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" /></marker>
-            <marker id="training-arrow-red" markerWidth="15" markerHeight="15" refX="10" refY="7.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 10 7.5 1 14 4 7.5Z" fill="#ee5743" stroke="#ee5743" stroke-linejoin="round" /></marker>
-            <linearGradient id="training-node-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1f2b3a" /><stop offset="1" stop-color="#192535" /></linearGradient>
-            <linearGradient id="training-node-teal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1d3b38" /><stop offset="1" stop-color="#182f32" /></linearGradient>
+            <marker id="training-arrow-white" markerWidth="19" markerHeight="25" refX="13" refY="12.5" orient="auto" markerUnits="userSpaceOnUse"><path d="m3 4 12 8.5L3 21" fill="none" stroke="#c9ccc8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" /></marker>
+            <marker id="training-arrow-amber" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 12 8 1 15 4.5 8Z" fill="#efb850" stroke="#efb850" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></marker>
+            <marker id="training-arrow-red" markerWidth="20" markerHeight="20" refX="15" refY="10" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 15 10 1 19 5 10Z" fill="#ee5743" stroke="#ee5743" stroke-linejoin="round" /></marker>
+            <linearGradient id="training-node-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1d2837" /><stop offset="1" stop-color="#1b2635" /></linearGradient>
+            <linearGradient id="training-node-teal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1c3837" /><stop offset="1" stop-color="#1a2f2f" /></linearGradient>
             <linearGradient id="training-node-purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2c2635" /><stop offset="1" stop-color="#20242f" /></linearGradient>
             <linearGradient id="training-node-steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#365057" stop-opacity=".9" /><stop offset="1" stop-color="#26343c" stop-opacity=".9" /></linearGradient>
           </defs>
@@ -845,47 +845,53 @@ watch(() => props.scene, () => {
 .report-bottom-actions .ts-button { height: 62px; border-radius: 32px; font-size: 21px; font-weight: 500; min-width: 231px; padding: 10px 23px; }
 .report-bottom-actions .primary { min-width: 194px; }
 .design-title { position: absolute; top: 102px; left: 29px; display: flex; align-items: center; gap: 23px; }
-.design-title h1 { font-size: 47px; font-weight: 500; line-height: 1.4; transform: translate(1px, -3px); }
+.design-title h1 { font-size: 47px; font-weight: 500; line-height: 1.4; -webkit-text-stroke: .45px currentColor; transform-origin: 0 0; transform: translate(2px, -2px) scale(.977, .956); }
 .design-title > span { display: inline-flex; align-items: center; gap: 6px; border-radius: 25px; background: #29221b83; height: 43px; padding: 5px 17px; font-size: 21px; transform: translateY(2px); }
 .design-title i { width: 10px; height: 10px; background: #ed9b42; border-radius: 50%; }
 .design-actions { position: absolute; right: 28px; top: 107px; display: flex; gap: 17px; }
 .design-actions .ts-button { height: 57px; width: 146px; border-radius: 20px; font-size: 22px; color: #b9b3ac; padding-inline: 12px; }
-.design-actions .primary { width: 202px; color: #211206; background: linear-gradient(160deg, #f5bd80, #d18c4f) !important; border-color: #eab174 !important; font-weight: 500; }
+.design-actions .ts-button:not(.primary) { background: linear-gradient(130deg, #171410, #100d0b) !important; }
+.design-actions .primary { width: 202px; color: #211206; background: radial-gradient(ellipse at 0 0, #ffd29970, transparent 85%), linear-gradient(150deg, #edb475, #d48d50) !important; border-color: #eab174 !important; font-weight: 500; -webkit-text-stroke: .35px currentColor; box-shadow: inset 0 1px 2px #ffe2b470; }
 .design-tabs { position: absolute; top: 193px; left: 32px; display: flex; align-items: center; gap: 0; width: 1245px; height: 53px; border-bottom: 1px solid #493d2c42; }
-.design-tabs button { position: relative; width: 110px; height: 53px; font-size: 23px; color: #aaa39a; border-radius: 16px 16px 0 0; }
+.design-tabs button { position: relative; width: 110px; height: 53px; font-size: 23px; font-weight: 400; color: #aaa39a; border-radius: 16px 16px 0 0; }
 .design-tabs button:first-child { width: 116px; margin-right: 6px; }
-.design-tabs .active { color: #fff0db; background: linear-gradient(#62402208, #79502a1c); font-weight: 600; }
-.design-tabs .active::after { position: absolute; content: ''; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 4px; background: #edb071; box-shadow: 0 0 11px #e5974466; }
-.design-canvas { left: 18px; top: 259px; width: 866px; height: 699px; background: linear-gradient(120deg, #11100e, #100d0b); border-radius: 18px; border-color: #5e5345; }
+.design-tabs .active { color: #fff0db; background: linear-gradient(#62402208, #79502a1c); font-weight: 500; -webkit-text-stroke: .15px currentColor; }
+.design-tabs .active::after { position: absolute; content: ''; left: 1px; right: 0; bottom: 0; height: 2px; border-radius: 4px; background: #edb071; box-shadow: 0 0 11px #e5974466; }
+.design-canvas { left: 18px; top: 259px; width: 866px; height: 699px; background: linear-gradient(120deg, #12100e, #120f0d); border-radius: 18px; border-color: #5d5248; }
 .architecture-svg { display: block; touch-action: none; user-select: none; }
 .architecture-node { cursor: grab; outline: none; }
 .architecture-node:active { cursor: grabbing; }
-.architecture-node rect { stroke: #448f89; }
+.architecture-node rect { stroke: #448f89; filter: drop-shadow(0 0 6px #549f9218); }
+.architecture-node[data-node="inventory"] rect { stroke: #4aab9e; }
 .architecture-node.blue rect { stroke: #4a78a5; }
 .architecture-node.purple rect { stroke: #8060a4; }
 .architecture-node.steel rect { stroke: #56848b; }
 .architecture-node:focus-visible rect, .architecture-node.selected rect { stroke: #e8b879; stroke-width: 3; }
-.architecture-node text { fill: #f3f6f4; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 23px; font-weight: 500; pointer-events: none; }
+.architecture-node text { fill: #f3f6f4; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 23px; font-weight: 300; stroke: #f3f6f4; stroke-width: .18px; paint-order: stroke fill; transform-box: fill-box; transform-origin: left center; transform: translateX(1px) scaleX(.93); pointer-events: none; }
+.architecture-node[data-node="inventory"] text { transform: translateX(1px) scaleX(.91); }
+.architecture-node[data-node="monitor"] text { transform: translateX(6px) scaleX(.93); }
+.architecture-node[data-node="monitor"] .r-icon { transform: translateX(-3px); }
+.architecture-node[data-node="order"] .r-icon :deep(path:last-child), .architecture-node[data-node="reward"] .r-icon :deep(path:last-child) { stroke-width: 1.4; }
 .architecture-node .r-icon { color: #82d5ce; pointer-events: none; }
 .architecture-node.blue .r-icon, .architecture-node.steel .r-icon { color: #b3d6e1; }
 .architecture-node.purple .r-icon { color: #b795d6; }
 .architecture-links, .architecture-amber, .architecture-label, .architecture-error { pointer-events: none; }
-.architecture-amber { fill: #eab653; font-size: 21px; font-weight: 500; }
-.architecture-label { fill: #f4f2ef; font-size: 21px; font-weight: 500; }
+.architecture-amber { fill: #eab653; font-size: 21px; font-weight: 500; stroke: #eab653; stroke-width: .15px; paint-order: stroke fill; transform: translateY(-2px); }
+.architecture-label { fill: #f4f2ef; font-size: 21px; font-weight: 500; stroke: #f4f2ef; stroke-width: .15px; paint-order: stroke fill; }
 .architecture-error { fill: #f25d48; font-size: 20px; font-weight: 500; }
-.design-details { top: 253px; left: 895px; width: 402px; height: 705px; padding: 12px 24px; background: linear-gradient(115deg, #1d1815, #151110 50%, #191411); border-color: #352b22; border-radius: 21px; }
+.design-details { top: 253px; left: 895px; width: 402px; height: 705px; padding: 12px 24px; background: linear-gradient(130deg, #1a1a1a, #15110f 45%, #171210); border-color: #352b22; border-radius: 21px; }
 .design-aside-tabs { display: flex; width: 283px; height: 47px; margin-left: -8px; background: #332d2499; border-radius: 19px; }
 .design-aside-tabs button { position: relative; flex: 1; font-size: 22px; color: #b8afa5; border-radius: 18px; }
-.design-aside-tabs .active { color: #fff1df; font-weight: 600; background: #9b622326; }
-.design-aside-tabs .active::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; border-radius: 3px; background: #f2bb7e; box-shadow: 0 0 10px #f2b77344; }
+.design-aside-tabs .active { color: #fff1df; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: radial-gradient(ellipse at 10% 100%, #c6935030, transparent 90%), linear-gradient(#382a1d66, #42302033); }
+.design-aside-tabs .active::after { content: ''; position: absolute; left: 10px; right: 8px; bottom: 0; height: 2px; border-radius: 3px; background: #f2bb7e; box-shadow: 0 0 10px #f2b77344; }
 .design-constraints { padding: 34px 7px 27px; border-bottom: 1px solid #6a50352b; }
-.design-constraints h3, .design-description h3 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 500; }
+.design-constraints h3, .design-description h3 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 500; -webkit-text-stroke: .15px currentColor; }
 .design-constraints ul { list-style: none; padding: 11px 0 0 37px; margin: 0; }
-.design-constraints li { position: relative; font-size: 23px; height: 50px; line-height: 50px; white-space: nowrap; }
+.design-constraints li { position: relative; font-size: 22px; height: 50px; line-height: 50px; transform: translate(1px, 2px); white-space: nowrap; }
 .design-constraints li::before { content: ''; position: absolute; left: -30px; top: 23px; width: 8px; height: 8px; border-radius: 50%; background: #c28e55; }
 .design-description { padding: 28px 7px 0; }
-.design-description p { margin-top: 18px; font-size: 17.5px; line-height: 32px; }
-.design-fixed { position: absolute; left: 24px; right: 24px; bottom: 25px; min-height: 70px; display: flex; align-items: center; gap: 13px; border-radius: 17px; padding: 13px 21px !important; background: #39302766 !important; color: #d3c8ba !important; font-size: 20px !important; }
+.design-description p { margin-top: 18px; font-size: 17.5px; font-weight: 300; line-height: 32px; -webkit-text-stroke: .04px currentColor; transform-origin: 0 0; transform: translate(1px, -1px) scale(.998, 1.009); }
+.design-fixed { position: absolute; left: 24px; right: 24px; bottom: 25px; min-height: 70px; display: flex; align-items: center; gap: 13px; border-radius: 17px; padding: 13px 21px !important; background: radial-gradient(ellipse at 50% 20%, #4a403640, transparent 100%), linear-gradient(130deg, #2b251f, #211b17) !important; color: #d3c8ba !important; font-size: 20px !important; }
 .design-note-editor, .design-version-list { padding: 30px; }
 .design-note-editor h2, .design-version-list h2 { font-size: 28px; margin-bottom: 20px; }
 .design-note-editor textarea, .design-aside-note textarea { display: block; width: 100%; height: 470px; padding: 16px; resize: none; border: 1px solid #62513e; border-radius: 12px; background: #17141066; color: #eee5d7; font-size: 21px; line-height: 1.6; }

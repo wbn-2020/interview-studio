@@ -1674,6 +1674,69 @@ try {
           && await page.locator('.r-top-status .r-icon-btn').count() === 2, '20版本状态或双通知按钮不符')
         checks.push({ check: 'design-eight-nodes-seven-links-four-constraints-fixed-geometry-text-lines', scene: scene.id,
           geometry, nodes: initialNodes, descriptionLines, passed: true })
+        const typography = await page.evaluate(() => Object.fromEntries([
+          '.design-title h1', '.r-nav-item', '.r-nav-item.r-selected', '.design-tabs .active', '.design-aside-tabs .active',
+          '.design-constraints h3', '.design-constraints li', '.design-description p', '.architecture-node text',
+          '.architecture-node[data-node="inventory"] text', '.architecture-node[data-node="monitor"] text',
+        ].map(selector => {
+          const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+          return [selector, { box: [box.x, box.y, box.width, box.height], size: style.fontSize, weight: style.fontWeight,
+            lineHeight: style.lineHeight, stroke: style.webkitTextStrokeWidth, svgStroke: style.strokeWidth,
+            transform: style.transform, paintOrder: style.paintOrder }]
+        })))
+        ensure(typography['.design-title h1'].size === '47px' && typography['.design-title h1'].weight === '500'
+          && typography['.design-title h1'].stroke === '0.45px'
+          && typography['.design-title h1'].transform === 'matrix(0.977, 0, 0, 0.956, 2, -2)', '20标题字重、描边或固定字框比例不符')
+        ensure(typography['.r-nav-item'].size === '21px' && typography['.r-nav-item'].weight === '400'
+          && typography['.r-nav-item'].lineHeight === '33px' && typography['.r-nav-item.r-selected'].weight === '500'
+          && typography['.r-nav-item.r-selected'].stroke === '0.2px', '20导航字重或行高不符')
+        for (const selector of ['.design-tabs .active', '.design-aside-tabs .active', '.design-constraints h3']) {
+          ensure(typography[selector].weight === '500' && typography[selector].stroke === '0.15px', '20页签或分区标题字重不符：' + selector)
+        }
+        ensure(typography['.design-constraints li'].size === '22px'
+          && typography['.design-constraints li'].transform === 'matrix(1, 0, 0, 1, 1, 2)', '20约束文字字号或基线不符')
+        ensure(typography['.design-description p'].size === '17.5px' && typography['.design-description p'].weight === '300'
+          && typography['.design-description p'].lineHeight === '32px'
+          && typography['.design-description p'].stroke === '0.04px'
+          && typography['.design-description p'].transform === 'matrix(0.998, 0, 0, 1.009, 1, -1)', '20说明字重、基线或比例不符')
+        ensure(typography['.architecture-node text'].weight === '300' && typography['.architecture-node text'].svgStroke === '0.18px'
+          && typography['.architecture-node text'].paintOrder === 'stroke'
+          && typography['.architecture-node[data-node="inventory"] text'].transform === 'matrix(0.91, 0, 0, 1, 1, 0)'
+          && typography['.architecture-node[data-node="monitor"] text'].transform === 'matrix(0.93, 0, 0, 1, 6, 0)', '20节点标签字重或局部宽度不符')
+        checks.push({ check: 'design-heading-navigation-node-labels-and-aside-text-baselines', scene: scene.id, typography, passed: true })
+        const surfaces = await page.evaluate(() => Object.fromEntries([
+          '.r-canvas', '.r-sidebar', '.design-canvas', '.design-details', '.design-actions .primary', '.design-fixed',
+          '.architecture-node[data-node="inventory"] rect', '.architecture-node[data-node="order"] .r-icon path:last-child',
+          '.architecture-node[data-node="reward"] .r-icon path:last-child',
+        ].map(selector => {
+          const style = getComputedStyle(document.querySelector(selector))
+          return [selector, { background: style.backgroundImage, color: style.backgroundColor,
+            shadow: style.boxShadow, filter: style.filter, stroke: style.stroke, strokeWidth: style.strokeWidth, willChange: style.willChange }]
+        })))
+        const markers = await page.locator('.architecture-svg marker').evaluateAll(nodes => nodes.map(node => ({
+          id: node.id, width: node.getAttribute('markerWidth'), height: node.getAttribute('markerHeight'),
+          refX: node.getAttribute('refX'), refY: node.getAttribute('refY'),
+          path: node.querySelector('path').getAttribute('d'), fill: node.querySelector('path').getAttribute('fill'),
+        })))
+        ensure(JSON.stringify(markers) === JSON.stringify([
+          { id: 'training-arrow-white', width: '19', height: '25', refX: '13', refY: '12.5', path: 'm3 4 12 8.5L3 21', fill: 'none' },
+          { id: 'training-arrow-amber', width: '16', height: '16', refX: '12', refY: '8', path: 'M1 1 12 8 1 15 4.5 8Z', fill: '#efb850' },
+          { id: 'training-arrow-red', width: '20', height: '20', refX: '15', refY: '10', path: 'M1 1 15 10 1 19 5 10Z', fill: '#ee5743' },
+        ]), '20三种箭头轮廓不符')
+        const gradients = await page.locator('#training-node-blue, #training-node-teal').evaluateAll(nodes =>
+          nodes.map(node => ({ id: node.id, colors: [...node.querySelectorAll('stop')].map(stop => stop.getAttribute('stop-color')) })))
+        ensure(JSON.stringify(gradients) === JSON.stringify([
+          { id: 'training-node-blue', colors: ['#1d2837', '#1b2635'] }, { id: 'training-node-teal', colors: ['#1c3837', '#1a2f2f'] },
+        ]), '20节点渐变不符')
+        ensure(surfaces['.r-canvas'].color === 'rgb(7, 5, 4)' && surfaces['.r-canvas'].willChange === 'transform'
+          && surfaces['.design-canvas'].background.includes('rgb(18, 16, 14)')
+          && surfaces['.design-canvas'].background.includes('rgb(18, 15, 13)')
+          && surfaces['.design-details'].background.includes('rgb(26, 26, 26)')
+          && surfaces['.design-actions .primary'].shadow.includes('inset'), '20画布、面板或按钮层次不符')
+        ensure(surfaces['.architecture-node[data-node="inventory"] rect'].stroke === 'rgb(74, 171, 158)'
+          && surfaces['.architecture-node[data-node="order"] .r-icon path:last-child'].strokeWidth === '1.4px'
+          && surfaces['.architecture-node[data-node="reward"] .r-icon path:last-child'].strokeWidth === '1.4px', '20库存边缘或服务图标线宽不符')
+        checks.push({ check: 'design-canvas-node-materials-three-arrow-contours-and-service-icons', scene: scene.id, surfaces, markers, gradients, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
