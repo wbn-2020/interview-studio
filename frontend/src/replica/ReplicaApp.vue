@@ -568,7 +568,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-15 .r-sidebar :deep(.r-brand-word) { font-size: 26px; font-weight: 500; line-height: 30px; }
 .r-scene-15 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 21px; }
 .r-scene-15 .r-sidebar nav { top: 115px; left: -1px; right: 6px; gap: 12px; }
-.r-scene-15 .r-nav-item { padding-left: 23px; font-size: 22px; gap: 20px; color: #d4cec9; }
+.r-scene-15 .r-nav-item { padding-left: 23px; font-size: 22px; font-weight: 300; gap: 20px; color: #d4cec9; }
 .r-scene-15 .r-nav-item.r-selected { height: 65px; margin-top: -4px; margin-bottom: -5px; border-radius: 15px; background: linear-gradient(105deg, #bc85549c, #785035b0); box-shadow: inset 1px 1px 8px #efba8630, -3px 0 15px #e49c5533; }
 .r-scene-15 .r-nav-separator { margin: 3px 21px 0; }
 .r-scene-15 .r-tools-heading { color: #8f8780; font-size: 17px; line-height: 20px; margin: 8px 21px 0; }

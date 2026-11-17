@@ -577,28 +577,30 @@ watch(() => props.scene, () => {
 .bank-route ol { position: relative; list-style: none; padding: 6px 0 0 33px; margin: 0; font-size: 16px; line-height: 25px; }
 .bank-route ol::before { position: absolute; content: ''; left: 10px; top: 12px; bottom: 6px; width: 1px; background: #9b7958; }
 .bank-route li::before { content: ''; position: absolute; left: 6px; width: 9px; height: 9px; margin-top: 9px; border-radius: 50%; background: #e6b17d; }
-.route-title { position: absolute; top: 100px; left: 21px; }
-.route-title h1 { font-size: 39px; }
+.route-title { position: absolute; top: 101px; left: 21px; }
+.scene-15 .route-title h1 { font-size: 39px; font-weight: 500; -webkit-text-stroke: .5px currentColor; }
 .route-tabs { position: absolute; left: 16px; top: 168px; width: 321px; height: 50px; display: flex; border: 1px solid #2b261f; border-radius: 28px; background: #201c178c; }
 .route-tabs button { position: relative; flex: 1; font-size: 21px; color: #a79f96; border-radius: 28px; }
-.route-tabs .active { color: #ffead2; font-weight: 600; background: #49301c29; }
+.route-tabs .active { color: #ffead2; font-weight: 500; -webkit-text-stroke: .15px currentColor; background: #49301c29; }
 .route-tabs .active::after { content: ''; position: absolute; bottom: 0; left: 25px; right: 25px; height: 3px; border-radius: 3px; background: #efb072; box-shadow: 0 0 11px #e5a15d6b; }
 .route-actions { position: absolute; right: 28px; top: 168px; display: flex; gap: 14px; }
 .route-actions .ts-button { height: 50px; min-width: 141px; padding-inline: 16px; border-radius: 29px; font-size: 20px; gap: 5px; }
-.route-actions .primary { background: linear-gradient(135deg, #ffc17d, #e59d57) !important; }
+.route-actions .primary { font-weight: 500; background: linear-gradient(135deg, #ffc17d, #e59d57) !important; }
 .route-list { left: 16px; top: 235px; width: 324px; height: 747px; padding: 19px 7px; background: linear-gradient(110deg, #211c19, #1c1917); }
 .route-list::before { content: ''; position: absolute; inset: 9px -1px auto; height: 76px; border-top: 1px solid #393127; border-radius: 20px; pointer-events: none; }
 .route-list-heading { display: flex; align-items: center; justify-content: space-between; height: 45px; padding: 0 12px; margin-bottom: 9px; }
 .route-list-heading h3 { font-size: 20px; }
+.scene-15 .route-list-heading h3, .scene-15 .route-overview h3, .scene-15 .route-details h3 { font-weight: 500; -webkit-text-stroke: .15px currentColor; }
 .route-list-heading button { color: #b8ab9a; }
 .route-list-item { display: flex; align-items: center; gap: 15px; width: 100%; min-height: 91px; margin-bottom: 2px; padding: 10px 13px !important; text-align: left; border-radius: 16px; }
 .route-list-item.selected { background: linear-gradient(120deg, #92613bc2, #715034b5) !important; }
 .route-small-icon { display: grid; place-items: center; width: 38px; height: 42px; border-radius: 15px; background: #ffffff0c; flex: none; }
-.route-list-item strong { display: block; font-size: 20px; font-weight: 500; white-space: nowrap; }
+.route-list-item strong { display: block; font-size: 20px; font-weight: 400; white-space: nowrap; }
 .route-list-item small { display: block; font-size: 15px; color: #bcb1a3; margin-top: 2px; white-space: nowrap; }
 .route-list-item > .r-icon { margin-left: auto; flex: none; color: #ddd0be; }
 .route-map { left: 351px; top: 235px; width: 613px; height: 512px; background: linear-gradient(125deg, #1b1918, #171413 78%); }
-.route-track { position: absolute; left: 59px; width: 4px; top: 61px; bottom: 76px; background: linear-gradient(#d6a260 0 24%, #a6bcc6 24% 100%); }
+/* 五个固定节点间显式留空，避免连线透过节点图标；不依赖动画或布局模拟。 */
+.route-track { position: absolute; left: 59px; width: 4px; top: 80px; bottom: 82px; z-index: 1; pointer-events: none; background: linear-gradient(to bottom, #e6b17d 0 60px, transparent 60px 117px, #a6bac5 117px 157px, transparent 157px 209px, #a6bac5 209px 253px, transparent 253px 305px, #a6bac5 305px 348px); }
 .route-stage { position: absolute; left: 28px; width: 311px; height: 74px; display: flex; align-items: center; border: 1px solid #39332b !important; background: linear-gradient(120deg, #2b2a25ba, #24211dc7) !important; border-radius: 32px; text-align: left; }
 .route-stage.done { border-color: #3a4236 !important; }
 .route-stage.selected { border-color: #eaa353 !important; background: linear-gradient(120deg, #72502d55, #452e1b66) !important; box-shadow: inset 0 0 10px #c8832728; }
@@ -631,11 +633,11 @@ watch(() => props.scene, () => {
 .route-overview td i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
 .route-overview tbody tr { cursor: pointer; }
 .route-details { left: 976px; top: 235px; width: 322px; height: 747px; padding: 9px; background: linear-gradient(125deg, #1f1b19, #191615 78%); }
-.route-details-inner { height: 513px; border: 1px solid #39332b; border-radius: 18px; padding: 17px 10px 12px; background: linear-gradient(130deg, #272321, #252120); }
+.route-details-inner { height: 513px; border: 1px solid #39332b; border-radius: 18px; padding: 17px 10px 12px; background: linear-gradient(130deg, #272321cc, #252120b0); }
 .route-details h3 { font-size: 20px; }
 .route-detail-title { display: flex; align-items: center; gap: 17px; margin-top: 22px; }
 .route-detail-title > span { display: grid; place-items: center; width: 43px; height: 45px; background: #77512d88; border-radius: 14px; color: #f4bb77; }
-.route-detail-title h2 { font-size: 25px; white-space: nowrap; }
+.scene-15 .route-detail-title h2 { font-size: 24px; font-weight: 500; -webkit-text-stroke: .2px currentColor; white-space: nowrap; }
 .route-meta { display: flex; align-items: center; gap: 15px; color: #bdb3a8; font-size: 20px; margin-top: 17px; }
 .route-meta > span:last-child { color: #e3d9cc; margin-left: -10px; }
 .route-creator { display: grid; place-items: center; width: 31px; height: 33px; border-radius: 50%; background: #756f65; font-size: 18px; color: #f6eee4; }
@@ -643,7 +645,7 @@ watch(() => props.scene, () => {
 .linked-question-lists { margin: 9px -9px 0; background: #ffffff02; border-radius: 18px; padding: 2px 10px; }
 .linked-question-lists button { width: 100%; height: 47px; display: flex; align-items: center; gap: 13px; font-size: 18px; white-space: nowrap; }
 .linked-question-lists button > .r-icon:last-child { margin-left: auto; }
-.route-reorder { width: 100%; height: 49px; margin-top: 8px; border-radius: 19px; padding: 5px; font-size: 20px; }
+.route-reorder { width: 100%; height: 49px; margin-top: 10px; border-radius: 19px; padding: 5px; font-size: 20px; }
 .recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 245px; width: 1600px; height: 1120px; border-top: 1px solid #9c6b445c; border-radius: 50%; box-shadow: 0 -8px 28px #c7803126, inset 0 14px 35px #c7803122; }
 .recall-title { position: absolute; top: 118px; left: 34px; }
 .recall-title h1 { font-size: 50px; }

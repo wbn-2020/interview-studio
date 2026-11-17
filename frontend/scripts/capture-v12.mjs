@@ -1219,6 +1219,40 @@ try {
         ensure(JSON.stringify(stageTops) === JSON.stringify([264, 362, 459, 555, 650]), '15阶段坐标不符')
         ensure(await page.locator('.r-brand circle').count() === 2, '15品牌不应使用带外圈的默认图标')
         checks.push({ check: 'route-five-stages-three-checkpoints-shell-panel-geometry', scene: scene.id, geometry, stageTops, passed: true })
+        const routeType = await page.evaluate(() => Object.fromEntries(['.r-scene-15', '.r-nav-item', '.route-title h1', '.route-tabs .active',
+          '.route-list-heading h3', '.route-overview h3', '.route-details h3', '.route-list-item strong', '.route-detail-title h2',
+          '.stage-copy small', '.route-completion p', '.route-actions .primary'].map(selector => {
+          const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+          return [selector, { text: node.textContent, box: [box.x, box.y, box.width, box.height], weight: style.fontWeight,
+            size: style.fontSize, stroke: style.webkitTextStrokeWidth }]
+        })))
+        ensure(routeType['.r-scene-15'].weight === '400' && routeType['.r-nav-item'].weight === '300'
+          && routeType['.route-title h1'].weight === '500' && routeType['.route-title h1'].size === '39px'
+          && routeType['.route-title h1'].stroke === '0.5px' && routeType['.route-title h1'].box[0] === 241
+          && routeType['.route-title h1'].box[1] === 101 && routeType['.route-title h1'].box[2] === 195
+          && ['.route-tabs .active', '.route-list-heading h3', '.route-overview h3', '.route-details h3']
+            .every(selector => routeType[selector].weight === '500' && routeType[selector].stroke === '0.15px')
+          && routeType['.route-list-item strong'].weight === '400' && routeType['.route-actions .primary'].weight === '500'
+          && routeType['.route-detail-title h2'].weight === '500' && routeType['.route-detail-title h2'].size === '24px'
+          && routeType['.route-detail-title h2'].stroke === '0.2px'
+          && ['.stage-copy small', '.route-completion p'].every(selector => routeType[selector].weight === '400'),
+          '15主标题基线、分区标题／路线名称或正文视觉重量不符')
+        checks.push({ check: 'route-title-baseline-heading-weights-and-regular-body', scene: scene.id, styles: routeType, passed: true })
+        const routeVisual = await page.evaluate(() => {
+          const track = document.querySelector('.route-track'), box = track.getBoundingClientRect(), style = getComputedStyle(track)
+          const panel = getComputedStyle(document.querySelector('.route-details-inner'))
+          const reorder = document.querySelector('.route-reorder').getBoundingClientRect()
+          return { track: { box: [box.x, box.y, box.width, box.height], background: style.backgroundImage,
+            zIndex: style.zIndex, pointerEvents: style.pointerEvents }, detailBackground: panel.backgroundImage,
+            reorder: [reorder.x, reorder.y, reorder.width, reorder.height] }
+        })
+        ensure(JSON.stringify(routeVisual.track.box) === JSON.stringify([631, 316, 4, 348])
+          && routeVisual.track.zIndex === '1' && routeVisual.track.pointerEvents === 'none'
+          && routeVisual.track.background === 'linear-gradient(rgb(230, 177, 125) 0px, rgb(230, 177, 125) 60px, rgba(0, 0, 0, 0) 60px, rgba(0, 0, 0, 0) 117px, rgb(166, 186, 197) 117px, rgb(166, 186, 197) 157px, rgba(0, 0, 0, 0) 157px, rgba(0, 0, 0, 0) 209px, rgb(166, 186, 197) 209px, rgb(166, 186, 197) 253px, rgba(0, 0, 0, 0) 253px, rgba(0, 0, 0, 0) 305px, rgb(166, 186, 197) 305px, rgb(166, 186, 197) 348px)'
+          && routeVisual.detailBackground === 'linear-gradient(130deg, rgba(39, 35, 33, 0.8), rgba(37, 33, 32, 0.69))'
+          && routeVisual.reorder[0] === 1217 && routeVisual.reorder[1] === 695 && routeVisual.reorder[3] === 49,
+          '15节点间分段连线、详情底色或调整顺序按钮基线不符')
+        checks.push({ check: 'route-node-gap-track-detail-surface-and-reorder-baseline', scene: scene.id, visual: routeVisual, passed: true })
         await stages.nth(2).click()
         ensure(await stages.nth(2).getAttribute('aria-pressed') === 'true' && await page.locator('.route-completion').count() === 0, '15选择阶段未更新')
         await page.locator('.route-overview tbody tr').nth(1).focus()
