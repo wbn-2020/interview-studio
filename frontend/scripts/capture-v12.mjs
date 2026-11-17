@@ -1527,7 +1527,7 @@ try {
         const title = await page.locator('.report-title h1').evaluate(node => ({
           text: node.textContent, size: getComputedStyle(node).fontSize, weight: getComputedStyle(node).fontWeight,
         }))
-        ensure(title.text === '本次训练' && title.size === '60px' && title.weight === '600', '19标题不符')
+        ensure(title.text === '本次训练' && title.size === '60px' && title.weight === '500', '19标题不符')
         ensure((await page.locator('.report-title p').textContent()).trim() === '独立专项 · 11.10 14:32–14:50', '19固定训练时间不符')
         ensure(JSON.stringify((await page.locator('.report-stat strong').allTextContents()).map(value => value.trim()))
           === JSON.stringify(['2 题', '1 题', '1 题']), '19提交、跳过与草稿计数不符')
@@ -1542,6 +1542,48 @@ try {
           && await page.locator('.r-brand path').count() === 3 && await page.locator('.r-brand circle').count() === 0,
           '19品牌或折叠初态不符')
         checks.push({ check: 'report-three-questions-counts-fixed-time-conditions-geometry', scene: scene.id, geometry, title, passed: true })
+        const typography = await page.evaluate(() => Object.fromEntries([
+          '.report-title h1', '.report-title p', '.r-nav-item', '.r-secondary', '.report-question-copy strong',
+          '.report-question-copy small', '.report-draft', '.report-end-conditions dd', '.report-ai h3',
+        ].map(selector => {
+          const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
+          return [selector, { box: [box.x, box.y, box.width, box.height], size: style.fontSize, weight: style.fontWeight,
+            lineHeight: style.lineHeight, font: style.fontFamily, stroke: style.webkitTextStrokeWidth,
+            transform: style.transform, wordSpacing: style.wordSpacing }]
+        })))
+        const heading = typography['.report-title h1'], status = typography['.report-question-copy small']
+        ensure(heading.stroke === '1.1px' && heading.lineHeight === '78px'
+          && heading.transform === 'matrix(0.986, 0, 0, 0.94, 1, 1)'
+          && typography['.report-title p'].wordSpacing === '0.8px'
+          && typography['.report-title p'].transform === 'matrix(1, 0, 0, 1, 2, -1)', '19标题字框或时间基线不符')
+        for (const selector of ['.r-nav-item', '.r-secondary']) ensure(typography[selector].size === '21px'
+          && typography[selector].weight === '400' && typography[selector].lineHeight === '33px', '19导航文字不符')
+        ensure(typography['.report-question-copy strong'].size === '25px'
+          && typography['.report-question-copy strong'].font.includes('Microsoft YaHei')
+          && status.size === '20.5px' && status.lineHeight === '31.5px' && status.box[0] === 432 && status.box[1] === 527.5
+          && typography['.report-draft'].size === '20px' && typography['.report-draft'].weight === '400'
+          && typography['.report-end-conditions dd'].transform === 'matrix(1, 0, 0, 1, -4, -3)'
+          && typography['.report-ai h3'].weight === '500', '19题目状态、草稿或条件文字不符')
+        checks.push({ check: 'report-heading-navigation-time-question-status-and-draft-baselines', scene: scene.id, typography, passed: true })
+        const surfaces = await page.evaluate(() => Object.fromEntries([
+          '.r-sidebar', '.r-nav-item.r-selected', '.report-summary', '.report-question-panel', '.report-end-conditions',
+          '.report-ai', '.report-ai button', '.report-draft', '.report-top-actions .primary',
+          '.report-bottom-actions .primary', '.stat-emblem.skipped .r-icon', '.r-saved svg',
+        ].map(selector => {
+          const node = document.querySelector(selector), style = getComputedStyle(node)
+          return [selector, { background: style.backgroundImage, shadow: style.boxShadow, transform: style.transform,
+            width: style.width, height: style.height, fill: style.fill, color: style.color }]
+        })))
+        for (const selector of ['.r-sidebar', '.r-nav-item.r-selected', '.report-summary', '.report-question-panel',
+          '.report-end-conditions', '.report-ai', '.report-ai button', '.report-draft', '.report-top-actions .primary', '.report-bottom-actions .primary']) {
+          ensure(surfaces[selector].background.includes('radial-gradient') && surfaces[selector].background.includes('linear-gradient'), '19面板或按钮层次不符：' + selector)
+        }
+        ensure(surfaces['.stat-emblem.skipped .r-icon'].transform === 'matrix(-1, 0, 0, 1, 0, 0)'
+          && surfaces['.r-saved svg'].width === '24px' && surfaces['.r-saved svg'].height === '24px'
+          && surfaces['.r-saved svg'].fill === 'rgb(121, 178, 109)'
+          && surfaces['.report-top-actions .primary'].shadow.includes('inset')
+          && surfaces['.report-bottom-actions .primary'].shadow.includes('inset'), '19跳过斜线、保存标记或按钮高光不符')
+        checks.push({ check: 'report-sidebar-panels-button-materials-skip-contour-and-saved-mark', scene: scene.id, surfaces, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)

@@ -650,7 +650,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-18 .r-top-status .r-avatar { width: 50px; height: 54px; }
 .r-scene-18 .r-top-status .r-icon-btn > .r-icon { width: 32px; height: 32px; }
 .r-scene-19 { will-change: transform; }
-.r-scene-19 .r-sidebar { top: 20px; left: 20px; width: 205px; bottom: 28px; border-radius: 22px; background: linear-gradient(120deg, #221d18, #191512 70%, #30231d); border-color: #564638; }
+.r-scene-19 .r-sidebar { top: 20px; left: 20px; width: 205px; bottom: 28px; border-radius: 22px; background: radial-gradient(ellipse 260px 440px at 0 80%, #85563944, transparent 85%), linear-gradient(120deg, #1d1814, #17120f 75%, #2b211b); border-color: #564638; }
 .r-scene-19 .r-sidebar > a { position: absolute; left: 22px; top: 31px; }
 .r-scene-19 .r-sidebar :deep(.r-brand) { position: static; gap: 11px; }
 .r-scene-19 .r-sidebar :deep(.r-emblem) { width: 43px; height: 50px; color: #d59055; filter: none; }
@@ -658,8 +658,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-19 .r-sidebar :deep(.r-brand-word small) { font-size: 14px; line-height: 20px; margin-top: 0; color: #e2d8cc; }
 .r-scene-19 .r-sidebar::after { content: ""; position: absolute; top: 118px; left: 20px; right: 20px; height: 1px; background: #c9a27a22; }
 .r-scene-19 .r-sidebar nav { top: 146px; left: 6px; right: 6px; gap: 4px; }
-.r-scene-19 .r-nav-item { height: 59px; padding: 0 24px; font-size: 22px; gap: 21px; }
-.r-scene-19 .r-nav-item.r-selected { height: 56px; margin-block: 1px 2px; background: radial-gradient(ellipse at 20% 40%, #cb935c66, transparent), linear-gradient(125deg, #9e6c43, #4a2f1b); border-color: #dfa166; border-radius: 30px; }
+.r-scene-19 .r-nav-item { height: 59px; padding: 0 24px; font-size: 21px; font-weight: 400; line-height: 33px; gap: 21px; }
+.r-scene-19 .r-nav-item.r-selected { height: 56px; margin-block: 1px 2px; background: radial-gradient(ellipse at 2% 30%, #f3bd8666, transparent 85%), radial-gradient(ellipse at 96% 70%, #16100d99, transparent 80%), linear-gradient(120deg, #9e673f, #704223); box-shadow: inset 1px 1px 7px #ffd7ac55, 0 0 10px #ebad6c22; border-color: #dfa166; border-radius: 30px; }
 .r-scene-19 .r-nav-separator { margin-top: 22px; margin-bottom: 19px; }
 .r-scene-19 .r-nav-item.r-secondary { height: 51px; gap: 24px; }
 .r-scene-19 .r-sidebar-avatar { left: 23px; bottom: 26px; }
@@ -671,7 +671,8 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-19 .r-top-status > .r-avatar { width: 44px; height: 45px; background: linear-gradient(130deg, #b08260, #603b22); font-size: 24px; }
 .r-scene-19 .r-top-status::before { content: ""; position: absolute; right: 159px; top: 22px; width: 1px; height: 28px; background: #cdb79b44; }
 .r-scene-19 .r-breadcrumb { font-size: 21px; gap: 20px; }
-.r-scene-19 .r-saved { color: #b1b0a1; }
+.r-scene-19 .r-saved { color: #b1b0a1; font-size: 20px; gap: 10px; }
+.r-scene-19 .r-saved svg { width: 24px; height: 24px; background: #79b26d; fill: #79b26d; color: #203e20; }
 .r-scene-20 .r-sidebar { top: 10px; bottom: 18px; width: 216px; }
 .r-scene-20 { background: radial-gradient(ellipse at 0 67%, #2d211820, transparent 37%), #0b0a09; }
 .r-scene-20 .r-sidebar { border-color: #302922; border-radius: 24px; background: radial-gradient(ellipse at 0 27%, #65462c44, transparent 75%), linear-gradient(115deg, #171310, #11100f); }
