@@ -232,6 +232,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
             <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 7 ? 'tasks' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 7 ? 30 : [5, 27].includes(scene) ? 28 : 25" />
             <template v-if="scene === 20"><span>训练</span><span>/</span><span>系统设计</span><span>/</span><strong>秒杀发奖</strong></template>
             <template v-else-if="scene === 22"><span>复盘</span><span>/</span><span>独立复练</span><span>/</span><strong>新旧对照</strong></template>
+            <template v-else-if="scene === 23"><span>复盘</span><span>/</span><strong>面后回忆</strong></template>
             <template v-else-if="scene === 24"><strong>成长</strong><span>/</span><span>Java 后端 · 技术一面</span></template>
             <template v-else-if="scene === 25"><RIcon name="calendar-days" variant="command" :size="28" /><span>今日</span><RIcon name="chevron-right" :size="15" /><span class="r-faint">任务总览</span></template>
             <template v-else-if="scene === 26"><RIcon class="r-recent-back" name="chevron-left" :size="19" /><span class="r-muted">工作台</span><span>/</span><span>最近访问</span></template>
@@ -750,7 +751,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-22 .r-top-status .r-icon-btn { width: 74px; height: 59px; border-radius: 31px; background: linear-gradient(110deg, #23221e, #151410); color: #f4f1ea; }
 .r-scene-22 .r-top-status > .r-avatar { width: 53px; height: 59px; margin-left: 8px; background: linear-gradient(130deg, #bb8654, #8b582d); }
 .r-scene-23 { will-change: transform; }
-.r-scene-23 .r-sidebar { width: 244px; bottom: 0; border-radius: 0; background: radial-gradient(ellipse 200px 400px at 0 68%, #704d3b75, transparent), radial-gradient(ellipse at 0 0, #45312677, transparent 42%), linear-gradient(150deg, #181512, #1b1714 52%, #241d18); border-color: #332a24; }
+.r-scene-23 .r-sidebar { width: 244px; bottom: 0; border-radius: 0 0 0 24px; background: radial-gradient(ellipse 200px 400px at 0 68%, #704d3b75, transparent), radial-gradient(ellipse at 0 0, #45312655, transparent 42%), linear-gradient(150deg, #161210, #1b1714 52%, #2a201b); border-color: #332a24; }
 .r-scene-23 .r-sidebar > a { position: absolute; left: 31px; top: 34px; }
 .r-scene-23 .r-sidebar :deep(.r-brand) { position: static; gap: 11px; }
 .r-scene-23 .r-sidebar :deep(.r-emblem) { width: 47px; height: 54px; }
@@ -760,14 +761,15 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-23 .r-nav-item { height: 60px; padding-left: 21px; gap: 15px; white-space: nowrap; }
 .r-scene-23 .r-nav-item.r-selected { height: 62px; margin-top: -2px; border-radius: 32px; border-color: #e8b180; background: linear-gradient(110deg, #9a6b4699, #68472fd9); }
 .r-scene-23 .r-nav-item.r-secondary { height: 53px; font-size: 23px; }
-.r-scene-23 .r-nav-separator { margin: 18px 0 20px; }
+.r-scene-23 .r-nav-separator { margin: 16px 0 20px; }
 .r-scene-23 .r-sidebar-avatar { left: 32px; bottom: 34px; }
 .r-scene-23 .r-sidebar-avatar .r-avatar { width: 62px; height: 62px; font-size: 27px; }
 .r-scene-23 .r-sidebar-avatar::before { content: ""; position: absolute; left: 0; top: -39px; width: 174px; height: 1px; background: #ffffff12; }
 .r-scene-23 .r-avatar { background: linear-gradient(130deg, #82716a, #665c57); }
 .r-scene-23 .r-topbar { left: 278px; right: 31px; top: 18px; height: 74px; }
-.r-scene-23 .r-breadcrumb { font-size: 22px; }
-.r-scene-23 .r-top-search { left: 317px !important; top: 9px; height: 56px; background: linear-gradient(110deg, #231e1bcc, #201b18a6) !important; border-color: #62584e88 !important; }
+.r-scene-23 .r-breadcrumb { font-size: 22px; gap: 14px; font-weight: 400; }
+.r-scene-23 .r-breadcrumb strong { font-weight: 500; }
+.r-scene-23 .r-top-search { left: 317px !important; top: 9px; height: 56px; gap: 14px; padding-right: 13px; background: linear-gradient(110deg, #231e1bcc, #201b18a6) !important; border-color: #62584e88 !important; }
 .r-scene-23 .r-top-search kbd { border: 1px solid #ffffff14; border-radius: 19px; padding: 2px 12px; background: #ffffff04; }
 .r-scene-23 .r-top-status { gap: 38px; }
 .r-scene-23 .r-saved { color: #c0bbb4; font-size: 22px; gap: 12px; }

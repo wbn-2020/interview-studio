@@ -310,7 +310,7 @@ watch(() => props.scene, () => {
     <section class="r-panel rv-panel rv23-confidence" aria-label="自信程度">
       <h2>自信程度</h2>
       <div class="rv23-confidence-options" role="radiogroup" aria-label="回忆自信程度">
-        <button v-for="option in confidenceOptions" :key="option" role="radio" :aria-checked="confidence === option" :tabindex="confidence === option ? 0 : -1" :class="{ selected: confidence === option }" @click="confidence = option" @keydown="confidenceKeydown"><span v-if="confidence === option" class="rv23-confidence-check"><RIcon name="check" :size="17" /></span>{{ option }}</button>
+        <button v-for="option in confidenceOptions" :key="option" role="radio" :aria-checked="confidence === option" :tabindex="confidence === option ? 0 : -1" :class="{ selected: confidence === option }" @click="confidence = option" @keydown="confidenceKeydown"><span v-if="confidence === option" class="rv23-confidence-check"><RIcon name="check" :size="17" /></span><span class="rv23-confidence-label">{{ option }}</span></button>
       </div>
     </section>
     <article class="r-panel rv-panel rv23-record">
@@ -323,7 +323,7 @@ watch(() => props.scene, () => {
         </div>
         <button class="rv23-add-fragment" :aria-label="`${editingFragment === index ? '完成' : '编辑'}${fragment.title}片段`" :aria-expanded="editingFragment === index" @click="editFragment(index)"><RIcon :name="editingFragment === index ? 'check' : 'plus'" :size="23" />{{ editingFragment === index ? '完成片段' : '添加片段' }}</button>
       </section>
-      <p class="rv23-warning"><RIcon name="info" :size="28" />模糊处保留，不补写确定结论</p>
+      <p class="rv23-warning"><RIcon name="info" :size="28" /><span class="rv23-warning-copy">模糊处保留，不补写确定结论</span></p>
       <p class="rv23-record-source"><RIcon name="file-text" variant="recollection" :size="27" />来源：<span>回忆记录 · 非逐字实录</span></p>
     </article>
     <aside class="r-panel rv-panel rv23-create">
@@ -546,48 +546,58 @@ watch(() => props.scene, () => {
 .rv22 .rv22-save { position: absolute; top: 59px; right: 18px; width: 112px; height: 59px; min-height: 0; border-radius: 21px; padding: 0 10px !important; font-size: 20px; font-weight: 500; -webkit-text-stroke: .1px currentColor; background: linear-gradient(120deg, #e1ac7b, #b57843 75%, #ae7340) !important; border-color: #d7a36e66 !important; box-shadow: inset 0 1px 2px #ffe1af40, 0 0 16px #d8974e26; }
 .rv22-save::before { content: ""; position: absolute; left: -22px; top: 0; bottom: -10px; width: 1px; background: #4a3d2c66; }
 .rv23 .rv-heading { left: 32px; top: 117px; }
-.rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; font-weight: 500; }
-.rv23 .rv-subheading { margin-top: 5px; font-size: 23px; gap: 16px; }
+.rv23 .rv-heading h1 { font-size: 54px; line-height: 1.35; font-weight: 500; -webkit-text-stroke: .6px currentColor; transform-origin: 0 0; transform: translate(2px, -1px) scale(.996, .98); }
+.rv23 .rv-subheading { margin-top: 5px; font-size: 23.5px; gap: 16px; font-weight: 300; word-spacing: 3px; transform: translate(2px, 2px); -webkit-text-stroke: .18px currentColor; }
 .rv23-company { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid #5b70ac77; border-radius: 9px; color: #eef9ff; background: linear-gradient(130deg, #5371b1, #343d6b); }
 .rv23-company svg { width: 27px; height: 27px; }
 .rv23-actions { top: 132px; right: 31px; gap: 16px; }
-.rv23-actions .r-btn { height: 62px; font-size: 24px; border-radius: 35px; padding: 11px 22px !important; }
+.rv23-actions .r-btn { height: 62px; font-size: 23px; border-radius: 35px; padding: 11px 22px !important; }
 .rv23-draft { width: 181px; border-color: #52473d !important; background: linear-gradient(110deg, #24201c77, #211b1677) !important; }
-.rv23 .rv23-complete.r-primary { width: 174px; box-shadow: inset 0 0 9px #ffdeb56b; color: #fff8f0; border-color: #f4d0a3 !important; background: linear-gradient(115deg, #a2714a, #b2825b 50%, #edbb91) !important; font-weight: 500; text-shadow: 0 1px 1px #754b2b; }
-.rv23-confidence { position: absolute; left: 32px; top: 266px; width: 725px; height: 175px; border-radius: 19px; padding: 28px 27px; background: linear-gradient(115deg, #1c1816, #191614); }
+.rv23-draft :deep(.r-icon) { color: #b5aca4; }
+.rv23-draft :deep(.r-icon path:first-child) { fill: currentColor; }
+.rv23-draft :deep(.r-icon path:not(:first-child)) { stroke: #2a231e; }
+.rv23 .rv23-complete.r-primary { width: 174px; box-shadow: inset 0 1px 3px #ffe0b780, 0 0 24px #cf8a472e; color: #fff8f0; border-color: #edbd90 !important; background: radial-gradient(ellipse at 80% 0, #f6ccae50, transparent 80%), linear-gradient(115deg, #8e5d36, #af7549 65%, #bf855a) !important; font-weight: 500; text-shadow: 0 1px 1px #754b2b; }
+.rv23-confidence { position: absolute; left: 32px; top: 266px; width: 725px; height: 175px; border-radius: 19px; padding: 28px 27px; background: linear-gradient(150deg, #1c1715, #191513 72%); }
 .rv23-confidence h2 { font-size: 25px; }
-.rv23-confidence-options { display: flex; position: absolute; top: 80px; left: 27px; right: 27px; height: 64px; border-radius: 38px; border: 1px solid #4b4139a6; background: #ffffff06; }
-.rv23-confidence-options button { display: flex; align-items: center; justify-content: center; gap: 13px; flex: 1; border-radius: 36px; font-size: 24px; font-weight: 500; }
-.rv23-confidence-options button.selected { border: 1px solid #efb979; background: radial-gradient(ellipse at 52% 100%, #da9a5d8c, transparent), linear-gradient(120deg, #805632, #a5764b9c); box-shadow: inset 0 0 13px #fbd4a83b, 0 0 13px #d1904c26; color: #fff6e7; font-weight: 500; }
+.rv23 .rv-panel h2 { font-weight: 500; -webkit-text-stroke: .1px currentColor; transform-origin: 0 0; transform: translate(1px, -1px) scale(1.005, .96); }
+.rv23-confidence-options { display: flex; position: absolute; top: 80px; left: 27px; right: 28px; height: 64px; border-radius: 38px; border: 1px solid #4b4139a6; background: #ffffff06; }
+.rv23-confidence-options button { display: flex; align-items: center; justify-content: center; gap: 13px; flex: 1; border-radius: 36px; font-size: 23px; font-weight: 400; }
+.rv23-confidence-options button.selected { flex: 0 0 220px; border: 1px solid #efb979; background: radial-gradient(ellipse at 52% 100%, #dba17466, transparent 90%), linear-gradient(120deg, #815836, #a477515c); box-shadow: inset 0 0 13px #fbd4a83b, 0 0 13px #d1904c26; color: #fff6e7; font-size: 22.5px; font-weight: 500; }
+.rv23-confidence-label { display: inline-block; }
+.rv23-confidence-options button.selected .rv23-confidence-label { transform-origin: 0 50%; transform: translateY(-1px) scale(.99, .98); }
 .rv23-confidence-check { width: 25px; height: 25px; border-radius: 50%; background: #f4c493; color: #59402a; display: inline-flex; align-items: center; justify-content: center; }
-.rv23-record { position: absolute; left: 32px; top: 440px; width: 725px; height: 514px; border-radius: 22px; padding: 10px 27px 0; background: linear-gradient(115deg, #1c1816, #191614); }
-.rv23-fragment { position: relative; height: 104px; display: flex; gap: 30px; padding: 17px 10px 13px; border-radius: 15px; background: linear-gradient(110deg, #211c18, #1d1917); margin-bottom: 10px; }
+.rv23-record { position: absolute; left: 32px; top: 440px; width: 725px; height: 514px; border-radius: 22px; padding: 10px 27px 0; background: linear-gradient(150deg, #1c1715, #191513 72%); }
+.rv23-fragment { position: relative; height: 104px; display: flex; gap: 30px; padding: 17px 10px 13px; border-radius: 15px; background: linear-gradient(110deg, #211c18b3, #211c1766); margin-bottom: 10px; }
 .rv23-fragment-number { width: 38px; flex: none; color: #7f7973; font-family: Arial, sans-serif; font-size: 29px; line-height: 1.6; }
 .rv23-fragment-content { min-width: 0; padding-top: 1px; }
-.rv23-fragment h3 { font-size: 24px; font-weight: 500; line-height: 1.5; }
-.rv23-fragment-content p { font-size: 23px; color: #f0e9df; white-space: nowrap; line-height: 1.6; cursor: text; }
-.rv23-fragment:nth-child(2) .rv23-fragment-content p { padding-left: 12px; }
-.rv23-add-fragment { display: flex; align-items: center; justify-content: center; gap: 4px; position: absolute; top: 18px; right: 14px; height: 46px; width: 139px; border: 1px solid #807468 !important; border-radius: 27px; background: linear-gradient(120deg, #2e27208c, #221d188c) !important; font-size: 21px; }
+.rv23-fragment h3 { font-size: 23px; font-weight: 500; line-height: 36px; transform-origin: 0 0; transform: translate(1px, -1px) scaleX(.955); }
+.rv23-fragment-content p { font-size: 23px; font-weight: 300; color: #f0e9df; white-space: nowrap; line-height: 1.6; cursor: text; transform-origin: 0 0; transform: translate(1px, 2px) scale(.967, .98); -webkit-text-stroke: .02px currentColor; }
+.rv23-fragment:nth-child(2) .rv23-fragment-content p { padding-left: 12px; transform: translate(1px, 1px) scale(1.015, 1.04); -webkit-text-stroke: .04px currentColor; }
+.rv23-fragment:nth-child(3) .rv23-fragment-content p { transform: translate(0, 2px) scale(.977, .98); -webkit-text-stroke: 0; }
+.rv23-add-fragment { display: flex; align-items: center; justify-content: center; gap: 4px; position: absolute; top: 18px; right: 14px; height: 46px; width: 139px; border: 1px solid #807468 !important; border-radius: 27px; background: linear-gradient(120deg, #2e27208c, #221d188c) !important; font-size: 21px; font-weight: 300; }
 .rv23-fragment-content textarea { width: 410px; height: 39px; padding: 0 4px; resize: none; border: 1px solid #a57b54; border-radius: 4px; background: #17120b88; font-size: 22px; line-height: 1.6; }
-.rv23-warning { display: flex; align-items: center; gap: 12px; height: 66px; padding: 0 16px; margin-top: 1px !important; border-radius: 14px; background: #29211b; color: #ffd19a; font-size: 20px; }
-.rv23-record-source { display: flex; align-items: center; gap: 13px; height: 79px; margin-top: 12px !important; border-top: 1px solid #75614c40; color: #d2c9be; font-size: 21px; }
+.rv23-warning { display: flex; align-items: center; gap: 11px; height: 65px; padding: 0 16px; margin-top: 12px !important; border-radius: 14px; background: linear-gradient(115deg, #2a211b, #261d19); color: #ffd19a; font-size: 20px; }
+.rv23-warning-copy { display: inline-block; font-weight: 300; -webkit-text-stroke: .15px currentColor; transform-origin: 0 50%; transform: translateY(-1px) scale(.944, .96); }
+.rv23-record-source { display: flex; align-items: center; gap: 14px; height: 79px; padding-bottom: 2px; margin-top: 12px !important; border-top: 1px solid #75614c40; color: #d2c9be; font-size: 20px; font-weight: 300; -webkit-text-stroke: .1px currentColor; }
 .rv23-record-source .r-icon { color: #9a9288; }
-.rv23-record-source > span { margin-left: 0; }
-.rv23-create { position: absolute; left: 768px; top: 266px; width: 493px; height: 688px; border-radius: 20px; padding: 28px 26px 0; background: linear-gradient(115deg, #1c1816, #191614); }
+.rv23-record-source > span { margin-left: -8px; transform-origin: 0 50%; transform: scaleX(.97); }
+.rv23-create { position: absolute; left: 768px; top: 266px; width: 493px; height: 688px; border-radius: 20px; padding: 28px 26px 0; background: linear-gradient(150deg, #1c1715, #191513 72%); }
 .rv23-create h2 { font-size: 25px; margin-bottom: 17px; }
-.rv23-create-item { display: flex; gap: 20px; width: 100%; height: 136px; border: 1px solid #4d413533 !important; border-radius: 16px; padding: 16px 16px !important; background: linear-gradient(110deg, #24201c, #201b18) !important; text-align: left; margin-bottom: 10px; }
+.rv23-create-item { display: flex; gap: 20px; width: 100%; height: 136px; border: 1px solid #4d413533 !important; border-radius: 16px; padding: 16px 16px !important; background: linear-gradient(110deg, #25211dcc, #26221e88) !important; text-align: left; margin-bottom: 10px; }
 .rv23-create-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 64px; height: 65px; margin-top: 3px; border: 1px solid; border-radius: 50%; }
 .rv23-create-icon.amber { color: #e89a57; border-color: #8c552b; background: radial-gradient(ellipse, #77431e30, #53361f20); }
 .rv23-create-icon.cyan { color: #a8e8ee; border-color: #387078; background: radial-gradient(ellipse, #28566155, #263e4355); }
 .rv23-create-icon.green { color: #89deb0; border-color: #385d3b; background: #2842303b; }
-.rv23-create-copy { min-width: 0; }
-.rv23-create-copy strong { display: block; font-size: 24px; line-height: 1.4; margin-bottom: 4px; font-weight: 500; }
-.rv23-create-copy > span { display: block; white-space: pre-line; font-size: 20px; line-height: 1.55; color: #d5cdc3; }
-.rv23-create-meta { border-top: 1px solid #79614b40; margin-top: 27px; padding-top: 22px; color: #d0c6bb; }
-.rv23-create-meta > p { display: flex; align-items: center; gap: 13px; font-size: 20px; white-space: nowrap; }
+.rv23-create-copy { min-width: 0; transform: translate(2px, 1px); }
+.rv23-create-copy strong { display: block; font-size: 23px; line-height: 33.6px; margin-bottom: 5px; font-weight: 500; transform: translateY(-1px); }
+.rv23-create-copy > span { display: block; white-space: pre-line; font-size: 20px; font-weight: 300; line-height: 32.25px; color: #d5cdc3; transform-origin: 0 0; transform: translateY(1.4px) scale(.995, .96); -webkit-text-stroke: .16px currentColor; }
+.rv23-create-meta { border-top: 1px solid #79614b40; margin-top: 27px; padding-top: 22px; color: #d0c6bb; font-weight: 300; }
+.rv23-create-meta > p { display: flex; align-items: center; gap: 16px; font-size: 20px; white-space: nowrap; -webkit-text-stroke: .08px currentColor; }
+.rv23-create-meta > p > span:last-child { margin-left: -9px; transform-origin: 0 50%; transform: scaleX(.965); }
 .rv23-create-meta .r-icon { color: #958b7f; flex: none; }
-.rv23-tags { display: flex; align-items: center; gap: 13px; margin-top: 16px; font-size: 20px; white-space: nowrap; }
-.rv23-tags button { padding: 4px 15px !important; border: 1px solid; border-radius: 25px; font-size: 19px; }
+.rv23-tags { display: flex; align-items: center; gap: 12px; margin-top: 16px; font-size: 20px; white-space: nowrap; }
+.rv23-tags button { padding: 4px 14px !important; border: 1px solid; border-radius: 25px; font-size: 19px; }
+.rv23-tags button + button { margin-left: -2px; }
 .rv23-tags button.amber { border-color: #a16937; color: #edb46e; background: #89542520; }
 .rv23-tags button.cyan { border-color: #4f8e88; color: #9eddd7; background: #397a7418; }
 .rv24 .rv-heading { left: 36px; top: 124px; }

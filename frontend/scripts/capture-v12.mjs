@@ -2260,13 +2260,84 @@ try {
         ensure(recollectionStyles.willChange === 'transform' && recollectionStyles.titleWeight === '500'
           && recollectionStyles.subtitleMargin === '5px' && recollectionStyles.numberFont === 'Arial, sans-serif'
           && recollectionStyles.fragmentWeight === '500' && recollectionStyles.suggestionWeight === '500'
-          && recollectionStyles.suggestionMargin === '4px' && recollectionStyles.selectedWeight === '500'
+          && recollectionStyles.suggestionMargin === '5px' && recollectionStyles.selectedWeight === '500'
           && recollectionStyles.sidebarSurface.includes('rgba(112, 77, 59, 0.46)')
           && recollectionStyles.navigation.length === 10
           && recollectionStyles.navigation.every(item => item.gap === '15px' && item.whiteSpace === 'nowrap' && item.textLines === 1),
           '23文字合成、字重、编号、说明间距、侧栏光照或十项单行导航不符')
         checks.push({ check: 'recollection-compositing-type-spacing-sidebar-surface-single-line-navigation', scene: scene.id,
           styles: recollectionStyles, passed: true })
+        const recollectionType = await page.evaluate(() => {
+          const read = selector => {
+            const s = getComputedStyle(document.querySelector(selector))
+            return { size: s.fontSize, weight: s.fontWeight, stroke: s.webkitTextStrokeWidth,
+              transform: s.transform, lineHeight: s.lineHeight, wordSpacing: s.wordSpacing }
+          }
+          return {
+            breadcrumb: [...document.querySelector('.r-breadcrumb').children].map(node => [node.tagName, node.textContent]),
+            labels: [...document.querySelectorAll('.rv23-confidence-label')].map(node => node.textContent),
+            heading: read('.rv23 h1'), subtitle: read('.rv23 .rv-subheading'), panel: read('.rv23-confidence h2'),
+            selected: read('.rv23-confidence-options button.selected .rv23-confidence-label'),
+            fragments: [...document.querySelectorAll('.rv23-fragment-content p')].map(node => {
+              const s = getComputedStyle(node), range = document.createRange(); range.selectNodeContents(node)
+              return { size: s.fontSize, weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, transform: s.transform,
+                lines: range.getClientRects().length }
+            }),
+            suggestion: read('.rv23-create-copy > span'), warning: read('.rv23-warning-copy'),
+            source: read('.rv23-record-source'), buttons: [...document.querySelectorAll('.rv23-actions .r-btn')].map(node => getComputedStyle(node).fontSize),
+          }
+        })
+        ensure(JSON.stringify(recollectionType.breadcrumb) === JSON.stringify([['SPAN', '复盘'], ['SPAN', '/'], ['STRONG', '面后回忆']])
+          && JSON.stringify(recollectionType.labels) === JSON.stringify(['记得较清楚', '有些模糊', '不确定'])
+          && recollectionType.heading.size === '54px' && recollectionType.heading.stroke === '0.6px'
+          && recollectionType.heading.transform === 'matrix(0.996, 0, 0, 0.98, 2, -1)'
+          && recollectionType.subtitle.size === '23.5px' && recollectionType.subtitle.weight === '300'
+          && recollectionType.subtitle.wordSpacing === '3px' && recollectionType.subtitle.stroke === '0.18px'
+          && recollectionType.panel.weight === '500' && recollectionType.panel.stroke === '0.1px'
+          && recollectionType.panel.transform === 'matrix(1.005, 0, 0, 0.96, 1, -1)'
+          && recollectionType.selected.transform === 'matrix(0.99, 0, 0, 0.98, 0, -1)'
+          && recollectionType.fragments.length === 3 && recollectionType.fragments.every(item => item.size === '23px' && item.weight === '300' && item.lines === 1)
+          && JSON.stringify(recollectionType.fragments.map(item => item.stroke)) === JSON.stringify(['0.02px', '0.04px', '0px'])
+          && JSON.stringify(recollectionType.fragments.map(item => item.transform)) === JSON.stringify([
+            'matrix(0.967, 0, 0, 0.98, 1, 2)', 'matrix(1.015, 0, 0, 1.04, 1, 1)', 'matrix(0.977, 0, 0, 0.98, 0, 2)',
+          ])
+          && recollectionType.suggestion.weight === '300' && recollectionType.suggestion.lineHeight === '32.25px'
+          && recollectionType.suggestion.stroke === '0.16px' && recollectionType.suggestion.transform === 'matrix(0.995, 0, 0, 0.96, 0, 1.4)'
+          && recollectionType.warning.transform === 'matrix(0.944, 0, 0, 0.96, 0, -1)'
+          && recollectionType.source.size === '20px' && recollectionType.source.stroke === '0.1px'
+          && JSON.stringify(recollectionType.buttons) === JSON.stringify(['23px', '23px']),
+          '23分段面包屑、标题字框、三片段基线、建议与警示文字或按钮字面不符')
+        checks.push({ check: 'recollection-segmented-breadcrumb-fixed-title-fragment-and-suggestion-text-baselines', scene: scene.id,
+          styles: recollectionType, passed: true })
+        const recollectionSurface = await page.evaluate(() => {
+          const read = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+            return { box: [b.x, b.y, b.width, b.height], background: s.backgroundImage, border: s.borderTopColor,
+              shadow: s.boxShadow, radius: s.borderBottomLeftRadius, fill: s.fill, stroke: s.stroke, paddingBottom: s.paddingBottom }
+          }
+          return { options: read('.rv23-confidence-options'), selected: read('.rv23-confidence-options button.selected'),
+            warning: read('.rv23-warning'), source: read('.rv23-record-source'), tags: [...document.querySelectorAll('.rv23-tags button')].map(node => {
+              const b = node.getBoundingClientRect(); return [b.x, b.y, b.width, b.height]
+            }), sidebar: read('.r-sidebar'), panels: ['.rv23-confidence', '.rv23-record', '.rv23-create'].map(read),
+            suggestion: read('.rv23-create-item'), complete: read('.rv23-complete'),
+            draftFill: read('.rv23-draft .r-icon path:first-child'), draftCutout: read('.rv23-draft .r-icon path:nth-child(2)') }
+        })
+        ensure(JSON.stringify(recollectionSurface.options.box) === JSON.stringify([304, 347, 668, 64])
+          && JSON.stringify(recollectionSurface.selected.box) === JSON.stringify([528, 348, 220, 62])
+          && JSON.stringify(recollectionSurface.warning.box) === JSON.stringify([304, 795, 669, 65])
+          && JSON.stringify(recollectionSurface.source.box) === JSON.stringify([304, 872, 669, 79])
+          && recollectionSurface.source.paddingBottom === '2px'
+          && JSON.stringify(recollectionSurface.tags) === JSON.stringify([[1150, 874, 106, 38.5], [1266, 874, 125, 38.5]])
+          && recollectionSurface.sidebar.radius === '24px'
+          && recollectionSurface.sidebar.background.includes('rgb(22, 18, 16)') && recollectionSurface.sidebar.background.includes('rgb(42, 32, 27)')
+          && recollectionSurface.panels.every(item => item.background === 'linear-gradient(150deg, rgb(28, 23, 21), rgb(25, 21, 19) 72%)')
+          && recollectionSurface.suggestion.background.includes('rgba(38, 34, 30, 0.533)')
+          && recollectionSurface.complete.background.includes('rgb(142, 93, 54)') && recollectionSurface.complete.background.includes('rgb(191, 133, 90)')
+          && recollectionSurface.complete.shadow.includes('24px') && recollectionSurface.complete.border === 'rgb(237, 189, 144)'
+          && recollectionSurface.draftFill.fill === 'rgb(181, 172, 164)' && recollectionSurface.draftCutout.stroke === 'rgb(42, 35, 30)',
+          '23确定度选中项、警示与来源行、标签、侧栏曲角、面板光照或保存按钮图标不符')
+        checks.push({ check: 'recollection-fixed-selected-control-warning-source-tags-and-layered-surfaces', scene: scene.id,
+          visual: recollectionSurface, passed: true })
         const writes = []
         const watchWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push({ method: request.method(), url: request.url() }) }
         page.on('request', watchWrite)
