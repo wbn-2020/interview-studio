@@ -9,6 +9,7 @@ const props = defineProps<{ scene: number }>()
 const emit = defineEmits<{ navigate: [id: number]; notify: [text: string] }>()
 const commandOpen = ref(true)
 const query = ref('缓存')
+const commandReferenceCaret = ref(true)
 const commandInput = ref<HTMLInputElement>()
 const commandPanel = ref<HTMLElement>()
 const commandSelected = ref(0)
@@ -80,12 +81,17 @@ async function openCommand() {
   commandOpen.value = true
   commandSelected.value = 0
   commandComposing = false
+  commandReferenceCaret.value = query.value === '缓存'
   await nextTick()
-  if (commandOpen.value) commandInput.value?.focus({ preventScroll: true })
+  if (commandOpen.value) {
+    commandInput.value?.focus({ preventScroll: true })
+    if (commandReferenceCaret.value) commandInput.value?.setSelectionRange(query.value.length, query.value.length)
+  }
 }
 function closeCommand() {
   commandOpen.value = false
   commandComposing = false
+  commandReferenceCaret.value = false
   const trigger = commandTrigger
   commandTrigger = undefined
   void nextTick().then(() => {
@@ -150,22 +156,23 @@ onUnmounted(() => {
     <section class="r-panel sp-task-table"><h3>任务列表</h3><input v-model="taskQuery" class="sp-task-search" aria-label="筛选今日任务" /><table class="r-table"><thead><tr><th><input class="r-checkbox" type="checkbox" aria-label="全选任务" :checked="allTasksDone" :indeterminate="!allTasksDone && visibleTasks.some(task => taskDone.includes(task.index))" @change="toggleVisibleTasks" /></th><th>任务</th><th>优先级</th><th>状态</th></tr></thead><tbody><tr v-for="task in visibleTasks" :key="task.index"><td><input class="r-checkbox" type="checkbox" :aria-label="task.title" :checked="taskDone.includes(task.index)" @change="taskToggle(task.index)" /></td><td>{{ task.title }}</td><td><span class="r-pill" :class="task.tone">{{ task.priority }}</span></td><td><span class="r-pill" :class="task.index === 0 && !taskDone.includes(task.index) ? 'blue' : ''">{{ taskDone.includes(task.index) ? '已完成' : task.index === 0 ? '进行中' : '未开始' }}</span></td></tr></tbody></table></section>
     <div v-if="commandOpen" class="sp-command-scrim" @click.self="closeCommand" />
     <section v-if="commandOpen" ref="commandPanel" class="sp-command-modal" role="dialog" aria-modal="true" aria-label="全局命令面板" @keydown="keydown">
-      <label class="sp-command-input r-row"><RIcon name="search" :size="29" /><input ref="commandInput" v-model="query" aria-label="搜索命令" autocomplete="off" spellcheck="false"
+      <label class="sp-command-input r-row" :class="{ 'sp-command-reference': commandReferenceCaret }"><RIcon name="search" :size="29" /><input ref="commandInput" v-model="query" aria-label="搜索命令" autocomplete="off" spellcheck="false"
         role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="replica-command-options" :aria-activedescendant="`replica-command-option-${commandSelected}`"
-        @input="commandSelected = 0" @compositionstart="commandComposing = true" @compositionend="commandComposing = false" /><kbd>⌘K</kbd></label>
+        @input="commandSelected = 0; commandReferenceCaret = false" @beforeinput="commandReferenceCaret = false" @pointerdown="commandReferenceCaret = false" @keydown="commandReferenceCaret = false"
+        @compositionstart="commandComposing = true; commandReferenceCaret = false" @compositionend="commandComposing = false" /><kbd><span class="sp-command-query-key">⌘K</span></kbd></label>
       <div id="replica-command-options" class="sp-command-items" role="listbox" aria-label="可用命令">
         <p class="sp-command-section">页面</p>
         <template v-for="(entry, i) in commands" :key="entry.title">
           <p v-if="entry.group === '新建' && commands[i - 1]?.group !== '新建'" class="sp-command-section sp-new-divider">新建</p>
           <button :id="`replica-command-option-${i}`" type="button" role="option" tabindex="-1" :aria-selected="commandSelected === i" class="sp-command-item r-row" :class="{ selected: commandSelected === i, compact: !entry.sub }" @click="executeCommand(i)" @pointermove="commandSelected = i" @mousedown.prevent>
             <span class="sp-command-icon"><RIcon :name="entry.icon" variant="command" :size="38" /><RIcon v-if="entry.scene === 16" class="sp-command-card-plus" name="plus" :size="18" /></span>
-            <span class="sp-command-copy">{{ entry.title }}<small v-if="entry.sub">{{ entry.sub }}</small></span><kbd v-if="entry.shortcut">{{ entry.shortcut }}</kbd><span v-else class="sp-command-open"><span>打开</span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5v9H4m5-5-5 5 5 5" /></svg></span>
+            <span class="sp-command-copy">{{ entry.title }}<small v-if="entry.sub">{{ entry.sub }}</small></span><kbd v-if="entry.shortcut"><template v-if="entry.scene === 16"><span class="sp-command-shift">{{ entry.shortcut[0] }}</span><span>{{ entry.shortcut.slice(1) }}</span></template><span v-else class="sp-command-note-key">{{ entry.shortcut }}</span></kbd><span v-else class="sp-command-open"><span><span class="sp-open-text">打开</span></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 5v9H4m5-5-5 5 5 5" /></svg></span>
           </button>
         </template>
         <p v-if="!commands.length" class="sp-no-commands r-muted">无匹配命令</p>
         <div class="sp-domain-section"><p>搜索八个域</p><div class="sp-domain-pills"><button v-for="(entry, i) in commandDomains" :id="`replica-command-option-${commands.length + i}`" :key="entry.label" type="button" role="option" tabindex="-1" :aria-selected="commandSelected === commands.length + i" class="r-pill" :class="{ selected: commandSelected === commands.length + i }" @pointermove="commandSelected = commands.length + i" @mousedown.prevent @click="executeCommand(commands.length + i)"><RIcon :name="entry.icon" variant="command" :size="21" />{{ entry.label }}</button></div><p class="sp-domain-note r-row"><RIcon name="info" :size="22" />到达搜索页后才会查询正文</p></div>
       </div>
-      <footer class="r-between"><span><button type="button" @click="closeCommand"><kbd>Esc</kbd> 关闭</button><i /><kbd>↑ ↓</kbd> 选择</span><span class="sp-command-read-boundary">不自动读取正文<RIcon name="circle" :size="22" /></span></footer>
+      <footer class="r-between"><span><button type="button" @click="closeCommand"><kbd>Esc</kbd><span class="sp-footer-close-text"> 关闭</span></button><i /><kbd>↑ ↓</kbd><span class="sp-footer-select-text"> 选择</span></span><span class="sp-command-read-boundary">不自动读取正文<RIcon name="circle" :size="22" /></span></footer>
     </section>
     <button v-if="!commandOpen" class="sp-command-reopen r-btn" @click="openCommand"><RIcon name="search" />打开命令面板</button>
   </section>
@@ -264,6 +271,44 @@ onUnmounted(() => {
 .sp-command-modal footer { background: #ffffff03; }
 .sp-command-modal footer i { margin-inline: 19px; }
 .sp-command-read-boundary { gap: 8px; }
+/* 初始查询用固定光标；编辑后交回原生输入，避免画面取决于闪烁时序。 */
+.sp-command-input { background: linear-gradient(180deg, #ffffff08, #ffffff04); }
+.sp-command-input::before { background: #0000003c; }
+.sp-command-input input { font-size: 27.5px; font-weight: 300; -webkit-text-stroke: .11px currentColor; transform-origin: 0 50%; transform: translate(-1px, -1px) scaleX(.965); caret-color: currentColor; }
+.sp-command-input.sp-command-reference input { caret-color: transparent; }
+.sp-command-input.sp-command-reference:has(input:focus)::after { content: ""; position: absolute; top: 23px; left: 126px; width: 1px; height: 35px; background: #cfc5b399; pointer-events: none; }
+.sp-command-input kbd { transform: translateX(4px); }
+.sp-command-query-key { display: inline-block; transform-origin: 50% 50%; transform: translate(-1px, .5px) scale(.94, .9); }
+.sp-command-heading h1 { font-size: 42px; line-height: 58.5px; font-weight: 500; -webkit-text-stroke: .3px currentColor; transform-origin: 0 0; transform: translate(2px, 0) scale(.965, .955); }
+.sp-command-modal { font-weight: 300; }
+.sp-command-section, .sp-domain-section > p:first-child { font-weight: 400; }
+.sp-command-copy { font-weight: 300; -webkit-text-stroke: .045px currentColor; transform-origin: 0 50%; transform: translateX(2px) scaleX(.961); }
+.sp-command-copy small { font-size: 19px; line-height: 32px; font-weight: 300; -webkit-text-stroke: 0; transform-origin: 0 50%; transform: translate(-1px, -2px) scaleX(1.057); color: #d6d2c6; }
+.sp-command-item:nth-of-type(2) .sp-command-copy { transform: translate(2px, -2px) scale(.94, .96); }
+.sp-command-item:nth-of-type(3) .sp-command-copy { transform: translate(2px, -7px) scale(.942, .96); }
+.sp-command-item:nth-of-type(4) .sp-command-copy { transform: translate(2px, -11px) scale(.942, 1); }
+.sp-command-item:nth-of-type(4) .sp-command-icon { transform: translateY(-11px); }
+.sp-command-open { font-weight: 400; transform: translate(7px, -1px); }
+.sp-command-open > span:first-child { display: inline-flex; align-items: center; height: 38px; padding: 0 15px; background: linear-gradient(110deg, #ffffff0c, #ffffff05); }
+.sp-command-item.selected .sp-command-open > span:first-child { background: linear-gradient(110deg, #e0ac7d2b, #b7927020); }
+.sp-command-open .sp-open-text { display: inline-block; transform-origin: 0 50%; transform: translate(1px, -.25px) scale(.9, 1.06); }
+.sp-command-open > svg { transform-origin: 0 50%; transform: translateX(-5px) scaleX(.875); stroke-width: 2px; }
+.sp-command-item:nth-of-type(3) > kbd { display: inline-flex; align-items: center; justify-content: center; width: 51px; height: 28px; padding: 0; font-size: 18px; line-height: 28px; transform: translateY(-1px); }
+.sp-command-item:nth-of-type(4) > kbd { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 72px; height: 28px; padding: 0; font-size: 18px; line-height: 28px; transform: translate(-1px, -7.5px); }
+.sp-command-item:nth-of-type(4) > kbd > span:last-child { display: inline-block; transform-origin: 100% 50%; transform: scaleX(1.1); }
+.sp-command-shift { font-family: "Segoe UI Symbol", "Segoe UI", sans-serif; font-size: 24px; line-height: 24px; }
+.sp-command-note-key { display: inline-block; transform-origin: 50% 0; transform: translateX(.5px) scale(1.07, .94); }
+.sp-domain-section > p:first-child { padding-top: 7px; padding-left: 1px; font-size: 22.25px; }
+.sp-domain-note { font-size: 18.9px; line-height: 33px; font-weight: 300; padding-top: 8px; gap: 13px; color: #d1ceca; }
+.sp-command-modal footer { font-weight: 400; color: #d1ccc7; background: #ffffff05; }
+.sp-command-modal footer i { margin-inline: 20px; }
+.sp-command-modal footer > span:first-child { display: inline-flex; align-items: center; transform: translateX(1px); }
+.sp-command-modal footer button { display: inline-flex; align-items: center; gap: 3px; font-size: 20px; font-weight: 300; line-height: 30px; }
+.sp-command-modal footer button kbd { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 28px; font-size: 21px; font-weight: 500; }
+.sp-command-modal footer > span:first-child > kbd { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 28px; word-spacing: 10px; font-weight: 300; }
+.sp-footer-close-text { display: inline-block; }
+.sp-footer-select-text { margin-left: 7px; font-size: 20px; font-weight: 300; }
+.sp-command-read-boundary { font-size: 20px; font-weight: 300; }
 .sp-inbox-heading { position: absolute; top: 109px; left: 26px; }.sp-inbox-heading h1 { font-size: 47px; }.sp-inbox-heading p { margin-top: 3px; font-size: 23px; }.sp-inbox-actions { position: absolute; right: 30px; top: 133px; gap: 17px; }.sp-inbox-actions .r-btn { font-size: 24px; min-height: 58px; border-radius: 17px; padding: 10px 24px !important; }
 .sp-inbox-sources { position: absolute; top: 233px; left: 15px; bottom: 90px; width: 233px; border-radius: 20px; padding: 20px 10px; border-color: #393023; }.sp-inbox-sources h2 { padding: 0 15px 17px; font-size: 25px; }.sp-inbox-sources > button { display: flex; width: 100%; min-height: 64px; padding: 12px 17px !important; gap: 13px; text-align: left; font-size: 23px; border-radius: 15px; white-space: nowrap; }.sp-inbox-sources button.selected { background: #7c582f50 !important; color: #faead4; }.sp-inbox-sources small { margin-left: auto; font-size: 23px; }.sp-inbox-sources svg { color: #efc38d; }
 .sp-inbox-order { position: relative; border-radius: 23px; background: #ffffff08; }

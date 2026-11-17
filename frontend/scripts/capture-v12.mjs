@@ -3042,8 +3042,8 @@ try {
         })
         ensure(commandSurface.header.height === '94px' && commandSurface.header.left === '212px'
           && commandSurface.header.border === '1px' && commandSurface.header.pointerEvents === 'none'
-          && commandSurface.navigation.top === '153px' && commandSurface.primary.size === '23px'
-          && commandSurface.secondary.size === '22px' && commandSurface.status.gap === '26px'
+          && commandSurface.navigation.top === '153px' && commandSurface.primary.size === '21.5px'
+          && commandSurface.secondary.size === '21px' && commandSurface.status.gap === '26px'
           && commandSurface.modal.background === 'linear-gradient(110deg, rgba(28, 25, 22, 0.96), rgba(25, 22, 21, 0.97))'
           && commandSurface.action.size === '20px' && commandSurface.action.padding === '8px 16px'
           && commandSurface.action.gap === '8px' && JSON.stringify(commandSurface.button) === JSON.stringify([1289,285.5,146,49])
@@ -3053,6 +3053,44 @@ try {
           '25顶栏、导航／保存区、面板材质、任务按钮或左右上沿不符')
         checks.push({ check: 'command-header-navigation-status-modal-surface-task-action-asymmetric-background',
           scene: scene.id, commandSurface, passed: true })
+        const commandTypography = await page.evaluate(() => {
+          const input = document.querySelector('.sp-command-input input'), label = input.parentElement
+          const caret = getComputedStyle(label, '::after'), box = label.getBoundingClientRect()
+          const style = selector => { const s = getComputedStyle(document.querySelector(selector)); return {
+            size: s.fontSize, weight: s.fontWeight, lineHeight: s.lineHeight, color: s.color } }
+          return { title: style('.sp-command-heading h1'), query: style('.sp-command-input input'),
+            copy: style('.sp-command-copy'), subtitle: style('.sp-command-copy small'), boundary: style('.sp-command-read-boundary'),
+            keys: [...document.querySelectorAll('.sp-command-query-key,.sp-command-note-key,.sp-command-shift')].map(node => node.textContent),
+            openLabels: [...document.querySelectorAll('.sp-open-text')].map(node => node.textContent),
+            caret: { visible: label.classList.contains('sp-command-reference') && input === document.activeElement,
+              box: [box.x + parseFloat(caret.left), box.y + parseFloat(caret.top), parseFloat(caret.width), parseFloat(caret.height)],
+              color: caret.backgroundColor, animation: caret.animationName, pointerEvents: caret.pointerEvents },
+            nativeCaret: getComputedStyle(input).caretColor,
+          }
+        })
+        ensure(commandTypography.title.size === '42px' && commandTypography.title.weight === '500'
+          && commandTypography.title.lineHeight === '58.5px' && commandTypography.query.size === '27.5px'
+          && commandTypography.query.weight === '300' && commandTypography.copy.weight === '300'
+          && commandTypography.subtitle.size === '19px' && commandTypography.subtitle.lineHeight === '32px'
+          && commandTypography.boundary.size === '20px' && commandTypography.boundary.weight === '300'
+          && JSON.stringify(commandTypography.keys) === JSON.stringify(['⌘K','⌘N','⇧'])
+          && JSON.stringify(commandTypography.openLabels) === JSON.stringify(['打开','打开'])
+          && commandTypography.caret.visible && JSON.stringify(commandTypography.caret.box) === '[523,159,1,35]'
+          && commandTypography.caret.color === 'rgba(207, 197, 179, 0.6)' && commandTypography.caret.animation === 'none'
+          && commandTypography.caret.pointerEvents === 'none' && commandTypography.nativeCaret === 'rgba(0, 0, 0, 0)',
+          '25标题／查询／副标题字面、快捷键分段或固定初态光标不符')
+        checks.push({ check: 'command-typography-segmented-keys-fixed-reference-caret', scene: scene.id, commandTypography, passed: true })
+        for (const [action, operate] of [['keyboard', () => input.press('ArrowLeft')], ['pointer', () => input.click()], ['input', () => input.fill('缓存')]]) {
+          await operate()
+          ensure(await input.evaluate(node => !node.parentElement.classList.contains('sp-command-reference')
+            && getComputedStyle(node).caretColor === 'rgb(244, 238, 228)' && node === document.activeElement && node.value === '缓存'),
+            `25${action}编辑未移除固定光标并交回原生输入`)
+          await input.press('Escape'); await page.keyboard.press('Control+k'); await dialog.waitFor({ state: 'visible' })
+          ensure(await input.evaluate(node => node.parentElement.classList.contains('sp-command-reference')
+            && node === document.activeElement && node.selectionStart === 2 && node.selectionEnd === 2), '25重开没有恢复参考光标或末尾焦点')
+        }
+        await assertFrame(captured, '25原生输入光标切换后重开未恢复静止初态')
+        checks.push({ check: 'command-edit-native-caret-reference-reopen', scene: scene.id, passed: true })
         const initialLayout = await page.evaluate(() => {
           const rect = selector => { const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect(); return [x, y, width, height] }
           return { table: rect('.sp-task-table'), topSearch: rect('.r-top-search'),
@@ -3080,6 +3118,8 @@ try {
         ensure(await dialog.locator('.sp-command-items').evaluate(node => node.scrollTop === 0 && node.scrollHeight <= node.clientHeight), '25初态出现滚动或内容溢出')
         // 合成输入法生命周期，只核对真实组件事件处理；不注入页面或替换服务器资源。
         await input.dispatchEvent('compositionstart', { data: '存' })
+        ensure(await input.evaluate(node => !node.parentElement.classList.contains('sp-command-reference')
+          && getComputedStyle(node).caretColor === 'rgb(244, 238, 228)'), '25输入法开始后未交回原生光标')
         await input.press('Enter')
         await input.press('Escape')
         await input.press('ArrowDown')
