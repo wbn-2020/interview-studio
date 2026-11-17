@@ -1820,18 +1820,66 @@ try {
           && appearance['.rv21-actions .r-btn'].weight === '400' && appearance['.rv21-add'].weight === '400',
         '21正文、标题描边或操作字重不符')
         ensure(appearance['.rv21-answer'].marginTop === '49px'
-          && appearance['.rv21-tabs button.selected'].weight === '500' && appearance['.rv21-tabs button.selected'].paddingBottom === '8px'
+          && appearance['.rv21-tabs button.selected'].weight === '500' && appearance['.rv21-tabs button.selected'].paddingBottom === '11px'
           && appearance['.rv21-observation-copy'].transform === 'matrix(1, 0, 0, 1, 0, -1)'
           && appearance['.rv21-observation-copy strong'].weight === '300'
-          && appearance['.r-nav-item.r-secondary'].size === '23px' && appearance['.r-nav-item.r-secondary'].gap === '18px'
+          && appearance['.r-nav-item.r-secondary'].size === '23px' && appearance['.r-nav-item.r-secondary'].gap === '17px'
           && appearance['.r-nav-separator'].marginTop === '24px' && appearance['.r-nav-separator'].marginBottom === '29px'
           && appearance['.r-sidebar nav'].box[0] === 22 && appearance['.r-sidebar nav'].box[1] === 139,
         '21正文、页签、观察或侧栏基线不符')
-        ensure(appearance['.r-sidebar'].background === 'radial-gradient(at 20% 72%, rgba(95, 73, 53, 0.267), rgba(0, 0, 0, 0) 75%), linear-gradient(110deg, rgb(19, 16, 12), rgb(16, 14, 11))'
-          && appearance['.rv21-original'].background === 'radial-gradient(at 15% 0px, rgba(91, 70, 53, 0.098), rgba(0, 0, 0, 0) 65%), linear-gradient(120deg, rgb(28, 24, 20), rgb(24, 20, 16) 80%)'
+        ensure(appearance['.r-sidebar'].background === 'radial-gradient(at 60% 72%, rgba(97, 83, 66, 0.188), rgba(0, 0, 0, 0) 75%), linear-gradient(110deg, rgb(19, 16, 12), rgb(16, 14, 11))'
+          && appearance['.rv21-original'].background === 'radial-gradient(at 15% 0px, rgba(91, 70, 53, 0.063), rgba(0, 0, 0, 0) 65%), linear-gradient(120deg, rgb(28, 24, 20), rgb(24, 20, 16) 80%)'
           && appearance['.rv21-observation.observation-3'].background === 'linear-gradient(125deg, rgba(33, 28, 22, 0.25), rgba(22, 19, 15, 0.133))',
         '21侧栏、原答或第三条观察背景不符')
         checks.push({ check: 'review-typography-baselines-navigation-and-panel-lighting', scene: scene.id, appearance, passed: true })
+        const textDetails = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node)
+            return { size: s.fontSize, weight: s.fontWeight, lineHeight: s.lineHeight, stroke: s.webkitTextStrokeWidth,
+              transform: s.transform, wordSpacing: s.wordSpacing, gap: s.gap, top: s.top,
+              paddingBottom: s.paddingBottom, underlineOffset: s.textUnderlineOffset }
+          }
+          return Object.fromEntries(['.r-nav-item', '.r-nav-item.r-selected', '.r-breadcrumb', '.rv-heading h1', '.rv-subheading',
+            '.rv21-tabs button.selected', '.rv21-quote-tag', '.rv21-answer', '.rv21-answer p', '.rv21-highlight',
+            '.rv21-observation-copy strong', '.rv21-decision', '.rv21-improvement-input', '.rv21-source-label',
+            '.rv21-note > span'].map(selector => [selector, style(selector)]))
+        })
+        ensure(textDetails['.r-nav-item'].size === '23px' && textDetails['.r-nav-item'].weight === '400'
+          && textDetails['.r-nav-item'].lineHeight === '36px' && textDetails['.r-nav-item'].gap === '17px'
+          && textDetails['.r-nav-item.r-selected'].weight === '500' && textDetails['.r-nav-item.r-selected'].stroke === '0.2px'
+          && textDetails['.r-breadcrumb'].wordSpacing === '2.5px'
+          && textDetails['.rv-heading h1'].transform === 'matrix(0.925, 0, 0, 0.979, 3, 1)'
+          && textDetails['.rv-subheading'].size === '22.5px' && textDetails['.rv-subheading'].weight === '300'
+          && textDetails['.rv-subheading'].wordSpacing === '2.5px' && textDetails['.rv-subheading'].transform === 'matrix(1, 0, 0, 1, 0, -1)'
+          && textDetails['.rv21-tabs button.selected'].size === '23px' && textDetails['.rv21-tabs button.selected'].stroke === '0px'
+          && textDetails['.rv21-quote-tag'].paddingBottom === '4px'
+          && textDetails['.rv21-answer'].transform === 'matrix(0.984, 0, 0, 1, 3, -1)' && textDetails['.rv21-answer'].stroke === '0.04px'
+          && textDetails['.rv21-answer p'].lineHeight === '41.5px' && textDetails['.rv21-highlight'].underlineOffset === '10px'
+          && textDetails['.rv21-observation-copy strong'].lineHeight === '36px' && textDetails['.rv21-observation-copy strong'].stroke === '0.06px'
+          && textDetails['.rv21-observation-copy strong'].transform === 'matrix(0.97, 0, 0, 1, 0, 0)'
+          && textDetails['.rv21-decision'].size === '21px' && textDetails['.rv21-decision'].weight === '400'
+          && textDetails['.rv21-improvement-input'].size === '22.5px' && textDetails['.rv21-improvement-input'].lineHeight === '35px'
+          && textDetails['.rv21-source-label'].top === '240px'
+          && textDetails['.rv21-note > span'].transform === 'matrix(1, 0, 0, 1, 1, -1)', '21定稿文字字面、行高或基线不符')
+        checks.push({ check: 'review-heading-navigation-tabs-answer-observation-decision-fixed-text-baselines', scene: scene.id, textDetails, passed: true })
+        const surfaces = await page.evaluate(() => Object.fromEntries(['.rv21-knowledge', '.rv21-practice', '.rv21-add',
+          '.rv21-decision.disputed', '.rv21-decision:not(.disputed)', '.rv21-observation.selected', '.rv21-improvement',
+          '.rv21-improvement-input'].map(selector => {
+          const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+          return [selector, { background: s.backgroundImage, colour: s.backgroundColor, stroke: s.webkitTextStrokeWidth,
+            border: s.borderColor, box: [b.x, b.y, b.width, b.height] }]
+        })))
+        ensure(surfaces['.rv21-knowledge'].background === 'linear-gradient(120deg, rgb(41, 37, 31), rgb(30, 27, 23))'
+          && surfaces['.rv21-practice'].background === 'radial-gradient(at 80% 0px, rgba(233, 188, 150, 0.25), rgba(0, 0, 0, 0) 85%), linear-gradient(115deg, rgb(184, 123, 83), rgb(216, 162, 117))'
+          && surfaces['.rv21-add'].background === 'radial-gradient(at 100% 0px, rgba(232, 184, 137, 0.314), rgba(0, 0, 0, 0) 80%), linear-gradient(90deg, rgb(193, 132, 91), rgb(164, 105, 67))'
+          && surfaces['.rv21-decision.disputed'].background === 'radial-gradient(at 30% 0px, rgba(216, 134, 94, 0.125), rgba(0, 0, 0, 0) 80%), linear-gradient(120deg, rgb(183, 108, 77), rgb(158, 84, 60))'
+          && surfaces['.rv21-decision:not(.disputed)'].background === 'linear-gradient(130deg, rgb(100, 139, 119), rgb(60, 91, 78))'
+          && surfaces['.rv21-observation.selected'].background === 'linear-gradient(105deg, rgba(49, 41, 35, 0.55), rgba(47, 39, 33, 0.55))'
+          && surfaces['.rv21-improvement-input'].colour === 'rgba(245, 204, 176, 0.04)'
+          && surfaces['.rv21-improvement-input'].border === 'rgba(107, 87, 65, 0.55)'
+          && surfaces['.rv21-knowledge'].stroke === '0.1px' && surfaces['.rv21-add'].stroke === '0.1px'
+          && JSON.stringify(surfaces['.rv21-decision.disputed'].box) === JSON.stringify([1078, 443, 93, 42]), '21按钮、反馈选中态或输入材质不符')
+        checks.push({ check: 'review-buttons-three-decisions-selected-surface-input-materials-fixed-geometry', scene: scene.id, surfaces, passed: true })
         const geometry = {}
         for (const [selector, expected] of Object.entries({
           '.r-sidebar': [0, 0, 221, 1022], '.rv21-original': [249, 331, 441, 564],
