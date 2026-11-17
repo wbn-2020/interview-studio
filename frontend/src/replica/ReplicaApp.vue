@@ -188,13 +188,13 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               </svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
-            <div v-else-if="scene === 14" class="r-brand">
+            <div v-else-if="scene === 14 || scene === 15" class="r-brand">
               <svg class="r-emblem" viewBox="0 0 44 55" fill="none" aria-hidden="true">
-                <path d="M23 5C26 22 27 24 44 28 27 32 26 35 23 52 20 34 18 32 2 28 19 24 20 22 23 5Z" fill="#d3ab85" />
-                <path d="M23 5C23 20 24 24 23 28 21 27 18 28 2 28 19 24 20 22 23 5Z" fill="#e0bd9c" />
-                <path d="M23 28C23 32 23 37 23 52 20 34 18 32 2 28 18 29 20 29 23 28Z" fill="#c69c74" />
+                <path d="M23 5C26 22 27 24 44 28 27 32 26 35 23 52 20 34 18 32 2 28 19 24 20 22 23 5Z" :fill="scene === 15 ? '#e4ac77' : '#d3ab85'" />
+                <path d="M23 5C23 20 24 24 23 28 21 27 18 28 2 28 19 24 20 22 23 5Z" :fill="scene === 15 ? '#f0bb89' : '#e0bd9c'" />
+                <path d="M23 28C23 32 23 37 23 52 20 34 18 32 2 28 18 29 20 29 23 28Z" :fill="scene === 15 ? '#d59862' : '#c69c74'" />
                 <path d="M23 20C24 25 26 27 31 28 25 29 25 32 23 37 21 32 20 31 14 28 20 27 21 25 23 20Z" fill="#4d4033" />
-                <path d="m10.5 17.5 3 1.2.4 2.5-2.6-1.7Zm22.5.2 2.5-.9-.3 2.4-2.5 1.7Zm-21.6 19.5 2.8-1.7-.3 2.7-3.2 1Zm22.1-1.5 1.8 2.8-2.3-.5-1-2.8Z" fill="#b69675" />
+                <path d="m10.5 17.5 3 1.2.4 2.5-2.6-1.7Zm22.5.2 2.5-.9-.3 2.4-2.5 1.7Zm-21.6 19.5 2.8-1.7-.3 2.7-3.2 1Zm22.1-1.5 1.8 2.8-2.3-.5-1-2.8Z" :fill="scene === 15 ? '#c99a6c' : '#b69675'" />
               </svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
@@ -563,9 +563,9 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-15 { will-change: transform; background: radial-gradient(ellipse at 0 67%, #3c292033, transparent 37%), radial-gradient(ellipse at 80% 100%, #30211615, transparent 55%), #121110; }
 .r-scene-15::before { content: ""; position: absolute; left: 219px; right: 0; top: 85px; height: 1px; background: #ffffff06; }
 .r-scene-15 .r-sidebar { top: 22px; left: 18px; bottom: 29px; width: 202px; border-radius: 21px; border-color: #302a27; background: linear-gradient(115deg, #241e1b, #1a1715); }
-.r-scene-15 .r-sidebar :deep(.r-brand) { left: 20px; top: 27px; gap: 14px; }
-.r-scene-15 .r-sidebar :deep(.r-emblem) { width: 35px; height: 43px; color: #dfa366; filter: drop-shadow(0 0 7px #e4a15c24); }
-.r-scene-15 .r-sidebar :deep(.r-brand-word) { font-size: 26px; font-weight: 500; line-height: 30px; }
+.r-scene-15 .r-sidebar :deep(.r-brand) { left: 20px; top: 27px; gap: 15px; }
+.r-scene-15 .r-sidebar :deep(.r-emblem) { width: 35px; height: 43px; color: #dfa366; transform: translateY(-5px); filter: drop-shadow(0 0 7px #e4a15c24); }
+.r-scene-15 .r-sidebar :deep(.r-brand-word) { position: relative; top: -3px; font-size: 26px; font-weight: 500; line-height: 30px; }
 .r-scene-15 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 21px; }
 .r-scene-15 .r-sidebar nav { top: 115px; left: -1px; right: 6px; gap: 12px; }
 .r-scene-15 .r-nav-item { padding-left: 23px; font-size: 22px; font-weight: 300; gap: 20px; color: #d4cec9; }
@@ -577,6 +577,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-15 .r-sidebar-avatar .r-avatar { width: 47px; height: 50px; font-size: 23px; }
 .r-scene-15 .r-avatar { background: linear-gradient(130deg, #a59e98, #857f7a); border-color: #b0a7a03b; }
 .r-scene-15 .r-topbar { top: 12px; left: 244px; right: 36px; height: 75px; }
+.r-scene-15 .r-breadcrumb { white-space: pre; word-spacing: 4px; }
 .r-scene-15 .r-top-search { left: 340px !important; top: 13px; height: 52px; border-radius: 26px; }
 .r-scene-15 .r-top-search kbd { border: 1px solid #6c625b55; padding: 1px 5px; font-size: 19px; line-height: 25px; }
 .r-scene-15 .r-saved { font-size: 19px; gap: 8px; color: #a6d29e; }

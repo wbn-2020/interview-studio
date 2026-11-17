@@ -304,8 +304,8 @@ watch(() => props.scene, () => {
       </aside>
       <section class="ts-panel route-map" aria-label="Java 后端路线阶段">
         <div class="route-track"></div>
-        <button v-for="(stage, index) in stages" :key="stage.title" type="button" class="route-stage" :class="[stage.state, { selected: selectedStage === index }]" :aria-pressed="selectedStage === index" :style="{ top: `${[28, 126, 223, 319, 414][index]}px` }" @click="selectStage(index)">
-          <span class="stage-orbit"><span><RIcon :name="stage.icon" :size="28" /></span></span>
+        <button v-for="(stage, index) in stages" :key="stage.title" type="button" class="route-stage" :class="[stage.state, { selected: selectedStage === index }]" :aria-pressed="selectedStage === index" :style="{ top: `${[28, 126, 222, 318, 414][index]}px` }" @click="selectStage(index)">
+          <span class="stage-orbit"><span><RIcon :name="stage.icon" :variant="stage.icon === 'file-text' ? 'route' : undefined" :size="28" /></span></span>
           <span class="stage-copy"><strong>{{ stage.title }}</strong><small>{{ stage.meta }}</small></span>
           <RIcon v-if="index === 0" name="check" :size="24" class="stage-end done" />
           <RIcon v-else-if="selectedStage === index" name="chevron-right" :size="24" class="stage-end" />
@@ -602,21 +602,24 @@ watch(() => props.scene, () => {
 /* 五个固定节点间显式留空，避免连线透过节点图标；不依赖动画或布局模拟。 */
 .route-track { position: absolute; left: 59px; width: 4px; top: 80px; bottom: 82px; z-index: 1; pointer-events: none; background: linear-gradient(to bottom, #e6b17d 0 60px, transparent 60px 117px, #a6bac5 117px 157px, transparent 157px 209px, #a6bac5 209px 253px, transparent 253px 305px, #a6bac5 305px 348px); }
 .route-stage { position: absolute; left: 28px; width: 311px; height: 74px; display: flex; align-items: center; border: 1px solid #39332b !important; background: linear-gradient(120deg, #2b2a25ba, #24211dc7) !important; border-radius: 32px; text-align: left; }
-.route-stage.done { border-color: #3a4236 !important; }
+.route-stage:not(.selected) { border-color: transparent !important; background: transparent !important; }
+/* 圆环与右侧标签各有轮廓；伪元素只负责标签底面，不参与点击或节点排布。 */
+.route-stage:not(.selected)::before { content: ''; position: absolute; left: 58px; right: -1px; top: -1px; bottom: -1px; border: 1px solid #3e3b37c0; border-radius: 29px; background: linear-gradient(120deg, #2421219c, #201e1dc7); pointer-events: none; }
 .route-stage.selected { border-color: #eaa353 !important; background: linear-gradient(120deg, #72502d55, #452e1b66) !important; box-shadow: inset 0 0 10px #c8832728; }
-.stage-orbit { display: grid; place-items: center; width: 63px; height: 75px; border: 1px solid #ffffff06; border-radius: 50%; flex: none; background: #26252155; }
+.stage-orbit { position: relative; z-index: 1; left: -1px; display: grid; place-items: center; width: 63px; height: 75px; border: 1px solid #8b82751f; border-radius: 50%; flex: none; background: linear-gradient(115deg, #302b2680, #24211b44); }
 .stage-orbit > span { width: 35px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #534c4280; }
-.route-stage.done .stage-orbit { border-color: #6a99618f; background: #20392c40; }
+.route-stage.done .stage-orbit { border-color: transparent; background: linear-gradient(115deg, #36352c55, #24211b44); }
+.route-stage.done .stage-orbit::before { content: ''; position: absolute; inset: -1px; border: 1px solid #73a26a; border-radius: 50%; mask-image: linear-gradient(#000, transparent 80%); pointer-events: none; }
 .route-stage.done .stage-orbit > span { background: #82b680; color: #edf7e2; width: 30px; height: 30px; }
 .route-stage.current .stage-orbit > span { background: #795032b5; color: #ffe3c3; }
-.stage-copy { padding-left: 18px; }
-.stage-copy strong { display: block; font-size: 21px; font-weight: 500; }
+.stage-copy { padding-left: 18px; z-index: 1; }
+.stage-copy strong { display: block; font-size: 20px; font-weight: 500; }
 .stage-copy small { display: block; margin-top: 1px; font-size: 16px; color: #c9c3b9; }
 .route-stage.done .stage-copy small { color: #a1cb96; }
 .route-stage.current .stage-copy small { color: #e9c392; }
-.stage-end { position: absolute; right: 18px; color: #efbf87; }
+.stage-end { position: absolute; z-index: 1; right: 18px; color: #efbf87; }
 .stage-end.done { color: #85bf89; background: transparent; }
-.stage-empty { width: 19px; height: 19px; border: 1.5px solid #969084; border-radius: 50%; }
+.stage-empty { right: 20px; width: 19px; height: 19px; border: 1.5px solid #969084; border-radius: 50%; }
 .route-completion { position: absolute; left: 361px; top: 122px; width: 228px; height: 86px; padding: 10px 16px; border: 1px solid #3c362e; border-radius: 17px; background: #2a2621d4; }
 .route-completion::before { content: ''; position: absolute; width: 25px; height: 22px; left: -26px; top: 29px; border-bottom: 1px solid #594330; border-radius: 0 0 100% 0; }
 .route-completion strong { font-size: 20px; font-weight: 500; }
@@ -642,10 +645,10 @@ watch(() => props.scene, () => {
 .route-meta > span:last-child { color: #e3d9cc; margin-left: -10px; }
 .route-creator { display: grid; place-items: center; width: 31px; height: 33px; border-radius: 50%; background: #756f65; font-size: 18px; color: #f6eee4; }
 .route-detail-rule { height: 1px; margin: 25px 0 20px; background: #ffffff0a; }
-.linked-question-lists { margin: 9px -9px 0; background: #ffffff02; border-radius: 18px; padding: 2px 10px; }
-.linked-question-lists button { width: 100%; height: 47px; display: flex; align-items: center; gap: 13px; font-size: 18px; white-space: nowrap; }
-.linked-question-lists button > .r-icon:last-child { margin-left: auto; }
-.route-reorder { width: 100%; height: 49px; margin-top: 10px; border-radius: 19px; padding: 5px; font-size: 20px; }
+.linked-question-lists { margin: 10px -9px 0; background: #ffffff02; border-radius: 18px; padding: 2px 10px; }
+.linked-question-lists button { width: 100%; height: 47px; display: flex; align-items: center; gap: 13px; padding-left: 1px; font-size: 18px; white-space: nowrap; }
+.linked-question-lists button > .r-icon:last-child { margin-left: auto; margin-right: 12px; }
+.route-reorder { width: 100%; height: 49px; margin-top: 9px; border-radius: 19px; padding: 5px; font-size: 20px; }
 .recall-horizon { position: absolute; pointer-events: none; z-index: 0; top: 95px; left: 245px; width: 1600px; height: 1120px; border-top: 1px solid #9c6b445c; border-radius: 50%; box-shadow: 0 -8px 28px #c7803126, inset 0 14px 35px #c7803122; }
 .recall-title { position: absolute; top: 118px; left: 34px; }
 .recall-title h1 { font-size: 50px; }

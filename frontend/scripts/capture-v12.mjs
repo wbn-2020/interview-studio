@@ -1216,12 +1216,13 @@ try {
         ensure(await stages.nth(1).getAttribute('aria-pressed') === 'true'
           && await page.locator('.route-completion p').textContent() === '独立作答 2 题 + 复练 1 次', '15初始阶段或完成条件不符')
         const stageTops = await stages.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().top))
-        ensure(JSON.stringify(stageTops) === JSON.stringify([264, 362, 459, 555, 650]), '15阶段坐标不符')
-        ensure(await page.locator('.r-brand circle').count() === 2, '15品牌不应使用带外圈的默认图标')
+        ensure(JSON.stringify(stageTops) === JSON.stringify([264, 362, 458, 554, 650]), '15阶段坐标不符')
+        ensure(await page.locator('.r-brand circle').count() === 0 && await page.locator('.r-brand path').count() === 5,
+          '15品牌应为曲面四角与四短芒')
         checks.push({ check: 'route-five-stages-three-checkpoints-shell-panel-geometry', scene: scene.id, geometry, stageTops, passed: true })
         const routeType = await page.evaluate(() => Object.fromEntries(['.r-scene-15', '.r-nav-item', '.route-title h1', '.route-tabs .active',
           '.route-list-heading h3', '.route-overview h3', '.route-details h3', '.route-list-item strong', '.route-detail-title h2',
-          '.stage-copy small', '.route-completion p', '.route-actions .primary'].map(selector => {
+          '.stage-copy strong', '.stage-copy small', '.route-completion p', '.route-actions .primary'].map(selector => {
           const node = document.querySelector(selector), box = node.getBoundingClientRect(), style = getComputedStyle(node)
           return [selector, { text: node.textContent, box: [box.x, box.y, box.width, box.height], weight: style.fontWeight,
             size: style.fontSize, stroke: style.webkitTextStrokeWidth }]
@@ -1235,6 +1236,7 @@ try {
           && routeType['.route-list-item strong'].weight === '400' && routeType['.route-actions .primary'].weight === '500'
           && routeType['.route-detail-title h2'].weight === '500' && routeType['.route-detail-title h2'].size === '24px'
           && routeType['.route-detail-title h2'].stroke === '0.2px'
+          && routeType['.stage-copy strong'].size === '20px' && routeType['.stage-copy strong'].weight === '500'
           && ['.stage-copy small', '.route-completion p'].every(selector => routeType[selector].weight === '400'),
           '15主标题基线、分区标题／路线名称或正文视觉重量不符')
         checks.push({ check: 'route-title-baseline-heading-weights-and-regular-body', scene: scene.id, styles: routeType, passed: true })
@@ -1253,6 +1255,28 @@ try {
           && routeVisual.reorder[0] === 1217 && routeVisual.reorder[1] === 695 && routeVisual.reorder[3] === 49,
           '15节点间分段连线、详情底色或调整顺序按钮基线不符')
         checks.push({ check: 'route-node-gap-track-detail-surface-and-reorder-baseline', scene: scene.id, visual: routeVisual, passed: true })
+        const routeContours = await page.evaluate(() => {
+          const rect = node => { const box = node.getBoundingClientRect(); return [box.x, box.y, box.width, box.height] }
+          const stage = document.querySelector('.route-stage'), face = getComputedStyle(stage, '::before')
+          const orbit = getComputedStyle(document.querySelector('.route-stage.done .stage-orbit'), '::before')
+          return { face: { left: face.left, radius: face.borderRadius, background: face.backgroundImage, pointerEvents: face.pointerEvents },
+            stageBackground: getComputedStyle(stage).backgroundImage, completedMask: orbit.maskImage,
+            arrows: [...document.querySelectorAll('.linked-question-lists button>.r-icon:last-child')].map(rect),
+            notePaths: [...document.querySelectorAll('.route-stage:nth-of-type(4) .stage-orbit path')].map(node => node.getAttribute('d')),
+            brand: { viewBox: document.querySelector('.r-brand svg').getAttribute('viewBox'),
+              fills: [...document.querySelectorAll('.r-brand path')].map(node => node.getAttribute('fill')) },
+            breadcrumbWordSpacing: getComputedStyle(document.querySelector('.r-breadcrumb')).wordSpacing }
+        })
+        ensure(routeContours.face.left === '58px' && routeContours.face.radius === '29px'
+          && routeContours.face.pointerEvents === 'none' && routeContours.stageBackground === 'none'
+          && routeContours.face.background.includes('36, 33, 33') && routeContours.face.background.includes('32, 30, 29')
+          && routeContours.completedMask.includes('80%')
+          && JSON.stringify(routeContours.arrows) === JSON.stringify([[1462, 555.5, 22, 22], [1462, 602.5, 22, 22], [1462, 649.5, 22, 22]])
+          && JSON.stringify(routeContours.notePaths) === JSON.stringify(['M6 2h11l3 3v17H4V2Z', 'M8 6h8M8 11h8M8 16h8'])
+          && routeContours.brand.viewBox === '0 0 44 55'
+          && JSON.stringify(routeContours.brand.fills) === JSON.stringify(['#e4ac77', '#f0bb89', '#d59862', '#4d4033', '#c99a6c'])
+          && routeContours.breadcrumbWordSpacing === '4px', '15分离轮廓、阶段图标、关联题单箭头或品牌细节不符')
+        checks.push({ check: 'route-separated-node-contours-note-symbol-linked-arrows-and-curved-brand', scene: scene.id, visual: routeContours, passed: true })
         await stages.nth(2).click()
         ensure(await stages.nth(2).getAttribute('aria-pressed') === 'true' && await page.locator('.route-completion').count() === 0, '15选择阶段未更新')
         await page.locator('.route-overview tbody tr').nth(1).focus()
