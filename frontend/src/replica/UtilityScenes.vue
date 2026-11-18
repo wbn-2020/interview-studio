@@ -294,7 +294,7 @@ onMounted(drawHorizon)
             <h3>输入清单</h3>
             <div class="task-input-list"><p>将发送 2 条固定原文</p><div><RIcon name="file-text" variant="authorization" :size="27" /><span>知识</span><span class="task-version">v4</span></div><div><RIcon name="file-text" variant="authorization" :size="27" /><span>笔记</span><span class="task-version">v3</span></div></div>
           </div>
-          <div class="task-preview-section"><h3>结果预览 <RIcon name="info" :size="19" /></h3><div class="task-preview-chips"><span><RIcon name="file-text" :size="21" />知识 <b>v4</b> · 1 条引用</span><span><RIcon name="file-text" :size="21" />笔记 <b>v3</b> · 1 条引用</span></div></div>
+          <div class="task-preview-section"><h3>结果预览 <RIcon name="info" :size="19" /></h3><div class="task-preview-chips"><span><RIcon name="file-text" variant="authorization" :size="21" /><span class="task-preview-object">知识 </span><b>v4</b><span class="task-preview-count"> · 1 条引用</span></span><span><RIcon name="file-text" variant="authorization" :size="21" /><span class="task-preview-object">笔记 </span><b>v3</b><span class="task-preview-count"> · 1 条引用</span></span></div></div>
           <div class="task-cost-note"><span>!</span><p><strong>费用待核对</strong> · 不按 0 显示</p></div>
           <div class="task-detail-actions"><button class="utility-button" :disabled="taskCancelled || sendConfirmed" @click="cancelTask">取消任务</button><button class="utility-button task-record-button" @click="emit('notify', `${currentTask.name} · ${currentTask.subject} · ${currentTaskStatus}`)">查看任务记录</button></div>
         </template>
@@ -309,7 +309,13 @@ onMounted(drawHorizon)
           <template v-if="selectedTask === 0"><div><dt><RIcon name="database" :size="27" />来源</dt><dd>知识 v4 · 笔记 v3</dd></div><div><dt><RIcon name="scan" variant="authorization" :size="27" />范围</dt><dd>2 条原文</dd></div></template>
         </dl>
         <div class="task-authorization-rule" />
-        <div class="task-continuous"><h3>持续授权</h3><button class="utility-switch" role="switch" :aria-checked="continuousAuthorization" aria-label="持续授权" @click="continuousAuthorization = !continuousAuthorization" /></div>
+        <div class="task-continuous"><h3>持续授权</h3><button class="utility-switch" role="switch" :aria-checked="continuousAuthorization" aria-label="持续授权" @click="continuousAuthorization = !continuousAuthorization">
+          <svg class="task-switch-art" width="57" height="34" viewBox="0 0 57 34" aria-hidden="true">
+            <defs><linearGradient id="task-switch-thumb-fill" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c0bbb6" /><stop offset="1" stop-color="#aaa4a0" /></linearGradient></defs>
+            <rect class="task-switch-track" x=".5" y=".5" width="56" height="33" rx="16.5" />
+            <circle class="task-switch-thumb" cx="17" cy="17" r="13" />
+          </svg>
+        </button></div>
         <p class="task-authorization-note"><RIcon name="info" :size="20" />范围或供应商变化将重新确认</p>
         <button class="utility-primary task-confirm" :disabled="selectedTask !== 0 || taskCancelled || sendConfirmed" @click="confirmSend">{{ sendConfirmed ? '已确认发送' : taskCancelled ? '任务已取消' : '确认并发送' }}</button>
       </aside>
@@ -452,19 +458,20 @@ onMounted(drawHorizon)
 .recent-version-note .recent-note-copy { line-height: 22px; -webkit-text-stroke: 0; transform: translateY(-1.5px) scale(.98, 1.08); }
 
 /* 27：坐标均从原图 x 减去 216。 */
+.utility-scene-27 { color: #f4f0ea; }
 .task-heading { position: absolute; top: 114px; left: 36px; }
-.task-heading h1 { width: max-content; font-size: 42px; font-weight: 500; line-height: 1.3; -webkit-text-stroke: .3px currentColor; }
-.task-heading p { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 21px; color: #bdb9b3; }
+.task-heading h1 { width: max-content; font-size: 42px; font-weight: 500; line-height: 1.3; -webkit-text-stroke: .3px currentColor; color: #fff; transform-origin: 0 0; transform: translate(3px, 1px) scaleY(.975); }
+.task-heading p { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 20.5px; color: #bdb9b3; transform: translateX(3px); }
 .task-actions { position: absolute; top: 140px; left: 1006px; z-index: 2; display: flex; gap: 15px; }
 .task-actions .utility-button { height: 51px; border-radius: 16px; border-color: #ffffff04 !important; }
 .task-filter-button { width: 164px; gap: 8px; font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; }
 .task-refresh-button { width: 105px; }
-.task-queue { top: 236px; left: 19px; width: 334px; height: 709px; padding-top: 70px; background: linear-gradient(120deg, #191613, #1b1815); }
-.task-queue h2 { position: absolute; left: 21px; top: 23px; margin: 0; font-size: 24px; font-weight: 500; }
+.task-queue { top: 236px; left: 19px; width: 334px; height: 709px; padding-top: 70px; background: linear-gradient(120deg, #191512, #1f1b17); }
+.task-queue h2 { position: absolute; left: 21px; top: 23px; margin: 0; font-size: 23.5px; font-weight: 500; line-height: 33.6px; }
 .task-queue-item { position: relative; display: block; width: 332px; height: 109px; text-align: left; padding: 15px 21px 12px 45px !important; border: 1px solid transparent !important; color: #f2eeea; }
 .task-queue-item::after { content: ""; position: absolute; left: 21px; right: 21px; bottom: 0; height: 1px; background: #ffffff14; }
 .task-queue-item:last-child::after { display: none; }
-.task-queue-item.selected { height: 106px; border-color: #e4aa6b !important; border-radius: 16px; background: linear-gradient(120deg, #825a335c, #533c255e) !important; }
+.task-queue-item.selected { height: 106px; border-color: #e4aa6b !important; border-radius: 16px; background: linear-gradient(120deg, #6d492c4d, #442d1d4d) !important; }
 .task-queue-item.selected::after { display: none; }
 .task-queue-item:hover { background-color: #ffffff05; }
 .task-dot { position: absolute; left: 21px; top: 26px; width: 12px; height: 12px; border-radius: 50%; }
@@ -472,74 +479,95 @@ onMounted(drawHorizon)
 .task-dot.green { background: #46d16a; }
 .task-dot.red { background: #ef453c; }
 .task-dot.blue { background: #509ad2; }
-.task-item-name { position: absolute; top: 15px; left: 44px; font-size: 20px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.task-item-name { position: absolute; top: 15px; left: 44px; font-size: 20.5px; font-weight: 500; -webkit-text-stroke: .03px currentColor; transform: translateX(1px); }
+.task-queue-item:nth-of-type(2) .task-item-name,
+.task-queue-item:nth-of-type(3) .task-item-name { transform: translate(1px, 1px); }
+.task-queue-item:nth-of-type(4) .task-item-name { transform: translate(1px, 2px); }
 .task-status { display: inline-flex; justify-content: center; align-items: center; padding: 3px 11px; border-radius: 22px; font-size: 17px; line-height: 1.5; white-space: nowrap; }
 .task-queue-item > .task-status { position: absolute; right: 21px; top: 17px; }
 .task-status.amber { color: #fff2db; background: linear-gradient(120deg, #986515df, #69430ebf); }
 .task-status.green { color: #dcffe4; background: #255a2fd9; }
 .task-status.red { color: #ffe6e0; background: #81271fd9; }
 .task-status.blue { color: #d7eaff; background: #304454de; }
-.task-item-subject { position: absolute; top: 50px; left: 44px; display: block; font-size: 17px; color: #bcb6ae; }
+.task-item-subject { position: absolute; top: 50px; left: 44px; display: block; font-size: 17px; font-weight: 400; color: #bcb6ae; }
 .task-item-time { position: absolute; right: 21px; bottom: 9px; color: #c2bbb2; font-size: 17px; }
 .task-item-time.dim { color: #76674f6e; }
-.task-detail { top: 236px; left: 371px; width: 516px; height: 709px; padding: 27px 23px 22px; background: linear-gradient(125deg, #1d1916cb, #1c1814e8); }
+.task-detail { top: 236px; left: 371px; width: 516px; height: 709px; padding: 27px 23px 22px; background: radial-gradient(ellipse 240px 140px at 0 0, #0e0d0b70, transparent), linear-gradient(125deg, #1d1916cb, #1c1814e8); }
 .task-detail-heading { display: flex; align-items: flex-start; gap: 21px; }
-.task-detail-heading h2 { font-size: 26px; font-weight: 500; white-space: nowrap; -webkit-text-stroke: .3px currentColor; }
-.task-detail-heading p { margin-top: 6px; font-size: 18px; white-space: nowrap; color: #bcb7b0; }
-.task-progress-ring { flex: none; width: 46px; height: 47px; margin-top: 2px; margin-left: 2px; border: 7px solid #6b4b2c; border-top-color: #f6bc73; border-right-color: #f6bc73; border-bottom-color: #d49a52; border-radius: 50%; transform: rotate(19deg); }
-.task-progress-ring.finished { border-color: #7cc99e; }
-.task-progress-ring.cancelled { border-color: #74675b; }
+.task-detail-heading h2 { font-size: 26px; font-weight: 500; white-space: nowrap; -webkit-text-stroke: .03px currentColor; transform: translateX(1px); }
+.task-detail-heading p { margin-top: 6px; font-size: 18.4px; line-height: 29.7px; white-space: nowrap; color: #c8c5c1; transform-origin: 0 50%; transform: translateX(-1px) scaleX(1.015); }
+.task-progress-ring { flex: none; width: 46px; height: 47px; margin-top: 2px; margin-left: 2px; border: 0; border-radius: 50%; transform: none; background: conic-gradient(from 0deg, #f6bc73, #eaae63 150deg, #bd8550 276deg, #5c4329 278deg, #63472b); mask-image: radial-gradient(closest-side, transparent calc(100% - 7px), #000 calc(100% - 6.8px)); }
+.task-progress-ring.finished { background: #7cc99e; }
+.task-progress-ring.cancelled { background: #74675b; }
 .task-steps { position: absolute; top: 134px; left: 23px; width: 469px; display: flex; justify-content: space-between; padding: 0 0; }
 .task-step-line { position: absolute; top: 15px; left: 38px; right: 38px; height: 4px; background: linear-gradient(90deg, #6c655a 0%, #7c6448 49%, #3a342d 50%, #28251f 100%); }
 .task-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: 76px; color: #bcb7b0; font-size: 20px; }
-.task-step > span:last-child { white-space: nowrap; }
+.task-step > span:last-child { white-space: nowrap; transform-origin: 50% 50%; transform: translateY(-1px) scale(.91, .94); }
 .task-step-marker { display: inline-flex; align-items: center; justify-content: center; width: 33px; height: 33px; border-radius: 50%; background: linear-gradient(130deg, #67655f, #393630); color: #c6c2bb; }
-.task-step.current { color: #faf4ec; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.task-step.current { color: #faf4ec; font-weight: 500; -webkit-text-stroke: .025px currentColor; }
+.task-step.current > span:last-child { transform: translateY(-1px) scale(.875, .9); }
 .task-step.current .task-step-marker { border: 3px solid #f0ad68; background: #39291b; }
 .task-step.current .task-step-marker > span { width: 19px; height: 19px; border-radius: 50%; background: #efb57b; }
 .task-input-section { position: absolute; left: 23px; right: 23px; top: 243px; }
-.task-detail h3 { font-size: 21px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
-.task-input-list { height: 161px; margin-top: 5px; padding: 12px 17px; border: 1px solid #ffffff02; border-radius: 16px; background: linear-gradient(110deg, #342f2882, #302b2563); }
-.task-input-list > p { font-size: 19px; }
-.task-input-list > div { display: flex; align-items: center; gap: 12px; height: 50px; font-size: 21px; }
+.task-detail h3 { font-size: 20.5px; font-weight: 500; line-height: 30.45px; -webkit-text-stroke: .025px currentColor; }
+.task-input-list { height: 161px; margin-top: 6px; padding: 12px 17px; border: 1px solid #ffffff02; border-radius: 16px; background: linear-gradient(110deg, #302c2b82, #2e2c2863); }
+.task-input-list > p { font-size: 18.5px; font-weight: 400; line-height: 31.35px; transform: translateX(-1px); }
+.task-input-list > div { display: flex; align-items: center; gap: 12px; height: 50px; font-size: 20px; }
+.task-input-list > div > span:first-of-type { display: inline-block; color: #fff; -webkit-text-stroke: .025px currentColor; transform: translate(2px, -2px); }
+.task-input-list > div:nth-of-type(2) > span:first-of-type { transform: translate(1px, -2px); }
 .task-input-list > div:first-of-type { margin-top: 8px; }
 .task-input-list .r-icon { color: #d8d5ce; }
-.task-version { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 31px; margin-left: 7px; border-radius: 20px; font-size: 18px; background: #ffffff10; }
+.task-version { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 31px; margin-left: 8px; border-radius: 20px; font-size: 18px; background: #ffffff10; }
 .task-preview-section { position: absolute; top: 455px; left: 23px; right: 23px; }
-.task-preview-section h3 { display: flex; align-items: center; gap: 8px; }
+.task-preview-section h3 { display: flex; align-items: center; gap: 8px; color: #fff; transform: translateY(2px); }
 .task-preview-section h3 .r-icon { color: #79756c; }
 .task-preview-chips { display: flex; gap: 8px; margin-top: 8px; }
-.task-preview-chips > span { display: inline-flex; align-items: center; gap: 5px; width: 219px; height: 45px; padding: 0 16px; border-radius: 24px; background: #ffffff08; font-size: 18px; color: #c3bdb4; white-space: nowrap; }
+.task-preview-chips > span { display: inline-flex; align-items: center; gap: 5px; width: 219px; height: 45px; padding: 0 16px; border-radius: 24px; background: #ffffff08; font-size: 18px; font-weight: 400; color: #c3bdb4; white-space: nowrap; }
 .task-preview-chips > span:last-child { width: 218px; }
 .task-preview-chips .r-icon { color: #dedad2; }
-.task-preview-chips b { font-size: 17px; font-weight: 400; padding: 1px 5px; border-radius: 10px; background: #ffffff08; color: #f0ebe4; }
+.task-preview-object { display: inline-block; font-size: 18.5px; font-weight: 500; line-height: 27px; color: #f8f6f2; -webkit-text-stroke: .1px currentColor; }
+.task-preview-count { display: inline-block; font-size: 18px; font-weight: 300; line-height: 27px; color: #c6c2c0; transform: translateX(6px); }
+.task-preview-chips b { font-size: 18px; font-weight: 400; line-height: 27px; padding: 1px 5px; border-radius: 10px; background: #ffffff08; color: #f5f3ee; }
+.task-preview-chips > span:first-child b { background: linear-gradient(120deg, #78533391, #63432870); }
+.task-preview-chips > span:first-child :deep(.r-icon path:first-child) { fill: #e5e2dc; stroke: #f3efe6; stroke-width: .8px; }
+.task-preview-chips > span:first-child :deep(.r-icon path:not(:first-child)) { stroke: #8a8074; stroke-width: 1.2px; }
+.task-preview-chips > span:last-child .r-icon { color: #efede7; stroke-width: 2.3px; }
 .task-cost-note { position: absolute; top: 550px; left: 23px; right: 23px; display: flex; align-items: center; gap: 14px; height: 59px; padding: 0 17px; border: 1px solid #6b4c242e; border-radius: 14px; background: linear-gradient(110deg, #7044164d, #62422557); }
 .task-cost-note > span { display: inline-grid; place-items: center; width: 24px; height: 25px; border-radius: 50%; background: #f1b777; color: #3c2612; font-size: 21px; font-weight: 650; }
-.task-cost-note p { font-size: 19px; color: #ddc9b4; white-space: nowrap; }
-.task-cost-note strong { color: #efb66e; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.task-cost-note p { font-size: 18.6px; color: #ddc9b4; white-space: nowrap; }
+.task-cost-note strong { color: #efb66e; font-weight: 500; -webkit-text-stroke: .05px currentColor; }
 .task-detail-actions { position: absolute; left: 23px; right: 23px; bottom: 21px; display: flex; gap: 23px; }
-.task-detail-actions .utility-button { flex: 1; height: 58px; border-radius: 16px; }
-.task-detail-actions .utility-button:first-child { flex: 1.06; border-color: transparent !important; background: linear-gradient(130deg, #302b24a6, #29231ed9) !important; }
-.task-detail-actions .task-record-button { border-color: #b89a79 !important; }
+.task-detail-actions .utility-button { flex: 1; height: 58px; border-radius: 16px; font-size: 18.8px; font-weight: 300; -webkit-text-stroke: .09px currentColor; }
+.task-detail-actions .utility-button:first-child { flex: 1.06; border-color: transparent !important; background: linear-gradient(130deg, #302b27a6, #292523d9) !important; }
+.task-detail-actions .task-record-button { border-color: #b68a64 !important; background: linear-gradient(130deg, #2c251fa6, #1d1915d9) !important; }
 .task-alternate-summary { position: absolute; top: 180px; left: 23px; right: 23px; }
 .task-alternate-summary .task-status { margin-top: 18px; }
 .task-alternate-summary p { margin-top: 20px; color: #c5beb4; }
 .task-alternate-summary .utility-button { margin-top: 30px; }
 .task-authorization { top: 236px; left: 905px; width: 386px; height: 709px; padding: 25px 23px; background: radial-gradient(ellipse at 100% 100%, #54301b20, transparent 70%), linear-gradient(125deg, #191613, #15120f); }
-.task-authorization h2 { display: flex; align-items: center; gap: 10px; font-size: 25px; font-weight: 500; }
+.task-authorization h2 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 300; line-height: 35px; -webkit-text-stroke: .12px currentColor; transform: translateY(1px); }
 .task-authorization h2 .r-icon { color: #d6d5d0; }
-.task-configured { display: flex; align-items: center; gap: 12px; height: 69px; margin-top: 29px; padding: 0 15px; border: 1px solid #31552b24; border-radius: 15px; color: #cef3d0; background: #2844215e; font-size: 21px; white-space: nowrap; }
+.task-configured { display: flex; align-items: center; gap: 9px; height: 69px; margin-top: 29px; padding: 0 15px; border: 1px solid #31552b24; border-radius: 15px; color: #def4df; background: #2843275e; font-size: 20.5px; white-space: nowrap; }
 .task-configured > span { display: inline-grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; color: #11371b; background: #7dde7c; }
 .task-authorization-list { margin: 30px 0 0; }
 .task-authorization-list > div { display: flex; align-items: center; height: 59px; }
-.task-authorization-list dt { display: flex; align-items: center; gap: 17px; width: 159px; flex: none; color: #bdb7ae; }
-.task-authorization-list dd { margin: 0; white-space: nowrap; font-size: 20px; }
+.task-authorization-list dt { display: flex; align-items: center; gap: 18px; width: 159px; flex: none; color: #c6c2bf; }
+.task-authorization-list dd { margin: 0; white-space: nowrap; font-size: 20px; font-weight: 400; color: #f4f0ea; transform-origin: 0 50%; transform: translate(1px, -1px); }
+.task-authorization-list > div:nth-child(2) dd { transform: translate(1px, -1px) scaleX(1.085); }
 .task-authorization-rule { position: absolute; top: 411px; left: 23px; right: 23px; height: 1px; background: #ffffff12; }
 .task-continuous { position: absolute; top: 457px; left: 23px; right: 23px; display: flex; align-items: center; justify-content: space-between; }
-.task-continuous h3 { font-size: 23px; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
-.task-authorization-note { position: absolute; top: 500px; left: 23px; right: 23px; display: flex; align-items: center; gap: 9px; white-space: nowrap; font-size: 18px; color: #a9a299; }
+.task-continuous h3 { font-size: 22px; font-weight: 300; -webkit-text-stroke: .15px currentColor; color: #fff; transform-origin: 0 50%; transform: translate(2px, -1px) scaleX(.955); }
+/* 固定 SVG 轨道和圆钮，开关往返后保持同一栅格化几何。 */
+.task-continuous .utility-switch { appearance: none; border: 0 !important; background: transparent !important; transform: none; will-change: auto; }
+.task-continuous .utility-switch::after { display: none; }
+.task-switch-art { position: absolute; inset: 0; display: block; width: 57px; height: 34px; pointer-events: none; }
+.task-switch-track { fill: #3f3934; stroke: #49423b; stroke-width: 1px; }
+.task-switch-thumb { fill: url(#task-switch-thumb-fill); transform: translateX(0); }
+.utility-switch[aria-checked="true"] .task-switch-track { fill: #b7804b; stroke: #dfad77; }
+.utility-switch[aria-checked="true"] .task-switch-thumb { fill: #fff0de; transform: translateX(23px); }
+.task-authorization-note { position: absolute; top: 500px; left: 23px; right: 23px; display: flex; align-items: center; gap: 11px; white-space: nowrap; font-size: 18px; font-weight: 400; color: #b9b2a8; transform: translateY(-1px); }
 .task-authorization-note .r-icon { color: #7b746b; }
-.utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(115deg, #cb9564, #b57b4e 65%, #a26940) !important; box-shadow: inset 0 0 8px #f7c48d33; font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; }
+.utility-primary.task-confirm { position: absolute; left: 23px; right: 23px; bottom: 44px; height: 60px; border-radius: 16px; background: linear-gradient(115deg, #ca9463, #b2794c 65%, #9f663e) !important; box-shadow: inset 0 0 8px #f7c48d33; font-size: 20px; font-weight: 500 !important; -webkit-text-stroke: .3px currentColor; color: #000; }
 
 /* 28：固定展示偏好只在当前组件内存切换，不写入正式用户设置。 */
 .settings-heading { position: absolute; top: 116px; left: 24px; }

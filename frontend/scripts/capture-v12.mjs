@@ -3389,7 +3389,7 @@ try {
         })
         ensure(JSON.stringify(layout.sidebar) === '[0,0,216,1024]' && JSON.stringify(layout.search) === '[713,27,449,55]'
           && JSON.stringify(layout.queue) === '[235,236,334,709]' && JSON.stringify(layout.detail) === '[587,236,516,709]'
-          && JSON.stringify(layout.authorization) === '[1121,236,386,709]' && layout.title[0] === 252 && layout.title[1] === 114
+          && JSON.stringify(layout.authorization) === '[1121,236,386,709]' && layout.title[0] === 255 && layout.title[1] === 115
           && layout.title[2] === 210 && layout.singleLine, '27外壳／三栏／标题几何或导航／阶段单行不符')
         ensure(layout.navigation.join(',') === '今日,准备,知识,训练,AI 任务,复盘,成长,题库,回忆卡,最近访问,AI 任务'
           && layout.selected.join(',') === 'AI 任务' && layout.steps.join(',') === '任务接收,校验引用,发送中'
@@ -3413,18 +3413,70 @@ try {
             queue: style('.task-queue'), detail: style('.task-detail'), authorization: style('.task-authorization'),
             cancel: style('.task-detail-actions .utility-button:first-child') }
         })
-        ensure(Object.values(appearance.type).every(s => s.weight === '500' && s.stroke === '0.3px')
+        const expectedType = [
+          ['.task-heading h1', '500', '0.3px'], ['.task-filter-button', '500', '0.3px'], ['.task-item-name', '500', '0.03px'],
+          ['.task-detail-heading h2', '500', '0.03px'], ['.task-step.current', '500', '0.025px'], ['.task-detail h3', '500', '0.025px'],
+          ['.task-cost-note strong', '500', '0.05px'], ['.task-continuous h3', '300', '0.15px'], ['.task-confirm', '500', '0.3px'],
+        ]
+        ensure(expectedType.every(([selector, weight, stroke]) => appearance.type[selector].weight === weight && appearance.type[selector].stroke === stroke)
           && appearance.selected.color === 'rgb(255, 241, 220)' && appearance.secondary.size === '21px'
           && appearance.separator.marginTop === '20px' && appearance.header.height === '82px' && appearance.header.top === '-6px'
           && appearance.header.background.includes('rgba(27, 24, 20, 0.25)') && appearance.header.background.includes('rgba(27, 24, 20, 0.533)')
-          && appearance.queue.background === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(27, 24, 21))'
+          && appearance.queue.background === 'linear-gradient(120deg, rgb(25, 21, 18), rgb(31, 27, 23))'
           && appearance.detail.background.includes('rgba(29, 25, 22, 0.796)')
           && appearance.authorization.background.includes('rgba(84, 48, 27, 0.125)') && appearance.authorization.background.includes('rgb(21, 18, 15)')
-          && appearance.cancel.background.includes('rgba(41, 35, 30, 0.85)')
-          && appearance.type['.task-confirm'].background.includes('rgb(203, 149, 100)')
+          && appearance.cancel.background.includes('rgba(41, 37, 35, 0.85)')
+          && appearance.type['.task-confirm'].background.includes('rgb(202, 148, 99)')
           && appearance.type['.task-confirm'].shadow.includes('inset'), '27字重／导航选中颜色／顶栏底层或面板／按钮光照不符')
         checks.push({ check: 'ai-authorization-typography-selected-navigation-header-panel-and-button-surfaces',
           scene: scene.id, ...appearance, passed: true })
+        const referenceCopy = await page.evaluate(() => {
+          const style = selector => {
+            const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
+            return { size: s.fontSize, weight: s.fontWeight, line: s.lineHeight, transform: s.transform,
+              color: s.color, box: [b.x, b.y, b.width, b.height] }
+          }
+          return { type: Object.fromEntries(['.r-canvas', '.r-topbar', '.r-nav-item > span', '.r-nav-item.r-selected > span',
+            '.task-heading h1', '.task-heading p', '.task-queue h2', '.task-detail-heading p', '.task-input-list > p',
+            '.task-preview-object', '.task-preview-count', '.task-detail-actions .utility-button', '.task-authorization h2']
+            .map(selector => [selector, style(selector)])),
+            taskNames: [...document.querySelectorAll('.task-item-name')].map(node => {
+              const s = getComputedStyle(node); return [s.fontSize, s.transform]
+            }),
+            preview: [...document.querySelectorAll('.task-preview-chips > span')].map(node => {
+              const object = node.querySelector('.task-preview-object'), count = node.querySelector('.task-preview-count')
+              return { text: node.textContent, object: object.textContent, count: count.textContent,
+                badge: node.querySelector('b').textContent, badgeBackground: getComputedStyle(node.querySelector('b')).backgroundImage,
+                paths: [...node.querySelectorAll('.r-icon path')].map(path => [path.getAttribute('d'), getComputedStyle(path).fill]) }
+            }) }
+        })
+        const copyType = referenceCopy.type
+        ensure(copyType['.r-canvas'].weight === '300' && copyType['.r-topbar'].weight === '400'
+          && copyType['.r-nav-item > span'].transform === 'matrix(0.94, 0, 0, 1, 1, 0)'
+          && copyType['.r-nav-item.r-selected > span'].transform === 'matrix(0.93, 0, 0, 1, 1, 0)'
+          && copyType['.task-heading h1'].transform === 'matrix(1, 0, 0, 0.975, 3, 1)'
+          && copyType['.task-heading p'].size === '20.5px' && copyType['.task-heading p'].transform === 'matrix(1, 0, 0, 1, 3, 0)'
+          && copyType['.task-queue h2'].size === '23.5px' && copyType['.task-queue h2'].line === '33.6px'
+          && copyType['.task-detail-heading p'].size === '18.4px' && copyType['.task-detail-heading p'].line === '29.7px'
+          && copyType['.task-input-list > p'].size === '18.5px' && copyType['.task-input-list > p'].line === '31.35px'
+          && copyType['.task-preview-object'].size === '18.5px' && copyType['.task-preview-object'].weight === '500'
+          && copyType['.task-preview-count'].size === '18px' && copyType['.task-preview-count'].weight === '300'
+          && copyType['.task-preview-count'].transform === 'matrix(1, 0, 0, 1, 6, 0)'
+          && copyType['.task-detail-actions .utility-button'].size === '18.8px' && copyType['.task-detail-actions .utility-button'].weight === '300'
+          && copyType['.task-authorization h2'].size === '24px' && copyType['.task-authorization h2'].weight === '300'
+          && JSON.stringify(referenceCopy.taskNames) === JSON.stringify([
+            ['20.5px', 'matrix(1, 0, 0, 1, 1, 0)'], ['20.5px', 'matrix(1, 0, 0, 1, 1, 1)'],
+            ['20.5px', 'matrix(1, 0, 0, 1, 1, 1)'], ['20.5px', 'matrix(1, 0, 0, 1, 1, 2)'],
+          ]), '27导航、标题、任务名称及输入／预览／授权字框不符')
+        ensure(JSON.stringify(referenceCopy.preview.map(item => [item.text, item.object, item.badge, item.count])) === JSON.stringify([
+          ['知识 v4 · 1 条引用', '知识 ', 'v4', ' · 1 条引用'], ['笔记 v3 · 1 条引用', '笔记 ', 'v3', ' · 1 条引用'],
+        ]) && referenceCopy.preview.every(item => item.paths.length === 2
+          && item.paths[0][0] === 'M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z')
+          && referenceCopy.preview[0].paths[0][1] === 'rgb(229, 226, 220)' && referenceCopy.preview[1].paths[0][1] === 'none'
+          && referenceCopy.preview[0].badgeBackground.includes('rgba(120, 83, 51, 0.569)')
+          && referenceCopy.preview[1].badgeBackground === 'none', '27预览原文、版本底色或文档实心／轮廓差异不符')
+        checks.push({ check: 'ai-authorization-reference-copy-baselines-preview-and-stage-typography', scene: scene.id,
+          ...referenceCopy, passed: true })
         const writes = []
         const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) writes.push({ method: request.method(), path: new URL(request.url()).pathname }) }
         page.on('request', onWrite)
@@ -3432,6 +3484,35 @@ try {
         const continuous = page.getByRole('switch', { name: '持续授权', exact: true })
         ensure(await filter.getAttribute('aria-expanded') === 'false' && await continuous.getAttribute('aria-checked') === 'false'
           && await tasks.first().getAttribute('aria-pressed') === 'true' && await page.locator('.task-detail h2').innerText() === '知识整理 · 缓存一致性', '27初始筛选／授权／选择不符')
+        const controlAppearance = await page.evaluate(() => {
+          const control = document.querySelector('.task-continuous .utility-switch'), ring = document.querySelector('.task-progress-ring')
+          const cs = getComputedStyle(control), rs = getComputedStyle(ring), b = control.getBoundingClientRect()
+          const node = selector => Object.fromEntries([...control.querySelector(selector).attributes].map(attribute => [attribute.name, attribute.value]))
+          return { box: [b.x, b.y, b.width, b.height], background: cs.backgroundColor, border: cs.borderWidth,
+            pseudoVisible: getComputedStyle(control, '::after').display, svg: node('svg'), track: node('rect'), thumb: node('circle'),
+            ring: { border: rs.borderWidth, transform: rs.transform, background: rs.backgroundImage, mask: rs.maskImage },
+            inputBackground: getComputedStyle(document.querySelector('.task-input-list')).backgroundImage,
+            selectedBackground: getComputedStyle(document.querySelector('.r-nav-item.r-selected')).backgroundImage }
+        })
+        ensure(JSON.stringify(controlAppearance.box) === '[1426,694,57,34]' && controlAppearance.background === 'rgba(0, 0, 0, 0)'
+          && controlAppearance.border === '0px' && controlAppearance.pseudoVisible === 'none'
+          && controlAppearance.svg.viewBox === '0 0 57 34' && controlAppearance.svg['aria-hidden'] === 'true'
+          && ['x', 'y', 'width', 'height', 'rx'].map(key => controlAppearance.track[key]).join(',') === '.5,.5,56,33,16.5'
+          && ['cx', 'cy', 'r'].map(key => controlAppearance.thumb[key]).join(',') === '17,17,13'
+          && controlAppearance.ring.border === '0px' && controlAppearance.ring.transform === 'none'
+          && controlAppearance.ring.background.includes('conic-gradient') && controlAppearance.ring.background.includes('rgb(246, 188, 115)')
+          && controlAppearance.ring.mask.includes('6.8px') && controlAppearance.inputBackground.includes('rgba(48, 44, 43, 0.51)')
+          && controlAppearance.selectedBackground.includes('rgba(164, 115, 78, 0.58)'), '27固定进度环／授权开关几何或局部材质不符')
+        await continuous.click()
+        const on = await continuous.evaluate(node => ({ checked: node.getAttribute('aria-checked'),
+          fill: getComputedStyle(node.querySelector('.task-switch-track')).fill, thumb: getComputedStyle(node.querySelector('.task-switch-thumb')).transform }))
+        ensure(on.checked === 'true' && on.fill === 'rgb(183, 128, 75)' && on.thumb === 'matrix(1, 0, 0, 1, 23, 0)', '27持续授权开启外观不符')
+        await continuous.click()
+        ensure(await continuous.getAttribute('aria-checked') === 'false'
+          && await continuous.evaluate(node => getComputedStyle(node.querySelector('.task-switch-track')).fill) === 'rgb(63, 57, 52)', '27持续授权关闭外观不符')
+        await ready(); await assertFrame(captured, '27持续授权开关往返后像素未恢复')
+        checks.push({ check: 'ai-authorization-fixed-ring-switch-and-local-surface-restoration', scene: scene.id,
+          ...controlAppearance, on, returnedFrameEqual: true, passed: true })
         await filter.click()
         await page.getByRole('menuitemradio', { name: '成功', exact: true }).focus()
         await page.keyboard.press('Escape')

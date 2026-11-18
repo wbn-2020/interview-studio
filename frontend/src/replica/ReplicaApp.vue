@@ -863,9 +863,9 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-26 .r-saved { gap: 9px; margin-right: 29.5px; color: #f4f0ec; font-size: 20.5px; font-weight: 400; }
 .r-scene-26 .r-saved svg { background: transparent; fill: none; padding: 0; color: #ddd8d1; width: 28px; height: 28px; border-radius: 0; }
 .r-scene-26 .r-top-status > .r-avatar { width: 52px; height: 54px; background: linear-gradient(120deg, #5474da, #3c50b2); border-color: #7184da66; font-size: 25px; }
-.r-scene-27 { will-change: transform; background: radial-gradient(ellipse at 33% 0, #29201830, transparent 62%), radial-gradient(ellipse at 100% 100%, #40231129, transparent 65%), #0b0907; }
+.r-scene-27 { will-change: transform; font-weight: 300; background: radial-gradient(ellipse at 33% 0, #29201830, transparent 62%), radial-gradient(ellipse at 100% 100%, #40231129, transparent 65%), #0b0907; }
 .r-scene-27::before { content: ""; position: absolute; inset: 0 0 0 216px; border: 1px solid #30261c55; border-radius: 26px; pointer-events: none; }
-.r-scene-27 .r-sidebar { width: 216px; bottom: 0; border-color: #30281f66; background: radial-gradient(ellipse at 0 55%, #392a1b3b, transparent 80%), linear-gradient(115deg, #15120fde, #100e0be8); }
+.r-scene-27 .r-sidebar { width: 216px; bottom: 0; border-color: #30281f66; background: radial-gradient(ellipse at 0 60%, #44342316, transparent 80%), linear-gradient(155deg, #0e0c0a, #191612 55%, #181512); }
 .r-scene-27 .r-sidebar > a { position: absolute; left: 27px; top: 43px; width: 166px; height: 54px; display: flex; align-items: center; }
 .r-scene-27 .r-sidebar :deep(.r-brand) { position: static; gap: 10px; }
 .r-scene-27 .r-sidebar :deep(.r-emblem) { width: 50px; height: 52px; filter: none; }
@@ -873,16 +873,19 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-27 .r-sidebar :deep(.r-brand-word small) { margin-top: 0; font-size: 14px; line-height: 21px; color: #c6c3bf; }
 .r-scene-27 .r-sidebar nav { top: 139px; left: 20px; right: 20px; gap: 5px; }
 .r-scene-27 .r-nav-item { height: 60px; padding: 0 0 0 15px; gap: 16px; font-size: 21px; color: #c1bcb5; white-space: nowrap; }
-.r-scene-27 .r-nav-item.r-selected { height: 56px; margin-top: 3px; margin-bottom: 1px; border-radius: 15px; border-color: #b281574f; color: #fff1dc; background: linear-gradient(110deg, #ac734b99, #503420aa); box-shadow: inset 1px 0 1px #e4a67999, -3px 0 15px #e49c5516; }
+.r-scene-27 .r-nav-item > span { display: inline-block; transform-origin: 0 50%; transform: translateX(1px) scaleX(.94); }
+.r-scene-27 .r-nav-item.r-selected { height: 56px; margin-top: 3px; margin-bottom: 1px; border-radius: 15px; border-color: #b281574f; color: #fff1dc; background: linear-gradient(110deg, #a4734e94, #432e21b3); box-shadow: inset 1px 0 1px #e4a67977, -3px 0 15px #e49c5516; }
+.r-scene-27 .r-nav-item.r-selected > span { transform: translateX(1px) scaleX(.93); }
 .r-scene-27 .r-nav-item.r-secondary { height: 54px; font-size: 21px; }
 .r-scene-27 .r-nav-item.r-secondary:last-child { margin-top: -3px; }
 .r-scene-27 .r-nav-separator { margin: 20px 7px 22px; background: #b3a08a21; }
 .r-scene-27 .r-sidebar-avatar { left: 35px; bottom: 38px; }
 .r-scene-27 .r-sidebar-avatar::before { content: ""; position: absolute; left: -7px; top: -33px; width: 159px; height: 1px; background: #b3a08a21; }
 .r-scene-27 .r-sidebar-avatar .r-avatar { width: 52px; height: 54px; font-size: 24px; border-color: #656b8c44; background: linear-gradient(115deg, #505b83, #35384f); }
-.r-scene-27 .r-topbar { left: 248px; right: 31px; top: 18px; height: 74px; }
+.r-scene-27 .r-topbar { left: 248px; right: 31px; top: 18px; height: 74px; font-weight: 400; }
 .r-scene-27 .r-topbar::before { content: ""; position: absolute; z-index: -1; left: -31px; right: -31px; top: -6px; height: 82px; border-radius: 26px 26px 0 0; background: linear-gradient(110deg, #1b181440, #1b181488); }
 .r-scene-27 .r-breadcrumb { gap: 12px; color: #bdb9b4; }
+.r-scene-27 .r-breadcrumb > span { display: inline-block; transform: translateX(-1px); }
 .r-scene-27 .r-breadcrumb .r-icon { margin-right: 6px; }
 .r-scene-27 .r-top-search { left: 465px !important; top: 9px; width: 449px !important; height: 55px; background: linear-gradient(110deg, #27231fe6, #231f1ab3) !important; border-color: #4c453a77 !important; }
 .r-scene-27 .r-top-status { gap: 29px; }
