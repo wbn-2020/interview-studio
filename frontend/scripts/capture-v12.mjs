@@ -8,7 +8,7 @@ import { parseArgs } from 'node:util'
 
 const { values } = parseArgs({ options: {
   'base-url': { type: 'string' }, references: { type: 'string' }, output: { type: 'string' },
-  manifest: { type: 'string' }, 'runtime-modules': { type: 'string' }, scenes: { type: 'string' },
+  manifest: { type: 'string' }, 'source-report': { type: 'string' }, 'runtime-modules': { type: 'string' }, scenes: { type: 'string' },
   channel: { type: 'string', default: 'chromium' }, 'allow-self-signed': { type: 'boolean', default: false },
 } })
 const ensure = (condition, message) => { if (!condition) throw new Error(message) }
@@ -18,6 +18,7 @@ const requireProject = createRequire(path.join(frontend, 'package.json'))
 const ts = requireProject('typescript')
 for (const key of ['base-url', 'references', 'output', 'manifest', 'runtime-modules']) ensure(values[key], `缺少 --${key}`)
 for (const key of ['references', 'output', 'manifest', 'runtime-modules']) ensure(path.isAbsolute(values[key]), `--${key} 必须是绝对路径`)
+if (values['source-report']) ensure(path.isAbsolute(values['source-report']), '--source-report 必须是绝对路径')
 const base = new URL(values['base-url'])
 ensure(base.protocol === 'https:' && base.pathname === '/' && !base.search && !base.hash && !base.username && !base.password,
   '--base-url 须为已部署站点的 HTTPS 根地址，不能携带账号或查询参数')
@@ -39,8 +40,9 @@ for (const name of ['index.html', 'replica.html']) ensure(/^[a-f0-9]{64}$/.test(
 // 从源码解析固定场景，避免维护另一份页面文案和截图命名表。
 const sceneSource = await fs.readFile(path.join(frontend, 'src/replica/scenes.ts'), 'utf8')
 const sourceReportName = path.basename(values.manifest).replace(/^v12-studio-artifact-(\d{8}-r[1-9]\d*)\.json$/, 'v12-studio-source-$1.json')
-ensure(sourceReportName !== path.basename(values.manifest), '制品清单文件名无法定位对应源码记录')
-const sourceReport = await readJson(path.join(path.dirname(values.manifest), sourceReportName))
+// 隔离构建记录可带批次后缀；显式路径仍须通过下面的输入与场景指纹核对。
+ensure(values['source-report'] || sourceReportName !== path.basename(values.manifest), '制品清单文件名无法定位对应源码记录，请提供 --source-report')
+const sourceReport = await readJson(values['source-report'] ?? path.join(path.dirname(values.manifest), sourceReportName))
 ensure(sourceReport.inputSha256 === manifest.inputSha256
   && sourceReport.inputs?.find(input => input.file === 'frontend/src/replica/scenes.ts')?.sha256 === hash(sceneSource),
   '当前场景清单与候选构建的源码记录不一致')
