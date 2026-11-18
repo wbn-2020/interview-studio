@@ -132,6 +132,12 @@ const dataOverview = [
   { name: '关系', value: '68', icon: 'share-2', color: '#4fe1d8' },
   { name: '附件', value: '2.4 GB', icon: 'paperclip', color: '#a5e8c9' },
 ]
+// 数据区轮廓仅用于此页，避免改变正式入口共享的图标制品。
+const settingsDataPaths: Record<string, string[]> = {
+  'file-text': ['M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z', 'M14 2v6h5M8 12h7M8 16h5'],
+  lightbulb: ['M9 18c0-4-4-4-4-9a7 7 0 0 1 14 0c0 5-4 5-4 9Z', 'M9 22h6M12 0v2M3 3l1.5 1.5M19.5 4.5l1.5-1.5M0 10h2M22 10h2'],
+  'share-2': ['M15 4a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 20a3 3 0 1 1-6 0 3 3 0 0 1 6 0M22 20a3 3 0 1 1-6 0 3 3 0 0 1 6 0', 'm10 7-4 10M14 7l4 10'],
+}
 
 function selectSetting(name: string, target: string) {
   if (target === 'security') {
@@ -327,20 +333,29 @@ onMounted(drawHorizon)
         <button v-for="section in settingSections" :key="section.name" :class="{ selected: selectedSetting === section.name }" :aria-pressed="selectedSetting === section.name" @click="selectSetting(section.name, section.target)"><RIcon :name="section.icon" variant="settings" :size="29" /><span>{{ section.name }}</span></button>
       </nav>
       <section class="utility-panel settings-appearance" :class="{ 'utility-focused': settingFocus === 'appearance' }">
-        <h2><RIcon name="sun" :size="35" />外观</h2>
-        <div class="settings-row settings-theme-row"><h3>主题外观</h3><div class="utility-segment" role="group" aria-label="主题外观"><button v-for="theme in [{ name: '跟随系统', icon: 'monitor' }, { name: '深色', icon: 'moon' }, { name: '浅色', icon: 'sun' }]" :key="theme.name" :class="{ selected: settings.theme === theme.name }" :aria-pressed="settings.theme === theme.name" @click="settings.theme = theme.name"><RIcon :name="theme.icon" variant="settings" :size="26" />{{ theme.name }}</button></div></div>
-        <div class="settings-row settings-width-row"><h3>内容宽度</h3><div class="utility-segment" role="group" aria-label="内容宽度"><button v-for="width in ['舒适', '宽', '全宽']" :key="width" :class="{ selected: settings.width === width }" :aria-pressed="settings.width === width" @click="settings.width = width">{{ width }}</button></div></div>
-        <div class="settings-row settings-font-row" :class="{ 'utility-focused': settingFocus === 'font' }"><h3>正文字号</h3><div class="utility-segment" role="group" aria-label="正文字号"><button v-for="font in ['15', '16', '17']" :key="font" :class="{ selected: settings.font === font }" :aria-pressed="settings.font === font" @click="settings.font = font">{{ font }}</button></div></div>
-        <div class="settings-row settings-motion-row" :class="{ 'utility-focused': settingFocus === 'motion' }"><h3>动效</h3><div class="utility-segment" role="group" aria-label="动效"><button v-for="motion in ['轻量', '完整', '静止']" :key="motion" :class="{ selected: settings.motion === motion }" :aria-pressed="settings.motion === motion" @click="settings.motion = motion">{{ motion }}</button></div></div>
+        <h2><RIcon name="sun" :size="35" /><span class="settings-panel-title">外观</span></h2>
+        <div class="settings-row settings-theme-row"><h3>主题外观</h3><div class="utility-segment" role="group" aria-label="主题外观"><button v-for="theme in [{ name: '跟随系统', icon: 'monitor' }, { name: '深色', icon: 'moon' }, { name: '浅色', icon: 'sun' }]" :key="theme.name" :class="{ selected: settings.theme === theme.name }" :aria-pressed="settings.theme === theme.name" @click="settings.theme = theme.name"><RIcon :name="theme.icon" variant="settings" :size="26" /><span class="settings-segment-copy">{{ theme.name }}</span></button></div></div>
+        <div class="settings-row settings-width-row"><h3>内容宽度</h3><div class="utility-segment" role="group" aria-label="内容宽度"><button v-for="width in ['舒适', '宽', '全宽']" :key="width" :class="{ selected: settings.width === width }" :aria-pressed="settings.width === width" @click="settings.width = width"><span class="settings-segment-copy">{{ width }}</span></button></div></div>
+        <div class="settings-row settings-font-row" :class="{ 'utility-focused': settingFocus === 'font' }"><h3>正文字号</h3><div class="utility-segment" role="group" aria-label="正文字号"><button v-for="font in ['15', '16', '17']" :key="font" :class="{ selected: settings.font === font }" :aria-pressed="settings.font === font" @click="settings.font = font"><span class="settings-segment-copy">{{ font }}</span></button></div></div>
+        <div class="settings-row settings-motion-row" :class="{ 'utility-focused': settingFocus === 'motion' }"><h3>动效</h3><div class="utility-segment" role="group" aria-label="动效"><button v-for="motion in ['轻量', '完整', '静止']" :key="motion" :class="{ selected: settings.motion === motion }" :aria-pressed="settings.motion === motion" @click="settings.motion = motion"><span class="settings-segment-copy">{{ motion }}</span></button></div></div>
         <div class="settings-motion-note"><span>减少动效可提升流畅度</span><label><button class="utility-switch" role="switch" :aria-checked="settings.reducedMotion" aria-label="减少动效" @click="settings.reducedMotion = !settings.reducedMotion" /><span>减少动效</span></label></div>
         <div class="settings-appearance-rule" />
         <div class="settings-row settings-timezone-row" :class="{ 'utility-focused': settingFocus === 'timezone' }"><h3>时区</h3><div class="utility-dropdown" @keydown.esc.prevent.stop="closeSettingMenu('timezone')"><button ref="timezoneButton" class="settings-select" :aria-expanded="timezoneOpen" aria-haspopup="menu" @click="timezoneOpen = !timezoneOpen; saveIntervalOpen = false"><RIcon name="globe" :size="25" /><span>{{ settings.timezone }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="timezoneOpen" class="utility-menu settings-select-menu" role="menu" aria-label="时区"><button v-for="timezone in ['Asia/Shanghai', 'Asia/Tokyo', 'UTC']" :key="timezone" role="menuitemradio" :aria-checked="settings.timezone === timezone" @click="settings.timezone = timezone; timezoneOpen = false">{{ timezone }}<RIcon v-if="settings.timezone === timezone" name="check" :size="18" /></button></div></div></div>
         <div class="settings-row settings-save-row" :class="{ 'utility-focused': settingFocus === 'save' }"><h3>自动保存间隔</h3><div class="utility-dropdown" @keydown.esc.prevent.stop="closeSettingMenu('save')"><button ref="saveIntervalButton" class="settings-select" :aria-expanded="saveIntervalOpen" aria-haspopup="menu" @click="saveIntervalOpen = !saveIntervalOpen; timezoneOpen = false"><span>{{ settings.saveInterval }}</span><RIcon name="chevron-down" :size="21" /></button><div v-if="saveIntervalOpen" class="utility-menu settings-select-menu" role="menu" aria-label="自动保存间隔"><button v-for="interval in ['1 分钟', '2 分钟', '5 分钟']" :key="interval" role="menuitemradio" :aria-checked="settings.saveInterval === interval" @click="settings.saveInterval = interval; saveIntervalOpen = false">{{ interval }}<RIcon v-if="settings.saveInterval === interval" name="check" :size="18" /></button></div></div></div>
       </section>
       <aside class="utility-panel settings-data" :class="{ 'utility-focused': settingFocus === 'usage' || settingFocus === 'export' }">
-        <h2><RIcon name="database" :size="29" />数据概览</h2>
-        <dl class="settings-data-overview"><div v-for="item in dataOverview" :key="item.name"><dt><RIcon :name="item.icon" variant="settings" :size="30" :style="{ color: item.color }" />{{ item.name }}</dt><dd>{{ item.value }}</dd></div></dl>
-        <div class="settings-export-section"><h3>导出数据</h3><p>导出你的知识与学习数据</p><button class="utility-primary settings-export-primary" @click="exportData('完整导出')"><RIcon name="download" :size="25" />完整导出</button><button class="utility-button settings-export-secondary" @click="exportData('Markdown 导出')"><RIcon name="file-text" :size="25" />Markdown 导出</button><button class="utility-button settings-export-secondary" @click="exportData('JSON Canvas 导出')"><span class="settings-braces">{ }</span>JSON Canvas 导出</button><p class="settings-export-note"><RIcon name="info" :size="24" />笔记凭据不会导出</p></div>
+        <h2><RIcon name="database" :size="29" /><span class="settings-panel-title">数据概览</span></h2>
+        <dl class="settings-data-overview">
+          <div v-for="item in dataOverview" :key="item.name">
+            <dt>
+              <svg v-if="settingsDataPaths[item.icon]" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="r-icon" :style="{ color: item.color }"><path v-for="(d, index) in settingsDataPaths[item.icon]" :key="index" :d="d" /></svg>
+              <RIcon v-else :name="item.icon" variant="settings" :size="30" :style="{ color: item.color }" />
+              <span class="settings-data-name">{{ item.name }}</span>
+            </dt>
+            <dd>{{ item.value }}</dd>
+          </div>
+        </dl>
+        <div class="settings-export-section"><h3>导出数据</h3><p>导出你的知识与学习数据</p><button class="utility-primary settings-export-primary" @click="exportData('完整导出')"><RIcon name="download" :size="25" /><span class="settings-export-copy">完整导出</span></button><button class="utility-button settings-export-secondary" @click="exportData('Markdown 导出')"><RIcon name="file-text" :size="25" /><span class="settings-export-copy">Markdown 导出</span></button><button class="utility-button settings-export-secondary" @click="exportData('JSON Canvas 导出')"><span class="settings-braces">{ }</span><span class="settings-export-copy">JSON Canvas 导出</span></button><p class="settings-export-note"><RIcon name="info" :size="24" /><span class="settings-export-note-copy">笔记凭据不会导出</span></p></div>
       </aside>
     </template>
   </section>
@@ -571,66 +586,99 @@ onMounted(drawHorizon)
 
 /* 28：固定展示偏好只在当前组件内存切换，不写入正式用户设置。 */
 .settings-heading { position: absolute; top: 116px; left: 24px; }
-.settings-heading > p { display: flex; gap: 15px; align-items: center; color: #c9c2b9; font-size: 19px; }
-.settings-heading > p > span { color: #e1d6c8; }
-.settings-heading h1 { margin-top: 6px; font-size: 54px; font-weight: 500; -webkit-text-stroke: .6px currentColor; line-height: 1.3; }
-.settings-navigation { top: 247px; left: 24px; width: 230px; height: 666px; padding: 13px 9px; background: radial-gradient(ellipse at 0 100%, #51321c24, transparent 70%), linear-gradient(130deg, #1e1813, #171310 55%, #1c1611); border-color: #7150387a; border-radius: 25px; }
+.settings-heading > p { display: flex; gap: 15px; align-items: center; color: #bdb8b2; font-size: 19px; font-weight: 300; transform-origin: 0 50%; transform: translateX(1px) scale(.925, .93); }
+.settings-heading > p > span { color: #c5beb5; }
+.settings-heading h1 { width: max-content; margin-top: 6px; font-size: 54px; font-weight: 500; -webkit-text-stroke: .6px currentColor; line-height: 1.3; color: #fff; transform-origin: 0 0; transform: translate(3px, 1px) scale(.95, .94); }
+.settings-navigation { top: 247px; left: 24px; width: 230px; height: 666px; padding: 13px 9px; background: radial-gradient(ellipse at 0 0, #3723114d, transparent 65%), radial-gradient(ellipse at 0 100%, #51321c24, transparent 70%), linear-gradient(130deg, #1b140f, #17120f 55%, #1d1612); border-color: #7150387a; border-radius: 25px; }
 .settings-navigation > button { display: flex; align-items: center; gap: 16px; width: 208px; height: 58px; padding: 0 18px !important; border: 1px solid transparent !important; border-radius: 21px; color: #d6d0c8; font-size: 20px; text-align: left; white-space: nowrap; }
+.settings-navigation > button > span { display: inline-block; transform-origin: 0 50%; transform: translate(1px, -1px) scale(.91, .9); }
 .settings-navigation > button:first-child { height: 64px; margin-bottom: 7px; }
-.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: radial-gradient(ellipse at 0 100%, #df9e5330, transparent 80%), linear-gradient(115deg, #76502fba, #3a271bc9) !important; box-shadow: inset 0 0 8px #e5b27f16; font-weight: 400; }
+.settings-navigation > button.selected { color: #fff3e5; border-color: #93643bb3 !important; background: radial-gradient(ellipse at 0 0, #9f693c4d, transparent 75%), linear-gradient(115deg, #80512eba, #4a2f1bc9) !important; box-shadow: inset 0 0 8px #e5b27f16; font-weight: 400; }
+.settings-navigation > button.selected > span { -webkit-text-stroke: .035px currentColor; transform: translate(1px, -1px) scale(.91, .87); }
 .settings-navigation > button:hover { background-color: #ffffff06; }
-.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: radial-gradient(ellipse at 0 60%, #54321e1a, transparent 75%), linear-gradient(120deg, #1a1511, #191511); }
+.settings-appearance { top: 245px; left: 268px; width: 644px; height: 691px; border-radius: 24px; background: radial-gradient(ellipse at 0 60%, #54321e1a, transparent 75%), linear-gradient(120deg, #191310, #1b1612); }
 .settings-appearance > h2 { position: absolute; top: 20px; left: 27px; display: flex; align-items: center; gap: 12px; font-size: 29px; font-weight: 500; }
+.settings-panel-title { display: inline-block; transform-origin: 0 50%; transform: translate(2px, 0) scale(.91, .94); }
+.settings-appearance > h2 .settings-panel-title { transform: translate(2px, 0) scale(.91, .93); -webkit-text-stroke: .04px currentColor; }
 .settings-appearance > h2 .r-icon { color: #f3b275; }
 .settings-row { position: absolute; left: 29px; right: 25px; display: flex; align-items: center; min-height: 53px; }
-.settings-row > h3 { width: 133px; flex: none; font-size: 20px; font-weight: 400; white-space: nowrap; }
+.settings-row > h3 { width: 132px; flex: none; font-size: 20px; font-weight: 400; white-space: nowrap; -webkit-text-stroke: .12px currentColor; transform-origin: 0 50%; transform: translateY(-1px) scaleX(.99); }
 .settings-theme-row { top: 88px; }
 .settings-width-row { top: 178px; }
+.settings-width-row > h3 { -webkit-text-stroke: .2px currentColor; transform: translate(-1px, -2px) scaleX(.99); }
 .settings-font-row { top: 267px; }
 .settings-motion-row { top: 356px; }
-.utility-segment { display: grid; grid-template-columns: repeat(3, 1fr); height: 53px; width: 456px; border: 1px solid #5c504350; border-radius: 23px; background: linear-gradient(120deg, #302a2359, #3b332966); }
+.settings-motion-row > h3 { transform: translate(1px, -2px) scaleX(.99); }
+.utility-segment { display: grid; grid-template-columns: repeat(3, 1fr); height: 53px; width: 456px; border: 1px solid #5c504350; border-radius: 23px; background: linear-gradient(120deg, #29262359, #332d2766); }
 .utility-segment > button { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; height: 53px; margin-top: -1px; border: 1px solid #51483b3d !important; border-radius: 23px; font-size: 20px; white-space: nowrap; }
 .utility-segment > button:first-child { margin-left: -1px; }
 .utility-segment > button:last-child { margin-right: -1px; }
-.utility-segment > button.selected { border-color: #efb77f !important; color: #fff7ec; background: linear-gradient(115deg, #d69f6c, #9b633b 45%, #75492b 80%, #996840) !important; box-shadow: inset 0 0 8px #f6c18a66; font-weight: 500; }
+.utility-segment > button.selected { border-color: #efb77f !important; color: #fff7ec; background: linear-gradient(115deg, #d99f6b, #9a6038 45%, #714428 80%, #794b2d) !important; box-shadow: inset 0 0 8px #f8bf8733; font-weight: 500; }
+.settings-segment-copy { display: inline-block; transform-origin: 50% 50%; transform: translate(0, -2px) scale(.89, .94); }
+.utility-segment > button.selected .settings-segment-copy { -webkit-text-stroke: .025px currentColor; }
+.settings-width-row .settings-segment-copy { transform: translate(0, -1px) scale(.89, .92); }
+.settings-width-row .utility-segment > button.selected .settings-segment-copy { -webkit-text-stroke: .06px currentColor; }
+.settings-motion-row .utility-segment > button.selected .settings-segment-copy { -webkit-text-stroke: .075px currentColor; }
+.settings-font-row .settings-segment-copy { transform: translate(-1px, -2px); -webkit-text-stroke: 0; }
 .utility-segment > button:hover { background-color: #ffffff07; }
 .settings-theme-row .utility-segment, .settings-motion-row .utility-segment { grid-template-columns: 152px 152px 1fr; gap: 4px; background: transparent; border-color: transparent; }
-.settings-theme-row .utility-segment > button:not(.selected), .settings-motion-row .utility-segment > button:not(.selected) { background: linear-gradient(120deg, #302a2359, #3b332966); }
-.settings-theme-row .utility-segment > button { border-color: #67594b85 !important; }
-.settings-theme-row .utility-segment > button.selected { border-color: #f0b77f !important; }
+.settings-theme-row .utility-segment > button:not(.selected), .settings-motion-row .utility-segment > button:not(.selected) { background: linear-gradient(120deg, #29262359, #332d2766); }
+.settings-theme-row .utility-segment > button { border-color: #5c514485 !important; }
+.settings-theme-row .utility-segment > button.selected { border-color: #efb77f !important; }
 .settings-theme-row .utility-segment > button:first-child { font-size: 18px; gap: 9px; }
+.settings-theme-row .utility-segment > button:first-child .settings-segment-copy { transform: translate(0, -1px) scale(.93, .94); }
 .settings-motion-note { position: absolute; top: 416px; left: 162px; right: 25px; display: flex; align-items: flex-start; justify-content: space-between; color: #a39c93; font-size: 18px; white-space: nowrap; }
-.settings-motion-note > label { display: flex; align-items: center; gap: 14px; margin-top: 11px; color: #d3cdc4; }
-.settings-motion-note .utility-switch { width: 48px; height: 28px; border-color: #898078 !important; background: #5d5751 !important; box-shadow: inset 0 0 0 1px #aaa49e29; }
+.settings-motion-note > span { display: inline-block; font-weight: 300; transform-origin: 0 50%; transform: translate(-2px, -1px) scaleX(.98); }
+.settings-motion-note > label { display: flex; align-items: center; width: 137px; gap: 15px; margin-top: 11px; color: #d3cdc4; }
+.settings-motion-note > label > span { display: inline-block; transform-origin: 0 50%; transform: translate(2px, -1px) scaleX(.965); }
+.settings-motion-note .utility-switch { width: 48px; height: 28px; border-color: #898078 !important; background: linear-gradient(120deg, #615c58, #4b4745) !important; box-shadow: inset 0 0 0 1px #aaa49e29; }
 .settings-motion-note .utility-switch::after { top: 2px; left: 2px; width: 23px; height: 23px; background: linear-gradient(140deg, #f8f7f4, #d8d6d2); }
 .settings-motion-note .utility-switch[aria-checked="true"] { background: #b7804b !important; }
 .settings-motion-note .utility-switch[aria-checked="true"]::after { left: 21px; }
 .settings-appearance-rule { position: absolute; top: 486px; left: 29px; right: 25px; height: 1px; background: #ffffff14; }
 .settings-timezone-row { top: 509px; }
 .settings-save-row { top: 592px; }
-.settings-save-row > h3 { width: 137px; }
+.settings-save-row > h3 { width: 136px; transform: translate(1px, -2px) scaleX(.965); }
 .settings-row > .utility-dropdown { flex: 1; min-width: 0; }
-.settings-select { display: flex; align-items: center; width: 100%; height: 53px; gap: 16px; padding: 0 23px !important; border: 1px solid #67574780 !important; border-radius: 22px; background: linear-gradient(120deg, #312a235e, #342d266b) !important; text-align: left; font-size: 20px; }
-.settings-select > span { flex: 1; }
+.settings-select { display: flex; align-items: center; width: 100%; height: 53px; gap: 16px; padding: 0 23px !important; border: 1px solid #67574780 !important; border-radius: 22px; background: linear-gradient(120deg, #342b235e, #342d266b) !important; text-align: left; font-size: 20px; }
+.settings-select > span { flex: 1; display: inline-block; transform-origin: 0 50%; transform: translate(0, -2px) scale(.955, .92); }
+.settings-save-row .settings-select > span { transform: translate(1px, -2px) scale(.94, .95); }
 .settings-select > .r-icon:last-child { margin-left: auto; }
 .settings-select-menu { top: auto; bottom: calc(100% + 8px); min-width: 100%; }
 .settings-data { top: 245px; left: 924px; width: 352px; height: 691px; padding: 23px 24px; border-radius: 24px; background: linear-gradient(125deg, #1d1713, #1d1815); }
 .settings-data > h2 { display: flex; align-items: center; gap: 22px; font-size: 23px; font-weight: 500; }
-.settings-data > h2 .r-icon { color: #f0ba82; }
-.settings-data-overview { height: 256px; margin: 19px 0 0; padding-top: 4px; border: 1px solid #ffffff03; border-bottom-color: #ffffff13; border-radius: 18px 18px 0 0; background: #08060524; }
-.settings-data-overview > div { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 9px 0 6px; border-bottom: 1px solid #ffffff06; }
-.settings-data-overview > div:first-child { height: 65px; }
+.settings-data > h2 .r-icon { color: #f0ba82; transform: translateX(3px); }
+.settings-data-overview { height: 256px; margin: 19px 0 0; padding-top: 6px; border: 1px solid #ffffff03; border-bottom-color: #ffffff13; border-radius: 18px; background: linear-gradient(180deg, #08060535, #08060500); }
+.settings-data-overview > div { display: flex; align-items: center; justify-content: space-between; height: 59px; padding: 0 9px 0 8px; border-bottom: 1px solid #ffffff06; }
+.settings-data-overview > div:first-child { height: 61px; }
 .settings-data-overview > div:last-child { border-bottom: 0; }
 .settings-data-overview dt { display: flex; align-items: center; gap: 20px; font-size: 20px; }
-.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 400; }
+.settings-data-name { display: inline-block; transform-origin: 0 50%; transform: scale(.9, .95); }
+.settings-data-overview > div:first-child .settings-data-name { transform: translate(1px, 1px) scale(.89, .92); }
+.settings-data-overview > div:nth-child(2) .settings-data-name { transform: translateY(-1px) scale(.89, .95); }
+.settings-data-overview > div:nth-child(3) .settings-data-name { transform: translateX(1px) scale(.87, .95); -webkit-text-stroke: .05px currentColor; }
+.settings-data-overview > div:last-child .settings-data-name { transform: translateY(-2px) scale(.9, .95); }
+.settings-data-overview dd { margin: 0; font-size: 23px; font-weight: 400; -webkit-text-stroke: .15px currentColor; transform-origin: 100% 50%; transform: translate(-1px, 1px); }
+.settings-data-overview > div:first-child dd { transform: translate(-1px, 1px) scaleX(.96); }
+.settings-data-overview > div:nth-child(2) dd { transform: translate(-1px, 0); }
+.settings-data-overview > div:nth-child(3) dd { transform: translate(-1px, 0) scaleX(1.03); }
+.settings-data-overview > div:last-child dd { transform: translate(0, -1px) scaleX(1.045); -webkit-text-stroke: .12px currentColor; }
 .settings-export-section { margin-top: 17px; }
-.settings-export-section h3 { font-size: 23px; font-weight: 500; }
+.settings-export-section h3 { font-size: 23px; font-weight: 500; transform-origin: 0 50%; transform: translate(2px, 1px) scale(.9, .94); }
 .settings-export-section > p { color: #b6aea4; font-size: 18px; margin-top: 1px; white-space: nowrap; }
-.settings-export-section > button { width: 300px; font-size: 20px; }
-.settings-export-primary { margin-top: 17px; height: 53px; border-radius: 21px; color: #fff5e9; font-weight: 400 !important; background: radial-gradient(ellipse at 40% 100%, #63351e66, transparent 75%), radial-gradient(ellipse at 0 0, #eec29566, transparent 70%), linear-gradient(110deg, #b77b4c, #774629 80%, #98643e) !important; }
-.settings-export-secondary { height: 52px; margin-top: 18px; gap: 16px; border-radius: 22px; border-color: #7b716794 !important; background: linear-gradient(120deg, #49423b75, #49423b59) !important; }
+.settings-export-section > p:not(.settings-export-note) { font-weight: 300; transform-origin: 0 50%; transform: translate(1px, -3px) scale(.97, .95); }
+.settings-export-section > button { width: 300px; font-size: 20px; transform: translateX(1px); }
+.settings-export-copy { display: inline-block; }
+.settings-export-primary { margin-top: 17px; height: 53px; border-radius: 21px; color: #fff5e9; font-weight: 400 !important; background: radial-gradient(ellipse at 0 0, #efb78659, transparent 70%), radial-gradient(ellipse at 60% 100%, #5c321c59, transparent 75%), linear-gradient(110deg, #c68b59, #6d4227 80%, #9b633c) !important; box-shadow: inset 0 0 8px #f2bf8740; }
+.settings-export-primary .settings-export-copy { transform: translate(-1px, -1px) scale(.89, .95); -webkit-text-stroke: .03px currentColor; }
+.settings-export-primary .r-icon { transform: translateX(2px); }
+.settings-export-secondary { height: 52px; margin-top: 18px; gap: 16px; border-radius: 22px; border-color: #7b716794 !important; background: linear-gradient(120deg, #49423b75, #433c3659) !important; }
+.settings-export-secondary .settings-export-copy { transform: translate(-1px, 0) scale(.92, .925); }
+.settings-export-secondary .r-icon { transform: translateX(7px); }
 .settings-export-secondary + .settings-export-secondary { margin-top: 16px; }
-.settings-braces { font-family: Consolas, monospace; font-size: 24px; }
+.settings-export-secondary + .settings-export-secondary .settings-export-copy { transform: translate(-3px, -1px) scale(.94, .93); }
+.settings-braces { font-family: Consolas, monospace; font-size: 24px; font-weight: 300; transform: translateX(9px) scaleX(.7); }
 .settings-export-section > .settings-export-note { display: flex; align-items: center; gap: 13px; margin-top: 18px; padding-left: 8px; font-size: 18px; color: #b6afa6; }
+.settings-export-note-copy { display: inline-block; transform-origin: 0 50%; transform: translate(2px, -1px) scale(.91, .94); }
 .settings-export-note .r-icon { color: #a09a92; }
 </style>

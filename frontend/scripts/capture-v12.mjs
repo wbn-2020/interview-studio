@@ -3573,7 +3573,7 @@ try {
         })
         ensure(JSON.stringify(layout.sidebar) === '[19,20,212,976]' && JSON.stringify(layout.search) === '[540,32,456,52]'
           && JSON.stringify(layout.directory) === '[264,247,230,666]' && JSON.stringify(layout.appearance) === '[508,245,644,691]'
-          && JSON.stringify(layout.data) === '[1164,245,352,691]' && layout.title[0] === 264
+          && JSON.stringify(layout.data) === '[1164,245,352,691]' && layout.title[0] === 267
           && layout.brandHittable && layout.singleLine, '28品牌命中、三栏或外壳几何不符')
         ensure(layout.navigation.join(',') === '今日,准备,知识,训练,复盘,成长,题库,回忆卡,最近访问,AI 任务'
           && layout.categories.join(',') === '外观与数据,阅读与写作,动效,时区,保存与恢复,导入 / 导出,数据用量,安全'
@@ -3597,15 +3597,49 @@ try {
             statistic: style('.settings-data-overview dd') }
         })
         ensure(material.title.weight === '500' && material.title.stroke === '0.6px'
-          && material.navigation.size === '21px' && material.navigation.weight === '300'
+          && material.navigation.size === '20px' && material.navigation.weight === '400'
           && material.secondary.size === '20px' && material.saved.margin === '10px'
           && material.category.gap === '16px' && material.statistic.weight === '400'
-          && material.directory.background.includes('rgb(30, 24, 19)')
-          && material.appearance.background.includes('rgb(26, 21, 17)')
+          && material.directory.background.includes('rgb(27, 20, 15)')
+          && material.appearance.background.includes('rgb(25, 19, 16)')
           && material.selectedCategory.shadow.includes('8px')
-          && material.selected.length === 4 && material.selected.every(value => value.includes('rgb(214, 159, 108)') && value.includes('rgb(117, 73, 43) 80%'))
+          && material.selected.length === 4 && material.selected.every(value => value.includes('rgb(217, 159, 107)') && value.includes('rgb(113, 68, 40) 80%'))
           && material.unselected.background.includes('linear-gradient'), '28字重、图文间距、保存区或面板／分段光照不符')
         checks.push({ check: 'settings-typography-spacing-panels-and-segment-lighting', scene: scene.id, ...material, passed: true })
+        const copyGeometry = await page.evaluate(() => {
+          const box = node => { const rect = node.getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height] }
+          const style = node => { const value = getComputedStyle(node); return { transform: value.transform, size: value.fontSize, weight: value.fontWeight, width: value.width } }
+          return { title: style(document.querySelector('.settings-heading h1')),
+            copyWrappers: document.querySelectorAll('.settings-panel-title, .settings-segment-copy, .settings-data-name, .settings-export-copy, .settings-export-note-copy').length,
+            labels: [...document.querySelectorAll('.settings-row > h3')].map(style),
+            segments: [...document.querySelectorAll('.utility-segment')].map(box),
+            selects: [...document.querySelectorAll('.settings-select')].map(box),
+            statistic: [...document.querySelectorAll('.settings-data-overview dd')].map(style),
+            exportCopies: [...document.querySelectorAll('.settings-export-copy')].map(node => node.textContent),
+            exportButtons: [...document.querySelectorAll('.settings-export-section > button')].map(box) }
+        })
+        ensure(copyGeometry.title.transform === 'matrix(0.95, 0, 0, 0.94, 3, 1)' && copyGeometry.copyWrappers === 22
+          && copyGeometry.labels.slice(0, 5).every(value => value.width === '132px') && copyGeometry.labels[5].width === '136px'
+          && JSON.stringify(copyGeometry.segments) === '[[670,334,456,53],[670,424,456,53],[670,513,456,53],[670,602,456,53]]'
+          && JSON.stringify(copyGeometry.selects) === '[[670,755,456,53],[674,838,452,53]]'
+          && copyGeometry.statistic.every(value => value.size === '23px' && value.weight === '400')
+          && JSON.stringify(copyGeometry.exportCopies) === '["完整导出","Markdown 导出","JSON Canvas 导出"]'
+          && copyGeometry.exportButtons.every(value => value[0] === 1190 && value[2] === 300), '28原文字框或固定控件几何不符')
+        checks.push({ check: 'settings-reference-copy-baselines-and-fixed-control-geometry', scene: scene.id, ...copyGeometry, passed: true })
+        const dataIconsAndToggle = await page.evaluate(() => {
+          const control = document.querySelector('.settings-motion-note [role="switch"]'), rect = control.getBoundingClientRect()
+          return { icons: [...document.querySelectorAll('.settings-data-overview dt .r-icon')].slice(0, 3)
+            .map(node => [...node.querySelectorAll('path')].map(path => path.getAttribute('d'))),
+            rowHeights: [...document.querySelectorAll('.settings-data-overview > div')].map(node => node.getBoundingClientRect().height),
+            switchBox: [rect.x, rect.y, rect.width, rect.height], background: getComputedStyle(control).backgroundImage,
+            thumbLeft: getComputedStyle(control, '::after').left }
+        })
+        ensure(dataIconsAndToggle.icons[0][0] === 'M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z'
+          && dataIconsAndToggle.icons[1][0] === 'M9 18c0-4-4-4-4-9a7 7 0 0 1 14 0c0 5-4 5-4 9Z'
+          && dataIconsAndToggle.icons[2][1] === 'm10 7-4 10M14 7l4 10'
+          && JSON.stringify(dataIconsAndToggle.rowHeights) === '[61,59,59,59]'
+          && JSON.stringify(dataIconsAndToggle.switchBox) === '[989,673,48,28]'
+          && dataIconsAndToggle.background.includes('rgb(97, 92, 88)') && dataIconsAndToggle.thumbLeft === '2px', '28数据图标、行基线或开关初态材质不符')
         const writes = []
         const onWrite = request => { if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(new URL(request.url()).pathname) }
         page.on('request', onWrite)
@@ -3619,7 +3653,14 @@ try {
         }
         const reduced = page.getByRole('switch', { name: '减少动效', exact: true })
         ensure(await reduced.getAttribute('aria-checked') === 'false', '28减少动效初态错误')
-        await reduced.click(); ensure(await reduced.getAttribute('aria-checked') === 'true', '28开关未打开'); await reduced.click()
+        await reduced.click()
+        const toggleOn = await reduced.evaluate(node => ({ background: getComputedStyle(node).backgroundColor, thumbLeft: getComputedStyle(node, '::after').left }))
+        ensure(await reduced.getAttribute('aria-checked') === 'true' && toggleOn.background === 'rgb(183, 128, 75)' && toggleOn.thumbLeft === '21px', '28开关未打开或颜色／圆钮不同步')
+        await reduced.click()
+        const toggleOff = await reduced.evaluate(node => ({ background: getComputedStyle(node).backgroundImage, thumbLeft: getComputedStyle(node, '::after').left }))
+        ensure(await reduced.getAttribute('aria-checked') === 'false' && toggleOff.background === dataIconsAndToggle.background
+          && toggleOff.thumbLeft === dataIconsAndToggle.thumbLeft, '28开关往返未恢复初态材质')
+        checks.push({ check: 'settings-data-icon-shapes-and-toggle-surface-restoration', scene: scene.id, ...dataIconsAndToggle, toggleOn, toggleOff, passed: true })
         const timezone = page.locator('.settings-timezone-row .settings-select'), interval = page.locator('.settings-save-row .settings-select')
         for (const [trigger, menu, choice] of [[timezone, '时区', 'UTC'], [interval, '自动保存间隔', '5 分钟']]) {
           await trigger.click()
