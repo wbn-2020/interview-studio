@@ -376,7 +376,7 @@ onUnmounted(() => {
 /* 逐行字框保留摘录原文与换行，避免字形缩放改变五行的布局高度。 */
 .sp-inbox-excerpt p > br { display: none; }
 .sp-inbox-excerpt-line { display: block; line-height: 39px; transform-origin: 0 50%; transform: scale(.994, 1.04); }
-.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:first-child { font-size: 22px; transform: scale(.996, 1.04); }
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:first-child { font-family: "Microsoft YaHei", "Segoe UI", sans-serif; font-size: 22px; transform: translate(2px, .5px) scale(.996, 1.04); }
 .sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(2) { font-size: 22px; transform: translateX(-1px) scaleY(1.04); }
 .sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(3) { font-size: 21px; transform: translate(-1px, -1px) scale(.997, 1.075); }
 .sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:last-of-type { transform: translateY(-.5px) scale(.997, 1.04); }
