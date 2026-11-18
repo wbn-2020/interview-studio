@@ -226,7 +226,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
           <button class="r-sidebar-avatar" title="设置与数据" @click="navigate(28)"><span class="r-avatar">林</span><RIcon v-if="scene === 16" name="chevron-right" :size="14" /></button>
         </aside>
         <header v-if="scene !== 17" class="r-topbar">
-          <button v-if="scene === 30" class="r-breadcrumb r-inbox-breadcrumb" @click="navigate(10)">知识 / 收件箱<RIcon name="chevron-down" :size="23" /></button>
+          <button v-if="scene === 30" class="r-breadcrumb r-inbox-breadcrumb" @click="navigate(10)"><span class="r-inbox-breadcrumb-copy">知识 / 收件箱</span><RIcon name="chevron-down" :size="23" /></button>
           <div v-else-if="scene !== 2 && scene !== 28" class="r-breadcrumb">
             <span v-if="scene === 6" class="r-material-breadcrumb-icon"><RIcon name="breadcrumb" variant="materials" :size="24" /></span>
             <RIcon v-if="![3, 6, 11, 12, 13, 14, 15, 18, 20, 23, 24, 25].includes(scene)" :name="scene === 8 ? 'chevron-left' : 'house'" :variant="scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 7 ? 'tasks' : scene === 16 ? 'recall' : scene === 19 ? 'report' : scene === 26 ? 'recent' : scene === 27 ? 'authorization' : undefined" :size="scene === 7 ? 30 : [5, 27].includes(scene) ? 28 : 25" />
@@ -921,24 +921,30 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-28 .r-top-status > .r-avatar { width: 50px; height: 52px; }
 .r-scene-30 { will-change: transform; font-weight: 300; background: radial-gradient(ellipse 310px 290px at 0 0, #533a284d, transparent), radial-gradient(ellipse at 100% 100%, #39241318, transparent 60%), #080604; }
 .r-scene-30::after { content: ""; position: absolute; inset: 0; border: 1px solid #5d4b362b; border-radius: 24px; pointer-events: none; }
-.r-scene-30 .r-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; border-color: #73583e8c; background: radial-gradient(ellipse 260px 300px at 0 0, #79533833, transparent), linear-gradient(130deg, #201a16, #1b1613 64%, #211a14); }
+.r-scene-30 .r-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; border-color: #73583e8c; background: radial-gradient(ellipse 260px 300px at 0 0, #5f423322, transparent), linear-gradient(130deg, #1a1714, #1b1613 64%, #211a14); }
 .r-scene-30 .r-sidebar .r-brand { left: 27px; top: 29px; gap: 8px; }
 .r-scene-30 .r-sidebar :deep(.r-emblem) { width: 62px; height: 62px; }
 .r-scene-30 .r-sidebar :deep(.r-brand-word) { position: relative; top: 4px; font-size: 34px; font-weight: 500; line-height: 41px; }
 .r-scene-30 .r-sidebar :deep(.r-brand-word small) { position: relative; left: -24px; font-size: 16px; margin-top: 0; line-height: 22px; color: #ded6ce; }
 .r-scene-30 .r-sidebar nav { top: 141px; left: 20px; right: 22px; gap: 9px; }
-.r-scene-30 .r-nav-item { height: 59px; padding: 0 18px; gap: 13px; font-size: 22px; font-weight: 300; color: #e3ded7; white-space: nowrap; }
-.r-scene-30 .r-nav-item.r-selected { height: 65px; margin-top: -2px; margin-bottom: -2px; border-radius: 15px; background: radial-gradient(ellipse at 0 70%, #e0ad7440, transparent 90%), linear-gradient(110deg, #96704665, #6d4e3580); border-color: #bb8e62b3; box-shadow: inset 1px 1px 8px #edbb8122, -5px 0 18px #dc9f5a1c; }
+.r-scene-30 .r-nav-item { height: 59px; padding: 0 18px; gap: 13px; font-size: 22.5px; font-weight: 300; color: #e3ded7; white-space: nowrap; }
+.r-scene-30 .r-nav-item > span { display: inline-block; transform-origin: 0 50%; transform: translate(-1px, 1px) scaleX(.94); -webkit-text-stroke: .04px currentColor; }
+.r-scene-30 .r-nav-item.r-selected { height: 65px; margin-top: -2px; margin-bottom: -2px; border-radius: 15px; background: radial-gradient(ellipse at 0 70%, #e0ad7440, transparent 90%), linear-gradient(110deg, #96704665, #6d4e3580); border-color: #bb8e62b3; box-shadow: inset 1px 1px 8px #edbb8122, -5px 0 18px #dc9f5a1c; transform: translateY(2px); font-size: 22px; }
+.r-scene-30 .r-nav-item.r-selected > span { transform: translateX(-1px) scaleX(.95); -webkit-text-stroke: .08px currentColor; }
 .r-scene-30 .r-nav-separator { margin: 18px 17px 15px; background: #a68b6e2b; }
-.r-scene-30 .r-nav-item.r-secondary { height: 48px; font-size: 22px; gap: 13px; white-space: nowrap; }
+.r-scene-30 .r-nav-item.r-secondary { height: 46px; font-size: 22px; gap: 13px; white-space: nowrap; transform: translateY(2px); }
+.r-scene-30 .r-nav-item.r-secondary > span { transform: translate(-1px, -1px) scaleX(.975); }
 .r-scene-30 .r-sidebar-avatar { left: 29px; bottom: 20px; }
 .r-scene-30 .r-sidebar-avatar .r-avatar { width: 57px; height: 61px; font-size: 27px; background: linear-gradient(120deg, #7c6b5b, #5c4d40); }
 .r-scene-30 .r-topbar { top: 25px; right: 30px; }
 .r-scene-30 .r-top-search { height: 62px; background: linear-gradient(110deg, #302e29a3, #29251f99) !important; }
+.r-scene-30 .r-top-search > span { font-size: 23.5px; transform-origin: 0 50%; transform: translateX(-3px) scaleX(1.09); }
 .r-scene-30 .r-top-status { gap: 29px; }
 .r-scene-30 .r-saved { font-size: 22px; color: #c5e9c5; gap: 12px; }
 .r-scene-30 .r-saved svg { color: #16321a; fill: none; background: linear-gradient(120deg, #a8e3a5, #79cb89); padding: 5px; height: 28px; }
 .r-scene-30 .r-top-status .r-icon-btn { color: #f4f0e9; }
 .r-scene-30 .r-top-status > .r-avatar { width: 57px; height: 62px; background: linear-gradient(130deg, #746a5f, #514a40); }
 .r-inbox-breadcrumb { height: 62px; width: 336px; margin-left: -6px; padding: 0 12px !important; justify-content: space-between; border: 1px solid #332a20 !important; border-radius: 20px; font-size: 23px; }
+.r-inbox-breadcrumb-copy { display: inline-block; font-size: 23px; font-weight: 300; -webkit-text-stroke: .1px currentColor; transform-origin: 0 50%; transform: translateY(.5px) scale(.975, .97); }
+.r-inbox-breadcrumb > svg { color: #77736b; }
 </style>

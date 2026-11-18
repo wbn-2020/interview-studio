@@ -179,17 +179,17 @@ onUnmounted(() => {
 
   <section v-else-if="scene === 30" class="sp-inbox-page">
     <div class="sp-inbox-heading"><h1>知识收件箱</h1><p class="r-muted">3 条待整理 · 来自快速记录和导入</p></div>
-    <div class="sp-inbox-actions r-row"><button class="r-btn" :disabled="allRead" @click="allRead = true">全部标为已读</button><button class="r-btn r-primary" @click="go(11)"><RIcon name="plus" />新建笔记</button></div>
+    <div class="sp-inbox-actions r-row"><button class="r-btn" :disabled="allRead" @click="allRead = true"><span class="sp-inbox-action-copy">全部标为已读</span></button><button class="r-btn r-primary" @click="go(11)"><RIcon name="plus" /><span class="sp-inbox-action-copy">新建笔记</span></button></div>
     <aside class="r-panel sp-inbox-sources" aria-label="收件箱来源"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" :aria-pressed="sourceFilter === i" @click="selectInboxSource(i)"><RIcon :name="source[2]!" variant="inbox" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
     <section class="r-panel sp-inbox-list" aria-label="待整理内容">
       <header class="r-between"><label class="r-row"><input type="checkbox" class="r-checkbox" aria-label="全选收件箱" :checked="visibleInbox.length > 0 && visibleInbox.every(entry => inboxChecked.includes(entry.index))" :indeterminate="visibleInbox.some(entry => inboxChecked.includes(entry.index)) && !visibleInbox.every(entry => inboxChecked.includes(entry.index))" @change="toggleAll" />全选</label><label class="sp-inbox-order"><select v-model="sort" aria-label="收件箱排序"><option>按时间倒序</option><option>按时间顺序</option></select><RIcon name="chevron-down" :size="18" /></label></header>
-      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" variant="inbox" :size="23" />{{ entry.source }}</small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''">{{ entry.state }}</span></article>
+      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" variant="inbox" :size="23" /><span class="sp-inbox-source-copy">{{ entry.source }}</span></small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''"><span class="sp-inbox-pill-copy">{{ entry.state }}</span></span></article>
     </section>
     <aside class="r-panel sp-inbox-detail" aria-label="内容详情">
       <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><RIcon name="external-link" variant="inbox" :size="23" /></button></header>
-      <h3 class="sp-excerpt-heading">原始摘录</h3>
-      <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p>缓存删除失败通常有三种情况：</p><p>1. key 不存在，删除返回 0；<br>2. 网络超时，客户端误判；<br>3. 连接池耗尽，导致删除请求被拒绝。<br>需要根据业务场景选择合适的重试策略...</p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
-      <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" variant="inbox" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" variant="inbox" :size="28" />转为笔记</button><button class="r-btn" @click="go(12)"><RIcon name="box" variant="inbox" :size="30" />新建概念</button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" variant="inbox" :size="27" />创建回忆卡</button><button class="r-btn" @click="go(9)"><RIcon name="link" variant="inbox" :size="29" />关联已有知识</button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" />来源与候选分开保存，不会自动发布</p>
+      <h3 class="sp-excerpt-heading"><span class="sp-excerpt-heading-copy">原始摘录</span></h3>
+      <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p><span class="sp-inbox-excerpt-line">缓存删除失败通常有三种情况：</span></p><p><span class="sp-inbox-excerpt-line">1. key 不存在，删除返回 0；</span><br><span class="sp-inbox-excerpt-line">2. 网络超时，客户端误判；</span><br><span class="sp-inbox-excerpt-line">3. 连接池耗尽，导致删除请求被拒绝。</span><br><span class="sp-inbox-excerpt-line">需要根据业务场景选择合适的重试策略...</span></p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
+      <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" variant="inbox" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" variant="inbox" :size="28" /><span class="sp-inbox-action-copy">转为笔记</span></button><button class="r-btn" @click="go(12)"><RIcon name="box" variant="inbox" :size="30" /><span class="sp-inbox-action-copy">新建概念</span></button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" variant="inbox" :size="27" /><span class="sp-inbox-action-copy">创建回忆卡</span></button><button class="r-btn" @click="go(9)"><RIcon name="link" variant="inbox" :size="29" /><span class="sp-inbox-action-copy">关联已有知识</span></button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" /><span class="sp-inbox-note-copy">来源与候选分开保存，不会自动发布</span></p>
     </aside>
   </section>
 </template>
@@ -321,27 +321,30 @@ onUnmounted(() => {
 .sp-inbox-detail { position: absolute; top: 233px; left: 783px; right: 24px; bottom: 90px; padding: 15px 23px 22px; border-radius: 20px; border-color: #3d3125; }.sp-inbox-detail header { border-bottom: 1px solid #30281f; padding-bottom: 11px; }.sp-inbox-detail h2 { font-size: 25px; }.sp-excerpt-heading { position: relative; margin-top: 17px !important; padding-left: 18px; font-size: 23px !important; }.sp-excerpt-heading::before { content: ""; width: 3px; height: 27px; background: #e7b77e; position: absolute; left: 0; top: 5px; }.sp-inbox-excerpt { padding: 14px 18px 15px; margin-top: 5px; border-radius: 15px; background: #ffffff02; }.sp-inbox-excerpt p { font-size: 22px; line-height: 1.75; white-space: nowrap; }.sp-inbox-excerpt h3 { font-size: 22px; margin-bottom: 10px; }.sp-inbox-detail .r-rule { margin: 21px 0 16px; }.sp-suggestions-title { color: #f2d7af; font-size: 23px !important; gap: 12px; }.sp-inbox-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 21px; }.sp-inbox-buttons .r-btn { min-height: 68px; padding: 10px 14px !important; font-size: 23px; border-radius: 14px; background: #ffffff02 !important; border-color: #44372a !important; gap: 14px; }.sp-inbox-note { background: #ffffff03; border-radius: 14px; margin-top: 26px !important; min-height: 56px; padding: 10px 13px; font-size: 18px; white-space: nowrap; gap: 10px; }
 /* 收件箱保留四条参考记录的独立行距，详情摘录保持五行。 */
 .sp-inbox-heading { left: 28px; }
-.sp-inbox-heading h1 { font-weight: 500; -webkit-text-stroke: .6px currentColor; }
+.sp-inbox-heading h1 { width: max-content; font-size: 46.5px; line-height: 61.09375px; font-weight: 500; -webkit-text-stroke: .45px currentColor; transform-origin: 0 0; transform: translateX(1px) scaleX(.991); }
 .sp-inbox-heading p { margin-top: 5px; font-size: 22px; }
 .sp-inbox-actions { gap: 15px; top: 134px; }
 .sp-inbox-actions .r-btn { font-size: 22px; font-weight: 400; }
-.sp-inbox-actions > .r-btn:first-child { width: 183px; padding-inline: 12px !important; }
-.sp-inbox-actions > .r-primary { width: 166px; background: linear-gradient(115deg, #e4ac76, #d69e6c 62%, #e6b281) !important; }
+.sp-inbox-action-copy { display: inline-block; transform-origin: 0 50%; }
+.sp-inbox-actions .sp-inbox-action-copy { font-weight: 300; -webkit-text-stroke: .07px currentColor; transform: translate(1px, -1px) scaleX(.98); }
+.sp-inbox-actions > .r-btn:first-child { width: 183px; padding-inline: 12px !important; background: linear-gradient(120deg, #2a251f99, #201b1688) !important; border-color: #62534244 !important; }
+.sp-inbox-actions > .r-primary { width: 166px; background: linear-gradient(112deg, #e2ad77, #dca370 45%, #cd996a) !important; border-color: #ffc99680 !important; box-shadow: inset 0 1px 2px #ffe2c080, 0 8px 16px #bd7d3412; transform: translateZ(0); }
 .sp-inbox-sources, .sp-inbox-list { background: radial-gradient(ellipse at 30% 45%, #40302512, transparent 80%), linear-gradient(125deg, #181511, #14100e); border-color: #4e40344d; }
 .sp-inbox-sources > button:not(.selected) .r-icon { color: #e2ddd5; }
 .sp-inbox-sources button.selected { background: radial-gradient(ellipse at 0 100%, #9a714744, transparent 100%), linear-gradient(110deg, #79593855, #54433455) !important; }
 .sp-inbox-sources h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-sources > button { min-height: 63px; font-size: 21px; line-height: 34px; }
+.sp-inbox-sources > button > span { display: inline-block; font-size: 21px; font-weight: 300; transform-origin: 0 50%; }
 .sp-inbox-sources small { margin-right: 6px; font-size: 22px; }
 .sp-inbox-list { padding-left: 4px; padding-right: 8px; background: radial-gradient(ellipse at 20% 10%, #4c352510, transparent 65%), linear-gradient(125deg, #14120f, #14110f); }
 .sp-inbox-list header { font-size: 22px; line-height: 33.5px; padding-left: 20px; padding-right: 10px; }
 .sp-inbox-list header .r-checkbox { width: 21px; margin-left: 1px; }
 .sp-inbox-list header select { line-height: 31.5px; }
 .sp-inbox-list article { gap: 20px; margin-inline: 21px 18px; padding-left: 1px; border-bottom-color: #a48c6f12; }
-.sp-inbox-list article.selected { min-height: 113px; margin: 0; padding-left: 21px; gap: 20px; border-color: #c4965e; background: radial-gradient(ellipse at 10% 90%, #9a714733, transparent 80%), linear-gradient(110deg, #89654470, #70573955); }
+.sp-inbox-list article.selected { min-height: 113px; margin: 0; padding-left: 21px; gap: 20px; border-color: #c4965e; background: radial-gradient(ellipse at 10% 90%, #87634326, transparent 80%), linear-gradient(110deg, #70533959, #65513855); }
 .sp-inbox-list article:nth-of-type(2) { min-height: 114px; }
-.sp-inbox-list article:nth-of-type(3) { min-height: 110px; padding-bottom: 13px; }
-.sp-inbox-list article:nth-of-type(4) { min-height: 107px; }
+.sp-inbox-list article:nth-of-type(3) { min-height: 109px; padding-bottom: 13px; }
+.sp-inbox-list article:nth-of-type(4) { min-height: 107px; padding-bottom: 12px; }
 .sp-inbox-list article .r-checkbox { transform: translateY(-6px); border-color: #bfb9b0; box-shadow: inset 0 0 2px #fff4; }
 .sp-inbox-list article:nth-of-type(4) .r-checkbox { transform: translateY(-10px); }
 .sp-inbox-list article.selected .r-checkbox { border-color: #edbf8d; }
@@ -349,23 +352,41 @@ onUnmounted(() => {
 .sp-inbox-list article:nth-of-type(3) .sp-inbox-entry { transform: translateY(-3px); }
 .sp-inbox-list article:nth-of-type(4) .sp-inbox-entry { transform: translateY(-5px); }
 .sp-inbox-entry strong, .sp-inbox-list article.selected .sp-inbox-entry strong { font-size: 22px; font-weight: 400; line-height: 36px; }
-.sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; }
-.sp-inbox-list article > .r-pill { right: 2px; top: 24px; font-size: 20px; padding-inline: 14px; }
+.sp-inbox-entry strong { transform-origin: 0 50%; transform: translate(1px, 1px) scaleY(1.06); }
+.sp-inbox-list article:first-of-type .sp-inbox-entry strong { transform: translate(1px, 1px); }
+.sp-inbox-list article:nth-of-type(2) .sp-inbox-entry strong { transform: translate(1px, 0) scale(.995, 1.06); }
+.sp-inbox-list article:nth-of-type(3) .sp-inbox-entry strong { transform: translate(1px, 1px) scale(.995, 1.06); }
+.sp-inbox-list article:nth-of-type(4) .sp-inbox-entry strong { transform: translate(1px, 2px) scaleY(1.06); }
+.sp-inbox-entry small { font-size: 20px; line-height: 32px; gap: 11px; color: #b6b1a8; }
+.sp-inbox-source-copy { display: inline-block; transform-origin: 0 50%; transform: translate(-1px, 1px) scaleX(1.025); }
+.sp-inbox-list article > .r-pill { right: 2px; top: 24px; font-size: 20px; padding-inline: 13px; }
+.sp-inbox-pill-copy { display: inline-block; font-size: 19.3px; font-weight: 400; line-height: 34px; transform: translateY(1px); }
 .sp-inbox-list article.selected > .r-pill { right: 20px; top: 24px; }
 .sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
 .sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
-.sp-inbox-detail { background: radial-gradient(ellipse at 30% 90%, #5f442225, transparent 65%), linear-gradient(135deg, #1b1714, #191512 55%, #181410); background-clip: padding-box; border-color: #58483a5c; }
+.sp-inbox-detail { background: radial-gradient(ellipse at 30% 90%, #33302a18, transparent 65%), linear-gradient(135deg, #191512, #191512 55%, #171410); background-clip: border-box; border-color: #58483a5c; }
 .sp-inbox-detail header { border-bottom-color: #bba1810a; }
 .sp-inbox-detail h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-detail header h2 { position: relative; top: -2px; }
 .sp-excerpt-heading { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
-.sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #ffffff01, #ffffff03); }
-.sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; transform: translateY(1px); }
+.sp-excerpt-heading-copy { display: inline-block; transform-origin: 0 50%; transform: translate(2px, -1px) scale(.95, 1.04); }
+.sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #ffffff04, #ffffff05); }
+.sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; transform: translate(2px, 1px); }
+/* 逐行字框保留摘录原文与换行，避免字形缩放改变五行的布局高度。 */
+.sp-inbox-excerpt p > br { display: none; }
+.sp-inbox-excerpt-line { display: block; line-height: 39px; transform-origin: 0 50%; transform: scale(.994, 1.04); }
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:first-child { font-size: 22px; transform: scale(.996, 1.04); }
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(2) { font-size: 22px; transform: translateX(-1px) scaleY(1.04); }
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(3) { font-size: 21px; transform: translate(-1px, -1px) scale(.997, 1.075); }
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:last-of-type { transform: translateY(-.5px) scale(.997, 1.04); }
 .sp-inbox-detail .r-rule { margin-bottom: 20px; }
-.sp-suggestions-title { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
+.sp-suggestions-title { font-size: 21.5px !important; font-weight: 500; line-height: 33.35px; gap: 8px; }
 .sp-inbox-buttons { margin-top: 20px; grid-template-columns: 227px 1fr; }
-.sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 22px; padding-left: 44px !important; padding-right: 10px !important; border-color: #b6997930 !important; }
+.sp-inbox-buttons .r-btn { justify-content: flex-start; font-size: 22px; padding-left: 44px !important; padding-right: 10px !important; border-color: #b6997930 !important; background: linear-gradient(115deg, #2e282333, #39322b22) !important; }
+.sp-inbox-buttons .sp-inbox-action-copy { transform: translate(2px, -.5px) scaleX(.93); }
+.sp-inbox-buttons .r-btn:last-child .sp-inbox-action-copy { transform: translate(1px, -.5px) scaleX(.915); }
 .sp-inbox-buttons .r-btn:nth-child(even) { padding-left: 30px !important; }
 .sp-inbox-buttons .r-icon { width: 30px; }
-.sp-inbox-note { margin-top: 28px !important; }
+.sp-inbox-note { margin-top: 28px !important; color: #b8b0a6; background: linear-gradient(115deg, #3c352c33, #3f393033); }
+.sp-inbox-note-copy { font-weight: 300; -webkit-text-stroke: .13px currentColor; transform-origin: 0 50%; transform: translate(-2px, -1px) scaleX(.99); }
 </style>

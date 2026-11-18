@@ -4114,7 +4114,7 @@ try {
           return { box: [box.x, box.y, box.width, box.height], backgroundClip: getComputedStyle(node).backgroundClip }
         })
         ensure(JSON.stringify(detailPaint.box) === JSON.stringify([1011, 233, 501, 701])
-          && detailPaint.backgroundClip === 'padding-box, padding-box', '30详情面板几何或背景绘制边界不符')
+          && detailPaint.backgroundClip === 'border-box, border-box', '30详情面板几何或背景绘制边界不符')
         checks.push({ check: 'inbox-detail-padding-clip-geometry', scene: scene.id, ...detailPaint, passed: true })
         const inboxTypography = await page.evaluate(() => {
           const style = selector => {
@@ -4132,17 +4132,82 @@ try {
           }
         })
         ensure(inboxTypography.body.weight === '300' && inboxTypography.title.weight === '500'
-          && inboxTypography.title.size === '47px' && inboxTypography.title.stroke === '0.6px'
+          && inboxTypography.title.size === '46.5px' && inboxTypography.title.stroke === '0.45px'
           && JSON.stringify(inboxTypography.entries) === JSON.stringify([-2, -2, -3, -5].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
           && JSON.stringify(inboxTypography.checks) === JSON.stringify([-6, -6, -6, -10].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
           && inboxTypography.all.width === '21px' && inboxTypography.excerpt.size === '20.75px'
-          && inboxTypography.excerpt.transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && inboxTypography.excerpt.transform === 'matrix(1, 0, 0, 1, 2, 1)'
           && inboxTypography.action.weight === '300' && inboxTypography.secondary.gap === '13px'
           && inboxTypography.source.background.includes('rgba(154, 113, 71, 0.267)')
           && inboxTypography.list.background.includes('rgb(20, 18, 15)')
-          && inboxTypography.detail.background.includes('rgba(95, 68, 34, 0.145)'),
+          && inboxTypography.detail.background.includes('rgba(51, 48, 42, 0.094)'),
           '30字面、四行基线、勾选框或分区光照偏离已核参考状态')
         checks.push({ check: 'inbox-type-row-baselines-checkboxes-surfaces', scene: scene.id, ...inboxTypography, passed: true })
+        const inboxReferenceCopy = await page.evaluate(() => {
+          const style = node => {
+            const s = getComputedStyle(node)
+            return { text: node.textContent, size: s.fontSize, weight: s.fontWeight, line: s.lineHeight,
+              stroke: s.webkitTextStrokeWidth, transform: s.transform, display: s.display, height: s.height }
+          }
+          const select = selector => style(document.querySelector(selector))
+          return {
+            title: select('.sp-inbox-heading h1'), breadcrumb: select('.r-inbox-breadcrumb-copy'), search: select('.r-top-search > span'),
+            navigation: select('.r-nav-item > span'), selected: select('.r-nav-item.r-selected'), secondary: select('.r-nav-item.r-secondary'),
+            rowTitles: [...document.querySelectorAll('.sp-inbox-entry strong')].map(style),
+            sources: [...document.querySelectorAll('.sp-inbox-source-copy')].map(style), pills: [...document.querySelectorAll('.sp-inbox-pill-copy')].map(style),
+            lines: [...document.querySelectorAll('.sp-inbox-excerpt-line')].map(style),
+            breaks: [...document.querySelectorAll('.sp-inbox-excerpt br')].map(node => getComputedStyle(node).display),
+            rowHeights: [...document.querySelectorAll('.sp-inbox-list article')].map(node => [getComputedStyle(node).minHeight, getComputedStyle(node).paddingBottom]),
+          }
+        })
+        ensure(inboxReferenceCopy.title.transform === 'matrix(0.991, 0, 0, 1, 1, 0)'
+          && Math.abs(parseFloat(inboxReferenceCopy.title.line) - 61.09375) < .001
+          && inboxReferenceCopy.breadcrumb.size === '23px' && inboxReferenceCopy.breadcrumb.weight === '300'
+          && inboxReferenceCopy.breadcrumb.stroke === '0.1px' && inboxReferenceCopy.search.size === '23.5px'
+          && inboxReferenceCopy.search.transform === 'matrix(1.09, 0, 0, 1, -3, 0)'
+          && inboxReferenceCopy.navigation.transform === 'matrix(0.94, 0, 0, 1, -1, 1)'
+          && inboxReferenceCopy.selected.transform === 'matrix(1, 0, 0, 1, 0, 2)'
+          && inboxReferenceCopy.secondary.height === '46px' && inboxReferenceCopy.secondary.transform === 'matrix(1, 0, 0, 1, 0, 2)'
+          && JSON.stringify(inboxReferenceCopy.rowTitles.map(item => item.transform)) === JSON.stringify([
+            'matrix(1, 0, 0, 1, 1, 1)', 'matrix(0.995, 0, 0, 1.06, 1, 0)', 'matrix(0.995, 0, 0, 1.06, 1, 1)', 'matrix(1, 0, 0, 1.06, 1, 2)'])
+          && inboxReferenceCopy.sources.length === 4 && inboxReferenceCopy.sources.every(item => item.transform === 'matrix(1.025, 0, 0, 1, -1, 1)')
+          && inboxReferenceCopy.pills.length === 4 && inboxReferenceCopy.pills.every(item => item.size === '19.3px' && item.weight === '400' && item.line === '34px')
+          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.text)) === JSON.stringify([
+            '缓存删除失败通常有三种情况：', '1. key 不存在，删除返回 0；', '2. 网络超时，客户端误判；',
+            '3. 连接池耗尽，导致删除请求被拒绝。', '需要根据业务场景选择合适的重试策略...'])
+          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.size)) === JSON.stringify(['20.75px', '22px', '22px', '21px', '20.75px'])
+          && inboxReferenceCopy.lines.every(item => item.display === 'block' && item.line === '39px')
+          && inboxReferenceCopy.breaks.length === 3 && inboxReferenceCopy.breaks.every(item => item === 'none')
+          && inboxReferenceCopy.rowHeights[2][0] === '109px' && inboxReferenceCopy.rowHeights[3][1] === '12px',
+          '30原文字框、导航基线、五行摘录或末两行分隔不符')
+        checks.push({ check: 'inbox-reference-copy-baselines-and-original-excerpt-lines', scene: scene.id, ...inboxReferenceCopy, passed: true })
+        const inboxMaterials = await page.evaluate(() => {
+          const style = selector => {
+            const s = getComputedStyle(document.querySelector(selector))
+            return { background: s.backgroundImage, color: s.color, stroke: s.webkitTextStrokeWidth, weight: s.fontWeight,
+              transform: s.transform, border: s.borderColor, shadow: s.boxShadow, clip: s.backgroundClip }
+          }
+          return {
+            selected: style('.sp-inbox-list article.selected'), detail: style('.sp-inbox-detail'), excerpt: style('.sp-inbox-excerpt'),
+            primary: style('.sp-inbox-actions > .r-primary'), secondary: style('.sp-inbox-actions > .r-btn:first-child'),
+            actionCopy: style('.sp-inbox-actions .sp-inbox-action-copy'), button: style('.sp-inbox-buttons .r-btn'),
+            buttonCopy: style('.sp-inbox-buttons .sp-inbox-action-copy'), finalButtonCopy: style('.sp-inbox-buttons .r-btn:last-child .sp-inbox-action-copy'),
+            note: style('.sp-inbox-note'), noteCopy: style('.sp-inbox-note-copy'),
+          }
+        })
+        ensure(inboxMaterials.selected.background.includes('rgba(135, 99, 67, 0.149)')
+          && inboxMaterials.detail.background.includes('rgb(25, 21, 18)') && inboxMaterials.detail.clip === 'border-box, border-box'
+          && inboxMaterials.excerpt.background === 'linear-gradient(120deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0.02))'
+          && inboxMaterials.primary.background.includes('rgb(226, 173, 119)') && inboxMaterials.primary.transform.startsWith('matrix3d(')
+          && inboxMaterials.primary.shadow.includes('inset') && inboxMaterials.secondary.background.includes('rgba(42, 37, 31, 0.6)')
+          && inboxMaterials.actionCopy.weight === '300' && inboxMaterials.actionCopy.stroke === '0.07px'
+          && inboxMaterials.button.background === 'linear-gradient(115deg, rgba(46, 40, 35, 0.2), rgba(57, 50, 43, 0.133))'
+          && inboxMaterials.buttonCopy.transform === 'matrix(0.93, 0, 0, 1, 2, -0.5)'
+          && inboxMaterials.finalButtonCopy.transform === 'matrix(0.915, 0, 0, 1, 1, -0.5)'
+          && inboxMaterials.note.color === 'rgb(184, 176, 166)' && inboxMaterials.note.background.includes('rgba(60, 53, 44, 0.2)')
+          && inboxMaterials.noteCopy.weight === '300' && inboxMaterials.noteCopy.stroke === '0.13px'
+          && inboxMaterials.noteCopy.transform === 'matrix(0.99, 0, 0, 1, -2, -1)', '30详情材质、按钮原文字框或静止绘制层不符')
+        checks.push({ check: 'inbox-detail-materials-actions-and-static-compositor', scene: scene.id, ...inboxMaterials, passed: true })
         const all = page.getByRole('checkbox', { name: '全选收件箱', exact: true })
         const rows = list.locator('article')
         ensure(await rows.count() === 4 && await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true',
