@@ -4146,7 +4146,7 @@ try {
           return { box: [box.x, box.y, box.width, box.height], backgroundClip: getComputedStyle(node).backgroundClip }
         })
         ensure(JSON.stringify(detailPaint.box) === JSON.stringify([1011, 233, 501, 701])
-          && detailPaint.backgroundClip === 'border-box, border-box', '30详情面板几何或背景绘制边界不符')
+          && detailPaint.backgroundClip === 'border-box', '30详情面板几何或背景绘制边界不符')
         checks.push({ check: 'inbox-detail-padding-clip-geometry', scene: scene.id, ...detailPaint, passed: true })
         const inboxTypography = await page.evaluate(() => {
           const style = selector => {
@@ -4173,7 +4173,7 @@ try {
           && inboxTypography.action.weight === '300' && inboxTypography.secondary.gap === '13px'
           && inboxTypography.source.background.includes('rgba(154, 113, 71, 0.267)')
           && inboxTypography.list.background.includes('rgb(20, 18, 15)')
-          && inboxTypography.detail.background.includes('rgba(51, 48, 42, 0.094)'),
+          && inboxTypography.detail.background === 'linear-gradient(125deg, rgb(27, 22, 19), rgb(26, 22, 18) 55%, rgb(25, 21, 18))',
           '30字面、四行基线、勾选框或分区光照偏离已核参考状态')
         checks.push({ check: 'inbox-type-row-baselines-checkboxes-surfaces', scene: scene.id, ...inboxTypography, passed: true })
         const inboxIconIdentity = await page.evaluate(() => {
@@ -4218,6 +4218,49 @@ try {
         await writeJson(path.join(values.output, 'records', '30-inbox-local-pixels.json'), inboxLocalPixels)
         checks.push({ check: 'inbox-local-reference-pixels-improved-from-r137', scene: scene.id,
           baselineRgbSha256: 'de2c3289cee931ee62323f773f167f225a33882c5d8246b78b7dc4cec616dba9', regions: inboxLocalPixels, passed: true })
+        // 材质只覆盖右侧面板；与已验收r138实拍比较，保留区域外像素和原文排版。
+        const inboxMaterialPaint = await page.evaluate(() => {
+          const inspect = selector => {
+            const s = getComputedStyle(document.querySelector(selector))
+            return { background: s.backgroundImage, backgroundClip: s.backgroundClip, borderColor: s.borderColor }
+          }
+          return { detail: inspect('.sp-inbox-detail'), excerpt: inspect('.sp-inbox-excerpt') }
+        })
+        ensure(inboxMaterialPaint.detail.backgroundClip === 'border-box'
+          && inboxMaterialPaint.detail.borderColor === 'rgba(88, 72, 58, 0.28)'
+          && inboxMaterialPaint.excerpt.background === 'linear-gradient(120deg, rgb(31, 26, 22), rgb(28, 23, 20))',
+          '30详情与摘要材质偏离已读回的源码值')
+        const inboxMaterialPixels = [
+          ['detail', 1011, 233, 501, 701, 10.480837658966422],
+          ['excerpt', 1035, 360, 453, 222, 21.427987590239248],
+          ['full', 0, 0, 1536, 1024, 7.491540061102973],
+        ].map(([name, left, top, width, height, previousMae]) => {
+          let sum = 0
+          for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
+            const offset = (y * 1536 + x) * 3
+            for (let channel = 0; channel < 3; channel++) sum += Math.abs(inboxExpectedRgb[offset + channel] - inboxActualRgb[offset + channel])
+          }
+          const mae = sum / (width * height * 3)
+          return { name, left, top, width, height, previousMae, mae, improved: mae < previousMae }
+        })
+        const inboxR138Rgb = await sharp('C:/AI/vibecoding/interview-studio/.cache/visual/replica/v12-server-review-20261118-r138-full/screenshots/30_知识收件箱_replica.png')
+          .toColourspace('srgb').removeAlpha().raw().toBuffer()
+        ensure(inboxR138Rgb.length === inboxActualRgb.length
+          && hash(inboxR138Rgb) === 'b2929563ca3550602432bc994023474b1f3a92adc60c34e3d3463a9711cd3bb8',
+          '30已验收r138图像基线改变')
+        let inboxMaterialChanged = 0, inboxMaterialOutside = 0
+        for (let y = 0; y < 1024; y++) for (let x = 0; x < 1536; x++) {
+          const offset = (y * 1536 + x) * 3
+          if ([0, 1, 2].every(channel => inboxActualRgb[offset + channel] === inboxR138Rgb[offset + channel])) continue
+          inboxMaterialChanged++
+          if (x < 1011 || x >= 1512 || y < 233 || y >= 934) inboxMaterialOutside++
+        }
+        ensure(inboxMaterialPixels.every(region => region.improved) && inboxMaterialOutside === 0,
+          '30材质误差未全部改善或右侧面板区域外发生变化')
+        const inboxMaterialEvidence = { baselineRgbSha256: 'b2929563ca3550602432bc994023474b1f3a92adc60c34e3d3463a9711cd3bb8',
+          regions: inboxMaterialPixels, paint: inboxMaterialPaint, changedPixels: inboxMaterialChanged, outsideRegions: inboxMaterialOutside }
+        await writeJson(path.join(values.output, 'records', '30-inbox-material-pixels.json'), inboxMaterialEvidence)
+        checks.push({ check: 'inbox-detail-excerpt-materials-improved-from-r138', scene: scene.id, ...inboxMaterialEvidence, passed: true })
         const inboxReferenceCopy = await page.evaluate(() => {
           const style = node => {
             const s = getComputedStyle(node)
@@ -4272,8 +4315,8 @@ try {
         })
         await writeJson(path.join(values.output, 'records', '30-inbox-materials.json'), inboxMaterials)
         ensure(inboxMaterials.selected.background.includes('rgba(135, 99, 67, 0.15)')
-          && inboxMaterials.detail.background.includes('rgb(25, 21, 18)') && inboxMaterials.detail.clip === 'border-box, border-box'
-          && inboxMaterials.excerpt.background === 'linear-gradient(120deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0.02))'
+          && inboxMaterials.detail.background.includes('rgb(25, 21, 18)') && inboxMaterials.detail.clip === 'border-box'
+          && inboxMaterials.excerpt.background === 'linear-gradient(120deg, rgb(31, 26, 22), rgb(28, 23, 20))'
           && inboxMaterials.primary.background.includes('rgb(226, 173, 119)') && inboxMaterials.primary.transform === 'matrix(1, 0, 0, 1, 0, 0)'
           && inboxMaterials.primary.shadow.includes('inset') && inboxMaterials.secondary.background.includes('rgba(42, 37, 31, 0.6)')
           && inboxMaterials.actionCopy.weight === '300' && inboxMaterials.actionCopy.stroke === '0.07px'

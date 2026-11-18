@@ -365,13 +365,13 @@ onUnmounted(() => {
 .sp-inbox-list article.selected > .r-pill { right: 20px; top: 24px; }
 .sp-inbox-list article:nth-of-type(3) > .r-pill { top: 20px; }
 .sp-inbox-list article:nth-of-type(4) > .r-pill { top: 21px; }
-.sp-inbox-detail { background: radial-gradient(ellipse at 30% 90%, #33302a18, transparent 65%), linear-gradient(135deg, #191512, #191512 55%, #171410); background-clip: border-box; border-color: #58483a5c; }
+.sp-inbox-detail { background: linear-gradient(125deg, #1b1613, #1a1612 55%, #191512); background-clip: border-box; border-color: #58483a47; }
 .sp-inbox-detail header { border-bottom-color: #bba1810a; }
 .sp-inbox-detail h2 { font-size: 22.5px; font-weight: 500; line-height: 35px; }
 .sp-inbox-detail header h2 { position: relative; top: -2px; }
 .sp-excerpt-heading { font-size: 22px !important; font-weight: 500; line-height: 33.35px; }
 .sp-excerpt-heading-copy { display: inline-block; transform-origin: 0 50%; transform: translate(2px, -1px) scale(.95, 1.04); }
-.sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #ffffff04, #ffffff05); }
+.sp-inbox-excerpt { padding-top: 11px; background: linear-gradient(120deg, #1f1a16, #1c1714); }
 .sp-inbox-excerpt p { font-size: 20.75px; font-weight: 300; line-height: 39px; transform: translate(2px, 1px); }
 /* 逐行字框保留摘录原文与换行，避免字形缩放改变五行的布局高度。 */
 .sp-inbox-excerpt p > br { display: none; }
