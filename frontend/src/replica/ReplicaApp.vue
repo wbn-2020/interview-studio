@@ -203,10 +203,11 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
             <div v-else-if="scene === 30" class="r-brand">
-              <!-- 专属SVG放在复刻入口，避免改动正式入口共享资源；菱形镂空沿用侧栏底色。 -->
+              <!-- 圆环、外轮廓与星形镂空分层；专属SVG仅作用于复刻第30页，镂空沿用侧栏底色。 -->
               <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-                <circle cx="50" cy="50" r="38" stroke="#edc399" stroke-width="2.2" />
-                <path d="M50 4C51 24 51 36 55 41L65 32 59 44C65 47 76 49 97 50C76 51 65 52 59 55L65 66 55 60C52 67 51 77 50 98C49 77 48 67 45 60L34 66 41 55C35 52 24 51 3 50C24 49 35 47 41 44L35 32 45 41C49 35 49 24 50 4Z M50 39 41 50 50 61 59 50Z" fill="#e4b787" fill-rule="evenodd" stroke="#e4b787" stroke-width="1.25" stroke-linejoin="round" />
+                <circle cx="50" cy="50" r="37.5" stroke="#e5b78a" stroke-width="2.8" />
+                <path d="M50 4C52 45 65 47 97 50C65 53 52 55 50 98C48 55 35 53 3 50C35 47 48 45 50 4Z" fill="none" stroke="#dcb084" stroke-width="0.6" stroke-linejoin="round" />
+                <path d="M50 4C51 24 51 36 55 41L65 32 59 44C65 47 76 49 97 50C76 51 65 52 59 55L65 66 55 60C52 67 51 77 50 98C49 77 48 67 45 60L34 66 41 55C35 52 24 51 3 50C24 49 35 47 41 44L35 32 45 41C49 35 49 24 50 4Z M50 39 41 50 50 61 59 50Z" fill="#eabd90" fill-rule="evenodd" stroke="#eabd90" stroke-width="1.25" stroke-linejoin="round" />
               </svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>

@@ -4085,23 +4085,31 @@ try {
         const inboxBrand = await page.locator('.r-scene-30 .r-sidebar .r-brand').evaluate(node => {
           const box = element => { const r = element.getBoundingClientRect(); return [r.x, r.y, r.width, r.height] }
           const emblem = node.querySelector('.r-emblem'), word = node.querySelector('.r-brand-word'), small = word.querySelector('small')
-          const path = emblem.querySelector('path'), contours = (path?.getAttribute('d') ?? '').split(/z/i).filter(value => value.trim())
+          const path = emblem.querySelector('path[fill-rule="evenodd"]'), outline = emblem.querySelector('path:not([fill-rule])')
+          const circle = emblem.querySelector('circle'), contours = (path?.getAttribute('d') ?? '').split(/z/i).filter(value => value.trim())
           return { emblem: box(emblem), word: box(word), small: box(small), circles: emblem.querySelectorAll('circle').length,
             paths: emblem.querySelectorAll('path').length, cutout: path?.getAttribute('fill-rule'),
-            closedContours: contours.length,
+            closedContours: contours.length, ringRadius: circle?.getAttribute('r'), ringStroke: circle?.getAttribute('stroke-width'),
+            ringColor: circle?.getAttribute('stroke'), outlineFill: outline?.getAttribute('fill'),
+            outlineStroke: outline?.getAttribute('stroke-width'), outlineColor: outline?.getAttribute('stroke'),
+            outlineContours: (outline?.getAttribute('d') ?? '').split(/z/i).filter(value => value.trim()).length,
+            starFill: path?.getAttribute('fill'), starStroke: path?.getAttribute('stroke-width'),
             wordSize: getComputedStyle(word).fontSize, wordWeight: getComputedStyle(word).fontWeight,
             wordStroke: getComputedStyle(word).webkitTextStrokeWidth, smallStroke: getComputedStyle(small).webkitTextStrokeWidth,
             copy: word.textContent, hiddenDecoration: emblem.getAttribute('aria-hidden') }
         })
         const brandClose = (actual, expected) => Math.abs(actual - expected) < .02
-        ensure(JSON.stringify(inboxBrand.emblem) === '[36.5,54.5,62,62]' && inboxBrand.circles === 1 && inboxBrand.paths === 1
+        ensure(JSON.stringify(inboxBrand.emblem) === '[36.5,54.5,62,62]' && inboxBrand.circles === 1 && inboxBrand.paths === 2
           && inboxBrand.cutout === 'evenodd' && inboxBrand.closedContours === 2
+          && inboxBrand.ringRadius === '37.5' && inboxBrand.ringStroke === '2.8' && inboxBrand.ringColor === '#e5b78a'
+          && inboxBrand.outlineFill === 'none' && inboxBrand.outlineStroke === '0.6' && inboxBrand.outlineColor === '#dcb084'
+          && inboxBrand.outlineContours === 1 && inboxBrand.starFill === '#eabd90' && inboxBrand.starStroke === '1.25'
           && inboxBrand.word[0] === 107 && inboxBrand.word[1] === 64 && brandClose(inboxBrand.word[2], 107.405) && inboxBrand.word[3] === 63
           && brandClose(inboxBrand.small[0], 81.78) && brandClose(inboxBrand.small[2], 113.742)
           && inboxBrand.small[1] === 106 && inboxBrand.small[3] === 22 && inboxBrand.wordSize === '33.5px'
           && inboxBrand.wordStroke === '0.1px' && inboxBrand.smallStroke === '0px'
           && inboxBrand.wordWeight === '300' && inboxBrand.copy === '问阶Interview Studio' && inboxBrand.hiddenDecoration === 'true',
-          '30品牌圆环、八尖星镂空或中英文固定字框不符')
+          '30品牌圆环、外轮廓、八尖星镂空或中英文固定字框不符')
         checks.push({ check: 'inbox-brand-ring-cutout-and-copy-geometry', scene: scene.id, ...inboxBrand, passed: true })
         const list = page.getByRole('region', { name: '待整理内容' })
         const sources = page.getByRole('complementary', { name: '收件箱来源' })
