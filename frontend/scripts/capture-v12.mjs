@@ -4166,8 +4166,9 @@ try {
         ensure(inboxTypography.body.weight === '300' && inboxTypography.title.weight === '500'
           && inboxTypography.title.size === '46.5px' && inboxTypography.title.stroke === '0.45px'
           && JSON.stringify(inboxTypography.entries) === JSON.stringify([-2, -2, -3, -5].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
-          && JSON.stringify(inboxTypography.checks) === JSON.stringify([-6, -6, -6, -10].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
-          && inboxTypography.all.width === '21px' && inboxTypography.excerpt.size === '20.75px'
+          && JSON.stringify(inboxTypography.checks) === JSON.stringify([-7, -7, -7, -9].map(y => `matrix(1, 0, 0, 1, 0, ${y})`))
+          && inboxTypography.all.width === '21px' && inboxTypography.all.transform === 'matrix(1, 0, 0, 1, 0, 1)'
+          && inboxTypography.excerpt.size === '20.75px'
           && inboxTypography.excerpt.transform === 'matrix(1, 0, 0, 1, 2, 1)'
           && inboxTypography.action.weight === '300' && inboxTypography.secondary.gap === '13px'
           && inboxTypography.source.background.includes('rgba(154, 113, 71, 0.267)')
@@ -4175,6 +4176,48 @@ try {
           && inboxTypography.detail.background.includes('rgba(51, 48, 42, 0.094)'),
           '30字面、四行基线、勾选框或分区光照偏离已核参考状态')
         checks.push({ check: 'inbox-type-row-baselines-checkboxes-surfaces', scene: scene.id, ...inboxTypography, passed: true })
+        const inboxIconIdentity = await page.evaluate(() => {
+          const icon = node => { const s = getComputedStyle(node); return { kind: node.getAttribute('data-inbox-icon'), color: s.color,
+            transform: s.transform, width: s.width, height: s.height, hidden: node.getAttribute('aria-hidden') } }
+          const boxes = [...document.querySelectorAll('.sp-inbox-list input')].map(node => {
+            const r = node.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]
+          })
+          return { sources: [...document.querySelectorAll('.sp-inbox-sources > button svg')].map(icon),
+            entries: [...document.querySelectorAll('.sp-inbox-entry small svg')].map(icon), boxes }
+        })
+        ensure(JSON.stringify(inboxIconIdentity.sources.map(icon => icon.kind)) === '["layout-grid","zap","cloud-upload","play","file-text"]'
+          && JSON.stringify(inboxIconIdentity.entries.map(icon => icon.kind)) === '["zap","file-text","cloud-upload","play"]'
+          && inboxIconIdentity.sources.every(icon => icon.width === '26px' && icon.height === '26px' && icon.hidden === 'true')
+          && inboxIconIdentity.entries.every(icon => icon.width === '23px' && icon.height === '23px' && icon.hidden === 'true')
+          && JSON.stringify(inboxIconIdentity.boxes) === '[[512,260.25,21,23],[513,346.5,23,23],[513,460.5,23,23],[513,573.5,23,23],[513,680,23,23]]',
+          '30图标来源身份、可访问装饰边界或复选框参考坐标不符')
+        checks.push({ check: 'inbox-replica-icon-source-identities-and-checkbox-reference-boxes', scene: scene.id, ...inboxIconIdentity, passed: true })
+        // 与已验收 r137 的局部原图误差比较，直接核实际截图，不复写 SVG 实现断言。
+        const inboxPixelRegions = [
+          ['checkbox-0', 508, 255, 29, 31, 18.021134593993327], ['checkbox-1', 509, 343, 31, 31, 18.815816857440165],
+          ['checkbox-2', 509, 457, 31, 31, 22.07630939993063], ['checkbox-3', 509, 570, 31, 31, 26.0454387790496],
+          ['checkbox-4', 509, 675, 31, 31, 22.91744710371141], ['training', 44, 385, 38, 38, 40.939750692520775],
+          ['zap-source', 267, 383, 34, 34, 23.34284890426759], ['zap-entry', 552, 369, 31, 31, 14.981616371834894],
+          ['file-source', 267, 572, 34, 34, 37.25778546712803], ['file-entry', 552, 483, 31, 31, 28.84772806104752],
+          ['cloud-source', 267, 446, 34, 34, 40.51182237600923], ['cloud-entry', 552, 595, 31, 31, 24.742976066597294],
+          ['external', 1450, 255, 45, 35, 29.56232804232804],
+        ]
+        const inboxExpectedRgb = await sharp(path.join(values.references, scene.file)).toColourspace('srgb').removeAlpha().raw().toBuffer()
+        const inboxActualRgb = await sharp(captured).toColourspace('srgb').removeAlpha().raw().toBuffer()
+        ensure(inboxExpectedRgb.length === 1536 * 1024 * 3 && inboxActualRgb.length === inboxExpectedRgb.length, '30局部像素检查尺寸或通道不符')
+        const inboxLocalPixels = inboxPixelRegions.map(([name, left, top, width, height, previousMae]) => {
+          let sum = 0
+          for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
+            const offset = (y * 1536 + x) * 3
+            for (let channel = 0; channel < 3; channel++) sum += Math.abs(inboxExpectedRgb[offset + channel] - inboxActualRgb[offset + channel])
+          }
+          const mae = sum / (width * height * 3)
+          return { name, left, top, width, height, previousMae, mae, improved: mae < previousMae }
+        })
+        ensure(inboxLocalPixels.length === 13 && inboxLocalPixels.every(region => region.improved), '30某个图标或复选控件相对 r137 原图误差未改善')
+        await writeJson(path.join(values.output, 'records', '30-inbox-local-pixels.json'), inboxLocalPixels)
+        checks.push({ check: 'inbox-local-reference-pixels-improved-from-r137', scene: scene.id,
+          baselineRgbSha256: 'de2c3289cee931ee62323f773f167f225a33882c5d8246b78b7dc4cec616dba9', regions: inboxLocalPixels, passed: true })
         const inboxReferenceCopy = await page.evaluate(() => {
           const style = node => {
             const s = getComputedStyle(node)
@@ -4263,11 +4306,16 @@ try {
         ensure(excerptRows.count === 5 && excerptRows.right < excerptRows.panelRight, '30摘录行数不符或横向截断')
         await rows.first().getByRole('checkbox').check()
         ensure(await all.evaluate(node => node.indeterminate && !node.checked), '30部分勾选没有同步全选中间状态')
+        ensure(await all.evaluate(node => { const s = getComputedStyle(node, '::after'); return s.width === '11px' && s.height === '2px' }),
+          '30半选状态没有绘制原生状态对应的横线')
         await all.check()
         ensure(await list.getByRole('checkbox').evaluateAll(nodes => nodes.every(node => node.checked)), '30全选没有勾选可见行')
+        ensure(await all.evaluate(node => { const s = getComputedStyle(node, '::after'); return s.width === '10px' && s.height === '6px' }),
+          '30全选状态没有绘制勾选标记')
         await sources.getByRole('button', { name: '导入 2', exact: true }).click()
         ensure(await rows.count() === 1 && await rows.first().getByRole('checkbox').isChecked() === false,
           '30来源切换后行数或勾选状态不符')
+        ensure(await rows.first().locator('.sp-inbox-entry svg').getAttribute('data-inbox-icon') === 'cloud-upload', '30来源切换后图标身份不符')
         ensure(await rows.first().locator('.sp-inbox-entry').getAttribute('aria-pressed') === 'true'
           && await detail.getByRole('heading', { name: '一致性哈希摘录', exact: true }).isVisible()
           && await detail.getByText('该条目的原始摘录待确认', { exact: true }).isVisible(),
@@ -4275,6 +4323,7 @@ try {
         await sources.getByRole('button', { name: '全部 7', exact: true }).click()
         await page.getByRole('combobox', { name: '收件箱排序' }).selectOption({ label: '按时间顺序' })
         ensure(await rows.first().locator('strong').textContent() === '对账任务失败案例', '30时间顺序未反转')
+        ensure(await rows.first().locator('.sp-inbox-entry svg').getAttribute('data-inbox-icon') === 'play', '30倒序后图标身份不符')
         await rows.first().locator('.sp-inbox-entry').click()
         ensure(await detail.getByRole('heading', { name: '对账任务失败案例', exact: true }).isVisible(), '30点击行没有同步详情')
         await page.getByRole('button', { name: '全部标为已读', exact: true }).click()

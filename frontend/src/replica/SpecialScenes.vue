@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import RIcon from './RIcon.vue'
+import InboxIcon from './InboxIcon.vue'
 import GraphScene from './GraphScene.vue'
 import MobileScene from './MobileScene.vue'
 import LoginTodayScenes from './LoginTodayScenes.vue'
@@ -180,13 +181,13 @@ onUnmounted(() => {
   <section v-else-if="scene === 30" class="sp-inbox-page">
     <div class="sp-inbox-heading"><h1>知识收件箱</h1><p class="r-muted">3 条待整理 · 来自快速记录和导入</p></div>
     <div class="sp-inbox-actions r-row"><button class="r-btn" :disabled="allRead" @click="allRead = true"><span class="sp-inbox-action-copy">全部标为已读</span></button><button class="r-btn r-primary" @click="go(11)"><RIcon name="plus" /><span class="sp-inbox-action-copy">新建笔记</span></button></div>
-    <aside class="r-panel sp-inbox-sources" aria-label="收件箱来源"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" :aria-pressed="sourceFilter === i" @click="selectInboxSource(i)"><RIcon :name="source[2]!" variant="inbox" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
+    <aside class="r-panel sp-inbox-sources" aria-label="收件箱来源"><h2>来源筛选</h2><button v-for="(source, i) in [['全部', '7', 'layout-grid'], ['快速记录', '3', 'zap'], ['导入', '2', 'cloud-upload'], ['训练片段', '1', 'play'], ['面后回忆', '1', 'file-text']]" :key="source[0]" class="r-row" :class="{ selected: sourceFilter === i }" :aria-pressed="sourceFilter === i" @click="selectInboxSource(i)"><InboxIcon :name="source[2]!" :data-inbox-icon="source[2]" :size="26" /><span>{{ source[0] }}</span><small>{{ source[1] }}</small></button></aside>
     <section class="r-panel sp-inbox-list" aria-label="待整理内容">
       <header class="r-between"><label class="r-row"><input type="checkbox" class="r-checkbox" aria-label="全选收件箱" :checked="visibleInbox.length > 0 && visibleInbox.every(entry => inboxChecked.includes(entry.index))" :indeterminate="visibleInbox.some(entry => inboxChecked.includes(entry.index)) && !visibleInbox.every(entry => inboxChecked.includes(entry.index))" @change="toggleAll" />全选</label><label class="sp-inbox-order"><select v-model="sort" aria-label="收件箱排序"><option>按时间倒序</option><option>按时间顺序</option></select><RIcon name="chevron-down" :size="18" /></label></header>
-      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><RIcon :name="entry.icon" variant="inbox" :size="23" /><span class="sp-inbox-source-copy">{{ entry.source }}</span></small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''"><span class="sp-inbox-pill-copy">{{ entry.state }}</span></span></article>
+      <article v-for="entry in visibleInbox" :key="entry.index" :class="{ selected: currentInbox?.index === entry.index }"><input type="checkbox" class="r-checkbox" :aria-label="entry.title" :checked="inboxChecked.includes(entry.index)" @change="toggleInbox(entry.index)" /><button class="sp-inbox-entry" :aria-pressed="currentInbox?.index === entry.index" @click="inboxSelected = entry.index"><strong>{{ entry.title }}</strong><small class="r-row"><InboxIcon :name="entry.icon" :data-inbox-icon="entry.icon" context="entry" :size="23" /><span class="sp-inbox-source-copy">{{ entry.source }}</span></small></button><span class="r-pill" :class="entry.state === '已关联' ? 'green' : entry.index === 0 ? 'amber' : ''"><span class="sp-inbox-pill-copy">{{ entry.state }}</span></span></article>
     </section>
     <aside class="r-panel sp-inbox-detail" aria-label="内容详情">
-      <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><RIcon name="external-link" variant="inbox" :size="23" /></button></header>
+      <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><InboxIcon name="external-link" :size="23" /></button></header>
       <h3 class="sp-excerpt-heading"><span class="sp-excerpt-heading-copy">原始摘录</span></h3>
       <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p><span class="sp-inbox-excerpt-line">缓存删除失败通常有三种情况：</span></p><p><span class="sp-inbox-excerpt-line">1. key 不存在，删除返回 0；</span><br><span class="sp-inbox-excerpt-line">2. 网络超时，客户端误判；</span><br><span class="sp-inbox-excerpt-line">3. 连接池耗尽，导致删除请求被拒绝。</span><br><span class="sp-inbox-excerpt-line">需要根据业务场景选择合适的重试策略...</span></p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
       <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" variant="inbox" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" variant="inbox" :size="28" /><span class="sp-inbox-action-copy">转为笔记</span></button><button class="r-btn" @click="go(12)"><RIcon name="box" variant="inbox" :size="30" /><span class="sp-inbox-action-copy">新建概念</span></button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" variant="inbox" :size="27" /><span class="sp-inbox-action-copy">创建回忆卡</span></button><button class="r-btn" @click="go(9)"><RIcon name="link" variant="inbox" :size="29" /><span class="sp-inbox-action-copy">关联已有知识</span></button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" /><span class="sp-inbox-note-copy">来源与候选分开保存，不会自动发布</span></p>
@@ -389,4 +390,18 @@ onUnmounted(() => {
 .sp-inbox-buttons .r-icon { width: 30px; }
 .sp-inbox-note { margin-top: 28px !important; color: #b8b0a6; background: linear-gradient(115deg, #3c352c33, #3f393033); }
 .sp-inbox-note-copy { font-weight: 300; -webkit-text-stroke: .13px currentColor; transform-origin: 0 50%; transform: translate(-2px, -1px) scaleX(.99); }
+/* 柔和轮廓仅绘制未勾选态，勾选与半选继续由原生 input 状态控制。 */
+.sp-inbox-list .r-checkbox:not(:checked):not(:indeterminate) { border-width: 1px; border-color: #b5afa6; box-shadow: 0 0 0 .5px #d8d0c477, inset 0 0 0 .5px #ded8ce66, 0 0 2px #c8c1b755, inset 0 0 2px #ddd6ca33; }
+.sp-inbox-list article.selected .r-checkbox:not(:checked):not(:indeterminate) { border-color: #e4ba8a; box-shadow: 0 0 0 .5px #f0c28d99, inset 0 0 0 .5px #f9d3a488, 0 0 2px #e9b47b66, inset 0 0 2px #ffdeb966; }
+.sp-inbox-list header .r-checkbox { transform: translateY(1px); }
+.sp-inbox-list article .r-checkbox { transform: translateY(-7px); }
+.sp-inbox-list article:nth-of-type(4) .r-checkbox { transform: translateY(-9px); }
+/* 按来源身份匹配图标，避免过滤或倒序后把另一条内容染成快速记录。 */
+.sp-inbox-sources > button .r-icon[data-inbox-icon="zap"] { color: #e5b786; transform: translateY(1px); filter: drop-shadow(0 0 .6px #eec89655); }
+.sp-inbox-entry .r-icon[data-inbox-icon="zap"] { color: #e5b786; filter: drop-shadow(0 0 .6px #eec89655); }
+.sp-inbox-sources > button .r-icon[data-inbox-icon="file-text"] { transform: translateX(0px); }
+.sp-inbox-sources > button .r-icon[data-inbox-icon="cloud-upload"] { transform: translate(0px, 1px); }
+.sp-inbox-entry .r-icon[data-inbox-icon="cloud-upload"] { color: #d2cec6; transform: translate(0px, 1px); }
+.sp-inbox-detail header .r-icon-btn { transform: translateX(8.5px); }
+.sp-inbox-entry .r-icon[data-inbox-icon="file-text"] { color: #b6b1a8; transform: translateY(1.5px); }
 </style>

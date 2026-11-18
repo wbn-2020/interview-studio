@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import RIcon from './RIcon.vue'
+import InboxIcon from './InboxIcon.vue'
 import RBrand from './RBrand.vue'
 import PreparationScenes from './PreparationScenes.vue'
 import KnowledgeScenes from './KnowledgeScenes.vue'
@@ -218,6 +219,7 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
             <a v-for="item in nav" :key="item.id" :href="`replica.html?scene=${String(item.id).padStart(2, '0')}`" class="r-nav-item" :class="{ 'r-selected': item.id === active }" @click.prevent="navigate(item.id)">
               <svg v-if="scene === 18 && followNavPaths[item.icon]" class="r-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in followNavPaths[item.icon]" :key="index" :d="d" /></svg>
               <svg v-else-if="scene === 14 && bankNavPaths[item.icon]" class="r-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" :stroke-width="item.icon === 'refresh-cw' ? 1.9 : 1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-for="(d, index) in bankNavPaths[item.icon]" :key="index" :d="d" :fill="(item.icon === 'refresh-cw' && index === 2) || (item.icon === 'chart-no-axes-combined' && index === 0) ? 'currentColor' : undefined" :stroke-width="item.icon === 'refresh-cw' && index === 2 ? .4 : undefined" /></svg>
+              <InboxIcon v-else-if="scene === 30 && item.icon === 'dumbbell'" :name="item.icon" :size="30" />
               <RIcon v-else-if="[3, 4, 5, 6, 7, 27, 28, 30].includes(scene)" :name="item.icon" :variant="scene === 3 ? 'target' : scene === 4 ? 'facts' : scene === 5 ? 'expression' : scene === 6 ? 'materials' : scene === 7 ? 'tasks' : scene === 30 ? 'inbox' : scene === 27 ? 'authorization' : 'settings'" :size="[4, 5, 6].includes(scene) ? 28 : 30" :stroke-width="scene === 30 ? 1.7 : 1.9" />
               <RIcon v-else :name="item.icon" :variant="scene === 2 ? 'today' : scene === 8 ? 'schedule' : scene === 10 ? 'library' : scene === 11 ? 'note' : scene === 12 ? 'detail' : scene === 14 ? 'bank' : scene === 15 ? 'route' : scene === 16 ? 'recall' : scene === 17 ? 'writing' : scene === 19 ? 'report' : scene === 20 ? 'design' : scene === 21 ? 'review' : scene === 22 ? 'compare' : scene === 23 ? 'recollection' : scene === 24 ? 'growth' : scene === 25 ? 'command' : scene === 26 ? 'recent' : undefined" :size="scene === 9 ? 34 : [2, 8, 16, 18, 19, 21, 22, 23, 24, 25].includes(scene) ? 30 : 28" :stroke-width="[8, 14, 18, 19].includes(scene) ? 2.1 : 1.7" /><span>{{ item.label }}</span>
             </a>
