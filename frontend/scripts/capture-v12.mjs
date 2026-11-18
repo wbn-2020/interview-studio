@@ -3948,13 +3948,13 @@ try {
             task:style('.mobile-task-copy'), note:style('.mobile-linked-note > button'), screen:style('.phone-today .phone-screen'),
             practice:style('.mobile-practice'), wave:{background:wave.backgroundImage,shadow:wave.boxShadow} }
         })
-        ensure(mobileStyle.body.weight === '300' && mobileStyle.definition.size === '18.4px'
+        ensure(mobileStyle.body.weight === '300' && mobileStyle.definition.size === '18.3px'
           && mobileStyle.definition.margin === '16px' && mobileStyle.definition.weight === '300'
-          && mobileStyle.title.size === '22.5px' && mobileStyle.title.weight === '600'
+          && mobileStyle.title.size === '22.5px' && mobileStyle.title.weight === '500'
           && mobileStyle.task.transform === 'matrix(1, 0, 0, 1, 0, 1)' && mobileStyle.note.margin === '15px'
           && mobileStyle.wave.background.startsWith('repeating-radial-gradient(') && mobileStyle.wave.shadow === 'none'
           && mobileStyle.screen.background.includes('60px 115px') && mobileStyle.screen.background.includes('60px 130px')
-          && mobileStyle.practice.background === 'linear-gradient(112deg, rgb(211, 156, 106), rgb(188, 128, 83) 52%, rgb(168, 106, 67))',
+          && mobileStyle.practice.background === 'linear-gradient(112deg, rgb(206, 147, 97), rgb(186, 122, 79) 52%, rgb(164, 105, 66))',
         '29正文字面、学习标题、细纹、局部光照或按钮渐变不符')
         checks.push({ check:'mobile-type-baselines-wave-light-and-practice-surface',scene:scene.id,mobileStyle,passed:true })
         const mobileRefinement = await page.evaluate(() => {
@@ -3968,22 +3968,53 @@ try {
             question:style('.mobile-recall-question'), recent:style('.mobile-recent-note strong'),
             note:style('.mobile-linked-note strong'), practice:style('.mobile-practice') }
         })
-        ensure(mobileRefinement.time.weight === '500' && mobileRefinement.time.size === '20px'
-          && mobileRefinement.brand.weight === '300' && mobileRefinement.recent.weight === '300'
+        ensure(mobileRefinement.time.weight === '600' && mobileRefinement.time.size === '20px'
+          && mobileRefinement.brand.weight === '400' && mobileRefinement.recent.weight === '300'
           && mobileRefinement.note.weight === '300' && mobileRefinement.heading.weight === '500'
-          && mobileRefinement.heading.size === '39.5px' && mobileRefinement.heading.stroke === '0.6px'
+          && mobileRefinement.heading.size === '39px' && mobileRefinement.heading.stroke === '0.5px'
           && mobileRefinement.question.weight === '500' && mobileRefinement.question.size === '36.5px'
-          && mobileRefinement.question.stroke === '0.6px', '29状态栏、笔记与知识／回忆标题字重或字面不符')
+          && mobileRefinement.question.stroke === '0.23px', '29状态栏、笔记与知识／回忆标题字重或字面不符')
         checks.push({ check:'mobile-status-notes-and-title-weight-stroke',scene:scene.id,mobileRefinement,passed:true })
-        ensure(mobileRefinement.subtitle.transform === 'matrix(1, 0, 0, 1, 0, -4)'
-          && mobileRefinement.question.transform === 'matrix(1, 0, 0, 1, 0, 1)'
-          && JSON.stringify(mobileRefinement.heading.box) === '[578,205,197.5,60]'
-          && JSON.stringify(mobileRefinement.question.box) === '[1072,323,377,104]'
-          && JSON.stringify(mobileRefinement.note.box) === '[648,617,265,28]'
+        ensure(mobileRefinement.subtitle.transform === 'matrix(0.99, 0, 0, 1, -2, -4)'
+          && mobileRefinement.question.transform === 'matrix(0.985, 0, 0, 1, 2, 2)'
+          && JSON.stringify(mobileRefinement.heading.box) === '[580,205,195,60]'
+          && mobileRefinement.question.box[0] === 1074 && mobileRefinement.question.box[1] === 324
+          && Math.abs(mobileRefinement.question.box[2] - 371.345) < .01 && mobileRefinement.question.box[3] === 104
+          && JSON.stringify(mobileRefinement.note.box) === '[649,618,265,28]'
           && JSON.stringify(mobileRefinement.practice.box) === '[578,882,383,59]'
           && mobileRefinement.question.text === '缓存删除失败后，\n如何确认恢复？',
         '29说明／题面基线、笔记／练习按钮几何或题面换行不符')
         checks.push({ check:'mobile-subtitle-question-baselines-and-preserved-detail-geometry',scene:scene.id,passed:true })
+        const mobileCopyBaselines = await page.evaluate(() => {
+          const style = node => { const s = getComputedStyle(node); return { size: s.fontSize, weight: s.fontWeight, stroke: s.webkitTextStrokeWidth, transform: s.transform } }
+          return { time: [...document.querySelectorAll('.phone-time')].map(style), home: style(document.querySelector('.mobile-home-title h1')),
+            selectedTab: style(document.querySelector('.mobile-detail-tabs > button.selected')),
+            taskCopy: [...document.querySelectorAll('.mobile-task-copy > span')].map(style),
+            definition: style(document.querySelector('.mobile-definition h2')),
+            ratingCopy: [...document.querySelectorAll('.mobile-rating-options > button > span:last-child')].map(style) }
+        })
+        ensure(mobileCopyBaselines.home.weight === '500' && mobileCopyBaselines.home.stroke === '0.5px'
+          && mobileCopyBaselines.home.transform === 'matrix(0.97, 0, 0, 0.96, 0, 0)'
+          && JSON.stringify(mobileCopyBaselines.time.map(value => value.transform)) === '["matrix(1.11, 0, 0, 1, 2, -2)","matrix(1.11, 0, 0, 1, 1, -1)","matrix(1.11, 0, 0, 1, 1, -2)"]'
+          && mobileCopyBaselines.selectedTab.size === '18.5px' && mobileCopyBaselines.selectedTab.weight === '500'
+          && mobileCopyBaselines.definition.size === '19.5px'
+          && JSON.stringify(mobileCopyBaselines.taskCopy.map(value => value.transform)) === '["matrix(0.96, 0, 0, 1, 0, 1)","matrix(0.96, 0, 0, 1, -1, -2)"]'
+          && mobileCopyBaselines.ratingCopy.length === 4 && mobileCopyBaselines.ratingCopy.every(value => value.size === '16.75px'
+            && value.weight === '400' && value.stroke === '0.15px' && value.transform === 'matrix(1, 0, 0, 1, 1, 3)'), '29局部原文字框、状态时间或评分标签基线不符')
+        checks.push({ check: 'mobile-reference-copy-baselines-and-local-typography', scene: scene.id, ...mobileCopyBaselines, passed: true })
+        const mobileMaterials = await page.evaluate(() => {
+          const background = selector => getComputedStyle(document.querySelector(selector)).backgroundImage
+          return { body: background('.mobile-scene'), screen: background('.phone-today .phone-screen'), frame: background('.mobile-phone'),
+            continue: background('.mobile-continue'), selectedTab: background('.mobile-detail-tabs > button.selected'),
+            beforeOpacity: getComputedStyle(document.querySelector('.mobile-continue'), '::before').opacity,
+            afterOpacity: getComputedStyle(document.querySelector('.mobile-continue'), '::after').opacity }
+        })
+        ensure(mobileMaterials.body.includes('620px 400px') && mobileMaterials.screen.includes('180px 140px')
+          && mobileMaterials.frame.startsWith('linear-gradient(105deg, rgb(102, 97, 90)')
+          && mobileMaterials.continue.includes('rgb(44, 33, 26)') && mobileMaterials.continue.includes('rgb(61, 45, 35)')
+          && mobileMaterials.selectedTab === 'linear-gradient(170deg, rgb(110, 74, 50), rgb(174, 119, 78) 74%, rgb(223, 171, 122))'
+          && mobileMaterials.beforeOpacity === '0.22' && mobileMaterials.afterOpacity === '0.22', '29背景、局部光照或原手机框材质不符')
+        checks.push({ check: 'mobile-material-layers-with-original-phone-frame', scene: scene.id, ...mobileMaterials, passed: true })
         const writes = [], onWrite = request => {
           if (new URL(request.url()).pathname.startsWith('/api/') && !['GET','HEAD','OPTIONS'].includes(request.method())) writes.push(request.method() + ' ' + new URL(request.url()).pathname)
         }
