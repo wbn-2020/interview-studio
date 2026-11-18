@@ -3450,6 +3450,7 @@ try {
                 paths: [...node.querySelectorAll('.r-icon path')].map(path => [path.getAttribute('d'), getComputedStyle(path).fill]) }
             }) }
         })
+        await writeJson(path.join(values.output, 'records', '27-preview-copy.json'), referenceCopy)
         const copyType = referenceCopy.type
         ensure(copyType['.r-canvas'].weight === '300' && copyType['.r-topbar'].weight === '400'
           && copyType['.r-nav-item > span'].transform === 'matrix(0.94, 0, 0, 1, 1, 0)'
@@ -3473,7 +3474,7 @@ try {
         ]) && referenceCopy.preview.every(item => item.paths.length === 2
           && item.paths[0][0] === 'M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7Z')
           && referenceCopy.preview[0].paths[0][1] === 'rgb(229, 226, 220)' && referenceCopy.preview[1].paths[0][1] === 'none'
-          && referenceCopy.preview[0].badgeBackground.includes('rgba(120, 83, 51, 0.569)')
+          && referenceCopy.preview[0].badgeBackground.includes('rgba(120, 83, 51, 0.57)')
           && referenceCopy.preview[1].badgeBackground === 'none', '27预览原文、版本底色或文档实心／轮廓差异不符')
         checks.push({ check: 'ai-authorization-reference-copy-baselines-preview-and-stage-typography', scene: scene.id,
           ...referenceCopy, passed: true })
@@ -4195,10 +4196,11 @@ try {
             note: style('.sp-inbox-note'), noteCopy: style('.sp-inbox-note-copy'),
           }
         })
-        ensure(inboxMaterials.selected.background.includes('rgba(135, 99, 67, 0.149)')
+        await writeJson(path.join(values.output, 'records', '30-inbox-materials.json'), inboxMaterials)
+        ensure(inboxMaterials.selected.background.includes('rgba(135, 99, 67, 0.15)')
           && inboxMaterials.detail.background.includes('rgb(25, 21, 18)') && inboxMaterials.detail.clip === 'border-box, border-box'
           && inboxMaterials.excerpt.background === 'linear-gradient(120deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0.02))'
-          && inboxMaterials.primary.background.includes('rgb(226, 173, 119)') && inboxMaterials.primary.transform.startsWith('matrix3d(')
+          && inboxMaterials.primary.background.includes('rgb(226, 173, 119)') && inboxMaterials.primary.transform === 'matrix(1, 0, 0, 1, 0, 0)'
           && inboxMaterials.primary.shadow.includes('inset') && inboxMaterials.secondary.background.includes('rgba(42, 37, 31, 0.6)')
           && inboxMaterials.actionCopy.weight === '300' && inboxMaterials.actionCopy.stroke === '0.07px'
           && inboxMaterials.button.background === 'linear-gradient(115deg, rgba(46, 40, 35, 0.2), rgba(57, 50, 43, 0.133))'
