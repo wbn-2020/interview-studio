@@ -4080,6 +4080,24 @@ try {
           businessWrites: writes, passed: true, limitations: '评分、作答和任务仅在展示页内存变化；关系内容和持久业务待确认，原字体与品牌素材未获得' })
       }
       if (scene.id === '30') {
+        const inboxBrand = await page.locator('.r-scene-30 .r-sidebar .r-brand').evaluate(node => {
+          const box = element => { const r = element.getBoundingClientRect(); return [r.x, r.y, r.width, r.height] }
+          const emblem = node.querySelector('.r-emblem'), word = node.querySelector('.r-brand-word'), small = word.querySelector('small')
+          const path = emblem.querySelector('path'), contours = (path?.getAttribute('d') ?? '').split(/z/i).filter(value => value.trim())
+          return { emblem: box(emblem), word: box(word), small: box(small), circles: emblem.querySelectorAll('circle').length,
+            paths: emblem.querySelectorAll('path').length, cutout: path?.getAttribute('fill-rule'),
+            closedContours: contours.length,
+            wordSize: getComputedStyle(word).fontSize, wordWeight: getComputedStyle(word).fontWeight,
+            copy: word.textContent, hiddenDecoration: emblem.getAttribute('aria-hidden') }
+        })
+        const brandClose = (actual, expected) => Math.abs(actual - expected) < .02
+        ensure(JSON.stringify(inboxBrand.emblem) === '[36.5,54.5,62,62]' && inboxBrand.circles === 1 && inboxBrand.paths === 1
+          && inboxBrand.cutout === 'evenodd' && inboxBrand.closedContours === 2
+          && inboxBrand.word[0] === 107 && inboxBrand.word[1] === 64 && brandClose(inboxBrand.small[0], 82.025)
+          && inboxBrand.small[1] === 107 && inboxBrand.small[3] === 22 && inboxBrand.wordSize === '33.5px'
+          && inboxBrand.wordWeight === '300' && inboxBrand.copy === '问阶Interview Studio' && inboxBrand.hiddenDecoration === 'true',
+          '30品牌圆环、八尖星镂空或中英文固定字框不符')
+        checks.push({ check: 'inbox-brand-ring-cutout-and-copy-geometry', scene: scene.id, ...inboxBrand, passed: true })
         const list = page.getByRole('region', { name: '待整理内容' })
         const sources = page.getByRole('complementary', { name: '收件箱来源' })
         const detail = page.getByRole('complementary', { name: '内容详情' })

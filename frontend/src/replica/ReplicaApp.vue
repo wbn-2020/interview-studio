@@ -202,6 +202,14 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
               <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true"><path d="M50 2 61 37 94 50 61 63 50 98 39 63 6 50 39 37Z M50 29 44 44 29 50 44 56 50 72 56 56 71 50 56 44Z" fill="currentColor" fill-rule="evenodd" /></svg>
               <span class="r-brand-word">问阶<small>Interview Studio</small></span>
             </div>
+            <div v-else-if="scene === 30" class="r-brand">
+              <!-- 专属SVG放在复刻入口，避免改动正式入口共享资源；菱形镂空沿用侧栏底色。 -->
+              <svg class="r-emblem" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+                <circle cx="50" cy="50" r="38" stroke="#edc399" stroke-width="2.2" />
+                <path d="M50 4C51 24 51 36 55 41L65 32 59 44C65 47 76 49 97 50C76 51 65 52 59 55L65 66 55 60C52 67 51 77 50 98C49 77 48 67 45 60L34 66 41 55C35 52 24 51 3 50C24 49 35 47 41 44L35 32 45 41C49 35 49 24 50 4Z M50 39 41 50 50 61 59 50Z" fill="#e4b787" fill-rule="evenodd" stroke="#e4b787" stroke-width="1.25" stroke-linejoin="round" />
+              </svg>
+              <span class="r-brand-word">问阶<small>Interview Studio</small></span>
+            </div>
             <RBrand v-else :variant="scene" />
           </a>
           <div v-if="scene === 18" class="r-brand-rule" aria-hidden="true" />
@@ -923,9 +931,10 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-30::after { content: ""; position: absolute; inset: 0; border: 1px solid #5d4b362b; border-radius: 24px; pointer-events: none; }
 .r-scene-30 .r-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; border-color: #73583e8c; background: radial-gradient(ellipse 260px 300px at 0 0, #5f423322, transparent), linear-gradient(130deg, #1a1714, #1b1613 64%, #211a14); }
 .r-scene-30 .r-sidebar .r-brand { left: 27px; top: 29px; gap: 8px; }
-.r-scene-30 .r-sidebar :deep(.r-emblem) { width: 62px; height: 62px; }
-.r-scene-30 .r-sidebar :deep(.r-brand-word) { position: relative; top: 4px; font-size: 34px; font-weight: 500; line-height: 41px; }
-.r-scene-30 .r-sidebar :deep(.r-brand-word small) { position: relative; left: -24px; font-size: 16px; margin-top: 0; line-height: 22px; color: #ded6ce; }
+.r-scene-30 .r-sidebar :deep(.r-emblem) { width: 62px; height: 62px; transform: translate(.5px, -3px); }
+/* 副标抵消标题的横向缩放，保持第30页两行文字各自的原图字框。 */
+.r-scene-30 .r-sidebar :deep(.r-brand-word) { position: relative; top: 7px; font-size: 33.5px; font-weight: 300; line-height: 41px; transform: translateX(1px) scaleX(.925); transform-origin: 0 0; }
+.r-scene-30 .r-sidebar :deep(.r-brand-word small) { position: relative; top: 2px; left: -27px; font-size: 16px; margin-top: 0; line-height: 22px; color: #ded6ce; transform: scaleX(1.07); transform-origin: 0 0; }
 .r-scene-30 .r-sidebar nav { top: 141px; left: 20px; right: 22px; gap: 9px; }
 .r-scene-30 .r-nav-item { height: 59px; padding: 0 18px; gap: 13px; font-size: 22.5px; font-weight: 300; color: #e3ded7; white-space: nowrap; }
 .r-scene-30 .r-nav-item > span { display: inline-block; transform-origin: 0 50%; transform: translate(-1px, 1px) scaleX(.94); -webkit-text-stroke: .04px currentColor; }
