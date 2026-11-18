@@ -4090,13 +4090,16 @@ try {
             paths: emblem.querySelectorAll('path').length, cutout: path?.getAttribute('fill-rule'),
             closedContours: contours.length,
             wordSize: getComputedStyle(word).fontSize, wordWeight: getComputedStyle(word).fontWeight,
+            wordStroke: getComputedStyle(word).webkitTextStrokeWidth, smallStroke: getComputedStyle(small).webkitTextStrokeWidth,
             copy: word.textContent, hiddenDecoration: emblem.getAttribute('aria-hidden') }
         })
         const brandClose = (actual, expected) => Math.abs(actual - expected) < .02
         ensure(JSON.stringify(inboxBrand.emblem) === '[36.5,54.5,62,62]' && inboxBrand.circles === 1 && inboxBrand.paths === 1
           && inboxBrand.cutout === 'evenodd' && inboxBrand.closedContours === 2
-          && inboxBrand.word[0] === 107 && inboxBrand.word[1] === 64 && brandClose(inboxBrand.small[0], 82.025)
-          && inboxBrand.small[1] === 107 && inboxBrand.small[3] === 22 && inboxBrand.wordSize === '33.5px'
+          && inboxBrand.word[0] === 107 && inboxBrand.word[1] === 64 && brandClose(inboxBrand.word[2], 107.405) && inboxBrand.word[3] === 63
+          && brandClose(inboxBrand.small[0], 81.78) && brandClose(inboxBrand.small[2], 113.742)
+          && inboxBrand.small[1] === 106 && inboxBrand.small[3] === 22 && inboxBrand.wordSize === '33.5px'
+          && inboxBrand.wordStroke === '0.1px' && inboxBrand.smallStroke === '0px'
           && inboxBrand.wordWeight === '300' && inboxBrand.copy === '问阶Interview Studio' && inboxBrand.hiddenDecoration === 'true',
           '30品牌圆环、八尖星镂空或中英文固定字框不符')
         checks.push({ check: 'inbox-brand-ring-cutout-and-copy-geometry', scene: scene.id, ...inboxBrand, passed: true })

@@ -932,9 +932,9 @@ onUnmounted(() => { clearTimeout(toastTimer); window.removeEventListener('resize
 .r-scene-30 .r-sidebar { top: 27px; left: 8px; width: 219px; bottom: 25px; border-radius: 20px; border-color: #73583e8c; background: radial-gradient(ellipse 260px 300px at 0 0, #5f423322, transparent), linear-gradient(130deg, #1a1714, #1b1613 64%, #211a14); }
 .r-scene-30 .r-sidebar .r-brand { left: 27px; top: 29px; gap: 8px; }
 .r-scene-30 .r-sidebar :deep(.r-emblem) { width: 62px; height: 62px; transform: translate(.5px, -3px); }
-/* 副标抵消标题的横向缩放，保持第30页两行文字各自的原图字框。 */
-.r-scene-30 .r-sidebar :deep(.r-brand-word) { position: relative; top: 7px; font-size: 33.5px; font-weight: 300; line-height: 41px; transform: translateX(1px) scaleX(.925); transform-origin: 0 0; }
-.r-scene-30 .r-sidebar :deep(.r-brand-word small) { position: relative; top: 2px; left: -27px; font-size: 16px; margin-top: 0; line-height: 22px; color: #ded6ce; transform: scaleX(1.07); transform-origin: 0 0; }
+/* 两行字框独立校准；副标清除继承的描边，避免小字号笔画变粗。 */
+.r-scene-30 .r-sidebar :deep(.r-brand-word) { position: relative; top: 7px; font-size: 33.5px; font-weight: 300; line-height: 41px; transform: translateX(1px) scaleX(.945); transform-origin: 0 0; -webkit-text-stroke: .1px currentColor; }
+.r-scene-30 .r-sidebar :deep(.r-brand-word small) { position: relative; top: 1px; left: -26.7px; font-size: 16px; margin-top: 0; line-height: 22px; color: #ded6ce; transform: scaleX(1.059); transform-origin: 0 0; -webkit-text-stroke: 0; }
 .r-scene-30 .r-sidebar nav { top: 141px; left: 20px; right: 22px; gap: 9px; }
 .r-scene-30 .r-nav-item { height: 59px; padding: 0 18px; gap: 13px; font-size: 22.5px; font-weight: 300; color: #e3ded7; white-space: nowrap; }
 .r-scene-30 .r-nav-item > span { display: inline-block; transform-origin: 0 50%; transform: translate(-1px, 1px) scaleX(.94); -webkit-text-stroke: .04px currentColor; }
