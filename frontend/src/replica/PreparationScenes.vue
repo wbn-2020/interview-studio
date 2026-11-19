@@ -265,11 +265,11 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .pdf-toolbar { padding-inline: 0; font-size: 18px; }.pdf-toolbar > button, .pdf-toolbar > span, .pdf-toolbar > .pdf-zoom { position: absolute; top: 50%; transform: translateY(-50%); }.pdf-toolbar > button { display: grid; place-items: center; width: 36px; height: 38px; }.pdf-toolbar > button:nth-of-type(1) { left: 12px; }.pdf-toolbar > span { left: 69px; }.pdf-toolbar > button:nth-of-type(2) { left: 172px; }.pdf-toolbar > button:nth-of-type(3) { left: 417px; }.pdf-toolbar > button:nth-of-type(4) { left: 476px; }.pdf-toolbar > button:nth-of-type(5) { left: 524px; width: 30px; }.pdf-zoom { left: 233px; width: 155px; height: 38px; margin: 0; gap: 0; justify-content: space-between; padding-inline: 9px; }.pdf-zoom > button { display: grid; place-items: center; width: 27px; height: 34px; border-radius: 50%; background: #ffffff04; }
 .mini-document { background: #e8e4e0; }.pdf-thumbnails { align-items: flex-start; padding-left: 19px; gap: 15px; }
 .pdf-paper { position: relative; padding-top: 52px; background: #faf6f1; }
-.pdf-paper h2 { position: absolute; left: 37px; top: 52px; font-size: 22px; line-height: 31px; margin: 0; }
+.pdf-paper h2 { position: absolute; left: 37px; top: 51px; font-size: 22px; line-height: 31px; margin: 0; }
 .pdf-paper h3 { position: absolute; left: 37px; font-size: 19px; line-height: 29px; margin: 0; }
 .pdf-paper h3:nth-of-type(1) { top: 112px; }.pdf-paper h3:nth-of-type(2) { top: 221px; }.pdf-paper h3:nth-of-type(3) { top: 343px; }.pdf-paper h3:nth-of-type(4) { top: 485px; }
-.pdf-paper p { position: absolute; left: 37px; font-size: 15px; line-height: 24px; }.pdf-paper p:nth-of-type(1) { top: 150px; }.pdf-paper p:nth-of-type(2) { top: 381px; }
-.pdf-paper ul { position: absolute; left: 37px; padding-left: 31px; font-size: 15px; line-height: 32px; }.pdf-paper ul:nth-of-type(1) { top: 256px; }.pdf-paper ul:nth-of-type(2) { top: 519px; }
+.pdf-paper p { position: absolute; left: 37px; font-size: 15px; line-height: 24px; }.pdf-paper p:nth-of-type(1) { top: 151px; }.pdf-paper p:nth-of-type(2) { top: 381px; }
+.pdf-paper ul { position: absolute; left: 37px; padding-left: 31px; font-size: 15px; line-height: 32px; }.pdf-paper ul:nth-of-type(1) { top: 256px; line-height: 33px; }.pdf-paper ul:nth-of-type(2) { top: 519px; }
 .pdf-paper mark { position: absolute; left: 37px; top: 436px; margin: 0; font-size: 15px; line-height: 24px; border-radius: 3px; }
 .parsing { background: linear-gradient(115deg, #231f1a, #1c1916 60%, #211c17); }.parsing h3 { line-height: 33.35px; }.parsing-status { font-size: 17px; background: linear-gradient(115deg, #38322b88, #302a2388) !important; }.parsing-status .r-success { color: #69d49a; }.parsing-status .r-success svg { color: #082e21; border-radius: 50%; background: linear-gradient(120deg, #61f0a7, #35bc87); padding: 3px; }
 .parsing-content { position: absolute; top: 134px; bottom: 174px; left: 17px; right: 17px; padding: 0; }
@@ -513,4 +513,8 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .pdf-mini-page mark { position: absolute; left: 37px; top: 436px; padding: 0 2px; border-radius: 3px; background: #f6d19f; font-size: 15px; line-height: 24px; white-space: nowrap; }
 .pdf-mini-footer { position: absolute; bottom: 16px; right: 30px; left: 37px; display: block; border-top: 1px solid #5e5952; padding-top: 7px; font-size: 15px; text-align: right; }
 .pdf-thumbnails button.selected .mini-document-known { outline-color: #e9a567; box-shadow: 0 0 0 2px #4b3325, 0 0 0 4px #edb77b70; }
+
+/* 固定参考视口单独校准首段与问题列表的字面；独立绘制层保持重加样式和页码往返时的栅格结果一致。 */
+.prep-materials .pdf-paper p:nth-of-type(1), .prep-materials .pdf-paper ul:nth-of-type(1) { transform: scaleX(.99); will-change: transform; }
+.prep-materials .pdf-paper p:nth-of-type(1), .prep-materials .pdf-paper ul:nth-of-type(1) li { -webkit-text-stroke: .20px currentColor; }
 </style>
