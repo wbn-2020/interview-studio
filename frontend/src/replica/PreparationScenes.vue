@@ -107,7 +107,19 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
         <RIcon v-if="i === 0" name="more-vertical" :size="22" />
       </button>
     </aside>
-    <section class="r-panel pdf-viewer"><div class="pdf-toolbar r-row"><button class="r-icon-btn" title="上一页" @click="pdfPage = Math.max(1, pdfPage - 1)"><RIcon name="chevron-left" /></button><span>第 {{ pdfPage }} / 24 页</span><button class="r-icon-btn" title="下一页" @click="pdfPage = Math.min(24, pdfPage + 1)"><RIcon name="chevron-right" /></button><div class="pdf-zoom r-row"><button title="缩小" @click="zoom = Math.max(50, zoom - 10)"><RIcon name="minus" /></button>{{ zoom }}%<button title="放大" @click="zoom = Math.min(150, zoom + 10)"><RIcon name="plus" /></button></div><button title="搜索文档" @click="emit('notify', '文档内检索流程待确认')"><RIcon name="search" /></button><button title="适应页面" @click="zoom = 100"><RIcon name="maximize" variant="materials" :size="26" /></button><button title="更多" @click="emit('notify', '当前文档第 8 / 24 页')"><RIcon name="more-vertical" /></button></div><aside class="pdf-thumbnails"><button v-for="n in [6, 7, 8, 9]" :key="n" :class="{ selected: pdfPage === n }" @click="pdfPage = n"><span class="mini-document"><b /><i v-for="k in 12" :key="k" :style="{ width: `${[82, 90, 69, 88, 77][k % 5]}%` }" /></span>{{ n }}</button></aside><div class="pdf-page-wrap"><article class="pdf-paper" :style="{ transform: `scale(${zoom / 100})` }"><h2>3. 项目复盘：营销交易平台</h2><h3>3.1&nbsp; 项目背景</h3><p>公司希望通过建设一套营销交易平台，提升商家与用户的<br>交易效率，并支持多种营销玩法。</p><h3>3.2&nbsp; 问题</h3><ul><li>高并发下订单创建成功率不稳定；</li><li>业务规则复杂，维护成本高。</li></ul><h3>3.3&nbsp; 动作</h3><p>我们采用了分布式架构，核心服务拆分为订单、支付、营<br>销三大模块，并引入了异步消息队列，提升系统解耦能力。</p><mark>上线后，日均交易量达到 120 万，较之前提升 60%。</mark><h3>3.4&nbsp; 结果</h3><ul><li>系统稳定性提升至 99.95%；</li><li>支持了 5 大营销活动，交易额同比增长 80%。</li></ul><footer>{{ pdfPage }} / 24</footer></article></div></section>
+    <section class="r-panel pdf-viewer"><div class="pdf-toolbar r-row"><button class="r-icon-btn" title="上一页" @click="pdfPage = Math.max(1, pdfPage - 1)"><RIcon name="chevron-left" /></button><span>第 {{ pdfPage }} / 24 页</span><button class="r-icon-btn" title="下一页" @click="pdfPage = Math.min(24, pdfPage + 1)"><RIcon name="chevron-right" /></button><div class="pdf-zoom r-row"><button title="缩小" @click="zoom = Math.max(50, zoom - 10)"><RIcon name="minus" /></button>{{ zoom }}%<button title="放大" @click="zoom = Math.min(150, zoom + 10)"><RIcon name="plus" /></button></div><button title="搜索文档" @click="emit('notify', '文档内检索流程待确认')"><RIcon name="search" /></button><button title="适应页面" @click="zoom = 100"><RIcon name="maximize" variant="materials" :size="26" /></button><button title="更多" @click="emit('notify', '当前文档第 8 / 24 页')"><RIcon name="more-vertical" /></button></div><aside class="pdf-thumbnails"><button v-for="n in [6, 7, 8, 9]" :key="n" :class="{ selected: pdfPage === n }" @click="pdfPage = n"><span class="mini-document" :class="{ 'mini-document-known': n === 8 }"><template v-if="n === 8"><span class="pdf-mini-page" aria-hidden="true">
+<strong class="pdf-mini-title">3. 项目复盘：营销交易平台</strong>
+<strong class="pdf-mini-section" data-part="background">3.1&nbsp; 项目背景</strong>
+<span class="pdf-mini-paragraph" data-part="background">公司希望通过建设一套营销交易平台，提升商家与用户的<br>交易效率，并支持多种营销玩法。</span>
+<strong class="pdf-mini-section" data-part="problem">3.2&nbsp; 问题</strong>
+<span class="pdf-mini-list" data-part="problem"><span>高并发下订单创建成功率不稳定；</span><span>业务规则复杂，维护成本高。</span></span>
+<strong class="pdf-mini-section" data-part="action">3.3&nbsp; 动作</strong>
+<span class="pdf-mini-paragraph" data-part="action">我们采用了分布式架构，核心服务拆分为订单、支付、营<br>销三大模块，并引入了异步消息队列，提升系统解耦能力。</span>
+<mark>上线后，日均交易量达到 120 万，较之前提升 60%。</mark>
+<strong class="pdf-mini-section" data-part="result">3.4&nbsp; 结果</strong>
+<span class="pdf-mini-list" data-part="result"><span>系统稳定性提升至 99.95%；</span><span>支持了 5 大营销活动，交易额同比增长 80%。</span></span>
+<span class="pdf-mini-footer">8 / 24</span>
+</span></template><template v-else><b /><i v-for="k in 12" :key="k" :style="{ width: `${[82, 90, 69, 88, 77][k % 5]}%` }" /></template></span>{{ n }}</button></aside><div class="pdf-page-wrap"><article class="pdf-paper" :style="{ transform: `scale(${zoom / 100})` }"><h2>3. 项目复盘：营销交易平台</h2><h3>3.1&nbsp; 项目背景</h3><p>公司希望通过建设一套营销交易平台，提升商家与用户的<br>交易效率，并支持多种营销玩法。</p><h3>3.2&nbsp; 问题</h3><ul><li>高并发下订单创建成功率不稳定；</li><li>业务规则复杂，维护成本高。</li></ul><h3>3.3&nbsp; 动作</h3><p>我们采用了分布式架构，核心服务拆分为订单、支付、营<br>销三大模块，并引入了异步消息队列，提升系统解耦能力。</p><mark>上线后，日均交易量达到 120 万，较之前提升 60%。</mark><h3>3.4&nbsp; 结果</h3><ul><li>系统稳定性提升至 99.95%；</li><li>支持了 5 大营销活动，交易额同比增长 80%。</li></ul><footer>{{ pdfPage }} / 24</footer></article></div></section>
     <aside class="r-panel parsing">
       <h3>解析结果</h3>
       <button class="parsing-status r-between" @click="editing = !editing"><span class="r-row r-success"><RIcon name="circle-check" variant="materials" :size="27" />已解析文字层</span><RIcon :name="editing ? 'chevron-down' : 'chevron-up'" :size="20" /></button>
@@ -488,4 +500,17 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-expression .history-count { padding-block: 5.5px !important; }
 .prep-expression .version-history > .r-btn { font-size: 17px; }
 .prep-expression .version-history > .r-primary { margin-top: 13px; }
+
+/* 已确认的第8页提供缩略正文；其他页保留占位，完整阅读仍使用主阅读区。 */
+.prep-materials .mini-document-known { position: relative; display: block; padding: 0; overflow: hidden; border-radius: 2px; background: linear-gradient(125deg, #f9f5ef, #f8ebd8 65%, #faf5ed); }
+.prep-materials .pdf-mini-page { position: absolute; top: 0; left: 0; display: block; width: 429px; height: 684px; color: #625b53; font-size: 15px; font-weight: 400; line-height: 1.5; text-align: left; filter: blur(1px); transform-origin: top left; transform: translate(3px, 3px) scale(0.198, 0.16); }
+.pdf-mini-title, .pdf-mini-section, .pdf-mini-paragraph, .pdf-mini-list { position: absolute; left: 37px; display: block; }
+.pdf-mini-title { top: 52px; font-size: 22px; font-weight: 700; line-height: 31px; }
+.pdf-mini-section { font-size: 19px; font-weight: 650; line-height: 29px; }
+.pdf-mini-section[data-part="background"] { top: 112px; }.pdf-mini-section[data-part="problem"] { top: 221px; }.pdf-mini-section[data-part="action"] { top: 343px; }.pdf-mini-section[data-part="result"] { top: 485px; }
+.pdf-mini-paragraph { font-size: 15px; line-height: 24px; white-space: nowrap; }.pdf-mini-paragraph[data-part="background"] { top: 150px; }.pdf-mini-paragraph[data-part="action"] { top: 381px; }
+.pdf-mini-list { padding-left: 31px; font-size: 15px; line-height: 32px; white-space: nowrap; }.pdf-mini-list[data-part="problem"] { top: 256px; }.pdf-mini-list[data-part="result"] { top: 519px; }.pdf-mini-list > span { display: list-item; list-style-type: disc; }
+.pdf-mini-page mark { position: absolute; left: 37px; top: 436px; padding: 0 2px; border-radius: 3px; background: #f6d19f; font-size: 15px; line-height: 24px; white-space: nowrap; }
+.pdf-mini-footer { position: absolute; bottom: 16px; right: 30px; left: 37px; display: block; border-top: 1px solid #5e5952; padding-top: 7px; font-size: 15px; text-align: right; }
+.pdf-thumbnails button.selected .mini-document-known { outline-color: #e9a567; box-shadow: 0 0 0 2px #4b3325, 0 0 0 4px #edb77b70; }
 </style>
