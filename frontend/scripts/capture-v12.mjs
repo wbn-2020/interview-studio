@@ -588,6 +588,25 @@ try {
             && row.textBounds.bottom <= paragraphGeometry.source.top - 15),
         '04四项事实标签原文、字形、网格行高或正文与来源避让不符')
         checks.push({ check: 'fact-four-labels-grid-flow-source-body-text-boundaries', scene: scene.id, labelGeometry, passed: true })
+        const documentRows = await page.evaluate(() => [...document.querySelectorAll('.prep-facts .expressions > .expression-row')].map(row => {
+          const style = getComputedStyle(row), box = row.getBoundingClientRect(), icon = row.querySelector('svg')
+          return { text: [...row.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join('').trim(),
+            box: [box.x, box.y, box.width, box.height], size: style.fontSize, weight: style.fontWeight,
+            spacing: style.letterSpacing, lineHeight: style.lineHeight, width: getComputedStyle(icon).width,
+            paths: [...icon.querySelectorAll(':scope > path')].map(node => ({ d: getComputedStyle(node).d, stroke: getComputedStyle(node).strokeWidth })) }
+        }))
+        const expectedDocumentPaths = [
+          'path("M 6 2 H 14 L 20 8 V 20 A 2 2 0 0 1 18 22 H 6 A 2 2 0 0 1 4 20 V 4 A 2 2 0 0 1 6 2 Z")',
+          'path("M 14 2 V 8 H 20")',
+        ]
+        ensure(JSON.stringify(documentRows.map(row => row.text)) === JSON.stringify(['项目介绍 · v3', 'STAR 表达 · v2', '技术取舍 · v1'])
+          && documentRows.every((row, index) => row.size === '23px' && row.weight === '300'
+            && row.spacing === '-0.5px' && row.lineHeight === '33px' && row.width === '27px'
+            && JSON.stringify(row.box) === JSON.stringify([1163, 333.796875 + 64 * index, 327, 64])
+            && row.paths.length === 2 && row.paths.every((item, pathIndex) => item.stroke === '2.5px' && item.d === expectedDocumentPaths[pathIndex])),
+        '04材料三行原文、字号字距、固定行高或六条文档路径的实际CSS不符')
+        checks.push({ check: 'fact-material-three-rows-six-scoped-document-paths-geometry', scene: scene.id, documentRows, passed: true })
+
 
 
         const status = await page.evaluate(() => {
