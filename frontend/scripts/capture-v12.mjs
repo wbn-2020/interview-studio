@@ -564,6 +564,31 @@ try {
             && row.textBounds.bottom <= paragraphGeometry.source.top - 15),
         '04正文七行原文、网格行高或标签与来源避让不符')
         checks.push({ check: 'fact-seven-explicit-lines-grid-flow-label-source-text-boundaries', scene: scene.id, paragraphGeometry, passed: true })
+        const labelGeometry = await page.evaluate(() => {
+          const values = [...document.querySelectorAll('.fact-body dd')]
+          return [...document.querySelectorAll('.fact-body dt')].map((node, index) => {
+            const style = getComputedStyle(node), range = document.createRange()
+            range.selectNodeContents(node)
+            const text = range.getBoundingClientRect(), value = values[index].getBoundingClientRect()
+            return { text: node.textContent.trim(), size: style.fontSize, weight: style.fontWeight,
+              lineHeight: style.lineHeight, stroke: style.webkitTextStrokeWidth,
+              transform: style.transform, origin: style.transformOrigin, flowHeight: node.offsetHeight,
+              valueFlowHeight: values[index].offsetHeight,
+              textBounds: { left: text.left, top: text.top, right: text.right, bottom: text.bottom }, valueLeft: value.left }
+          })
+        })
+        ensure(JSON.stringify(labelGeometry.map(row => row.text)) === JSON.stringify(['场景', '问题', '我的动作', '结果与证据'])
+          && JSON.stringify(labelGeometry.map(row => row.flowHeight)) === '[35,70,70,70]'
+          && labelGeometry.every((row, index) => row.size === '23px' && row.weight === '300'
+            && row.lineHeight === '35px' && row.stroke === '0.2px' && row.origin === '0px 0px'
+            && row.transform === (index < 3 ? 'matrix(0.913044, 0, 0, 1.04, 0, 0)' : 'matrix(0.913044, 0, 0, 1, 0, 0)')
+            && row.flowHeight === row.valueFlowHeight && row.textBounds.right <= row.valueLeft - 12
+            && row.textBounds.left >= paragraphGeometry.panel.left + 20
+            && row.textBounds.top >= paragraphGeometry.panel.top + 100
+            && row.textBounds.bottom <= paragraphGeometry.source.top - 15),
+        '04四项事实标签原文、字形、网格行高或正文与来源避让不符')
+        checks.push({ check: 'fact-four-labels-grid-flow-source-body-text-boundaries', scene: scene.id, labelGeometry, passed: true })
+
 
         const status = await page.evaluate(() => {
           const box = node => { const b = node.getBoundingClientRect(); return [b.x, b.y, b.width, b.height] }
