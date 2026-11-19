@@ -189,7 +189,7 @@ onUnmounted(() => {
     <aside class="r-panel sp-inbox-detail" aria-label="内容详情">
       <header class="r-between"><h2>内容详情</h2><button class="r-icon-btn" title="打开内容" @click="go(11)"><InboxIcon name="external-link" :size="23" /></button></header>
       <h3 class="sp-excerpt-heading"><span class="sp-excerpt-heading-copy">原始摘录</span></h3>
-      <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p><span class="sp-inbox-excerpt-line">缓存删除失败通常有三种情况：</span></p><p><span class="sp-inbox-excerpt-line">1. key 不存在，删除返回 0；</span><br><span class="sp-inbox-excerpt-line">2. 网络超时，客户端误判；</span><br><span class="sp-inbox-excerpt-line">3. 连接池耗尽，导致删除请求被拒绝。</span><br><span class="sp-inbox-excerpt-line">需要根据业务场景选择合适的重试策略...</span></p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
+      <div class="sp-inbox-excerpt"><template v-if="currentInbox?.index === 0"><p><span class="sp-inbox-excerpt-line">缓存删除失败通常有三种情况：</span></p><p><span class="sp-inbox-excerpt-line">1. <span class="sp-inbox-excerpt-key">key</span> 不存在，删除返回 0；</span><br><span class="sp-inbox-excerpt-line">2. 网络超时，客户端误判；</span><br><span class="sp-inbox-excerpt-line">3. 连接池耗尽，导致删除请求被拒绝。</span><br><span class="sp-inbox-excerpt-line">需要根据业务场景选择合适的重试策略...</span></p></template><template v-else-if="currentInbox"><h3>{{ currentInbox.title }}</h3><p class="r-muted">该条目的原始摘录待确认</p></template></div>
       <div class="r-rule" /><h3 class="r-row sp-suggestions-title"><RIcon name="lightbulb" variant="inbox" :size="27" />建议操作</h3><div class="sp-inbox-buttons"><button class="r-btn" @click="go(11)"><RIcon name="file-plus" variant="inbox" :size="28" /><span class="sp-inbox-action-copy">转为笔记</span></button><button class="r-btn" @click="go(12)"><RIcon name="box" variant="inbox" :size="30" /><span class="sp-inbox-action-copy">新建概念</span></button><button class="r-btn" @click="go(16)"><RIcon name="credit-card" variant="inbox" :size="27" /><span class="sp-inbox-action-copy">创建回忆卡</span></button><button class="r-btn" @click="go(9)"><RIcon name="link" variant="inbox" :size="29" /><span class="sp-inbox-action-copy">关联已有知识</span></button></div><p class="sp-inbox-note r-row r-muted"><RIcon name="info" :size="24" /><span class="sp-inbox-note-copy">来源与候选分开保存，不会自动发布</span></p>
     </aside>
   </section>
@@ -376,6 +376,10 @@ onUnmounted(() => {
 /* 逐行字框保留摘录原文与换行，避免字形缩放改变五行的布局高度。 */
 .sp-inbox-excerpt p > br { display: none; }
 .sp-inbox-excerpt-line { display: block; line-height: 39px; transform-origin: 0 50%; transform: scale(.994, 1.04); }
+/* 拉丁字串沿用父级基线，零行高避免字体度量撑高五行布局。 */
+.sp-inbox-excerpt-key { font-family: "Segoe UI", sans-serif; font-weight: 400; line-height: 0; }
+.sp-inbox-excerpt p:first-child .sp-inbox-excerpt-line,
+.sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(3) { -webkit-text-stroke: .06px currentColor; }
 .sp-inbox-excerpt p:first-child .sp-inbox-excerpt-line { transform: translateX(-1px) scale(.994, 1.04); }
 .sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:first-child { font-family: "Microsoft YaHei", "Segoe UI", sans-serif; font-size: 22.25px; transform: translate(2px, .5px) scale(.985, 1.04); }
 .sp-inbox-excerpt p:last-child .sp-inbox-excerpt-line:nth-of-type(2) { font-size: 22px; transform: scaleY(1.04); }
