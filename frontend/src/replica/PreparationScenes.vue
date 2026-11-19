@@ -426,8 +426,11 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .fact-heading .r-pill.amber { width: 144px; gap: 10px; background: linear-gradient(110deg, #4a321b, #342414); color: #ffc67f; }
 .fact-status-dot { width: 13px; height: 15px; border-radius: 50%; background: linear-gradient(120deg, #ffc580, #eea654); flex: none; }
 .prep-facts .fact-body dt { color: #aaa6a0; }
-/* 固定21px字面宽度与23px字高，原有显式换行不参与缩放计算。 */
+/* 固定21px字面宽度与23px字号，显式换行保留网格行高。 */
 .prep-facts .fact-body dd { font-size: 23px; font-weight: 400; transform: scaleX(.9130434783); transform-origin: left top; }
+/* 段落单独对齐参考字面，变换不参与网格行高与后续段落位置计算。 */
+.prep-facts .fact-body dd:nth-of-type(1) { transform: scale(.9130434783, 1.04); }
+.prep-facts .fact-body dd:nth-of-type(2), .prep-facts .fact-body dd:nth-of-type(3) { transform: translateY(1px) scaleX(.9130434783); }
 .prep-facts .fact-source { left: 20px; right: 20px; height: 70px; background: linear-gradient(110deg, #ffffff0b, #ffffff07) !important; }
 .prep-facts .fact-links { height: 86px; }
 .prep-facts .fact-links button { position: relative; padding: 21px 27px !important; border-color: #50453a66; background: linear-gradient(120deg, #191613, #151311); }
