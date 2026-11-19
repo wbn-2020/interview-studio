@@ -522,4 +522,9 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 /* 固定参考视口单独校准首段与问题列表的字面；独立绘制层保持重加样式和页码往返时的栅格结果一致。 */
 .prep-materials .pdf-paper p:nth-of-type(1), .prep-materials .pdf-paper ul:nth-of-type(1) { transform: scaleX(.99); will-change: transform; }
 .prep-materials .pdf-paper p:nth-of-type(1), .prep-materials .pdf-paper ul:nth-of-type(1) li { -webkit-text-stroke: .20px currentColor; }
+
+/* 第4页材料列表使用独立文档轮廓。 */
+.prep-facts .expressions > .expression-row { font-size: 23px; letter-spacing: -.5px; line-height: 33px; }
+.prep-facts .expressions > .expression-row > svg:first-child :deep(path:first-child) { d: path('M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z'); stroke-width: 2.5px; }
+.prep-facts .expressions > .expression-row > svg:first-child :deep(path:nth-child(2)) { d: path('M14 2v6h6'); stroke-width: 2.5px; }
 </style>
