@@ -2942,7 +2942,7 @@ try {
         const detailTypography = await page.evaluate(() => {
           const style = selector => {
             const node = document.querySelector(selector), s = getComputedStyle(node), b = node.getBoundingClientRect()
-            return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth, line: s.lineHeight,
+            return { weight: s.fontWeight, size: s.fontSize, stroke: s.webkitTextStrokeWidth, line: s.lineHeight, spacing: s.letterSpacing,
               box: [b.x, b.y, b.width, b.height] }
           }
           return {
@@ -2950,6 +2950,12 @@ try {
             definition: style('.kd-definition p'), note: style('.kd-main-note p'), open: style('.kd-main-note .r-pill'),
             path: style('.kd-path .r-pill'), action: style('.kd-actions .r-primary'), date: style('.kd-recent button span:first-child'),
             evidence: style('.kd-evidence-row h3'), selected: style('.kd-evidence-tabs button.selected'),
+            noteLines: (() => {
+              const node = document.querySelector('.kd-main-note p'), range = document.createRange()
+              return [...node.childNodes].filter(child => child.nodeType === Node.TEXT_NODE).map(child => {
+                range.selectNodeContents(child); return range.getClientRects().length
+              })
+            })(),
             rows: [...document.querySelectorAll('.kd-evidence-row')].map(node => {
               const b = node.getBoundingClientRect(), s = getComputedStyle(node)
               return { y: b.y, height: b.height, paddingBottom: s.paddingBottom, border: s.borderBottomColor }
@@ -2964,7 +2970,9 @@ try {
           && detailTypography.action.weight === '400' && detailTypography.selected.weight === '500'
           && detailTypography.evidence.weight === '400' && detailTypography.evidence.stroke === '0.05px', '12标题、正文或操作字重不符')
         ensure(JSON.stringify(detailTypography.definition.box) === '[270,277,662,150]'
-          && JSON.stringify(detailTypography.note.box) === '[270,514,648,66]' && detailTypography.note.line === '33px'
+          && JSON.stringify(detailTypography.note.box) === '[270,516,648,66]' && detailTypography.note.line === '32px'
+          && detailTypography.note.size === '19.75px' && detailTypography.note.spacing === '-0.3px'
+          && JSON.stringify(detailTypography.noteLines) === '[1,1]'
           && JSON.stringify(detailTypography.open.box) === '[763,552,153,35]' && detailTypography.open.size === '17px'
           && detailTypography.date.weight === '400' && detailTypography.date.box[1] === 949, '12正文、笔记入口或日期基线不符')
         ensure(JSON.stringify(detailTypography.rows.map(row => [row.y, row.height, row.paddingBottom]))
