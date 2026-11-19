@@ -309,4 +309,6 @@ function endDrag(event: PointerEvent) {
 .kb-inspector .r-rule { margin: 23px 0 17px; }
 .kb-inspector h3 { font-size: 17.5px; line-height: 28px; }
 .kb-inspector h3 + label.r-between { margin-top: 15px; }
+/* 正文固定为两行行框，行距校准时保持完整笔记入口的位置。 */
+.knowledge-detail-page .kd-main-note > p { font-size: 19.75px; letter-spacing: -.3px; top: 2px; line-height: 32px; height: 66px; }
 </style>
