@@ -3099,13 +3099,36 @@ try {
           && typography['.kn-notes > button strong'].weight === '400' && typography['.kn-notes > button p'].weight === '400'
           && typography['.kn-prose h2'].weight === '500' && typography['.kn-prose h2'].stroke === '0.3px'
           && typography['.kn-prose h2'].left === '2px' && typography['.kn-prose p'].left === '2px'
-          && typography['.kn-prose p'].size === '19.4px' && typography['.kn-prose p'].lineHeight === '32px'
+          && typography['.kn-prose p'].size === '19.75px' && typography['.kn-prose p'].lineHeight === '32px'
           && typography['.kn-prose ul'].top === '-6px' && typography['.kn-prose ul'].lineHeight === '43px'
           && typography['.kn-relations h3'].weight === '500' && typography['.kn-relations h3'].stroke === '0.15px'
           && typography['.kn-tags'].margin === '22px' && typography['.kn-tags button'].weight === '500'
           && typography['.kn-tags button'].stroke === '0.1px' && typography['.kn-backlink + .kn-backlink'].margin === '15px',
           '11字重、标题／正文／清单基线、概念标签或反向链接间距不符')
         checks.push({ check: 'note-typography-title-body-list-baselines-tags-backlink-spacing', scene: scene.id, typography, passed: true })
+        const paragraphs = await page.locator('.knowledge-note-page .kn-prose > p').evaluateAll(nodes => nodes.map(node => {
+          const style = getComputedStyle(node), box = node.getBoundingClientRect(), rows = new Map()
+          const text = node.firstChild
+          if (!text || text.nodeType !== Node.TEXT_NODE) throw new Error('笔记正文文本节点缺失')
+          for (let index = 0; index < text.textContent.length; index++) {
+            const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+            const y = range.getBoundingClientRect().top
+            rows.set(y, (rows.get(y) ?? '') + text.textContent[index])
+          }
+          return { text: node.innerText, box: [box.x, box.y, box.width, box.height], size: style.fontSize,
+            spacing: style.letterSpacing, line: style.lineHeight, weight: style.fontWeight, stroke: style.webkitTextStrokeWidth,
+            top: style.top, rows: [...rows.values()], scroll: [node.clientHeight, node.scrollHeight, node.scrollTop] }
+        }))
+        ensure(paragraphs.length === 2 && paragraphs.every(row => row.size === '19.75px' && row.spacing === '-0.3px'
+          && row.line === '32px' && row.weight === '300' && row.stroke === '0px'), '11两段正文字体或字距不符')
+        ensure(JSON.stringify(paragraphs.map(row => row.box)) === JSON.stringify([[703,417.796875,487,96],[703,546.796875,487,64]])
+          && JSON.stringify(paragraphs.map(row => row.rows.length)) === JSON.stringify([3,2])
+          && JSON.stringify(paragraphs.map(row => row.scroll)) === JSON.stringify([[96,96,0],[64,64,0]])
+          && paragraphs[0].top === '-1px' && paragraphs[1].top === '0px', '11两段行框、换行、首段偏移或溢出不符')
+        ensure(paragraphs[0].text === '缓存更新失败通常发生在删除、更新或写入缓存的环节，需要结合日志和调用链，定位是缓存操作失败，还是后续流程处理异常。'
+          && paragraphs[1].text === '如果是缓存操作失败，优先检查 key 是否正确、缓存服务是否可用，以及是否存在并发覆盖问题。', '11两段原文改变')
+        checks.push({ check: 'note-paragraph-typography-lines-frame-no-overflow', scene: scene.id, paragraphs, passed: true })
+
         const layout = await page.evaluate(() => {
           const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON()
           const chrome = getComputedStyle(document.querySelector('.r-main'), '::before')
