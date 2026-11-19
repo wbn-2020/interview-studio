@@ -425,7 +425,9 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-facts .fact-heading .r-pill { width: 127px; height: 49px; font-size: 18px; padding: 0; }
 .prep-facts .fact-heading .r-pill.amber { width: 144px; gap: 10px; background: linear-gradient(110deg, #4a321b, #342414); color: #ffc67f; }
 .fact-status-dot { width: 13px; height: 15px; border-radius: 50%; background: linear-gradient(120deg, #ffc580, #eea654); flex: none; }
-.prep-facts .fact-body dt { color: #aaa6a0; }
+/* 标签保持21px字面宽度，字形变换不改变35px网格行高。 */
+.prep-facts .fact-body dt { color: #aaa6a0; font-size: 23px; transform: scaleX(.9130434783); transform-origin: left top; -webkit-text-stroke: .2px currentColor; }
+.prep-facts .fact-body dt:nth-of-type(-n+3) { transform: scale(.9130434783, 1.04); }
 /* 固定21px字面宽度与23px字号，显式换行保留网格行高。 */
 .prep-facts .fact-body dd { font-size: 23px; font-weight: 400; transform: scaleX(.9130434783); transform-origin: left top; }
 /* 段落单独对齐参考字面，变换不参与网格行高与后续段落位置计算。 */
