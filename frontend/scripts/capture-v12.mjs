@@ -517,12 +517,54 @@ try {
           && typography.title.top === '92px' && typography.title.left === '27px'
           && typography.title.transform === 'matrix(1, 0, 0, 1.1, 0, 0)' && typography.tabPadding === '19px',
         '04标题、目录字面或页签基线不符')
-        ensure(typography.body.length === 4 && typography.body.every(item => item.size === '23px' && item.weight === '400'
-          && item.lineHeight === '35px' && item.transform === 'matrix(0.913044, 0, 0, 1, 0, 0)' && item.origin === '0px 0px'),
+        const bodyTransforms = ['matrix(0.913044, 0, 0, 1.04, 0, 0)', 'matrix(0.913044, 0, 0, 1, 0, 1)',
+          'matrix(0.913044, 0, 0, 1, 0, 1)', 'matrix(0.913044, 0, 0, 1, 0, 0)']
+        ensure(typography.body.length === 4 && typography.body.every((item, index) => item.size === '23px' && item.weight === '400'
+          && item.lineHeight === '35px' && item.transform === bodyTransforms[index] && item.origin === '0px 0px'),
         '04事实正文的字高、行宽或换行基线不符')
         ensure(typography.source === 'linear-gradient(110deg, rgba(255, 255, 255, 0.043), rgba(255, 255, 255, 0.027))'
           && typography.links === 'linear-gradient(120deg, rgb(25, 22, 19), rgb(21, 19, 17))', '04来源或关联入口底色不符')
         checks.push({ check: 'fact-scoped-type-weights-body-aspect-tab-baseline-source-link-surfaces', scene: scene.id, typography, passed: true })
+        const paragraphGeometry = await page.evaluate(() => {
+          const rect = node => { const b = node.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom } }
+          const labels = [...document.querySelectorAll('.fact-body dt')]
+          const panel = rect(document.querySelector('.fact-body')), source = rect(document.querySelector('.fact-source'))
+          const rows = [...document.querySelectorAll('.fact-body dd')].map((node, index) => {
+            const groups = new Map(), boxes = []
+            const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+            for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+              for (let offset = 0; offset < text.textContent.length; offset++) {
+                const range = document.createRange(); range.setStart(text, offset); range.setEnd(text, offset + 1)
+                const b = range.getBoundingClientRect(), top = Math.round(b.top * 1000) / 1000
+                groups.set(top, (groups.get(top) ?? '') + text.textContent[offset])
+                if (b.width && b.height) boxes.push({ left: b.left, top: b.top, right: b.right, bottom: b.bottom })
+              }
+            }
+            return { lines: [...groups.values()], breaks: node.querySelectorAll('br').length, flowHeight: node.offsetHeight,
+              box: rect(node), label: rect(labels[index]), textBounds: boxes.length ? {
+                left: Math.min(...boxes.map(b => b.left)), top: Math.min(...boxes.map(b => b.top)),
+                right: Math.max(...boxes.map(b => b.right)), bottom: Math.max(...boxes.map(b => b.bottom)),
+              } : null }
+          })
+          return { panel, source, rows }
+        })
+        const expectedBodyLines = [
+          ['大促期间，发奖链路出现延迟'],
+          ['部分用户未能及时收到奖励，系统显示', '发奖超时，结果未知'],
+          ['参与排查，定位到是下游服务响应较慢，', '已推动优化降级策略'],
+          ['问题已修复，补发任务已完成，用户可正常', '领取奖励；关联日志与监控截图已留存'],
+        ]
+        ensure(JSON.stringify(paragraphGeometry.rows.map(row => row.lines)) === JSON.stringify(expectedBodyLines)
+          && JSON.stringify(paragraphGeometry.rows.map(row => row.breaks)) === '[0,1,1,1]'
+          && JSON.stringify(paragraphGeometry.rows.map(row => row.flowHeight)) === '[35,70,70,70]'
+          && paragraphGeometry.rows.every(row => row.textBounds
+            && row.textBounds.left >= row.label.right + 12
+            && row.textBounds.right <= paragraphGeometry.panel.right - 10
+            && row.textBounds.top >= paragraphGeometry.panel.top + 100
+            && row.textBounds.bottom <= paragraphGeometry.source.top - 15),
+        '04正文七行原文、网格行高或标签与来源避让不符')
+        checks.push({ check: 'fact-seven-explicit-lines-grid-flow-label-source-text-boundaries', scene: scene.id, paragraphGeometry, passed: true })
+
         const status = await page.evaluate(() => {
           const box = node => { const b = node.getBoundingClientRect(); return [b.x, b.y, b.width, b.height] }
           const pills = [...document.querySelectorAll('.fact-heading .r-pill')].map(node => ({
