@@ -311,4 +311,8 @@ function endDrag(event: PointerEvent) {
 .kb-inspector h3 + label.r-between { margin-top: 15px; }
 /* 正文固定为两行行框，行距校准时保持完整笔记入口的位置。 */
 .knowledge-detail-page .kd-main-note > p { font-size: 19.75px; letter-spacing: -.3px; top: 2px; line-height: 32px; height: 66px; }
+
+/* 两段保持原行框；首段仅相对上移，避免字号校准牵动后续代码框及列表。 */
+.knowledge-note-page .kn-prose > p { font-size: 19.75px; letter-spacing: -.3px; }
+.knowledge-note-page .kn-prose > p:first-of-type { top: -1px; }
 </style>
