@@ -773,6 +773,7 @@ try {
             excerptFragments: [...mark.getClientRects()].map(r => [r.x, r.y, r.width, r.height]),
           }
         })
+        await writeJson(path.join(values.output, 'records', '06-materials-typography.json'), typography)
         ensure(typography.root.weight === '300' && typography.title.weight === '650'
           && typography.title.transform === 'matrix(0.98, 0, 0, 1, 0, 0)' && sameBox(typography.title.box, [266,107,98,65])
           && typography.brand.weight === '500' && typography.selected.weight === '500'
@@ -780,7 +781,10 @@ try {
           && sameBox(typography.paper.box, [721,272,429,684]) && typography.heading.weight === '650'
           && typography.subheading.weight === '600' && typography.body.size === '15px' && typography.body.weight === '400'
           && typography.list.leftPadding === '21px' && typography.item.leftPadding === '10px'
-          && typography.list.transform === 'matrix(0.98, 0, 0, 1, 0, 0)'
+          && typography.list.transform === 'matrix(0.99, 0, 0, 1, 0, 0)'
+          && typography.body.transform === 'matrix(0.99, 0, 0, 1, 0, 0)'
+          && typography.body.stroke === '0.2px' && typography.list.stroke === '0px' && typography.item.stroke === '0.2px'
+          && typography.item.lineHeight === '33px'
           && typography.excerpt.display === 'inline' && typography.excerpt.decoration === 'clone'
           && typography.excerpt.size === '16px' && typography.excerpt.weight === '400'
           && typography.action.lineHeight === '24.5px' && typography.excerptBreaks === 1
@@ -806,6 +810,34 @@ try {
           && JSON.stringify(attachmentIcons.fileMore.paths) === JSON.stringify(['M12 4h.01','M12 12h.01','M12 20h.01']),
           '06适应页面四向箭头或文件行三点图标不符')
         checks.push({ check: 'attachment-fit-arrows-and-file-more-icon-geometry', scene: scene.id, attachmentIcons, passed: true })
+        const knownThumbnail = await viewer.locator('.pdf-thumbnails').evaluate(node => {
+          const normalize = text => text.replace(/\s+/g, ' ').trim()
+          const rows = [...node.querySelectorAll('button')], paper = document.querySelector('.pdf-paper')
+          const mini = node.querySelector('.pdf-mini-page'), box = mini?.parentElement.getBoundingClientRect()
+          const copyPairs = [['h2', '.pdf-mini-title'], ['h3', '.pdf-mini-section'], ['p', '.pdf-mini-paragraph'], ['li', '.pdf-mini-list > span'], ['mark', 'mark'], ['footer', '.pdf-mini-footer']]
+          const css = mini && getComputedStyle(mini), matrix = css && new DOMMatrixReadOnly(css.transform)
+          return { pages: rows.map(row => row.lastChild.textContent.trim()), knownCount: node.querySelectorAll('.pdf-mini-page').length,
+            knownPage: rows.findIndex(row => row.contains(mini)) + 6, hidden: mini?.getAttribute('aria-hidden'),
+            copyMatches: Boolean(mini) && copyPairs.every(([source, target]) => JSON.stringify([...paper.querySelectorAll(source)].map(item => normalize(item.textContent))) === JSON.stringify([...mini.querySelectorAll(target)].map(item => normalize(item.textContent)))),
+            unknownPlaceholders: rows.filter(row => !row.contains(mini)).map(row => ({ headings: row.querySelectorAll('.mini-document b').length, lines: row.querySelectorAll('.mini-document i').length })),
+            box: box && [box.x, box.y, box.width, box.height], fontSize: css?.fontSize, fontWeight: css?.fontWeight,
+            filter: css?.filter, transform: matrix && [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f] }
+        })
+        ensure(JSON.stringify(knownThumbnail.pages) === JSON.stringify(['6', '7', '8', '9'])
+          && knownThumbnail.knownCount === 1 && knownThumbnail.knownPage === 8 && knownThumbnail.hidden === 'true'
+          && knownThumbnail.copyMatches && knownThumbnail.unknownPlaceholders.length === 3
+          && knownThumbnail.unknownPlaceholders.every(item => item.headings === 1 && item.lines === 12)
+          && sameBox(knownThumbnail.box, [608,619,85,115]) && knownThumbnail.fontSize === '15px'
+          && knownThumbnail.fontWeight === '400' && knownThumbnail.filter === 'blur(1px)'
+          && knownThumbnail.transform.every((value, index) => Math.abs(value - [.198,0,0,.16,3,3][index]) < .00001),
+          '06已知第8页缩略正文、隐藏语义或固定几何不符')
+        ensure(await viewer.getByRole('button', { name: '8', exact: true }).count() === 1, '06第8页按钮角色不唯一')
+        await viewer.getByRole('button', { name: '9', exact: true }).click()
+        ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible()
+          && await viewer.locator('.pdf-mini-page').count() === 1, '06缩略页码切换未保留第8页预览')
+        await viewer.getByRole('button', { name: '8', exact: true }).click()
+        await assertFrame(captured, '06缩略页码返回第8页后未恢复本批初态')
+        checks.push({ check: 'attachment-known-page8-thumbnail-copy-semantics-pagination', scene: scene.id, knownThumbnail, passed: true })
         await viewer.getByRole('button', { name: '下一页', exact: true }).click()
         ensure(await viewer.getByText('第 9 / 24 页', { exact: true }).isVisible(), '06下一页未更新')
         await viewer.getByRole('button', { name: '上一页', exact: true }).click()
@@ -4274,10 +4306,12 @@ try {
             rowTitles: [...document.querySelectorAll('.sp-inbox-entry strong')].map(style),
             sources: [...document.querySelectorAll('.sp-inbox-source-copy')].map(style), pills: [...document.querySelectorAll('.sp-inbox-pill-copy')].map(style),
             lines: [...document.querySelectorAll('.sp-inbox-excerpt-line')].map(style),
+            key: { ...select('.sp-inbox-excerpt-key'), family: getComputedStyle(document.querySelector('.sp-inbox-excerpt-key')).fontFamily },
             breaks: [...document.querySelectorAll('.sp-inbox-excerpt br')].map(node => getComputedStyle(node).display),
             rowHeights: [...document.querySelectorAll('.sp-inbox-list article')].map(node => [getComputedStyle(node).minHeight, getComputedStyle(node).paddingBottom]),
           }
         })
+        await writeJson(path.join(values.output, 'records', '30-inbox-reference-copy.json'), inboxReferenceCopy)
         ensure(inboxReferenceCopy.title.transform === 'matrix(0.991, 0, 0, 1, 1, 0)'
           && Math.abs(parseFloat(inboxReferenceCopy.title.line) - 61.09375) < .001
           && inboxReferenceCopy.breadcrumb.size === '23px' && inboxReferenceCopy.breadcrumb.weight === '300'
@@ -4293,8 +4327,16 @@ try {
           && JSON.stringify(inboxReferenceCopy.lines.map(item => item.text)) === JSON.stringify([
             '缓存删除失败通常有三种情况：', '1. key 不存在，删除返回 0；', '2. 网络超时，客户端误判；',
             '3. 连接池耗尽，导致删除请求被拒绝。', '需要根据业务场景选择合适的重试策略...'])
-          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.size)) === JSON.stringify(['20.75px', '22px', '22px', '21px', '20.75px'])
+          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.size)) === JSON.stringify(['20.75px', '22.25px', '22px', '21px', '20.75px'])
+          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.transform)) === JSON.stringify([
+            'matrix(0.994, 0, 0, 1.04, -1, 0)', 'matrix(0.985, 0, 0, 1.04, 2, 0.5)',
+            'matrix(1, 0, 0, 1.04, 0, 0)', 'matrix(0.997, 0, 0, 1.075, -1, -1)',
+            'matrix(0.997, 0, 0, 1.04, -2, -0.5)'])
           && inboxReferenceCopy.lines.every(item => item.display === 'block' && item.line === '39px')
+          && JSON.stringify(inboxReferenceCopy.lines.map(item => item.stroke)) === JSON.stringify(['0.06px', '0px', '0px', '0.06px', '0px'])
+          && inboxReferenceCopy.key.text === 'key' && inboxReferenceCopy.key.size === '22.25px'
+          && inboxReferenceCopy.key.weight === '400' && inboxReferenceCopy.key.line === '0px'
+          && inboxReferenceCopy.key.family === '"Segoe UI", sans-serif'
           && inboxReferenceCopy.breaks.length === 3 && inboxReferenceCopy.breaks.every(item => item === 'none')
           && inboxReferenceCopy.rowHeights[2][0] === '109px' && inboxReferenceCopy.rowHeights[3][1] === '12px',
           '30原文字框、导航基线、五行摘录或末两行分隔不符')
@@ -4334,19 +4376,31 @@ try {
         ensure(await detail.locator('.sp-inbox-excerpt').textContent() === '缓存删除失败通常有三种情况：1. key 不存在，删除返回 0；2. 网络超时，客户端误判；3. 连接池耗尽，导致删除请求被拒绝。需要根据业务场景选择合适的重试策略...',
           '30初始摘录不符')
         const excerptRows = await detail.locator('.sp-inbox-excerpt').evaluate(node => {
-          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT), rows = new Set()
-          let right = 0
-          while (walker.nextNode()) {
-            const text = walker.currentNode
-            for (let index = 0; index < text.textContent.length; index++) {
-              const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
-              const rect = range.getBoundingClientRect()
-              if (rect.width) { rows.add(rect.top); right = Math.max(right, rect.right) }
+          const lines = [...node.querySelectorAll('.sp-inbox-excerpt-line')]
+          let right = 0, singleLineBoxes = true, glyphsInsideLineBoxes = true
+          for (const line of lines) {
+            const box = line.getBoundingClientRect(), css = getComputedStyle(line)
+            const expectedHeight = parseFloat(css.lineHeight) * new DOMMatrixReadOnly(css.transform).d
+            const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT)
+            let visibleGlyphs = 0
+            // 同一基线可使用不同字体；按固定外层字框计行，并继续检查实际高度与字符包含关系。
+            while (walker.nextNode()) {
+              const text = walker.currentNode
+              for (let index = 0; index < text.textContent.length; index++) {
+                const range = document.createRange(); range.setStart(text, index); range.setEnd(text, index + 1)
+                const rect = range.getBoundingClientRect()
+                if (rect.width) {
+                  visibleGlyphs++; right = Math.max(right, rect.right)
+                  glyphsInsideLineBoxes &&= rect.top >= box.top - .02 && rect.bottom <= box.bottom + .02
+                }
+              }
             }
+            singleLineBoxes &&= visibleGlyphs > 0 && Math.abs(box.height - expectedHeight) < .02
           }
-          return { count: rows.size, right, panelRight: node.getBoundingClientRect().right }
+          return { count: lines.length, right, panelRight: node.getBoundingClientRect().right, singleLineBoxes, glyphsInsideLineBoxes }
         })
-        ensure(excerptRows.count === 5 && excerptRows.right < excerptRows.panelRight, '30摘录行数不符或横向截断')
+        ensure(excerptRows.count === 5 && excerptRows.singleLineBoxes && excerptRows.glyphsInsideLineBoxes
+          && excerptRows.right < excerptRows.panelRight, '30摘录行数、实际行高、字框包含或横向截断不符')
         await rows.first().getByRole('checkbox').check()
         ensure(await all.evaluate(node => node.indeterminate && !node.checked), '30部分勾选没有同步全选中间状态')
         ensure(await all.evaluate(node => { const s = getComputedStyle(node, '::after'); return s.width === '11px' && s.height === '2px' }),
