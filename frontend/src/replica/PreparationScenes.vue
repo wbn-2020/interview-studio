@@ -501,8 +501,8 @@ function prepTab(index: number) { emit('navigate', [3, 6, 7, 8][index]!) }
 .prep-expression .version-history > .r-btn { font-size: 17px; }
 .prep-expression .version-history > .r-primary { margin-top: 13px; }
 
-/* 已确认的第8页提供缩略正文；其他页保留占位，完整阅读仍使用主阅读区。 */
-.prep-materials .mini-document-known { position: relative; display: block; padding: 0; overflow: hidden; border-radius: 2px; background: linear-gradient(125deg, #f9f5ef, #f8ebd8 65%, #faf5ed); }
+/* 已确认的第8页提供缩略正文；其他页保留占位。独立绘制层保持页码往返时的缩略栅格结果一致。 */
+.prep-materials .mini-document-known { position: relative; display: block; padding: 0; overflow: hidden; will-change: transform; border-radius: 2px; background: linear-gradient(125deg, #f9f5ef, #f8ebd8 65%, #faf5ed); }
 .prep-materials .pdf-mini-page { position: absolute; top: 0; left: 0; display: block; width: 429px; height: 684px; color: #625b53; font-size: 15px; font-weight: 400; line-height: 1.5; text-align: left; filter: blur(1px); transform-origin: top left; transform: translate(3px, 3px) scale(0.198, 0.16); }
 .pdf-mini-title, .pdf-mini-section, .pdf-mini-paragraph, .pdf-mini-list { position: absolute; left: 37px; display: block; }
 .pdf-mini-title { top: 52px; font-size: 22px; font-weight: 700; line-height: 31px; }
