@@ -14,7 +14,7 @@
     SELECT a.id,a.owner_id,a.session_id,a.question_id,a.version_number,
       a.answer_condition AS `condition`,a.assistance_event_sequence,a.exposure_json,a.created_at,
       SHA2(a.content_json,256) AS content_hash,
-      JSON_OBJECT('rootType',JSON_TYPE(a.content_json),
+      JSON_OBJECT('rootType',JSON_TYPE(CAST(a.content_json AS JSON)),
         'textType',JSON_TYPE(JSON_EXTRACT(a.content_json,'$.text')),
         'diagramType',JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram')),
         'nodesType',JSON_TYPE(JSON_EXTRACT(a.content_json,'$.diagram.nodes')),
@@ -37,7 +37,8 @@
 
   <select id="question" resultType="com.wenjie.studio.training.TrainingGrowthRows$QuestionRow" timeout="5">
     SELECT q.id,q.owner_id,q.session_id,q.source_question_id,q.source_version_id,q.question_kind,
-      JSON_OBJECT('rootType',JSON_TYPE(q.snapshot_json),
+      <!-- 与持久化CHECK使用相同的显式JSON转换；文本列的SQL类型不能代替JSON根类型。 -->
+      JSON_OBJECT('rootType',JSON_TYPE(CAST(q.snapshot_json AS JSON)),
         'contentType',JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content')),
         'sourceQuestionId',JSON_EXTRACT(q.snapshot_json,'$.sourceQuestionId'),
         'sourceVersionId',JSON_EXTRACT(q.snapshot_json,'$.sourceVersionId'),
@@ -52,14 +53,14 @@
         'scenario',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),'[^[:space:]]'),
         'conditions',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),'[^[:space:]]')) AS metadata_json,
       s.id AS parent_session_id,s.owner_id AS session_owner_id,s.mode,s.generation,s.created_at AS session_created_at,
-      JSON_OBJECT('rootType',JSON_TYPE(s.context_json),
+      JSON_OBJECT('rootType',JSON_TYPE(CAST(s.context_json AS JSON)),
         'references',COALESCE((
           SELECT JSON_ARRAYAGG(JSON_OBJECT(
             'type',JSON_TYPE(JSON_EXTRACT(s.context_json,CONCAT('$[',c.position_index-1,']'))),
             'kind',JSON_EXTRACT(s.context_json,CONCAT('$[',c.position_index-1,'].kind')),
             'itemId',JSON_EXTRACT(s.context_json,CONCAT('$[',c.position_index-1,'].itemId')),
             'versionId',JSON_EXTRACT(s.context_json,CONCAT('$[',c.position_index-1,'].versionId'))))
-          FROM JSON_TABLE(CASE WHEN JSON_TYPE(s.context_json)='ARRAY' THEN s.context_json ELSE JSON_ARRAY() END,
+          FROM JSON_TABLE(CASE WHEN JSON_TYPE(CAST(s.context_json AS JSON))='ARRAY' THEN s.context_json ELSE JSON_ARRAY() END,
             '$[*]' COLUMNS(position_index FOR ORDINALITY)) AS c
         ),JSON_ARRAY())) AS context_json,
       r.id AS repractice_id,r.question_mode AS repractice_question_mode,r.baseline_kind AS repractice_baseline_kind,

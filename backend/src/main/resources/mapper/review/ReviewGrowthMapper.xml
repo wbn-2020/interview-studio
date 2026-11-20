@@ -52,7 +52,7 @@
       JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.dimension')) AS dimension,
       JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.coverage')) AS coverage,
       SHA2(CAST(v.content_json AS BINARY),256) AS content_hash,
-      (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=10
+      (JSON_TYPE(CAST(v.content_json AS JSON))='OBJECT' AND JSON_LENGTH(v.content_json)=10
         AND OCTET_LENGTH(v.content_json)&lt;=131072
         AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.kind'))='STRING'
         AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.authorLabel'))='STRING'
@@ -75,7 +75,7 @@
       (CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.feedback')))&gt;0) AS has_feedback,
       (CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.uncertainty')))&gt;0) AS has_uncertainty,
       SHA2(CAST(v.content_json AS BINARY),256) AS content_hash,
-      (JSON_TYPE(v.content_json)='OBJECT' AND JSON_LENGTH(v.content_json)=9
+      (JSON_TYPE(CAST(v.content_json AS JSON))='OBJECT' AND JSON_LENGTH(v.content_json)=9
         AND OCTET_LENGTH(v.content_json)&lt;=196608
         AND JSON_TYPE(JSON_EXTRACT(v.content_json,'$.title'))='STRING'
         AND JSON_UNQUOTE(JSON_EXTRACT(v.content_json,'$.title'))=v.title
@@ -94,7 +94,7 @@
     owner_id,id,source_id,revision,comparison_id,repractice_id,answer_id,
     SHA2(CAST(verification AS BINARY),256) AS verification_hash,outcome,created_at,
     SHA2(CAST(JSON_ARRAY(reason,citations_json) AS BINARY),256) AS content_hash,
-    (CHAR_LENGTH(verification) BETWEEN 1 AND 2000 AND JSON_TYPE(citations_json)='ARRAY'
+    (CHAR_LENGTH(verification) BETWEEN 1 AND 2000 AND JSON_TYPE(CAST(citations_json AS JSON))='ARRAY'
       AND JSON_LENGTH(citations_json)&lt;=6 AND OCTET_LENGTH(citations_json)&lt;=32768) AS metadata_valid
   </sql>
   <select id="judgment" resultType="com.wenjie.studio.review.ReviewGrowthRows$Judgment">
@@ -139,7 +139,7 @@
         'recollectionBaselineKind',JSON_EXTRACT(snapshot_json,'$.source.recollection.baselineKind'),
         'tracking',JSON_EXTRACT(snapshot_json,'$.source.tracking')) AS identity_json,
       SHA2(CAST(JSON_UNQUOTE(JSON_EXTRACT(snapshot_json,'$.source.verification')) AS BINARY),256) AS verification_hash,
-      (JSON_TYPE(snapshot_json)='OBJECT' AND OCTET_LENGTH(snapshot_json)&lt;=196608
+      (JSON_TYPE(CAST(snapshot_json AS JSON))='OBJECT' AND OCTET_LENGTH(snapshot_json)&lt;=196608
         AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.source'))='OBJECT'
         AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.sourceId'))='STRING'
         AND JSON_TYPE(JSON_EXTRACT(snapshot_json,'$.actionId'))='STRING'
@@ -170,7 +170,7 @@
           s.session_id IS NULL AND s.question_id IS NULL AND s.answer_id IS NULL
           AND s.feedback_id IS NULL AND s.feedback_revision IS NULL AND s.task_id IS NULL AND s.observation_id IS NULL
           AND s.manual_kind IS NULL AND s.author_label IS NULL AND s.observation_json IS NULL AND s.decision_json IS NULL
-          AND JSON_TYPE(s.recollection_json)='OBJECT'
+          AND JSON_TYPE(CAST(s.recollection_json AS JSON))='OBJECT'
           AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.recollectionId'))='STRING'
           AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.versionId'))='STRING'
           AND JSON_TYPE(JSON_EXTRACT(s.recollection_json,'$.versionNumber'))='INTEGER'

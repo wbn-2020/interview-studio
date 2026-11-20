@@ -346,7 +346,13 @@ public class GrowthQueryService {
     }
 
     private static Capability failed(RuntimeException exception) {
-        LOG.warn("event=growth_source_failed exceptionType={} traceId={}", exception.getClass().getSimpleName(), MDC.get("traceId"));
+        // 只记录有界代码位置，保留排障线索，避免异常正文带出来源内容或SQL参数。
+        String locations = java.util.Arrays.stream(exception.getStackTrace())
+                .filter(frame -> frame.getClassName().startsWith("com.wenjie.studio."))
+                .limit(4).map(frame -> frame.getClassName() + "." + frame.getMethodName() + ":" + frame.getLineNumber())
+                .collect(java.util.stream.Collectors.joining(","));
+        LOG.warn("event=growth_source_failed exceptionType={} locations={} traceId={}",
+                exception.getClass().getSimpleName(), locations, MDC.get("traceId"));
         boolean broken = !(exception instanceof DataAccessException)
                 && (exception instanceof IllegalStateException || exception instanceof IllegalArgumentException
                 || exception instanceof NullPointerException || exception instanceof ApiException api && api.status() == 400);
