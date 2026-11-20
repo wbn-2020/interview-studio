@@ -238,7 +238,7 @@ function correctionError(error: unknown): string {
           <h4>新摘录完整原文</h4><p class="correction-identity">摘录 {{ replacement.id }} · 附件 {{ replacement.attachmentId }}<br />{{ replacement.origin === 'MANUAL' ? '手工摘录' : '解析摘录' }} · {{ replacement.locator }}<br />{{ materialLifecycleStatusLabels[replacementLifecycle.status] }}／{{ materialAiUseLabels[replacementLifecycle.aiUse] }} · 生命周期修订 {{ replacementLifecycle.revision }}</p><blockquote>{{ replacement.text }}</blockquote>
         </article>
         <p v-if="sameText" class="notice error" role="alert">两条摘录正文相同，不能声明更正。请选择正文确有差异的固定替代摘录。</p>
-        <label :for="`${panelId}-reason`">更正理由<NInput :id="`${panelId}-reason`" v-model:value="reason" type="textarea" :maxlength="1000" :autosize="{ minRows: 3, maxRows: 7 }" :disabled="locked || otherCommand" placeholder="说明为什么用这条固定摘录更正旧摘录。" /></label>
+        <label :for="`${panelId}-reason`">更正理由<NInput :input-props="{ id: `${panelId}-reason` }" v-model:value="reason" type="textarea" :maxlength="1000" :autosize="{ minRows: 3, maxRows: 7 }" :disabled="locked || otherCommand" placeholder="说明为什么用这条固定摘录更正旧摘录。" /></label>
         <NCheckbox v-model:checked="confirmed" :disabled="!canChoose || !replacementReady || !materialLifecycleReasonValid(reason)">我已核对双方完整原文与固定身份，确认提交不可撤销声明，理解历史不会自动替换</NCheckbox>
         <NButton type="primary" size="small" :loading="writer.busy.value" :disabled="!canSubmit" @click="submit">提交不可撤销更正</NButton>
       </template>

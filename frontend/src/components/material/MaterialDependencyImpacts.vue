@@ -264,7 +264,7 @@ async function openTarget() {
         <template v-if="selected.revision === 0">
           <label><span>本次处理方式</span><NSelect :value="choice" :options="choiceOptions" :disabled="blocked || !baseline" aria-label="材料依赖影响处理方式" @update:value="changeChoice" /></label>
           <p class="field-help">准备材料和题目须有实际正文更新，改标题或仅提升版本号不能证明已更新。审阅更新须真实修订上升；最终资格由服务器在本人数据锁内核对。归档、撤回和移除选项只记录已经发生的对应状态。</p>
-          <label :for="`${panelId}-reason`"><span>本次处理理由</span><NInput :id="`${panelId}-reason`" :value="reason" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" :disabled="blocked" placeholder="说明如何核对材料更正，以及为什么采用这一处理方式" @update:value="changeReason" /><span class="field-help">{{ Array.from(reason).length }} / 1000 字</span></label>
+          <label :for="`${panelId}-reason`"><span>本次处理理由</span><NInput :input-props="{ id: `${panelId}-reason` }" :value="reason" type="textarea" :autosize="{ minRows: 3, maxRows: 8 }" :disabled="blocked" placeholder="说明如何核对材料更正，以及为什么采用这一处理方式" @update:value="changeReason" /><span class="field-help">{{ Array.from(reason).length }} / 1000 字</span></label>
           <NCheckbox v-model:checked="confirmed" :disabled="blocked || !baseline || !selectedReady">我已核对固定更正、原绑定和当前目标，确认只登记这条影响的处理</NCheckbox>
           <p v-if="inputProblem" class="field-help" role="status">{{ inputProblem }}</p>
           <NButton type="primary" size="small" :disabled="blocked || Boolean(inputProblem)" :loading="writer.busy.value" @click="save">确认登记处理</NButton>
