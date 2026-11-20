@@ -277,8 +277,7 @@ function accept(value: AiTask, commandReceipt = false): boolean {
 function comparisonFieldsMatch(value: AiTask): boolean {
   if (!value?.task || !value.manifest || value.task.purpose !== value.manifest.purpose || !aiReviewDraftTaskValid(value)
     || !aiCardDraftTaskValid(value) || !aiJdRequirementsTaskValid(value) || !aiFactDraftTaskValid(value) || !aiRewriteTaskMatches(value) || !aiSourceQaTaskValid(value)
-    || !aiKnowledgeMaterialChecksMatch(value.manifest)
-    || ['FOLLOW_UP', 'ANSWER_EVALUATION', 'MATERIAL_QA'].includes(value.task.purpose) && value.manifest.knowledgeMaterialChecks != null) return false
+    || !aiKnowledgeMaterialChecksMatch(value.manifest)) return false
   if (sourceQaTask.value && (value.task.purpose !== 'SOURCE_QA' || value.sourceQaManifestHash !== sourceQaManifestHash.value)) return false
   const saved = currentEpoch.value === store.sessionEpoch ? current.value : undefined
   if (saved?.task.id === value.task.id && knowledgeMaterialChecksFingerprint(saved.manifest) !== knowledgeMaterialChecksFingerprint(value.manifest)) return false

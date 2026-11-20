@@ -138,7 +138,7 @@ onBeforeRouteUpdate((to, from) => {
 watch([() => route.query.item, () => route.query.question, () => route.query.answer], ([sessionId, questionId]) => {
   // 历史来源导航复用会话组件；切换激活题目，KeepAlive 中各题草稿和原请求继续保留。
   if (sessionId === props.sessionId && typeof questionId === 'string'
-      && (!current.value || current.value.questions.some(question => question.id === questionId))) selectQuestion(questionId)
+      && (!current.value || current.value.questions.some(question => question.id === questionId))) selectedId.value = questionId
 }, { flush: 'sync' })
 watch([selectedId, () => props.sessionId, () => store.sessionEpoch, () => store.sessionActive], () => {
   knowledgeGeneration++
@@ -247,7 +247,11 @@ function changeStatus(action: 'start' | 'pause' | 'resume') {
   if (action === 'resume' && current.value.status !== 'PAUSED') return
   run(action, { expectedRevision: current.value.revision }, { start: '训练已开始，题目与背景按确认版本固定', pause: '训练已暂停，可继续保存草稿', resume: '训练已恢复，可以继续提交回答' }[action])
 }
-function selectQuestion(id: string) { if (!locked.value && !endLoading.value) selectedId.value = id }
+function selectQuestion(id: string) {
+  if (locked.value || endLoading.value || id === selectedId.value || !current.value?.questions.some(question => question.id === id)) return
+  // 以路由保存当前位置，切题时不能携带上一题的回答或追问任务标识。
+  void router.replace({ query: { ...route.query, question: id, answer: undefined, followUp: undefined, panel: undefined, answerMode: undefined } })
+}
 function setQuestionState(id: string, value: QuestionState) { questionStates.set(id, value) }
 async function prepareEnd() {
   if (!available.value || !current.value || current.value.status === 'ENDED') return
@@ -445,7 +449,7 @@ h3 { margin: 0; font-size: 16px; } h4 { font-size: 14px; margin: 0; }
 .knowledge-answer-list li > div { display: grid; gap: 6px; } .knowledge-answer-list strong { font-size: 13px; font-weight: 550; } .knowledge-answer-list span { color: var(--muted); font-size: 12px; }
 .context-list { display: grid; gap: 22px; } .context-list article { display: grid; gap: 14px; } .context-field h5 { margin: 0 0 5px; color: var(--muted); font-size: 12px; } .context-field p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .questions-panel { display: grid; gap: 22px; border-top: 1px solid var(--line); padding-top: 22px; min-width: 0; }
-.question-navigation { display: grid; gap: 15px; } .question-navigation h3 { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.question-navigation { display: grid; gap: 15px; min-width: 0; } .question-navigation > section { min-width: 0; } .question-navigation h3 { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
 .question-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .question-buttons button { display: grid; gap: 7px; padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 6px; }
 .question-buttons button.selected { border-color: var(--brand); background: var(--surface-soft); } .question-buttons strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 550; } .question-buttons span { color: var(--muted); font-size: 11px; }

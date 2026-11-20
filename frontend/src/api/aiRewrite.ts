@@ -1,5 +1,6 @@
 import type { Schema } from './client'
 import type { AiManifest, AiTask } from './ai'
+import { aiKnowledgeMaterialChecksMatch } from './ai'
 import { questionTypeLabels } from './bank'
 
 export type AiRewritePreviewRequest = Schema['AiRewritePreviewRequest']
@@ -29,7 +30,7 @@ export const aiRewritePaths = {
 
 const otherManifestFields = ['training', 'contextChecks', 'materialQa', 'preparationChecks', 'materialDraftSources',
   'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks',
-  'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks', 'knowledgeMaterialChecks'] as const
+  'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks'] as const
 const otherTaskFields = ['decision', 'questionCandidate', 'questionDecision', 'followUp', 'evaluation', 'evaluationReport',
   'materialAnswer', 'expressionCandidate', 'expressionDecision', 'preparationPlanCandidate', 'preparationPlanDecision',
   'relationCandidate', 'relationDecisions', 'comparison', 'comparisonCandidate', 'cardCandidate', 'cardDecision',
@@ -88,12 +89,13 @@ export function aiRewriteInputValid(input: AiRewriteInput): boolean {
 
 export function aiRewriteManifestMatches(manifest: AiManifest): boolean {
   try {
-    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'evaluation'], otherManifestFields)
+    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'evaluation'], [...otherManifestFields, 'knowledgeMaterialChecks'])
       && manifest.purpose === 'ANSWER_REWRITE' && manifest.promptVersion === 'answer-rewrite-1' && manifest.instruction === ''
       && Array.isArray(manifest.sources) && manifest.sources.length === 0 && otherManifestFields.every(key => manifest[key] == null)
       && Boolean(manifest.configuration && typeof manifest.configuration === 'object' && !Array.isArray(manifest.configuration))
       && integer(manifest.inputTokenAllowance, 1) && integer(manifest.reservedMicros)
       && Boolean(manifest.evaluation && aiRewriteInputValid(manifest.evaluation))
+      && aiKnowledgeMaterialChecksMatch(manifest)
   } catch { return false }
 }
 

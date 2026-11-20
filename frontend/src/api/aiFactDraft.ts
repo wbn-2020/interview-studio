@@ -1,7 +1,7 @@
 import type { Schema } from './client'
 import { aiRewriteTaskMatches } from './aiRewrite'
 import type { AiManifest, AiMaterialCitation, AiTask, AiTrainingDraftCitation, AiTrainingDraftFragment, MaterialAiExcerpt } from './ai'
-import { aiMaterialChecksMatch } from './ai'
+import { aiKnowledgeMaterialChecksMatch, aiMaterialChecksMatch } from './ai'
 import type { MaterialExcerpt } from './material'
 import type { PreparationItem } from './preparation'
 
@@ -29,7 +29,7 @@ export const aiFactDraftPaths = {
     `/ai/facts/${encodeURIComponent(factId)}/versions/${encodeURIComponent(versionId)}/origins?limit=20${before === undefined ? '' : `&before=${before}`}`,
 } as const
 const otherManifestFields = ['training', 'evaluation', 'contextChecks', 'materialQa', 'preparationChecks', 'materialDraftSources',
-  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'reviewDraft', 'cardDraftType', 'relationEvidence', 'relationAiFeedback', 'knowledgeMaterialChecks'] as const
+  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'reviewDraft', 'cardDraftType', 'relationEvidence', 'relationAiFeedback'] as const
 const otherTaskFields = ['decision', 'questionCandidate', 'questionDecision', 'followUp', 'evaluation', 'evaluationReport', 'materialAnswer',
   'expressionCandidate', 'expressionDecision', 'preparationPlanCandidate', 'preparationPlanDecision', 'relationCandidate', 'relationDecisions',
   'comparison', 'comparisonCandidate', 'cardCandidate', 'cardDecision', 'jdRequirementsCandidate', 'jdRequirementsDecision', 'rewrite', 'rewriteCandidate'] as const
@@ -112,12 +112,13 @@ export function aiFactDraftInputFingerprint(input: AiFactDraftInput): string {
 }
 export function aiFactDraftManifestMatches(manifest: AiManifest): boolean {
   try {
-    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'factDraft'], [...otherManifestFields, 'materialChecks'])
+    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'factDraft'], [...otherManifestFields, 'materialChecks', 'knowledgeMaterialChecks'])
       && manifest.purpose === 'FACT_DRAFT' && manifest.promptVersion === 'fact-draft-1' && text(manifest.instruction, 1000, false)
       && Array.isArray(manifest.sources) && manifest.sources.length === 0 && otherManifestFields.every(key => manifest[key] == null)
       && Boolean(manifest.configuration && typeof manifest.configuration === 'object' && !Array.isArray(manifest.configuration))
       && integer(manifest.inputTokenAllowance, 1) && integer(manifest.reservedMicros) && Boolean(manifest.factDraft && aiFactDraftInputValid(manifest.factDraft))
       && aiMaterialChecksMatch(manifest)
+      && aiKnowledgeMaterialChecksMatch(manifest)
   } catch { return false }
 }
 export function aiFactDraftSourcesMatch(manifest: AiManifest, request: AiFactDraftPreviewRequest): boolean {

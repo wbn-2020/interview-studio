@@ -194,9 +194,8 @@ export function aiManifestHasKnowledgeRoots(manifest: AiManifest): boolean {
 export function aiKnowledgeMaterialChecksMatch(manifest: AiManifest, requireChecks = false): boolean {
   try {
     const checks = manifest.knowledgeMaterialChecks
-    if (!aiManifestHasKnowledgeRoots(manifest)) return checks == null
     if (checks == null) return !requireChecks
-    // 前端只核形状；实际采用、答案图、题面、评价、追问、复练及父项目代次见证由服务器重建。
+    // 各用途均可登记祖先摘录；前端只核形状，完整来源和当前许可由服务器重建。
     return Array.isArray(checks) && checks.length <= 200
       && checks.every((check, index) => check != null && typeof check === 'object' && !Array.isArray(check)
         && Object.keys(check).length === 2 && Object.hasOwn(check, 'excerptId') && Object.hasOwn(check, 'revision')
@@ -557,7 +556,7 @@ export function aiTrainingDraftManifestMatches(manifest: AiManifest): boolean {
     || manifest.training != null || manifest.evaluation != null || manifest.contextChecks != null || manifest.materialQa != null
     || manifest.preparationChecks != null || manifest.materialDraftSources != null || manifest.expressionType != null || manifest.preparationPlan != null || manifest.expressionChecks != null
     || manifest.comparisonInput != null || manifest.comparisonChecks != null || manifest.reviewDraft != null || manifest.cardDraftType != null || manifest.factDraft != null || manifest.relationEvidence != null || manifest.relationAiFeedback != null
-    || manifest.materialChecks != null || manifest.knowledgeMaterialChecks != null
+    || manifest.materialChecks != null || !aiKnowledgeMaterialChecksMatch(manifest)
     || !uuid(input.sessionId) || !uuid(input.questionId) || !uuid(input.answerId)
     || !Number.isSafeInteger(input.answerNumber) || input.answerNumber < 1 || input.answerNumber > 100
     || !['LEARNING', 'BEFORE_ASSISTANCE', 'ASSISTED'].includes(input.answerCondition)

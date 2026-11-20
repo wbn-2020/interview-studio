@@ -94,7 +94,7 @@ function backgroundText(body: string): string {
       <p class="field-help">以下是清单生成时全部不同直接摘录的本地代次，按标识排序；同摘录的多个片段只登记一次。这些元数据不计入模型正文或输入费用，发送和采用前仍由服务器核验。归档后恢复、撤回后重新允许均不能恢复旧授权。</p>
       <ul class="preparation-checks"><li v-for="check in manifest.materialChecks" :key="check.excerptId"><strong>确切摘录 {{ check.excerptId }}</strong><span>清单生成时可供 AI 使用 · 生命周期代次 {{ check.revision }}</span></li></ul>
     </details>
-    <p v-if="!knowledgeMaterialChecksValid" class="notice error" role="alert">知识采用链的摘录核对记录与来源范围或字段形状不一致，不能使用这份清单授权新的尝试。请重新读取任务或重新预览。</p>
+    <p v-if="!knowledgeMaterialChecksValid" class="notice error" role="alert">来源链的摘录核对记录格式不合法，不能使用这份清单授权新的尝试。请重新读取任务或重新预览。</p>
     <section v-else-if="hasKnowledgeRoots" class="training-source" aria-label="知识采用链的摘录祖先核对">
       <h4>知识采用链的摘录祖先核对 · 不发送给模型</h4>
       <p class="field-help">当前核验范围含实际知识采用的直接摘录、所选确切准备版本和表达最终事实的直接摘录，以及这些表达、事实此前实际 AI 采用的材料来源。表达采用时删去的原事实、事实后续移除的原材料仍会保守继承。知识整理和事实整理采用过的确切答案，还会保守继承整张固定答案图中的知识、项目、事实引用，即使当时只选了一段文字；合法历史或未核实图引用不因此升级为已核实事实。知识整理还核对固定题面及确切题库版本，继承题库原 AI 出题任务的全部知识、准备和材料来源，后续手工修改不抹去原来源。明确选用评价时，服务器另核成功评价及原输入、本题确切个人参考与完整报告，再逐项核所选反馈；原记录未保存报告摘要，不能证明整份历史报告字节从未改变，也不代表 AI 的语义判断已获确认。无题库追问会核对 v2 成功生成任务、确切父题、整张父答图及原任务实际发送的背景；当时已排除的背景不纳入。旧版或未知版本缺少已核生成规则时，新的祖先用途核验会拒绝，历史任务仍按原权限读取。同题复练会核对真实复制绑定并继续沿确切原题面追溯；基线原答只核身份，不额外继承未复制的答案图或背景。个人回忆补练只核确切历史版本及题面投影，原回忆回答、反馈和面试安排不纳入。回答片段整理事实不额外加入题面或评价。原事实检查明确保存父项目代次时，服务器以完全未变的代次或真实更正事件核对当时的确切项目版及其材料许可；缺少历史见证会阻止新的使用，历史任务仍可读取。父项目是用途资格依赖，不代表原事实复制过项目正文。没有捕获父项目代次的图引用、手工表达关系和事实首版目标，以及未明确选定的评价或参考、隐式训练背景及白板原文等路径仍未覆盖。这里只显示摘录身份与生成时的代次，不展开祖先原文，也不计入模型正文或输入费用。历史清单按生成时范围保存；当前完整集合与使用资格仍由服务器重建，集合扩大后可能需要重新预览。</p>
@@ -104,6 +104,11 @@ function backgroundText(body: string): string {
         <summary>清单生成时登记的 {{ manifest.knowledgeMaterialChecks.length }} 条摘录元数据</summary>
         <ul class="preparation-checks"><li v-for="check in manifest.knowledgeMaterialChecks" :key="check.excerptId"><strong>确切摘录 {{ check.excerptId }}</strong><span>清单生成时可供 AI 使用 · 生命周期代次 {{ check.revision }}</span></li></ul>
       </details>
+    </section>
+    <section v-else-if="manifest.knowledgeMaterialChecks != null" class="training-source" aria-label="来源链摘录核对">
+      <h4>来源链摘录核对 · 不发送给模型</h4>
+      <p class="field-help">生成时登记了 {{ manifest.knowledgeMaterialChecks.length }} 条摘录来源。这里的记录用于来源核对；当前使用资格仍由服务器检查。</p>
+      <ul v-if="manifest.knowledgeMaterialChecks.length" class="preparation-checks"><li v-for="check in manifest.knowledgeMaterialChecks" :key="check.excerptId"><strong>确切摘录 {{ check.excerptId }}</strong><span>生成时代次 {{ check.revision }}</span></li></ul>
     </section>
     <template v-if="sourceQa">
       <AiSourceQaInput v-if="sourceQaValid && manifest.sourceQa" :input="manifest.sourceQa" />

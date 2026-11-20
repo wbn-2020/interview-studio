@@ -1,6 +1,6 @@
 import type { Schema } from './client'
 import type { AiManifest, AiTask } from './ai'
-import { aiFeeLabels, aiPreparationPlanTextValid, aiStatusLabels, aiTrainingDraftRangeMatches } from './ai'
+import { aiFeeLabels, aiKnowledgeMaterialChecksMatch, aiPreparationPlanTextValid, aiStatusLabels, aiTrainingDraftRangeMatches } from './ai'
 import { questionTypeLabels } from './bank'
 import { reviewIdValid } from './review'
 import type { RepracticeCitation, RepracticeOutcome } from './repractice'
@@ -44,7 +44,7 @@ const codePointText = (value: unknown, maximum: number, required = true): value 
 const fields = (value: unknown, required: readonly string[], optional: readonly string[] = []): boolean => Boolean(value && typeof value === 'object'
   && !Array.isArray(value) && required.every(key => Object.hasOwn(value, key)) && Object.keys(value).every(key => required.includes(key) || optional.includes(key)))
 const specializedManifestFields = ['training', 'evaluation', 'contextChecks', 'materialQa', 'preparationChecks', 'materialDraftSources',
-  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks', 'knowledgeMaterialChecks'] as const
+  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks'] as const
 const otherTaskFields = ['candidate', 'decision', 'questionCandidate', 'questionDecision', 'followUp', 'evaluation', 'evaluationReport',
   'evaluationDecisions', 'materialAnswer', 'expressionCandidate', 'expressionDecision', 'preparationPlanCandidate', 'preparationPlanDecision',
   'relationCandidate', 'relationDecisions', 'cardCandidate', 'cardDecision', 'jdRequirementsCandidate', 'jdRequirementsDecision', 'factCandidate', 'factDecision', 'rewrite', 'rewriteCandidate'] as const
@@ -108,9 +108,10 @@ export function aiComparisonInputValid(input: AiComparisonInput): boolean {
 
 export function aiComparisonManifestMatches(manifest: AiManifest): boolean {
   try {
-    if (!fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'comparisonInput', 'comparisonChecks'], specializedManifestFields)
+    if (!fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'comparisonInput', 'comparisonChecks'], [...specializedManifestFields, 'knowledgeMaterialChecks'])
       || manifest.purpose !== 'ANSWER_COMPARISON' || manifest.promptVersion !== 'answer-comparison-1' || manifest.instruction !== ''
       || !Array.isArray(manifest.sources) || manifest.sources.length !== 0 || specializedManifestFields.some(key => manifest[key] != null)
+      || !aiKnowledgeMaterialChecksMatch(manifest)
       || !manifest.configuration || !number(manifest.inputTokenAllowance, 1) || !number(manifest.reservedMicros)
       || !manifest.comparisonInput || !aiComparisonInputValid(manifest.comparisonInput)) return false
     const input = manifest.comparisonInput, checks = manifest.comparisonChecks

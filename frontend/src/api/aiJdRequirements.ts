@@ -1,5 +1,6 @@
 import type { Schema } from './client'
 import type { AiCitation, AiManifest, AiSource, AiTask } from './ai'
+import { aiKnowledgeMaterialChecksMatch } from './ai'
 import type { PreparationItem, Requirement } from './preparation'
 import { dimensionOptions } from './preparation'
 import { aiFactDraftTaskValid } from './aiFactDraft'
@@ -23,7 +24,7 @@ export const aiJdRequirementsPaths = {
     `/ai/targets/${encodeURIComponent(targetId)}/versions/${encodeURIComponent(versionId)}/requirement-origins?limit=20${before === undefined ? '' : `&before=${before}`}`,
 } as const
 const otherManifestFields = ['training', 'evaluation', 'contextChecks', 'materialQa', 'materialDraftSources', 'expressionType',
-  'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks', 'knowledgeMaterialChecks'] as const
+  'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'reviewDraft', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks'] as const
 const otherTaskFields = ['decision', 'questionCandidate', 'questionDecision', 'followUp', 'evaluation', 'evaluationReport',
   'materialAnswer', 'expressionCandidate', 'expressionDecision', 'preparationPlanCandidate', 'preparationPlanDecision',
   'relationCandidate', 'relationDecisions', 'comparison', 'comparisonCandidate', 'cardCandidate', 'cardDecision', 'factCandidate', 'factDecision', 'rewrite', 'rewriteCandidate'] as const
@@ -61,10 +62,11 @@ export function aiJdRequirementsSourceValid(source: AiSource): boolean {
 }
 export function aiJdRequirementsManifestMatches(manifest: AiManifest): boolean {
   try {
-    if (!fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'preparationChecks'], otherManifestFields)
+    if (!fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'preparationChecks'], [...otherManifestFields, 'knowledgeMaterialChecks'])
       || manifest.purpose !== 'JD_REQUIREMENT_DRAFT' || manifest.promptVersion !== 'jd-requirements-1' || !text(manifest.instruction, 1000, false)
       || !Array.isArray(manifest.sources) || manifest.sources.length !== 1 || !aiJdRequirementsSourceValid(manifest.sources[0]!)
       || otherManifestFields.some(key => manifest[key] != null) || !Array.isArray(manifest.preparationChecks) || manifest.preparationChecks.length !== 1
+      || !aiKnowledgeMaterialChecksMatch(manifest)
       || !manifest.configuration || typeof manifest.configuration !== 'object' || Array.isArray(manifest.configuration)
       || !integer(manifest.inputTokenAllowance, 1) || !integer(manifest.reservedMicros)) return false
     const source = manifest.sources[0]!, check = manifest.preparationChecks[0]!

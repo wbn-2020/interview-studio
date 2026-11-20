@@ -1,7 +1,7 @@
 import type { RouteLocationRaw } from 'vue-router'
 import type { Schema } from './client'
 import type { AiManifest, AiTask } from './ai'
-import { aiRelationTaskMatches } from './ai'
+import { aiKnowledgeMaterialChecksMatch, aiRelationTaskMatches } from './ai'
 import { questionDimensionLabels, questionTypeLabels } from './bank'
 import { aiCardDraftTaskValid } from './aiCardDraft'
 
@@ -32,7 +32,7 @@ export const aiReviewDraftFieldLabels: Record<AiReviewDraftField, string> = {
 const feedbackFields: AiReviewDraftField[] = ['OBSERVATION', 'CONDITION', 'BASIS', 'LIMITATION', 'SUGGESTION']
 const recollectionFields: AiReviewDraftField[] = ['QUESTION', 'CONDITIONS', 'ANSWER_FRAGMENT', 'FEEDBACK', 'UNCERTAINTY', 'GAP']
 const specializedManifestFields = ['training', 'evaluation', 'contextChecks', 'materialQa', 'preparationChecks', 'materialDraftSources',
-  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks', 'knowledgeMaterialChecks'] as const
+  'expressionType', 'preparationPlan', 'trainingDraft', 'expressionChecks', 'comparisonInput', 'comparisonChecks', 'cardDraftType', 'factDraft', 'relationEvidence', 'relationAiFeedback', 'materialChecks'] as const
 const otherTaskFields = ['questionCandidate', 'questionDecision', 'followUp', 'evaluation', 'evaluationReport', 'materialAnswer',
   'expressionCandidate', 'expressionDecision', 'preparationPlanCandidate', 'preparationPlanDecision', 'relationCandidate', 'relationDecisions',
   'comparison', 'comparisonCandidate', 'cardCandidate', 'cardDecision', 'jdRequirementsCandidate', 'jdRequirementsDecision', 'factCandidate', 'factDecision', 'rewrite', 'rewriteCandidate'] as const
@@ -135,11 +135,12 @@ export function aiReviewDraftInputFingerprint(input: AiReviewDraftInput): string
 
 export function aiReviewDraftManifestMatches(manifest: AiManifest): boolean {
   try {
-    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'reviewDraft'], specializedManifestFields)
+    return fields(manifest, ['purpose', 'instruction', 'sources', 'configuration', 'inputTokenAllowance', 'reservedMicros', 'promptVersion', 'reviewDraft'], [...specializedManifestFields, 'knowledgeMaterialChecks'])
       && manifest.purpose === 'KNOWLEDGE_DRAFT' && manifest.promptVersion === 'review-knowledge-draft-1' && text(manifest.instruction, 1000, false)
       && Array.isArray(manifest.sources) && manifest.sources.length === 0 && specializedManifestFields.every(key => manifest[key] == null)
       && Boolean(manifest.configuration && typeof manifest.configuration === 'object' && !Array.isArray(manifest.configuration))
       && integer(manifest.inputTokenAllowance, 1) && integer(manifest.reservedMicros) && Boolean(manifest.reviewDraft && aiReviewDraftInputValid(manifest.reviewDraft))
+      && aiKnowledgeMaterialChecksMatch(manifest)
   } catch { return false }
 }
 
