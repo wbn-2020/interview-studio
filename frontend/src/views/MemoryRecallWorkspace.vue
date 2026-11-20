@@ -16,6 +16,7 @@ import { useTrainingAccessStore } from '../state/trainingAccess'
 import MemoryNavigation from '../components/memory/MemoryNavigation.vue'
 const MemoryAttemptEditor = defineAsyncComponent(() => import('../components/memory/MemoryAttemptEditor.vue'))
 const MemoryReviewSettings = defineAsyncComponent(() => import('../components/memory/MemoryReviewSettings.vue'))
+const settingsSetup = ref(false)
 
 const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore(), writer = useCommand(), active = ref(true)
 const selectedId = computed(() => typeof route.query.attempt === 'string' ? route.query.attempt : undefined)
@@ -56,6 +57,8 @@ const queue = useQuery({ queryKey: queueKey, enabled: readable, staleTime: 0, re
   return value
 } })
 const settingsRequired = computed(() => queue.error.value instanceof ApiError && queue.error.value.code === 'MEMORY_SETTINGS_REQUIRED')
+// 队列刷新会暂时清除错误；首次设置表单继续保留，避免切回窗口时丢失输入。
+watch(settingsRequired, required => { if (required) settingsSetup.value = true })
 const openList = useQuery({ queryKey: openKey, enabled: readable, staleTime: 0, refetchOnWindowFocus: false, queryFn: async () => {
   const epoch = store.sessionEpoch, stamp = generation, cursor = openCursor.value, round = openRound.value
   const value = await read<MemoryOpenAttemptPage>(`/memory/attempts/open?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)
@@ -142,6 +145,7 @@ function scheduleBoundaryRefresh(value: MemoryReviewQueue) {
 function onFocus() { if (readable.value && document.visibilityState === 'visible') refreshLists() }
 function onVisibility() { if (document.visibilityState !== 'visible') clearBoundaryTimer(); else if (readable.value) refreshLists() }
 function changed() { refreshLists() }
+function settingsSaved() { settingsSetup.value = false; refreshLists() }
 function setInclude(value: boolean) { if (!blocked.value) { includeOverBudget.value = value; refreshLists() } }
 function choose(item: MemoryQueueItem) {
   if (blocked.value || !queueReady.value || (dirty.value && !store.canLeave([stateKey]))) return
@@ -230,7 +234,7 @@ function time(value: string | null) { if (!value) return '尚无安排'; try { r
       </template><p v-else class="field-help">恢复资料访问后可继续读取队列。</p>
     </aside>
     <MemoryAttemptEditor v-if="selectedId && !routeProblem" :key="selectedId" :id="selectedId" :disabled="!readable" @changed="changed" @close="close" />
-    <section v-else-if="readable && settingsRequired" class="recall-onboarding" aria-label="首次回忆设置"><header><h2>开始安排每日回忆</h2><p>先确认时区和每天的建议数量，设置会用于安排常规回忆。</p></header><MemoryReviewSettings :disabled="!readable || locked" @saved="changed" /><p class="setup-next">保存后，进入“管理卡片与排程”，核对卡片来源并启用排程；到期卡片就会出现在这里。</p></section>
+    <section v-else-if="settingsSetup" class="recall-onboarding" aria-label="首次回忆设置"><header><h2>开始安排每日回忆</h2><p>先确认时区和每天的建议数量，设置会用于安排常规回忆。</p></header><MemoryReviewSettings :disabled="!readable || locked" @saved="settingsSaved" /><p class="setup-next">保存后，进入“管理卡片与排程”，核对卡片来源并启用排程；到期卡片就会出现在这里。</p></section>
     <section v-else class="recall-welcome"><p class="section-label">一次只处理一份独立回答</p><h2>从左侧选择一张到期卡</h2><p>先在心中回忆或写下答案，明确揭示后再对照个人参考，最后选择这一次的自评。</p><p>已经开始的尝试留在“尚未结束”中。来源、卡片或排程发生变化时，旧记录保留，并按实际状态恢复。</p><NButton :disabled="!readable || locked" @click="settings">管理卡片与排程</NButton></section>
   </div>
   </div>
