@@ -188,7 +188,7 @@
   </select>
   <select id="replayStart" resultType="com.wenjie.studio.review.ReviewGrowthRows$ReplayStart">
     SELECT r.owner_id,r.id,r.session_id,r.question_id,r.question_mode,s.started_at,s.status AS session_status,
-      s.question_count,q.kind AS question_kind
+      s.question_count,q.question_kind
     FROM review_repractice r LEFT JOIN training_session s ON s.owner_id=r.owner_id AND s.id=r.session_id
     LEFT JOIN training_question q ON q.owner_id=r.owner_id AND q.session_id=r.session_id AND q.id=r.question_id
     WHERE r.owner_id=#{owner} AND r.id=#{id}
