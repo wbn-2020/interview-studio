@@ -70,11 +70,10 @@ const list = useQuery({ queryKey: computed(() => ['review-actions', store.sessio
     return value
   } })
 watch(status, () => { cursor.value = undefined; cursors.value = [] })
-watch([dirty, locked, sourceLoading, childState], ([changed, waiting, reading, child]) => {
-  // 来源返回前尚未形成草稿，必须保护这段读取，避免导航后接纳旧来源并遮住新动作。
-  changeState.dirty = changed; commandState.locked = waiting || reading
+watch([dirty, locked, childState], ([changed, waiting, child]) => {
+  changeState.dirty = changed; commandState.locked = waiting
   store.changes.set('review-action-create', changeState); store.changes.set('review-actions-command', commandState)
-  emit('state', { dirty: changed || child.dirty, locked: waiting || reading || child.locked })
+  emit('state', { dirty: changed || child.dirty, locked: waiting || child.locked })
 }, { immediate: true, flush: 'sync' })
 watch(signature, () => { confirmed.value = false }, { flush: 'sync' })
 watch([readable, () => store.sessionEpoch], () => {
