@@ -49,9 +49,9 @@
         'technologyType',JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')),
         'scenarioType',JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),
         'conditionsType',JSON_TYPE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),
-        'technology',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')),'[^[:space:]]'),
-        'scenario',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),'[^[:space:]]'),
-        'conditions',REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),'[^[:space:]]')) AS metadata_json,
+        'technology',CAST(REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.technology')),'[^[:space:]]') AS UNSIGNED),
+        'scenario',CAST(REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.scenario')),'[^[:space:]]') AS UNSIGNED),
+        'conditions',CAST(REGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(q.snapshot_json,'$.content.conditions')),'[^[:space:]]') AS UNSIGNED)) AS metadata_json,
       s.id AS parent_session_id,s.owner_id AS session_owner_id,s.mode,s.generation,s.created_at AS session_created_at,
       JSON_OBJECT('rootType',JSON_TYPE(CAST(s.context_json AS JSON)),
         'references',COALESCE((
