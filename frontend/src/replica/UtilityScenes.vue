@@ -78,11 +78,15 @@ const taskFilterButton = ref<HTMLButtonElement>()
 const continuousAuthorization = ref(false)
 const taskCancelled = ref(false)
 const sendConfirmed = ref(false)
-const currentTask = computed(() => taskItems[selectedTask.value] ?? taskItems[0]!)
-const currentTaskStatus = computed(() => selectedTask.value === 0
-  ? taskCancelled.value ? '已取消' : sendConfirmed.value ? '已确认发送' : currentTask.value.status
-  : currentTask.value.status)
-const visibleTasks = computed(() => taskItems.map((item, index) => ({ ...item, index }))
+// 状态展示和筛选共用实时投影，避免取消或确认后仍按初始状态匹配。
+const resolvedTasks = computed(() => taskItems.map((item, index) => ({
+  ...item, index,
+  status: index === 0 && taskCancelled.value ? '已取消' : index === 0 && sendConfirmed.value ? '已确认发送' : item.status,
+})))
+const currentTask = computed(() => resolvedTasks.value[selectedTask.value] ?? resolvedTasks.value[0]!)
+const currentTaskStatus = computed(() => currentTask.value.status)
+const taskStatusOptions = computed(() => ['全部状态', ...new Set([...taskItems.map(item => item.status), ...resolvedTasks.value.map(item => item.status)])])
+const visibleTasks = computed(() => resolvedTasks.value
   .filter((item) => taskFilter.value === '全部状态' || item.status === taskFilter.value))
 
 function chooseTaskFilter(status: string) {
@@ -266,7 +270,7 @@ onMounted(drawHorizon)
         <div class="utility-dropdown" @keydown.esc.stop="closeTaskMenu" @focusout="taskMenuFocusout">
           <button ref="taskFilterButton" class="utility-button task-filter-button" aria-haspopup="menu" :aria-expanded="taskMenuOpen" @click="taskMenuOpen = !taskMenuOpen"><RIcon name="filter" :size="23" />{{ taskFilter }}<RIcon name="chevron-down" :size="17" /></button>
           <div v-if="taskMenuOpen" class="utility-menu" role="menu">
-            <button v-for="status in ['全部状态', ...taskItems.map(item => item.status)]" :key="status" role="menuitemradio" :aria-checked="taskFilter === status" @click="chooseTaskFilter(status)">{{ status }}<RIcon v-if="taskFilter === status" name="check" :size="17" /></button>
+            <button v-for="status in taskStatusOptions" :key="status" role="menuitemradio" :aria-checked="taskFilter === status" @click="chooseTaskFilter(status)">{{ status }}<RIcon v-if="taskFilter === status" name="check" :size="17" /></button>
           </div>
         </div>
         <button class="utility-button task-refresh-button" @click="emit('notify', '当前任务状态已刷新，仅使用页面内数据')"><RIcon name="refresh-cw" :size="23" />刷新</button>
@@ -277,11 +281,12 @@ onMounted(drawHorizon)
         <button v-for="task in visibleTasks" :key="task.name" class="task-queue-item" :class="{ selected: selectedTask === task.index }" :aria-pressed="selectedTask === task.index" @click="selectedTask = task.index">
           <span class="task-dot" :class="task.color" />
           <span class="task-item-name">{{ task.name }}</span>
-          <span class="task-status" :class="task.color">{{ task.index === 0 && taskCancelled ? '已取消' : task.index === 0 && sendConfirmed ? '已确认发送' : task.status }}</span>
+          <span class="task-status" :class="task.color">{{ task.status }}</span>
           <span class="task-item-subject">{{ task.subject }}</span>
           <!-- 27_AI任务与授权.png：首条任务 x280..376 / y386..402 的小字无法可靠辨认，保留空白。 -->
           <span class="task-item-time" :class="{ dim: task.index === 0 }">{{ task.time }}</span>
         </button>
+        <p v-if="visibleTasks.length === 0" class="task-empty" aria-live="polite">当前筛选下没有任务</p>
       </aside>
 
       <section class="utility-panel task-detail" aria-label="任务详情">
@@ -498,6 +503,7 @@ onMounted(drawHorizon)
 .task-queue-item:nth-of-type(2) .task-item-name,
 .task-queue-item:nth-of-type(3) .task-item-name { transform: translate(1px, 1px); }
 .task-queue-item:nth-of-type(4) .task-item-name { transform: translate(1px, 2px); }
+.task-empty { margin: 24px; color: #b4aca1; font-size: 17px; line-height: 1.6; }
 .task-status { display: inline-flex; justify-content: center; align-items: center; padding: 3px 11px; border-radius: 22px; font-size: 17px; line-height: 1.5; white-space: nowrap; }
 .task-queue-item > .task-status { position: absolute; right: 21px; top: 17px; }
 .task-status.amber { color: #fff2db; background: linear-gradient(120deg, #986515df, #69430ebf); }

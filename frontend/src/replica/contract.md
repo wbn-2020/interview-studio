@@ -1,10 +1,22 @@
 # v12 Reference Frontend Contract
 
-Date: 2026-11-12. Scope: deterministic, frontend-only reference states.
+Date: 2026-11-20. Scope: deterministic, frontend-only reference states.
+
+## 当前视觉验收标准
+
+用户于2026-11-20明确调整要求：复刻大致UI，整体出入不要太大；字体和细微颜色差异不要求完全1:1。
+
+- 核对整体构图、导航位置、主要面板及信息层级，保证主要内容与操作可见，没有明显错位、遮挡或遗漏。
+- 字体身份、字形、细微色差、图标笔画和背景纹理可以存在差异；不再为逐像素一致单独开展校准批次。
+- 参考图差异指标只作辅助诊断，不作为通过门槛或完成百分比；历史“严格1:1未通过”不再阻塞本范围交付。
+- 以服务器实拍的逐页视觉复核和已配置前端交互检查共同验收。仍须如实区分前端演示与真实业务、持久化和AI服务的验收范围。
+- 既有几何断言用于识别意外回归；有明确布局调整时，应按实际修改及视觉复核更新对应断言，历史精确值不构成新增UI要求。
+
+## Reference implementation boundaries
 
 - Entry: `/replica.html?scene=01` through `scene=30`.
 - Design viewport: 1536 x 1024 CSS pixels, DPR 1.
-- Do not start services, install dependencies, add unit tests, or access backend APIs.
+- Do not start local services, install dependencies, add unit tests, or access backend APIs from these reference scenes.
 - Reference directory: `C:\Users\Administrator\Desktop\pict\interview_studio\v12_晨昏线iOS`.
 - Only page images 01 through 30 are evidence. Each must be opened individually.
 - Existing business application and user changes remain intact.
@@ -24,6 +36,6 @@ Date: 2026-11-12. Scope: deterministic, frontend-only reference states.
 - Initial state resets from the selected scene on full reload; user actions are in-memory only.
 - Animations, blinking carets and force-layout simulations must not affect screenshots.
 - Ambiguous or illegible source text must be reported by exact file and region, not silently invented.
-- Actual screenshots and visual/interaction acceptance remain pending user deployment.
-- Final production output: `frontend/dist-replica-v12-20261112-final/`, with `replica.html` and existing `index.html`.
+- Capture actual screenshots and validate interactions on the existing deployed server under the standing project authorization. See `docs/技术架构/项目生图与部署约定.md`.
+- Build outputs use a new batch directory under `artifacts/frontend/`; preserve existing artifacts. The reference entry is `replica.html`; the existing business entry is `index.html`.
 - Per-page evidence and uncertain source regions: `docs/交互设计/v12参考场景对应表.md`.
