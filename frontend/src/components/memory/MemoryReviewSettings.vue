@@ -10,7 +10,7 @@ import { useCommand } from '../../composables/useCommand'
 import { useWorkspaceStore } from '../../state/workspace'
 import { useTrainingAccessStore } from '../../state/trainingAccess'
 
-const props = defineProps<{ disabled?: boolean }>()
+const props = defineProps<{ disabled?: boolean; onboarding?: boolean }>()
 const emit = defineEmits<{ saved: [value: MemoryReviewSettings] }>()
 const store = useWorkspaceStore(), access = useTrainingAccessStore(), writer = useCommand(), active = ref(true)
 type Draft = { zoneId: string; dailyNewBudget: number | null; dailyReviewBudget: number | null }
@@ -172,6 +172,7 @@ function refresh() { if (!blocked.value) void detail.refetch() }
       <p v-if="writer.error.value" class="notice error" role="alert">{{ memoryReviewErrorText(writer.error.value) }}<NButton v-if="writer.pending.value || (receiptMismatch && receiptCommand)" text :loading="writer.busy.value" :disabled="!readable || otherLocked" @click="retry">{{ receiptMismatch ? '核对原请求结果' : '用原请求重试' }}</NButton></p>
       <p v-if="deferred" class="notice" role="status">保存结果已返回，等待恢复访问后接收。<NButton text :disabled="!readable || otherLocked" @click="receiveDeferred">接收原请求结果</NButton></p>
       <template v-if="editBase">
+        <NButton v-if="onboarding && editBase.configured && !dirty && currentReady && !stale && !needsReview && !blocked" text @click="emit('saved', editBase)">设置已就绪，继续回忆</NButton>
         <p v-if="!editBase.configured" class="notice">尚未保存设置。每天 10 张新卡、50 张复习卡是建议值；请明确选择时区后再保存。</p>
         <p v-else class="field-help">编辑基线：设置修订 {{ editBase.revision }}{{ dirty ? ' · 有未保存输入' : '' }}</p>
         <p v-if="stale || needsReview" class="notice">设置修订或访问条件已变化，输入已保留。<NButton text :disabled="blocked" :loading="serverLoading" @click="compareServer">读取服务器设置并对照</NButton></p>
