@@ -15,6 +15,7 @@ const emit = defineEmits<{ saved: [value: MemoryReviewSettings] }>()
 const store = useWorkspaceStore(), access = useTrainingAccessStore(), writer = useCommand(), active = ref(true)
 type Draft = { zoneId: string; dailyNewBudget: number | null; dailyReviewBudget: number | null }
 const draft = reactive<Draft>({ zoneId: '', dailyNewBudget: 10, dailyReviewBudget: 50 })
+const deviceTimeZone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone } catch { return '' } })()
 const initialSignature = ref(signature(draft)), current = shallowRef<MemoryReviewSettings>(), editBase = shallowRef<MemoryReviewSettings>()
 const serverCopy = shallowRef<MemoryReviewSettings>(), readError = ref(''), serverError = ref(''), message = ref('')
 const needsReview = ref(false), replaceConfirmed = ref(false), serverLoading = ref(false), verifiedEpoch = ref(-1), verifiedGeneration = ref(-1)
@@ -174,7 +175,8 @@ function refresh() { if (!blocked.value) void detail.refetch() }
         <p v-if="!editBase.configured" class="notice">尚未保存设置。每天 10 张新卡、50 张复习卡是建议值；请明确选择时区后再保存。</p>
         <p v-else class="field-help">编辑基线：设置修订 {{ editBase.revision }}{{ dirty ? ' · 有未保存输入' : '' }}</p>
         <p v-if="stale || needsReview" class="notice">设置修订或访问条件已变化，输入已保留。<NButton text :disabled="blocked" :loading="serverLoading" @click="compareServer">读取服务器设置并对照</NButton></p>
-        <label>复习日时区<NInput :value="readable ? draft.zoneId : ''" :disabled="!editable" placeholder="例如 Asia/Shanghai 或 UTC" :input-props="{ 'aria-label': '复习日时区' }" @update:value="updateZone" /><span class="field-help">按 IANA 名称填写，时区是否可用由服务器确认。修改时区不移动已经保存的 UTC 到期时刻。</span></label>
+        <label>复习日时区<NInput :value="readable ? draft.zoneId : ''" :disabled="!editable" placeholder="例如 Asia/Shanghai 或 UTC" :input-props="{ 'aria-label': '复习日时区' }" @update:value="updateZone" /><span class="field-help">按此时区计算每天的新卡和复习数量。修改时区不移动已经保存的到期时刻。</span></label>
+        <div v-if="deviceTimeZone" class="row-actions"><NButton size="small" :disabled="!editable || draft.zoneId === deviceTimeZone" @click="updateZone(deviceTimeZone)">使用设备时区（{{ deviceTimeZone }}）</NButton><span class="field-help">选择后保存才会生效，也可以手动填写其他 IANA 时区。</span></div>
         <div class="budget-fields">
           <label>每日新卡建议<NInputNumber :value="readable ? draft.dailyNewBudget : null" :disabled="!editable" :min="0" :max="1000" :step="1" :show-button="false" @update:value="updateBudget('dailyNewBudget', $event)" /></label>
           <label>每日复习建议<NInputNumber :value="readable ? draft.dailyReviewBudget : null" :disabled="!editable" :min="0" :max="1000" :step="1" :show-button="false" @update:value="updateBudget('dailyReviewBudget', $event)" /></label>
