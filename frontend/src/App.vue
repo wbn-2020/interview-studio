@@ -41,16 +41,16 @@ const commandPalette = ref<InstanceType<typeof GlobalCommandPalette>>()
 const theme = computed(() => ({
   common: {
     primaryColor: preferences.isDark ? '#dda16a' : '#a36429', primaryColorHover: '#efb77e', primaryColorPressed: '#bb7d44',
-    primaryColorSuppl: '#dda16a', borderRadius: '14px', fontFamily: '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif',
-    fontSize: '17px', bodyColor: preferences.isDark ? '#0b0a08' : '#f1eee8',
+    primaryColorSuppl: '#dda16a', borderRadius: '6px', fontFamily: '"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif',
+    fontSize: '14px', bodyColor: preferences.isDark ? '#0b0a08' : '#f1eee8',
     cardColor: preferences.isDark ? '#211c16' : '#fffdf9', modalColor: preferences.isDark ? '#211c16' : '#fffdf9',
     popoverColor: preferences.isDark ? '#282119' : '#fffdf9', tableColor: preferences.isDark ? '#1b1814' : '#fffdf9',
     borderColor: preferences.isDark ? '#4a3d2e' : '#d9cdbc', textColorBase: preferences.isDark ? '#f3eee5' : '#30271e',
   },
-  Button: { heightMedium: '49px', heightSmall: '36px', heightLarge: '56px', fontSizeMedium: '18px', fontSizeSmall: '15px', borderRadiusMedium: '25px', borderRadiusSmall: '18px', borderRadiusLarge: '28px', textColorPrimary: '#201307', textColorHoverPrimary: '#201307', textColorPressedPrimary: '#201307' },
-  Input: { heightMedium: '46px', fontSizeMedium: '17px', color: preferences.isDark ? '#171410' : '#fffdf9', borderRadius: '14px' },
-  Select: { peers: { InternalSelection: { heightMedium: '46px', fontSizeMedium: '17px', borderRadius: '14px' } } },
-  Card: { borderRadius: '22px', titleFontSizeMedium: '25px' },
+  Button: { heightMedium: '34px', heightSmall: '28px', heightLarge: '40px', fontSizeMedium: '13px', fontSizeSmall: '12px', borderRadiusMedium: '6px', borderRadiusSmall: '5px', borderRadiusLarge: '7px', textColorPrimary: '#201307', textColorHoverPrimary: '#201307', textColorPressedPrimary: '#201307' },
+  Input: { heightMedium: '34px', fontSizeMedium: '14px', color: preferences.isDark ? '#171410' : '#fffdf9', borderRadius: '6px' },
+  Select: { peers: { InternalSelection: { heightMedium: '34px', fontSizeMedium: '14px', borderRadius: '6px' } } },
+  Card: { borderRadius: '10px', titleFontSizeMedium: '18px' },
 }))
 
 async function refreshSession() {

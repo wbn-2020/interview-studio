@@ -400,7 +400,7 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
     <div v-if="!displayed.nodes.length" class="galaxy-empty"><span aria-hidden="true">✧</span><h2>从一个概念开始</h2><p>创建概念，再添加有意义的关系。<br />你的知识会在同一片星空中逐渐相连。</p></div>
     <div class="galaxy-actions">
       <div class="galaxy-legend"><span><i class="legend-core" />核心关系</span><span><i class="legend-related" />关联关系</span><span><i class="legend-candidate" />候选关系</span></div>
-      <div class="galaxy-zoom"><button :disabled="!editable || !!preview" aria-label="缩小星图" title="缩小星图" @click="magnify(.8)"><RIcon name="minus" :size="23" /></button><button class="galaxy-zoom-value" :disabled="!editable || !!preview" aria-label="恢复已保存镜头" title="恢复已保存镜头" @click="resetViewport">{{ zoom }}%</button><button :disabled="!editable || !!preview" aria-label="放大星图" title="放大星图" @click="magnify(1.25)"><RIcon name="plus" :size="23" /></button></div>
+      <div class="galaxy-zoom"><button :disabled="!editable || !!preview || !displayed.nodes.length" aria-label="显示星图全景" title="显示星图全景" @click="fit"><RIcon name="maximize" :size="18" /></button><button :disabled="!editable || !!preview" aria-label="缩小星图" title="缩小星图" @click="magnify(.8)"><RIcon name="minus" :size="23" /></button><button class="galaxy-zoom-value" :disabled="!editable || !!preview" aria-label="恢复已保存镜头" title="恢复已保存镜头" @click="resetViewport">{{ zoom }}%</button><button :disabled="!editable || !!preview" aria-label="放大星图" title="放大星图" @click="magnify(1.25)"><RIcon name="plus" :size="23" /></button></div>
     </div>
     <p v-if="titleQuery?.trim()" class="galaxy-query-status" role="status">当前窗口 {{ titleMatches.length }} 个标题匹配；其他节点淡显，坐标保持不变。</p>
     <div v-if="dirty || writer.error.value || displayed.truncated || notice || stateQuery.error.value || neighborhoodQuery.error.value || !paired" class="galaxy-status" aria-live="polite">
@@ -465,25 +465,9 @@ onUnmounted(() => { resize?.disconnect(); cy?.destroy(); store.changes.delete('l
 </style>
 
 <style scoped>
-.graph-workspace > .galaxy { min-height: 755px; background: radial-gradient(ellipse at 45% 50%, #825c2117, transparent 52%); overflow: visible; }.galaxy-caption { top: 15px; left: 25px; color: #b5aa99; font-size: 16px; }.galaxy-caption > span { display: none; }.galaxy-caption small { font-size: 14px; color: #a69c8d; }.galaxy-empty { width: 340px; }.galaxy-empty > span { color: #e8b66d; font-size: 62px; }.galaxy-empty h2 { font-size: 25px; color: #f4e8d5; }.galaxy-empty p { font-size: 17px; color: #a69a87; }
-.galaxy-actions { left: 50%; right: auto; bottom: 0; transform: translateX(-50%); gap: 12px; padding: 12px 20px; border: 1px solid #77603b; border-radius: 34px; background: #14110be8; color: #d1c9bc; font-size: 19px; white-space: nowrap; }.galaxy-actions button { min-width: 36px; min-height: 36px; font-size: 20px; border: 1px solid #ffffff0c; border-radius: 50%; }.galaxy-legend { display: flex; gap: 20px; padding-right: 20px; border-right: 1px solid #ffffff26; }.galaxy-legend span { display: flex; align-items: center; gap: 10px; font-size: 18px; }.galaxy-legend i { width: 15px; height: 15px; border-radius: 50%; }.legend-core { background: #e6ad51; }.legend-related { background: #72cec7; }.legend-candidate { background: #8b8578; }
-.graph-explorer { top: 50px; background: #1a150fe8; border-color: #5a4530; border-radius: 15px; color: #e8dcc9; font-size: 15px; }.graph-tool-content { border-color: #5a4530; }.graph-tool-content p { color: #b5a58e; }.graph-tool-content select { background: #241b12; color: #f1e0c7; border-color: #655137; }.galaxy-status { border-radius: 13px; background: #2b2116eb; color: #e6d4b9; }.galaxy-status p { font-size: 14px; color: inherit; }.galaxy-caption .candidate-count { color: #e8b86c; }
-@media (max-width: 1250px) { .galaxy-legend { gap: 12px; padding-right: 12px; }.galaxy-legend span { font-size: 14px; gap: 6px; }.galaxy-actions { gap: 6px; padding: 8px 12px; } }
-@media (max-width: 600px) { .graph-workspace > .galaxy { min-height: 600px; }.galaxy-legend { display: none; }.galaxy-empty { width: 270px; }.graph-explorer { top: 50px; } }
-@media (min-width: 1251px) {
-  .graph-overlay { height: 100%; }
-  .graph-overlay > .galaxy { flex: 1 1 0; min-height: 0; overflow: hidden; }
-  .graph-overlay .galaxy-actions { left: calc(50% - 378px); bottom: 33px; width: 638px; height: 64px; transform: none; gap: 0; padding: 0 23px 0 29px; }
-  .graph-overlay .galaxy-legend { gap: 29px; padding-right: 0; border: 0; }
-  .graph-overlay .galaxy-legend span { gap: 10px; font-size: 18px; }
-  .graph-overlay .galaxy-legend span:first-child { color: #ffe4a2; }
-  .graph-overlay .galaxy-legend i { width: 16px; height: 16px; }
-  .graph-overlay .galaxy-zoom { margin-left: auto; height: 34px; padding-left: 34px; border-left: 1px solid #aaa18e66; }
-  .graph-overlay .galaxy-zoom > button { display: grid; width: 39px; height: 39px; padding: 0; border-radius: 50%; font-size: 19px; color: #d1c9bc; }
-  .graph-overlay .galaxy-zoom > .galaxy-zoom-value { width: 60px; border: 0; border-radius: 0; }
-  .graph-overlay .graph-explorer { top: 84px; left: 290px; right: auto; z-index: 6; max-width: min(360px,calc(100% - 310px)); }
-  .graph-overlay .graph-tool-content { width: 350px; max-height: min(65vh,600px); }
-  .graph-overlay .galaxy-status { left: 290px; right: 460px; top: 92px; }
-  .graph-overlay .galaxy-query-status { left: 290px; bottom: 108px; max-width: calc(100% - 750px); }
-}
+.graph-workspace > .galaxy { min-height: 570px; background: radial-gradient(ellipse at 45% 50%,#825c2117,transparent 52%),var(--bg); overflow: hidden; }.galaxy-caption { top: 16px; left: 18px; color: var(--muted); font-size: 13px; }.galaxy-caption > span { display: none; }.galaxy-caption small { font-size: 12px; color: var(--muted); }
+.galaxy-empty { width: 270px; }.galaxy-empty > span { color: var(--brand); font-size: 32px; }.galaxy-empty h2 { font-size: 18px; color: var(--ink); }.galaxy-empty p { font-size: 13px; color: var(--muted); }
+.galaxy-actions { left: 16px; right: 16px; bottom: 16px; transform: none; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--muted); font-size: 12px; }.galaxy-actions button { min-width: 30px; min-height: 30px; padding: 3px; font-size: 12px; border: 0; border-radius: 4px; }.galaxy-actions button svg { width: 17px; height: 17px; }.galaxy-legend { display: flex; flex-wrap: wrap; gap: 12px; }.galaxy-legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; }.galaxy-legend i { width: 7px; height: 7px; border-radius: 50%; }.legend-core { background: #e6ad51; }.legend-related { background: #72cec7; }.legend-candidate { background: #8b8578; }
+.graph-explorer { top: 54px; right: 16px; background: var(--surface); border-color: var(--line); border-radius: 7px; color: var(--ink); font-size: 12px; }.graph-tool-content { border-color: var(--line); }.graph-tool-content p { color: var(--muted); }.graph-tool-content select { background: var(--surface-soft); color: var(--ink); border-color: var(--line); }.galaxy-status { border-radius: 7px; background: var(--surface); color: var(--ink); }.galaxy-status p { font-size: 12px; color: inherit; }.galaxy-caption .candidate-count { color: var(--brand); }.galaxy-query-status { font-size: 12px; }
+@media(max-width:700px) { .galaxy-actions { gap: 6px; }.galaxy-legend { gap: 8px; }.galaxy-zoom { gap: 4px; }.galaxy-zoom-value { min-width: 40px !important; } }
 </style>

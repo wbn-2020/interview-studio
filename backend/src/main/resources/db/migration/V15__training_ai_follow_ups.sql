@@ -13,7 +13,7 @@ ALTER TABLE training_question
     DROP FOREIGN KEY fk_training_question_source,
     MODIFY COLUMN source_question_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
     MODIFY COLUMN source_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
-    ADD CONSTRAINT fk_training_question_source FOREIGN KEY (owner_id,source_question_id,source_version_id)
+    ADD CONSTRAINT fk_training_question_source_v15 FOREIGN KEY (owner_id,source_question_id,source_version_id)
         REFERENCES question_version (owner_id,question_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     ADD COLUMN question_kind VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'MAIN',
     ADD COLUMN root_question_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,

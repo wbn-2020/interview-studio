@@ -6,15 +6,20 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { useWorkspaceStore } from './state/workspace'
 import { useTrainingAccessStore } from './state/trainingAccess'
+import { installNavigationFeedback } from './state/navigation'
 import './styles.css'
 import './preferences.css'
-import './studio.css'
+import './workspace.css'
 
 const pinia = createPinia()
 const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.path !== from.path) return { top: 0 }
+  },
   routes: [
-    { path: '/', redirect: '/knowledge' },
+    { path: '/', redirect: '/today' },
     { path: '/search', name: 'search', component: () => import('./views/SearchWorkspace.vue') },
     { path: '/recent', name: 'recent', component: () => import('./views/RecentWorkspace.vue') },
     { path: '/knowledge', name: 'knowledge', component: () => import('./views/KnowledgeWorkspace.vue') },
@@ -46,6 +51,7 @@ const router = createRouter({
     { path: '/:pathMatch(.*)*', redirect: '/knowledge' },
   ],
 })
+installNavigationFeedback(router)
 router.beforeEach((to, from) => {
   const workspace = useWorkspaceStore(pinia)
   if (to.fullPath === from.fullPath) return true

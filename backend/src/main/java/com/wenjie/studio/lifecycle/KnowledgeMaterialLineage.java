@@ -1727,7 +1727,9 @@ public class KnowledgeMaterialLineage {
             // v2 明确保存全部检查及实际外发子序列；没有原字节见证的旧提示词不能推定同一生成依据。
             if (manifest == null || manifest.purpose() != AiDtos.Purpose.FOLLOW_UP
                     || !"".equals(manifest.instruction()) || manifest.sources() == null || !manifest.sources().isEmpty()
-                    || !"training-follow-up-2".equals(manifest.promptVersion()) || manifest.configuration() == null
+                    // 新旧提示词共享固定输入结构；历史见证保留原版本，只接受明确支持的两版。
+                    || (!"training-follow-up-2".equals(manifest.promptVersion())
+                        && !"training-follow-up-3".equals(manifest.promptVersion())) || manifest.configuration() == null
                     || manifest.training() == null || manifest.contextChecks() == null || manifest.evaluation() != null
                     || manifest.materialQa() != null || manifest.preparationChecks() != null
                     || manifest.materialDraftSources() != null || manifest.expressionType() != null
@@ -1885,7 +1887,8 @@ public class KnowledgeMaterialLineage {
             var manifest = json.readValue(row.manifestJson(), AiDtos.Manifest.class);
             if (manifest == null || manifest.purpose() != AiDtos.Purpose.ANSWER_EVALUATION
                     || !"".equals(manifest.instruction()) || manifest.sources() == null || !manifest.sources().isEmpty()
-                    || !"training-evaluation-1".equals(manifest.promptVersion()) || manifest.configuration() == null
+                    || (!"training-evaluation-1".equals(manifest.promptVersion())
+                        && !"training-evaluation-2".equals(manifest.promptVersion())) || manifest.configuration() == null
                     || manifest.evaluation() == null || manifest.training() != null || manifest.contextChecks() != null
                     || manifest.materialQa() != null || manifest.preparationChecks() != null
                     || manifest.materialDraftSources() != null || manifest.expressionType() != null

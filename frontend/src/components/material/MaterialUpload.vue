@@ -186,12 +186,12 @@ function startAnother() {
 </template>
 
 <style scoped>
-.material-upload { display: grid; gap: 14px; padding: 25px clamp(18px, 3vw, 34px); min-width: 0; }
+.material-upload { display: grid; gap: 20px; padding: 28px; min-width: 0; }
 .material-upload > header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
-.material-upload h2 { font-size: 22px; overflow-wrap: anywhere; }
+.material-upload h2 { font-size: 18px; overflow-wrap: anywhere; }.material-upload .section-label { margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 400; letter-spacing: 0; }
 .material-upload > label { display: grid; gap: 8px; color: var(--muted); font-size: 12px; }
-.file-field { padding: 18px; border: 1px dashed var(--line); border-radius: 7px; background: var(--surface-soft); }
-.file-field input { max-width: 100%; color: var(--ink); }
+.file-field { align-content: center; min-height: 120px; padding: 24px; border: 1px dashed var(--line); border-radius: 8px; background: var(--bg); }
+.file-field input { width: 100%; min-width: 0; color: var(--muted); font-size: 13px; }.file-field input::file-selector-button { margin-right: 12px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); font: inherit; cursor: pointer; }.file-field input:disabled::file-selector-button { cursor: not-allowed; opacity: .5; }
 .file-summary, .attempt-status { display: grid; gap: 5px; font-size: 12px; overflow-wrap: anywhere; }
 .file-summary code { color: var(--muted); font-size: 11px; }
 .attempt-status { padding: 13px; border-left: 2px solid var(--brand); background: var(--surface-soft); }

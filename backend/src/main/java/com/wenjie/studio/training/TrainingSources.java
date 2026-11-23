@@ -92,7 +92,7 @@ public class TrainingSources {
         QuestionSnapshot baseline = baselineQuestion(owner, baselineSessionId, baselineQuestionId);
         List<ContextSnapshot> context = repracticeContexts(owner, contextLinks);
         QuestionSnapshot question = variant == null ? replayQuestion(owner, baselineSessionId, baselineQuestionId, baseline)
-                : variantQuestion(owner, variant);
+                : variantQuestion(owner, variant, baseline);
         return new SourceSnapshot(context, List.of(question));
     }
 
@@ -103,7 +103,7 @@ public class TrainingSources {
         QuestionSnapshot baseline = baselineQuestion(owner, baselineSessionId, baselineQuestionId);
         revalidateContext(owner, context);
         QuestionSnapshot current = sameQuestion ? replayQuestion(owner, baselineSessionId, baselineQuestionId, baseline)
-                : variantQuestion(owner, new QuestionSelection(snapshot.sourceQuestionId(), snapshot.sourceVersionId(), snapshot.stage()));
+                : variantQuestion(owner, new QuestionSelection(snapshot.sourceQuestionId(), snapshot.sourceVersionId(), snapshot.stage()), baseline);
         if (sameQuestion && snapshot.sourceQuestionId() == null
                 && List.of(REPLAY_EXPOSURE_WARNING, LEGACY_REPLAY_WARNING).equals(snapshot.warnings())) {
             // 兼容旧草稿的来源提示措辞；题面、版本和其余字段仍须逐项一致。
@@ -145,7 +145,7 @@ public class TrainingSources {
     }
 
     private QuestionSnapshot recollectionVariant(String owner, QuestionSelection variant) {
-        QuestionSnapshot question = variantQuestion(owner, variant);
+        QuestionSnapshot question = variantQuestion(owner, variant, null);
         return new QuestionSnapshot(question.sourceQuestionId(), question.sourceVersionId(), question.title(), question.number(),
                 question.stage(), question.content(), List.of("由个人回忆发起的变式补练；曝光计数只统计所选题库题目的既往记录。"));
     }
@@ -291,9 +291,14 @@ public class TrainingSources {
         return snapshot;
     }
 
-    private QuestionSnapshot variantQuestion(String owner, QuestionSelection variant) {
+    private QuestionSnapshot variantQuestion(String owner, QuestionSelection variant, QuestionSnapshot baseline) {
         required(variant); uuid(variant.sourceQuestionId()); uuid(variant.sourceVersionId());
         if (!REPRACTICE_STAGE.equals(variant.stage())) throw invalid("变式题阶段必须为独立复练。");
+        // 创建与开始前复核共用版本身份校验，旧草稿也不能把同一确切题面记作变式。
+        if (baseline != null && variant.sourceQuestionId().equals(baseline.sourceQuestionId())
+                && variant.sourceVersionId().equals(baseline.sourceVersionId())) {
+            throw invalid("所选版本与原题相同，请使用同题复练或选择其他题目版本。");
+        }
         QuestionSnapshot current = questionSnapshots(owner, List.of(variant), null, null).getFirst();
         return new QuestionSnapshot(current.sourceQuestionId(), current.sourceVersionId(), current.title(), current.number(),
                 current.stage(), current.content(), List.of("由已有原答发起的变式复练；曝光计数只统计所选题库题目的既往记录。"));

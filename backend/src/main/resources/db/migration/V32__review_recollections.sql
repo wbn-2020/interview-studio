@@ -52,7 +52,7 @@ CREATE TABLE review_recollection_version (
         AND JSON_UNQUOTE(JSON_EXTRACT(content_json,'$.baselineKind'))=baseline_kind
         AND JSON_TYPE(JSON_EXTRACT(content_json,'$.answerFragment'))='STRING'
         AND ((baseline_kind='NONE' AND CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(content_json,'$.answerFragment')))=0)
-            OR (baseline_kind='RECOLLECTION' AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(content_json,'$.answerFragment'))))>0)),FALSE)),
+            OR (baseline_kind='RECOLLECTION' AND CHAR_LENGTH(TRIM(JSON_UNQUOTE(JSON_EXTRACT(content_json,'$.answerFragment'))))>0)),FALSE)=TRUE),
     CONSTRAINT ck_recollection_version_interview CHECK (
         (interview_id IS NULL AND interview_revision IS NULL AND interview_json IS NULL)
         OR (interview_id IS NOT NULL AND interview_revision IS NOT NULL

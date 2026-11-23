@@ -45,12 +45,13 @@ function receive() { const apply = deferred.value; deferred.value = undefined; a
 </script>
 
 <template>
-  <section v-if="locked || (blocked && (access.checking || access.restricted))" class="training-access-notice" role="status" aria-live="polite">
+  <section v-if="locked || (blocked && (access.checking || access.restricted))" class="training-access-notice" :class="{ 'access-loading': access.checking && !locked && !access.error }" role="status" aria-live="polite" :aria-busy="access.checking && !access.error">
     <template v-if="access.checking && !locked">
-      <h2>正在确认当前训练条件</h2>
-      <p>资料页面暂时收起，页面中的未保存内容仍然保留。</p>
+      <h2>{{ access.error ? '暂时无法打开工作区' : '正在确认训练状态…' }}</h2>
+      <p>{{ access.error ? '未保存内容仍保留在当前页面，连接恢复后可继续。' : '确认后继续显示内容，未保存的编辑会保留。' }}</p>
       <p v-if="access.error" class="notice error" role="alert">{{ access.error }}</p>
-      <NButton :disabled="!access.error" @click="access.refresh">重新检查连接</NButton>
+      <NButton v-if="access.error" @click="access.refresh">重新检查连接</NButton>
+      <div v-else class="access-skeleton" aria-hidden="true"><div /><div /><div /><div /></div>
     </template>
     <template v-else>
       <h2>先确认本次训练的资料使用条件</h2>
@@ -71,9 +72,15 @@ function receive() { const apply = deferred.value; deferred.value = undefined; a
 </template>
 
 <style scoped>
-.training-access-notice { max-width: 720px; margin: 40px auto; padding: 28px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.training-access-notice h2 { font-size: 21px; }
-.training-access-notice p { margin: 16px 0; }
-.training-access-notice .n-button + .n-button { margin-left: 12px; }
-@media (max-width: 560px) { .training-access-notice { margin: 16px auto; padding: 18px; } }
+.training-access-notice { max-width: 820px; margin: 0; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.training-access-notice h2 { font-size: 18px; }
+.training-access-notice p { margin: 12px 0; font-size: 13px; color: var(--muted); }
+.training-access-notice .n-button { margin: 6px 8px 0 0; }
+.access-loading { max-width: none; padding: 4px 0; border: 0; background: none; }
+.access-loading h2 { font-size: 16px; }
+.access-skeleton { display: grid; gap: 14px; margin-top: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; }
+.access-skeleton > div { height: 18px; max-width: 620px; border-radius: 4px; background: var(--surface-soft); }
+.access-skeleton > div:first-child { width: 35%; }
+.access-skeleton > div:last-child { width: 65%; }
+@media (max-width: 560px) { .training-access-notice { padding: 16px; } .access-loading { padding: 0; } }
 </style>

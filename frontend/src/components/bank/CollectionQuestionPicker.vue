@@ -7,7 +7,7 @@ import { questionTypeLabels, readQuestionPage } from '../../api/collections'
 import type { CollectionQuestionChoice, CollectionQuestionDetail, QuestionSummary, QuestionType } from '../../api/collections'
 import { useWorkspaceStore } from '../../state/workspace'
 
-const props = defineProps<{ disabled?: boolean; excludeQuestionIds: string[] }>()
+const props = defineProps<{ disabled?: boolean; excludeQuestionIds: string[]; excludeQuestionVersions?: { id: string; versionId: string }[] }>()
 const emit = defineEmits<{ choose: [value: CollectionQuestionChoice]; close: [] }>()
 const store = useWorkspaceStore()
 const input = ref('')
@@ -40,8 +40,13 @@ watch([() => props.disabled, () => store.sessionEpoch, () => store.sessionActive
 onUnmounted(() => { alive = false; selectionRequest++ })
 function searchTitles() { search.value = input.value.trim(); cursor.value = undefined; cursors.value = [] }
 function next() { if (results.data.value?.nextCursor) { cursors.value.push(cursor.value); cursor.value = results.data.value.nextCursor } }
+function exclusion(item: { id: string; versionId: string }) {
+  if (props.excludeQuestionIds.includes(item.id)) return '已在集合内'
+  return props.excludeQuestionVersions?.some(version => version.id === item.id && version.versionId === item.versionId)
+    ? '原题版本，请选择同题复练' : ''
+}
 async function choose(item: QuestionSummary) {
-  if (locked.value || props.excludeQuestionIds.includes(item.id)) return
+  if (locked.value || exclusion(item)) return
   const epoch = store.sessionEpoch
   const request = ++selectionRequest
   choosing.value = true
@@ -55,7 +60,7 @@ async function choose(item: QuestionSummary) {
       void results.refetch()
       return
     }
-    if (props.excludeQuestionIds.includes(item.id)) return
+    if (exclusion({ id: current.id, versionId: current.currentVersion.id })) return
     emit('choose', { id: current.id, versionId: current.currentVersion.id, versionNumber: current.currentVersion.number, title: current.currentVersion.content.title, type: current.currentVersion.content.type, difficulty: current.currentVersion.content.difficulty })
   } catch (error) {
     if (alive && store.sessionActive && store.sessionEpoch === epoch && request === selectionRequest) chooseError.value = errorText(error)
@@ -71,7 +76,7 @@ async function choose(item: QuestionSummary) {
     <p class="field-help">选择会固定题目版本。同一题目在本集合中只出现一次；这里不读取参考答案。</p>
     <p v-if="results.isPending.value" role="status" class="field-help">正在读取题目…</p>
     <div v-if="results.error.value || chooseError" class="notice error" role="alert"><p>{{ chooseError || errorText(results.error.value) }}</p><NButton size="small" text :disabled="locked" @click="results.refetch()">刷新题目</NButton></div>
-    <div class="collection-picker-results"><button v-for="item in results.data.value?.items" :key="item.id" type="button" :disabled="locked || excludeQuestionIds.includes(item.id)" @click="choose(item)"><strong>{{ item.title }}</strong><span>{{ questionTypeLabels[item.type] }} · v{{ item.versionNumber }}{{ excludeQuestionIds.includes(item.id) ? ' · 已在集合内' : '' }}</span></button></div>
+    <div class="collection-picker-results"><button v-for="item in results.data.value?.items" :key="item.id" type="button" :disabled="locked || !!exclusion(item)" @click="choose(item)"><strong>{{ item.title }}</strong><span>{{ questionTypeLabels[item.type] }} · v{{ item.versionNumber }}{{ exclusion(item) ? ` · ${exclusion(item)}` : '' }}</span></button></div>
     <p v-if="results.data.value && !results.data.value.items.length" class="field-help">没有匹配的活跃题目。可调整标题或题型，或先到题库保存一道题目。</p>
     <div v-if="cursors.length || results.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="locked || !cursors.length" @click="cursor = cursors.pop()">上一页</NButton><NButton size="small" :disabled="locked || !results.data.value?.nextCursor" @click="next">下一页</NButton></div>
   </section>

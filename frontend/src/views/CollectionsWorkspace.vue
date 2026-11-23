@@ -8,7 +8,6 @@ import { collectionKindLabels } from '../api/collections'
 import type { Collection, CollectionKind, CollectionPage, CollectionStatus } from '../api/collections'
 import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
-import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 
 const CollectionEditor = defineAsyncComponent(() => import('../components/bank/CollectionEditor.vue'))
 const route = useRoute()
@@ -44,7 +43,6 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 
 <template>
   <header class="page-heading"><div><h1>题单与路线</h1></div><NButton type="primary" :disabled="!store.sessionActive" @click="create">＋ 新建{{ collectionKindLabels[kind] }}</NButton></header>
-  <WorkspaceTabs area="practice" catalog />
   <div class="collections-workspace">
     <aside class="collection-catalog" :aria-label="`${collectionKindLabels[kind]}列表`">
       <h2 class="catalog-title">{{ kind === 'ROUTE' ? '路线列表' : '题单列表' }}</h2>
@@ -87,6 +85,6 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 </style>
 
 <style scoped>
-.collections-workspace { max-width: none; grid-template-columns: 323px minmax(0, 1fr); border: 0; border-radius: 0; background: none; gap: 12px; min-height: 748px; }.collection-catalog { border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(120deg, #ffffff03, transparent), var(--surface); padding: 24px 12px; }.catalog-title { margin: 0 8px 22px; font-size: 23px; }.collection-item-list { gap: 16px; }.collection-item-list button { min-height: 92px; gap: 10px; padding: 18px 22px; border-radius: 16px; }.collection-item-list button.selected { background: linear-gradient(120deg, #a7774770, #6e4d3270); border: 1px solid #b3865850; }.collection-item-list strong { font-size: 21px; font-weight: 500; }.collection-item-list span { font-size: 16px; }.collection-catalog .title-search { margin-block: 14px; }.collection-welcome { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); align-self: stretch; align-content: center; max-width: none; }.collections-workspace :deep(.collection-editor) { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }.collections-workspace :deep(.collection-detail-header h2) { font-size: 28px; }.collections-workspace :deep(.collection-form label) { font-size: 17px; }.collections-workspace :deep(.detail-tabs button) { font-size: 17px; padding: 6px 15px; }
-@media(max-width:1100px) { .collections-workspace { grid-template-columns: 260px minmax(0,1fr); } }@media(max-width:700px) { .collections-workspace { grid-template-columns: 1fr; }.collection-item-list { max-height: 300px; }.collection-catalog { border-radius: 18px; } }
+.collections-workspace { max-width: none; grid-template-columns: 260px minmax(0,1fr); min-height: 480px; border-radius: 10px; overflow: clip; }.collection-catalog { padding: 16px 12px; }.catalog-title { margin: 0 6px 16px; font-size: 15px; }.collection-item-list { gap: 4px; max-height: 500px; overflow-y: auto; }.collection-item-list button { padding: 11px; gap: 5px; border-radius: 6px; }.collection-item-list button.selected { background: var(--brand-soft); }.collection-item-list strong { font-size: 14px; font-weight: 500; }.collection-item-list span { font-size: 12px; }.collection-catalog .title-search { margin-block: 12px; }.collection-welcome { align-self: start; padding: 34px; max-width: 740px; }.collection-welcome h2 { font-size: 21px; }.collections-workspace :deep(.collection-editor) { padding: 24px; }.collections-workspace :deep(.collection-detail-header h2) { font-size: 20px; }
+@media(max-width:700px) { .collections-workspace { grid-template-columns: minmax(0,1fr); }.collection-item-list { max-height: 230px; }.collection-welcome { padding: 24px 18px; } }
 </style>

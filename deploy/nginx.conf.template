@@ -1,0 +1,75 @@
+map $request_method $studio_login_limit_key {
+    default "";
+    POST $binary_remote_addr;
+}
+limit_req_zone $studio_login_limit_key zone=studio_login:1m rate=5r/m;
+map $status $studio_login_retry_after {
+    default "";
+    429 12;
+}
+
+server {
+    listen 8080;
+    server_name _;
+    server_tokens off;
+    return 308 https://__PUBLIC_HOST__:30081$request_uri;
+}
+
+server {
+    listen 8443 ssl;
+    server_name _;
+    server_tokens off;
+    ssl_certificate /etc/nginx/tls/server.crt;
+    ssl_certificate_key /etc/nginx/tls/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 1100m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy same-origin always;
+    add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+    add_header Retry-After $studio_login_retry_after always;
+
+    location = /api/v1/auth/login {
+        limit_req zone=studio_login burst=4 nodelay;
+        limit_req_status 429;
+        error_page 429 = @studio_login_throttled;
+        proxy_pass http://application:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+    }
+
+    location @studio_login_throttled {
+        default_type application/problem+json;
+        return 429 '{"status":429,"code":"LOGIN_RATE_LIMITED","detail":"登录尝试过于频繁，请稍后重试。"}';
+    }
+
+    location /api/ {
+        proxy_pass http://application:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+        # 模型流与文件传输沿原连接返回，代理不缓存正文或等待完整上传。
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 180s;
+        proxy_send_timeout 180s;
+    }
+
+    location /assets/ {
+        try_files $uri =404;
+        expires 7d;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+        expires -1;
+    }
+}

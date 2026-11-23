@@ -11,7 +11,6 @@ import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import PreparationTaskTargetPicker from '../components/prepare/PreparationTaskTargetPicker.vue'
 import PreparationTaskBoard from '../components/prepare/PreparationTaskBoard.vue'
-import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 
 const PreparationTaskEditor = defineAsyncComponent(() => import('../components/prepare/PreparationTaskEditor.vue'))
 type TargetFilter = Pick<PreparationTaskTarget, 'itemId' | 'title'>
@@ -106,7 +105,6 @@ function next() {
 
 <template>
   <header class="page-heading"><div><p class="section-label">把准备事项落到行动</p><h1>准备任务</h1><p class="muted">写清要做的事、预计工作量和计划日期，保留每次修改与处理记录。</p></div><div class="row-actions"><NButton :disabled="!readable" @click="createWithAi">生成准备建议</NButton><NButton type="primary" :disabled="!readable" @click="create">＋ 新建准备任务</NButton></div></header>
-  <WorkspaceTabs area="prepare" />
   <details class="task-filter-disclosure"><summary>筛选准备任务</summary>
   <form class="task-filters" aria-label="筛选准备任务" @submit.prevent="applyFilters">
     <div class="filter-fields"><label>任务状态<NSelect v-model:value="filterInput.status" :options="statusOptions" :disabled="!readable" aria-label="任务状态" /></label><label>计划日期从<input v-model="filterInput.from" type="date" min="1000-01-01" max="9999-12-31" :disabled="!readable" /></label><label>计划日期到<input v-model="filterInput.to" type="date" min="1000-01-01" max="9999-12-31" :disabled="!readable" /></label><div class="row-actions"><NButton attr-type="submit" :disabled="!readable || !!filterProblem || targetPickerBusy">应用筛选</NButton><NButton text :disabled="!readable || targetPickerBusy" @click="clearFilters">清空筛选</NButton></div></div>
@@ -160,6 +158,6 @@ input[type=date] { width: 100%; min-height: 34px; padding: 5px 10px; color: var(
 </style>
 
 <style scoped>
-.task-filter-disclosure { margin: 0 0 18px; }.task-filter-disclosure summary { color: var(--muted); font-size: 15px; cursor: pointer; }.task-filters { padding: 22px; margin-top: 16px; border: 1px solid var(--line); border-radius: 19px; background: var(--surface); }.preparation-tasks-workspace { max-width: none; gap: 14px; background: transparent; border: 0; grid-template-columns: 330px minmax(0, 1fr); }.task-catalog { border: 1px solid var(--line); border-radius: 21px; padding: 24px 18px; background: linear-gradient(120deg, #2d251c99, #18130fbb); }.task-catalog h2 { font-size: 25px; }.task-list article { border: 1px solid transparent; border-radius: 16px; padding: 14px; margin-top: 12px; }.task-list article.selected { border-color: #a67448; background: #8c593333; }.task-select strong { font-size: 21px; }.task-select > span { font-size: 16px; }.task-select > small { font-size: 14px; }.preparation-tasks-workspace :deep(.preparation-task-editor) { padding: 30px; border: 1px solid var(--line); border-radius: 21px; background: #211b1499; }.preparation-tasks-workspace :deep(.detail-header h2) { font-size: 29px; }
-@media (max-width: 900px) { .preparation-tasks-workspace { grid-template-columns: 1fr; } }
+.task-filter-disclosure { margin-bottom: 16px; }.task-filter-disclosure summary { color: var(--muted); font-size: 13px; cursor: pointer; }.task-filters { padding: 16px; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }.preparation-tasks-workspace { max-width: none; grid-template-columns: 280px minmax(0,1fr); min-height: 480px; border-radius: 10px; overflow: clip; }.task-catalog { padding: 16px 12px; }.task-catalog h2 { font-size: 15px; }.task-list { max-height: 520px; overflow-y: auto; }.task-list article { padding: 10px; border-radius: 6px; margin-top: 5px; }.task-list article.selected { background: var(--brand-soft); }.task-select strong { font-size: 14px; }.task-select > span { font-size: 12px; }.task-select > small { font-size: 11px; }.preparation-tasks-workspace :deep(.preparation-task-editor) { padding: 24px; }.preparation-tasks-workspace :deep(.detail-header h2) { font-size: 20px; }
+@media(max-width:760px) { .preparation-tasks-workspace { grid-template-columns: minmax(0,1fr); }.task-list { max-height: 230px; } }
 </style>

@@ -204,6 +204,7 @@ function nextPage() { if (tasks.data.value?.nextCursor) { cursors.value.push(cur
 <template>
   <section class="training-evaluation" aria-label="确切提交的评价">
     <header><h4>评价与改写参考</h4><p class="field-help">{{ answer ? `当前选择第 ${answer.number} 版提交，评价与改写均绑定这次原文与结构图。` : '提交回答后，可为确切版本授权评价或改写。' }}结果保持 AI 未审层级，引用有效也不等于技术结论正确。</p></header>
+    <p v-if="session.questions.find(item => item.id === questionId)?.kind === 'FOLLOW_UP'" class="notice">追问评价只包含本题题面与这次提交，未附带父题或父答案。若题干依赖先前上下文，请将相关观察视为待核对。</p>
     <p v-if="message" class="notice" role="status">{{ message }}</p>
     <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :loading="writer.busy.value" :disabled="!readable || !!disabled" @click="retryCommand">用原请求重试</NButton></p>
     <p v-if="deferred" class="notice" role="status">服务器已确认的结果在登录或训练条件变化后到达。<NButton text :disabled="!readable || !!disabled" @click="receiveDeferred">接收已确认结果</NButton></p>

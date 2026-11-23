@@ -728,8 +728,8 @@ public class AiSources {
         return switch (purpose) {
             case KNOWLEDGE_DRAFT -> PROMPT_VERSION;
             case QUESTION_DRAFT -> "question-draft-1";
-            case FOLLOW_UP -> "training-follow-up-2";
-            case ANSWER_EVALUATION -> "training-evaluation-1";
+            case FOLLOW_UP -> "training-follow-up-3";
+            case ANSWER_EVALUATION -> "training-evaluation-2";
             case MATERIAL_QA -> "material-qa-1";
             case SOURCE_QA -> "source-qa-1";
             case EXPRESSION_DRAFT -> "expression-draft-1";

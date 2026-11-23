@@ -29,11 +29,11 @@ ALTER TABLE review_action_source
         OR (kind='RECOLLECTION' AND session_id IS NULL AND question_id IS NULL AND answer_id IS NULL
             AND feedback_id IS NULL AND feedback_revision IS NULL AND task_id IS NULL AND observation_id IS NULL
             AND manual_kind IS NULL AND author_label IS NULL AND observation_json IS NULL AND decision_json IS NULL
-            AND recollection_id IS NOT NULL AND recollection_version_id IS NOT NULL AND recollection_json IS NOT NULL),FALSE)),
+            AND recollection_id IS NOT NULL AND recollection_version_id IS NOT NULL AND recollection_json IS NOT NULL),FALSE)=TRUE),
     ADD CONSTRAINT ck_review_source_observation CHECK (COALESCE(
         (kind='RECOLLECTION' AND observation_json IS NULL)
         OR (kind IN ('MANUAL','AI_EVALUATION') AND observation_json IS NOT NULL AND JSON_VALID(observation_json)
-            AND JSON_TYPE(CAST(observation_json AS JSON))='OBJECT' AND OCTET_LENGTH(observation_json)<=131072),FALSE)),
+            AND JSON_TYPE(CAST(observation_json AS JSON))='OBJECT' AND OCTET_LENGTH(observation_json)<=131072),FALSE)=TRUE),
     ADD CONSTRAINT ck_review_source_recollection CHECK (recollection_json IS NULL OR (JSON_VALID(recollection_json)
         AND JSON_TYPE(CAST(recollection_json AS JSON))='OBJECT' AND JSON_LENGTH(recollection_json)=5
         AND OCTET_LENGTH(recollection_json)<=65536
@@ -43,7 +43,7 @@ ALTER TABLE review_action_source
             AND JSON_TYPE(JSON_EXTRACT(recollection_json,'$.versionId'))='STRING'
             AND JSON_UNQUOTE(JSON_EXTRACT(recollection_json,'$.versionId'))=recollection_version_id
             AND JSON_TYPE(JSON_EXTRACT(recollection_json,'$.versionNumber'))='INTEGER'
-            AND JSON_EXTRACT(recollection_json,'$.versionNumber') BETWEEN 1 AND 1000
+            AND CAST(JSON_UNQUOTE(JSON_EXTRACT(recollection_json,'$.versionNumber')) AS UNSIGNED) BETWEEN 1 AND 1000
             AND JSON_TYPE(JSON_EXTRACT(recollection_json,'$.baselineKind'))='STRING'
             AND JSON_UNQUOTE(JSON_EXTRACT(recollection_json,'$.baselineKind')) IN ('RECOLLECTION','NONE')
             AND JSON_TYPE(JSON_EXTRACT(recollection_json,'$.observation'))='STRING'
@@ -69,4 +69,4 @@ ALTER TABLE review_repractice
             AND session_id<>baseline_session_id AND question_id<>baseline_question_id)
         OR (baseline_kind IN ('RECOLLECTION','NONE') AND baseline_session_id IS NULL AND baseline_question_id IS NULL AND baseline_answer_id IS NULL
             AND recollection_id IS NOT NULL AND recollection_version_id IS NOT NULL AND recollection_revision IS NOT NULL
-            AND recollection_revision BETWEEN 0 AND 1000),FALSE));
+            AND recollection_revision BETWEEN 0 AND 1000),FALSE)=TRUE);

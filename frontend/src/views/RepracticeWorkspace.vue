@@ -108,6 +108,6 @@ function nextPage() { if (readable.value && !list.isFetching.value && list.data.
 </style>
 
 <style scoped>
-.repractice-workspace { padding: 0; max-width: none; gap: 28px; }.workspace-heading h1 { margin: 0 0 10px; font-size: 48px; line-height: 1.3; letter-spacing: 0; }.repractice-list { border: 1px solid var(--line); border-radius: 20px; padding: 22px; background: var(--surface); }.repractice-list h2 { font-size: 23px; }.repractice-row { padding: 18px; border-radius: 13px; }.repractice-row strong { font-size: 19px; }.repractice-row :is(span,time) { font-size: 15px; }.repractice-main { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); padding: 25px; }
-@media(max-width:600px) { .workspace-heading h1 { font-size: 34px; }.repractice-main { padding: 20px 16px; } }
+.repractice-workspace { padding: 0; max-width: none; gap: 20px; }.workspace-heading h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.35; }.workspace-heading > p { font-size: 13px; color: var(--muted); }.repractice-list { border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--surface); }.repractice-list h2 { font-size: 16px; }.repractice-row { padding: 12px; border-radius: 6px; }.repractice-row strong { font-size: 14px; }.repractice-row :is(span,time) { font-size: 12px; }.repractice-main { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 22px; }
+@media(max-width:600px) { .workspace-heading h1 { font-size: 24px; }.repractice-main { padding: 18px 14px; } }
 </style>

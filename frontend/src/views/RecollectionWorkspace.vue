@@ -11,7 +11,6 @@ import { reviewIdValid } from '../api/review'
 import { queryClient } from '../api/queryClient'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
-import WorkspaceTabs from '../components/studio/WorkspaceTabs.vue'
 const RecollectionEditor = defineAsyncComponent(() => import('../components/review/RecollectionEditor.vue'))
 
 const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
@@ -76,7 +75,6 @@ function next() { if (readable.value && !list.isFetching.value && list.data.valu
 
 <template>
   <header class="page-heading"><div><p class="section-label">把面试后的记忆留在原处</p><h1>面后回忆</h1><p class="muted">记下问题、当时的表达与不确定之处，逐步补记，也可整理为待审题目。</p></div><NButton type="primary" :disabled="!readable" @click="create">＋ 记录一个问题</NButton></header>
-  <WorkspaceTabs v-if="!selectedId && !creating" area="review" />
   <details class="recollection-filter-disclosure"><summary>回忆列表筛选</summary>
   <form v-show="readable" class="recollection-filters" aria-label="筛选面后回忆" @submit.prevent="applyFilters"><label>状态<NSelect v-model:value="input.status" :options="statusOptions" :disabled="!readable" aria-label="回忆状态筛选" /></label><label>标题<NInput v-model:value="input.query" :disabled="!readable" placeholder="按回忆标题查找" /></label><label>关联面试<NSelect v-model:value="input.interviewId" :options="interviewOptions" clearable filterable :disabled="!readable" placeholder="全部面试与未关联记录" aria-label="面试筛选" /></label><div class="row-actions"><NButton attr-type="submit" :disabled="!readable || !!filterProblem">应用筛选</NButton><NButton text :disabled="!readable" @click="clearFilters">清空</NButton></div><p class="field-help filter-help">面试选项来自已载入的回忆，也可在列表中选择“只看这次面试”；筛选后会查询该面试的全部匹配记录。</p><p v-if="filterProblem" class="notice error filter-help" role="alert">{{ filterProblem }}</p><p v-else-if="filterChanged" class="field-help filter-help" role="status">筛选条件尚未应用，列表仍显示上一次结果。</p></form>
   </details>
@@ -100,5 +98,6 @@ function next() { if (readable.value && !list.isFetching.value && list.data.valu
 </style>
 
 <style scoped>
-.recollection-filter-disclosure { margin-bottom: 20px; }.recollection-filter-disclosure > summary { cursor: pointer; color: var(--muted); font-size: 16px; }.recollections-workspace { max-width: none; gap: 18px; border: 0; background: none; }.recollection-catalog { border: 1px solid var(--line); border-radius: 20px; padding: 23px 18px; background: var(--surface); }.recollection-catalog h2 { font-size: 22px; }.recollection-select strong { font-size: 20px; }.recollection-select :is(span,small) { font-size: 15px; }.recollection-list > article { padding: 18px 14px; border-radius: 13px; }.recollections-workspace.focused { display: block; }.recollections-workspace.focused > .recollection-catalog { display: none; }.recollection-welcome { align-self: stretch; align-content: center; max-width: none; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
+.recollection-filter-disclosure { margin-bottom: 16px; }.recollection-filter-disclosure > summary { cursor: pointer; color: var(--muted); font-size: 13px; }.recollections-workspace { max-width: none; min-height: 480px; border-radius: 10px; }.recollection-catalog { padding: 16px 12px; }.recollection-catalog h2 { font-size: 15px; }.recollection-list { max-height: 520px; overflow-y: auto; }.recollection-select strong { font-size: 14px; }.recollection-select :is(span,small) { font-size: 12px; }.recollection-list > article { padding: 11px 10px; border-radius: 6px; }.recollections-workspace.focused { display: block; }.recollections-workspace.focused > .recollection-catalog { display: none; }.recollection-welcome { align-self: start; padding: 34px; }.recollection-welcome h2 { font-size: 21px; }
+@media(max-width:760px) { .recollection-list { max-height: 230px; }.recollection-welcome { padding: 24px 18px; } }
 </style>

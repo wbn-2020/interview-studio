@@ -23,9 +23,9 @@ ALTER TABLE knowledge_revalidation_impact
 
 -- 开启外键检查时新增外键使用 COPY；删旧与建新必须分句，自引用的目标唯一索引先建立。
 ALTER TABLE knowledge_revalidation_impact
-    ADD CONSTRAINT fk_knowledge_revalidation_source_path FOREIGN KEY (owner_id,task_id,source_item_id,source_version_id)
+    ADD CONSTRAINT fk_knowledge_revalidation_source_path_v69 FOREIGN KEY (owner_id,task_id,source_item_id,source_version_id)
         REFERENCES ai_knowledge_source (owner_id,task_id,source_item_id,source_version_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
-    ADD CONSTRAINT fk_knowledge_revalidation_source_version FOREIGN KEY (owner_id,source_item_id,source_version_id)
+    ADD CONSTRAINT fk_knowledge_revalidation_source_version_v69 FOREIGN KEY (owner_id,source_item_id,source_version_id)
         REFERENCES knowledge_version (owner_id,item_id,id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     ADD CONSTRAINT fk_knowledge_revalidation_parent FOREIGN KEY (owner_id,event_id,parent_impact_id,source_item_id)
         REFERENCES knowledge_revalidation_impact (owner_id,event_id,id,target_item_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
