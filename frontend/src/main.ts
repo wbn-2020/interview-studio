@@ -201,7 +201,7 @@ router.beforeEach(async (to, from) => {
   if (to.name === 'ai-authorizations' || to.name === 'data-management') return true
   if (!workspace.sessionActive || to.fullPath === from.fullPath) return true
   const access = useTrainingAccessStore(pinia)
-  const ready = await access.refresh()
+  const ready = await access.refresh({ preservePage: true })
   if (!ready) return false
   if (access.restricted && access.needsGuard(to.name, to.query.item, to.query.create)) {
     access.challenge = true

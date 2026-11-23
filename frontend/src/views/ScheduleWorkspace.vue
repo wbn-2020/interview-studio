@@ -141,7 +141,7 @@ function acknowledge(event: InterviewEvent) {
 </template>
 
 <style scoped>
-.reminder-panel, .command-error, .schedule-layout { max-width: 1280px; margin-left: auto; margin-right: auto; }
+.reminder-panel, .command-error, .schedule-layout { max-width: none; margin-left: 0; margin-right: 0; }
 .reminder-panel { display: grid; gap: 9px; margin-bottom: 23px; padding: 16px 20px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 7px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .section-heading h2 { font-size: 14px; }

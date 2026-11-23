@@ -134,7 +134,7 @@ function next() {
 </template>
 
 <style scoped>
-.task-filters, .filter-picker, .preparation-tasks-workspace { max-width: 1280px; margin-left: auto; margin-right: auto; }
+.task-filters, .filter-picker, .preparation-tasks-workspace { max-width: none; margin-left: 0; margin-right: 0; }
 .task-filters { display: grid; gap: 12px; padding: 17px 0; margin-bottom: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .filter-fields { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, minmax(150px, 1fr)) auto; gap: 14px; align-items: end; }
 .filter-fields label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; min-width: 0; }

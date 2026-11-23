@@ -95,17 +95,17 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
       <div v-if="cursors.length || list.data.value?.nextCursor" class="pagination"><NButton size="small" :disabled="!cursors.length" @click="cursor = cursors.pop()">上一页</NButton><NButton size="small" :disabled="!list.data.value?.nextCursor" @click="next">下一页</NButton></div>
     </aside>
     <PreparationEditor v-if="selectedId || creating" :key="selectedId && !creating ? selectedId : `new-${kind}`" :id="creating ? undefined : selectedId" :kind="kind" @changed="refresh" @created="created" @open="open" @close="close" />
-    <section v-else class="prepare-welcome"><RIcon :name="kind === 'TARGET' ? 'target' : kind === 'PROJECT' ? 'building' : kind === 'FACT' ? 'check' : 'pencil'" :size="24" /><h2>{{ guidance[kind].title }}</h2><p>{{ guidance[kind].text }}</p><NButton @click="create">新建{{ kindLabels[kind] }}</NButton><div class="prepare-related"><h3>继续准备</h3><RouterLink to="/prepare/materials"><RIcon name="file-text" :size="18" />整理附件资料<RIcon name="arrow-right" :size="16" /></RouterLink><RouterLink to="/prepare/schedule"><RIcon name="calendar-days" :size="18" />管理面试安排<RIcon name="arrow-right" :size="16" /></RouterLink></div></section>
+    <details v-else class="workspace-help"><summary>{{ guidance[kind].title }} · 使用说明</summary><div class="workspace-help-body"><p>{{ guidance[kind].text }}</p><div class="workspace-help-actions"><RouterLink to="/prepare/materials"><RIcon name="file-text" :size="16" />整理附件资料</RouterLink><RouterLink to="/prepare/schedule"><RIcon name="calendar-days" :size="16" />管理面试安排</RouterLink></div></div></details>
   </div>
   <p class="workspace-footnote">内容版本、核实决定和模型用途授权分别记录；手工材料和已核实经历默认不外发。</p>
 </template>
 
 <style scoped>
-.prepare-focus { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px; padding: 12px 0; border-top: 1px solid var(--studio-divider); border-bottom: 1px solid var(--studio-divider); }
+.prepare-focus { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding: 10px 0; border-top: 1px solid var(--studio-divider); border-bottom: 1px solid var(--studio-divider); }
 .prepare-focus > div { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .prepare-focus > div > .field-help:last-child { display: none; }
 .prepare-focus strong { font-size: 13px; }.prepare-focus-message { margin-bottom: 12px; }
-.prepare-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 288px; gap: 32px; align-items: start; }
+.prepare-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
 .prepare-workspace.has-detail { grid-template-columns: 248px minmax(0, 1fr); gap: 24px; }
 .prepare-catalog { min-width: 0; }
 .prepare-catalog-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 16px; }
@@ -119,9 +119,6 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
 .prepare-list-row strong { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }.prepare-list-row small { font-size: 12px; color: var(--muted); }
 .prepare-focus-action { min-height: 28px; padding: 3px 0; margin: 6px 0 0 32px; font-size: 12px; color: var(--brand); }
 .prepare-empty-list { display: grid; align-content: center; justify-items: center; min-height: 240px; padding: 36px 24px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); text-align: center; font-size: 13px; }.prepare-empty-list strong { margin-bottom: 8px; color: var(--ink); font-size: 16px; font-weight: 500; }
-.prepare-welcome { display: grid; justify-items: start; gap: 16px; padding: 24px; border: 1px solid var(--studio-divider); border-radius: 10px; background: var(--studio-pane); }
-.prepare-welcome > svg { color: var(--brand); }.prepare-welcome h2 { font-size: 17px; }.prepare-welcome > p { font-size: 13px; line-height: 1.85; color: var(--muted); }
-.prepare-related { display: grid; gap: 12px; width: 100%; margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--studio-divider); }.prepare-related h3 { color: var(--muted); font-size: 12px; font-weight: 500; }.prepare-related a { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; }.prepare-related a > svg:last-child { margin-left: auto; color: var(--muted); }.prepare-related a:hover { color: var(--brand-strong); }
 .prepare-workspace :deep(.preparation-editor) { min-width: 0; padding: 28px; border: 1px solid var(--studio-divider); border-radius: 10px; background: var(--studio-pane); }
 .prepare-workspace :deep(.detail-header h2) { font-size: 20px; }.prepare-workspace :deep(.prepare-readout) { font-size: var(--studio-font-size); line-height: 1.8; }
 .prepare-workspace :deep(.prepare-readout h3) { font-size: 16px; }.prepare-workspace :deep(.prepare-readout .preserve), .prepare-workspace :deep(.prepare-readout .markdown-preview), .prepare-workspace :deep(.readout-workspace) { font-size: var(--studio-font-size); }
@@ -130,5 +127,5 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
 .fact-project-directory details > button { display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); margin: 4px 0 4px 12px; padding: 9px; border-radius: 6px; text-align: left; font-size: 13px; }
 .fact-project-directory details > button.selected { background: var(--brand-soft); }.fact-project-directory details > button > svg { flex: none; width: 17px; }.fact-project-directory details > button > span { min-width: 0; overflow-wrap: anywhere; }
 @container workspace (max-width: 820px) { .prepare-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }.prepare-workspace.has-detail { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; } }
-@media(max-width:700px) { .prepare-workspace.has-detail { grid-template-columns: minmax(0, 1fr); }.has-detail .prepare-catalog { padding-bottom: 20px; border-bottom: 1px solid var(--studio-divider); }.has-detail :is(.prepare-item-list, .fact-project-directory) { max-height: 210px; }.prepare-welcome, .prepare-workspace :deep(.preparation-editor) { padding: 22px 18px; }.prepare-focus { margin-bottom: 24px; } }
+@media(max-width:700px) { .prepare-workspace.has-detail { grid-template-columns: minmax(0, 1fr); }.has-detail .prepare-catalog { padding-bottom: 20px; border-bottom: 1px solid var(--studio-divider); }.has-detail :is(.prepare-item-list, .fact-project-directory) { max-height: 210px; }.prepare-workspace :deep(.preparation-editor) { padding: 22px 18px; }.prepare-focus { margin-bottom: 24px; } }
 </style>

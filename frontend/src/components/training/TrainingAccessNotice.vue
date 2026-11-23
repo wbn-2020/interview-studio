@@ -50,7 +50,7 @@ function receive() { const apply = deferred.value; deferred.value = undefined; a
       <h2>{{ access.error ? '暂时无法打开工作区' : '正在确认训练状态…' }}</h2>
       <p>{{ access.error ? '未保存内容仍保留在当前页面，连接恢复后可继续。' : '确认后继续显示内容，未保存的编辑会保留。' }}</p>
       <p v-if="access.error" class="notice error" role="alert">{{ access.error }}</p>
-      <NButton v-if="access.error" @click="access.refresh">重新检查连接</NButton>
+      <NButton v-if="access.error" @click="access.refresh()">重新检查连接</NButton>
       <div v-else class="access-skeleton" aria-hidden="true"><div /><div /><div /><div /></div>
     </template>
     <template v-else>
@@ -64,7 +64,7 @@ function receive() { const apply = deferred.value; deferred.value = undefined; a
       <template v-else>
         <NButton type="primary" :disabled="locked" @click="returnToTraining">返回当前训练</NButton>
         <NButton :disabled="locked" @click="confirmAssistance">确认辅助并查看资料</NButton>
-        <NButton :disabled="locked" @click="access.refresh">重新读取训练状态</NButton>
+        <NButton :disabled="locked" @click="access.refresh()">重新读取训练状态</NButton>
         <NButton v-if="route.name === 'training' && route.query.item === access.active?.id" :disabled="locked" @click="access.challenge = false">继续作答</NButton>
       </template>
     </template>

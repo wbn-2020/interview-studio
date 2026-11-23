@@ -36,6 +36,13 @@ const safeManagementShell = computed(() => authorizationManagement.value || rout
 const trainingBlocked = computed(() => !safeManagementShell.value && (trainingAccess.checking || trainingAccess.challenge
   || workspace.changes.get('training-access-command')?.locked
   || (trainingAccess.restricted && trainingAccess.needsGuard(route.name, route.query.item, route.query.create))))
+const routeSurface = ref<HTMLElement>()
+const guardedHeight = ref(0)
+const retainingLayout = computed(() => trainingBlocked.value && trainingAccess.checking && !trainingAccess.error)
+watch(trainingBlocked, blocked => {
+  // 内容立即遮挡，但保留核对前的占位高度，避免窗口恢复时文档塌陷和滚动位置被重置。
+  if (blocked && routeSurface.value) guardedHeight.value = routeSurface.value.getBoundingClientRect().height
+}, { flush: 'sync' })
 let trainingChannel: BroadcastChannel | undefined
 const commandPalette = ref<InstanceType<typeof GlobalCommandPalette>>()
 const theme = computed(() => ({
@@ -96,12 +103,30 @@ async function signOut() {
   } catch (reason) { error.value = errorText(reason) }
   finally { busy.value = false }
 }
+let windowActive = document.visibilityState === 'visible' && document.hasFocus()
+let windowSuspended = false
+function leaveWindow() { windowActive = false }
+function suspendTraining() {
+  leaveWindow()
+  if (windowSuspended) return
+  windowSuspended = true
+  trainingAccess.invalidate({ refreshData: false })
+}
 function checkTraining() {
+  if (document.visibilityState !== 'visible') { suspendTraining(); return }
+  if (!document.hasFocus() || windowActive) return
+  // 一次前台恢复只核对一次；后续 focus/pageshow 不再次遮挡已经核实的页面。
+  windowActive = true
+  if (!windowSuspended && !trainingAccess.checking) trainingAccess.invalidate({ refreshData: false })
+  windowSuspended = false
+  if (workspace.sessionActive) void trainingAccess.refresh()
+}
+function invalidateTraining() {
   trainingAccess.invalidate()
   if (workspace.sessionActive && document.visibilityState === 'visible') void trainingAccess.refresh()
 }
-function trainingChanged() { trainingChannel?.postMessage('changed'); checkTraining() }
-function assistanceRequired() { trainingAccess.challenge = true; checkTraining() }
+function trainingChanged() { trainingChannel?.postMessage('changed'); invalidateTraining() }
+function assistanceRequired() { trainingAccess.challenge = true; invalidateTraining() }
 function syncAiUpdates() {
   const comparisonId = route.name === 'repractice' && typeof route.query.comparison === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(route.query.comparison)
@@ -117,14 +142,15 @@ onMounted(() => {
   recent.start()
   if ('BroadcastChannel' in window) {
     trainingChannel = new BroadcastChannel('wenjie-training-condition')
-    trainingChannel.onmessage = checkTraining
+    trainingChannel.onmessage = invalidateTraining
   }
   window.addEventListener('studio:session-expired', expired)
   window.addEventListener('studio:training-changed', trainingChanged)
   window.addEventListener('studio:training-access-required', assistanceRequired)
   window.addEventListener('focus', checkTraining)
+  window.addEventListener('blur', leaveWindow)
   window.addEventListener('pageshow', checkTraining)
-  window.addEventListener('pagehide', checkTraining)
+  window.addEventListener('pagehide', suspendTraining)
   document.addEventListener('visibilitychange', checkTraining)
   document.addEventListener('visibilitychange', syncAiUpdates)
   window.addEventListener('pageshow', syncAiUpdates)
@@ -140,8 +166,9 @@ onUnmounted(() => {
   window.removeEventListener('studio:training-changed', trainingChanged)
   window.removeEventListener('studio:training-access-required', assistanceRequired)
   window.removeEventListener('focus', checkTraining)
+  window.removeEventListener('blur', leaveWindow)
   window.removeEventListener('pageshow', checkTraining)
-  window.removeEventListener('pagehide', checkTraining)
+  window.removeEventListener('pagehide', suspendTraining)
   document.removeEventListener('visibilitychange', checkTraining)
   document.removeEventListener('visibilitychange', syncAiUpdates)
   window.removeEventListener('pageshow', syncAiUpdates)
@@ -155,9 +182,11 @@ onUnmounted(() => {
       <StudioShell v-if="entered" :inert="!session?.authenticated || undefined" :username="session?.username" :unsaved="unsavedCount" :unresolved="unresolvedCount" :busy="busy" @command="commandPalette?.open()" @signout="signOut">
           <div v-if="preferences.current.saveRecoveryNotice && (unsavedCount || unresolvedCount)" class="preference-save-notice" role="status">{{ unsavedCount }} 处未保存输入，{{ unresolvedCount }} 个保存中或结果待确认操作。请完成保存或用原请求恢复；关闭页面可能丢失尚未保存的内容。</div>
           <p v-if="recent.message" class="notice" role="status">{{ recent.message }}</p>
-          <TrainingAccessNotice v-show="!authorizationManagement" />
-          <div v-show="!trainingBlocked" :inert="trainingBlocked || undefined">
+          <div class="studio-route-area">
+          <TrainingAccessNotice v-show="!authorizationManagement" :class="{ 'studio-access-refresh': retainingLayout && guardedHeight > 0 }" />
+          <div ref="routeSurface" v-show="!trainingBlocked || retainingLayout" class="studio-route-surface" :class="{ 'studio-content-checking': retainingLayout }" :style="retainingLayout ? { minHeight: `${guardedHeight}px` } : undefined" :aria-hidden="trainingBlocked || undefined" :inert="trainingBlocked || undefined">
             <NConfigProvider :namespace="trainingBlocked ? 'studio-material-layer-hidden' : 'studio-material-layer'"><RouterView /></NConfigProvider>
+          </div>
           </div>
       </StudioShell>
       <GlobalCommandPalette ref="commandPalette" :show-trigger="false" :enabled="Boolean(session?.authenticated && workspace.sessionActive && !loading && !busy)" />

@@ -38,7 +38,7 @@ function next() { if (attachments.data.value?.nextCursor) { cursors.value.push(c
 </template>
 
 <style scoped>
-.material-overview, .materials-workspace { max-width: 1280px; margin-left: auto; margin-right: auto; }
+.material-overview, .materials-workspace { max-width: none; margin-left: 0; margin-right: 0; }
 .material-overview { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 23px; }
 .material-capacity { display: grid; grid-template-columns: auto 140px; align-items: center; gap: 6px 13px; font-size: 12px; }
 .material-capacity small { grid-column: 1 / -1; text-align: right; color: var(--muted); font-size: 11px; }

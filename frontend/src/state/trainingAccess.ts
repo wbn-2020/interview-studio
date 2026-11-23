@@ -31,20 +31,22 @@ export const useTrainingAccessStore = defineStore('training-access', () => {
   const restricted = computed(() => Boolean(active.value && active.value.mode !== 'LEARNING' && !active.value.materialAccess))
   const trainingQueries = new Set(['training', 'training-session', 'training-events', 'training-question', 'training-answers', 'training-answer'])
 
-  function invalidate() {
+  function invalidate(options: { refreshData?: boolean } = {}) {
     generation++
     checking.value = true
     flight = undefined
     advanceTrainingAccess()
     // 保留观察者和编辑器的输入；遮挡期间停止资料读取，恢复授权后重新取数。
     void queryClient.cancelQueries({ predicate: query => !trainingQueries.has(String(query.queryKey[0])) })
-    void queryClient.invalidateQueries({ refetchType: 'none' })
+    if (options.refreshData !== false) void queryClient.invalidateQueries({ refetchType: 'none' })
   }
 
-  async function refresh(): Promise<boolean> {
+  async function refresh(options: { preservePage?: boolean } = {}): Promise<boolean> {
     if (flight) return flight
     if (!workspace.sessionActive) return false
-    checking.value = true
+    // 路由仍等待校验，当前已核实页面保留；跨窗口、权限变化和会话边界仍由 invalidate 立即遮挡。
+    if (!options.preservePage) checking.value = true
+    const wasBlocked = checking.value
     error.value = ''
     const request = generation
     const sessionEpoch = workspace.sessionEpoch
@@ -56,6 +58,7 @@ export const useTrainingAccessStore = defineStore('training-access', () => {
         const before = active.value
         const changed = before?.id !== result?.id || before?.materialAccess !== result?.materialAccess || before?.mode !== result?.mode
         if (changed) {
+          checking.value = true
           advanceTrainingAccess()
           void queryClient.cancelQueries({ predicate: query => !trainingQueries.has(String(query.queryKey[0])) })
           void queryClient.invalidateQueries({ refetchType: 'none' })
@@ -64,11 +67,14 @@ export const useTrainingAccessStore = defineStore('training-access', () => {
         checking.value = false
         if (!restricted.value) {
           challenge.value = false
-          void queryClient.refetchQueries({ type: 'active' })
+          if (wasBlocked || changed) void queryClient.refetchQueries({ type: 'active', stale: true })
         }
         return true
       } catch (reason) {
-        if (request === generation && sessionEpoch === workspace.sessionEpoch) error.value = errorText(reason)
+        if (request === generation && sessionEpoch === workspace.sessionEpoch) {
+          invalidate()
+          error.value = errorText(reason)
+        }
         return false
       } finally {
         if (request === generation) flight = undefined

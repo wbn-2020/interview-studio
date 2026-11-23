@@ -33,6 +33,7 @@ const applied = shallowRef<Filters>({ ...input }), filterError = ref(''), target
 const filterChanged = computed(() => JSON.stringify(input) !== JSON.stringify(applied.value))
 const view = ref<View>('overview'), notice = ref(''), displaySettingsOpen = ref(false)
 const overview = shallowRef<TodayOverview>(), overviewBusy = ref(false), overviewError = shallowRef<unknown>()
+let overviewEpoch = -1
 const planningContext = shallowRef<TodayDayContext>(), planningEpoch = ref(-1), planMounted = ref(false), planRefresh = ref(0)
 const planIntent = shallowRef<{ source: TodaySourceRef; mode: 'edit' | 'candidate'; sequence: number }>()
 const planReadable = computed(() => readable.value && planningEpoch.value === store.sessionEpoch && planningContext.value?.zoneId === applied.value.zoneId)
@@ -84,14 +85,16 @@ function merge(previous: TodayItem[], next: TodayItem[]): TodayItem[] {
 function clearBoundary() { boundarySequence++; if (boundaryTimer !== undefined) window.clearTimeout(boundaryTimer); boundaryTimer = undefined }
 function resetPage() { pageSequence++; page.value = undefined; items.value = []; pageError.value = undefined; pageBusy.value = false; pageCursors = new Set() }
 function resetCalendar() { calendarSequence++; calendarPage.value = undefined; calendarItems.value = []; calendarError.value = undefined; calendarBusy.value = false; calendarCursors = new Set() }
-function refreshAll(message = '') {
+function refreshAll(message = '', retainOverview = false) {
   generation++; overviewSequence++; sourceSequence++; clearBoundary()
   // 重读期间暂停日期相关写入，但保留编辑器、输入与原请求，直到当前日期重新核实。
   planningEpoch.value = -1
   planRefresh.value++
   if (writeRefreshTimer !== undefined) window.clearTimeout(writeRefreshTimer)
   writeRefreshTimer = undefined
-  overview.value = undefined; overviewError.value = undefined; overviewBusy.value = false
+  // 同一范围的定时更新保留上次快照，暂停相关操作；权限或筛选边界仍立即清空旧内容。
+  if (!retainOverview) overview.value = undefined
+  overviewError.value = undefined; overviewBusy.value = false
   sourceDetail.value = undefined; sourceError.value = undefined; sourceBusy.value = false
   resetPage(); resetCalendar()
   if (message) notice.value = message
@@ -121,7 +124,7 @@ function scheduleBoundary(value: TodayOverview | undefined, requestStarted: numb
   boundaryTimer = window.setTimeout(() => {
     if (token !== boundarySequence || !current(epoch, stamp)) return
     boundaryTimer = undefined
-    refreshAll()
+    refreshAll('', true)
   }, Math.max(0, deadline - performance.now()))
 }
 async function loadOverview() {
@@ -132,7 +135,7 @@ async function loadOverview() {
     const value = await read<unknown>(todayOverviewPath(query))
     if (!current(epoch, stamp) || request !== overviewSequence) return
     if (!todayOverviewValid(value, query)) throw invalid()
-    overview.value = value; scheduleBoundary(value, requestStarted)
+    overview.value = value; overviewEpoch = epoch; scheduleBoundary(value, requestStarted)
     // 列表轮询可以重置游标，安排编辑器仍保留原输入；日期只接受当前会话的已校验响应。
     planningContext.value = value.context; planningEpoch.value = epoch
     if (!calendarRange.value && !calendarInput.from && !calendarInput.to) {
@@ -236,17 +239,20 @@ function quick(kind: 'task' | 'training' | 'target' | 'memory' | 'note') {
   if (kind === 'memory') void router.push({ name: 'memory-cards' })
 }
 function noteCreated(id: string) { noteId.value = id; refreshAll('笔记已经保存到知识库，可继续整理或关联。') }
-function onFocus() { if (readable.value) refreshAll() }
 function onVisibility() { visible.value = document.visibilityState === 'visible' }
-watch([readable, () => store.sessionEpoch], () => { if (!readable.value) targetPickerOpen.value = false; refreshAll() }, { immediate: true, flush: 'sync' })
+watch([readable, () => store.sessionEpoch, () => access.restricted, () => access.challenge], () => {
+  if (!readable.value) targetPickerOpen.value = false
+  // 同一会话短暂核对期间由外壳遮挡快照，重新放行后更新；会话和受限状态变化不复用旧概览。
+  refreshAll('', Boolean(overview.value) && overviewEpoch === store.sessionEpoch && store.sessionActive && !access.restricted && !access.challenge)
+}, { immediate: true, flush: 'sync' })
 watch(() => store.sessionEpoch, () => { noteId.value = '' }, { flush: 'sync' })
 onMounted(() => {
-  window.addEventListener('focus', onFocus); document.addEventListener('visibilitychange', onVisibility)
+  document.addEventListener('visibilitychange', onVisibility)
   unsubscribe = queryClient.getQueryCache().subscribe(event => {
     if (!readable.value || event.type !== 'updated' || event.action.type !== 'invalidate' || !sourceQueryRoots.has(String(event.query.queryKey[0]))) return
     if (writeRefreshTimer !== undefined) window.clearTimeout(writeRefreshTimer)
     // 同一来源写入常会失效多个查询，只在当前可见工作台合并刷新一次。
-    writeRefreshTimer = window.setTimeout(() => { writeRefreshTimer = undefined; if (readable.value) refreshAll('来源记录已变化，已从首页重新读取。') }, 120)
+    writeRefreshTimer = window.setTimeout(() => { writeRefreshTimer = undefined; if (readable.value) refreshAll('来源记录已变化，已从首页重新读取。', true) }, 120)
   })
 })
 onActivated(() => { active.value = true })
@@ -254,7 +260,7 @@ onDeactivated(() => { active.value = false })
 onUnmounted(() => {
   alive = false; generation++; clearBoundary(); unsubscribe?.()
   if (writeRefreshTimer !== undefined) window.clearTimeout(writeRefreshTimer)
-  window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVisibility)
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 </script>
 
@@ -263,7 +269,7 @@ onUnmounted(() => {
   <div class="today-workspace">
     <div class="today-toolbar">
       <nav class="today-view-switch" aria-label="今日查看方式"><button type="button" :aria-current="view === 'overview' ? 'page' : undefined" :disabled="!readable" @click="changeView('overview')">今日概览</button><button type="button" :aria-current="view === 'source' ? 'page' : undefined" :disabled="!readable" @click="changeView('source')">按来源查看</button><button type="button" :aria-current="view === 'calendar' ? 'page' : undefined" :disabled="!readable" @click="changeView('calendar')">日期清单</button><button type="button" :aria-current="view === 'plans' ? 'page' : undefined" :disabled="!readable" @click="changeView('plans')">安排与建议</button></nav>
-      <div class="today-toolbar-actions"><button class="studio-icon-button" title="显示范围与时区" aria-label="显示范围与时区" :aria-expanded="displaySettingsOpen" aria-controls="today-display-settings" @click="displaySettingsOpen = !displaySettingsOpen"><RIcon name="sliders-horizontal" :size="18" /></button><NButton text size="small" title="刷新当前范围" aria-label="刷新当前范围" :disabled="!readable" :loading="overviewBusy" @click="refreshAll('已从首页重新读取当前范围。')"><RIcon name="refresh-cw" :size="17" /></NButton></div>
+      <div class="today-toolbar-actions"><span class="today-update-state" role="status">{{ overviewBusy && overview ? '正在更新…' : overview ? '已同步' : '' }}</span><button class="studio-icon-button" title="显示范围与时区" aria-label="显示范围与时区" :aria-expanded="displaySettingsOpen" aria-controls="today-display-settings" @click="displaySettingsOpen = !displaySettingsOpen"><RIcon name="sliders-horizontal" :size="18" /></button><NButton text size="small" title="刷新当前范围" aria-label="刷新当前范围" :disabled="!readable" :loading="overviewBusy" @click="refreshAll('已从首页重新读取当前范围。', true)"><RIcon name="refresh-cw" :size="17" /></NButton></div>
     </div>
     <section v-show="displaySettingsOpen" id="today-display-settings" class="today-display-settings" aria-label="显示范围与时区">
     <form class="today-filters" aria-label="今日筛选条件" @submit.prevent="applyFilters"><div class="filter-primary"><label for="today-zone">显示时区<NInput id="today-zone" v-model:value="input.zoneId" :maxlength="100" :disabled="!readable" placeholder="Asia/Shanghai" /></label><div class="target-filter"><span>目标范围</span><strong>{{ input.target?.title ?? '全部目标与未关联事项' }}</strong><div class="row-actions"><NButton size="small" :disabled="!readable" @click="targetPickerOpen = !targetPickerOpen">{{ targetPickerOpen ? '收起目标选择' : '选择目标' }}</NButton><NButton v-if="input.target" text size="small" :disabled="!readable" @click="input.target = null">清除目标</NButton></div></div><NButton attr-type="submit" :disabled="!readable">应用筛选</NButton></div>
@@ -279,10 +285,10 @@ onUnmounted(() => {
     <p v-else-if="notice" class="field-help" role="status">{{ notice }}</p>
     <p v-if="readable && applied.target && view !== 'plans'" class="field-help">只显示实际关联「{{ applied.target.title }}」的记录，包含该目标的历史版本。知识草稿和回忆卡没有目标关联，当前筛选不纳入这两类。</p>
     <p v-if="readable && overviewError" class="notice error" role="alert">{{ todayErrorText(overviewError) }}<NButton text :disabled="overviewBusy" @click="refreshAll()">重新读取</NButton></p>
-    <template v-if="readable && view === 'overview'">
-      <p v-if="overviewBusy" class="loading-block" role="status">正在读取六类来源…</p>
-      <TodayDashboard v-if="overview" :overview="overview" :disabled="!readable" @open="open" @quick="quick" @source="showSource" />
-      <details class="today-source-details"><summary>来源状态与数量</summary>
+    <template v-if="view === 'overview'">
+      <p v-if="overviewBusy && !overview" class="loading-block" role="status">正在读取六类来源…</p>
+      <TodayDashboard v-if="overview" :overview="overview" :disabled="!readable || overviewBusy" :aria-busy="overviewBusy" @open="open" @quick="quick" @source="showSource" />
+      <details class="today-source-details" :inert="!readable || overviewBusy || undefined"><summary>来源状态与数量</summary>
       <section v-if="allKnownEmpty" class="today-empty"><h2>从一个具体的起点开始</h2><p>当前范围没有可继续或待处理事项。记下一条笔记、练习一道题，或整理下一份岗位目标。</p><div class="row-actions"><NButton @click="quick('note')">写笔记</NButton><NButton @click="quick('training')">开始文字训练</NButton><NButton @click="quick('target')">建立目标</NButton></div></section>
       <div v-if="overview" class="today-sections"><section v-for="(preview, index) in overview.sections" :key="preview.section" class="today-section" :aria-labelledby="`today-section-${preview.section}`"><header><div class="section-number" aria-hidden="true">0{{ index + 1 }}</div><div><h2 :id="`today-section-${preview.section}`">{{ todaySectionLabels[preview.section] }}</h2><p>{{ sectionDescriptions[preview.section] }}</p></div></header>
         <div class="source-scopes"><button v-for="scope in overview.capabilities.filter(value => value.section === preview.section)" :key="scope.kind" type="button" @click="showSource(scope.kind, preview.section)"><span>{{ todaySourceKindLabels[scope.kind] }}</span><strong>{{ scope.capability.status === 'READY' ? countLabel(scope.count) : todayAvailabilityLabels[scope.capability.status] }}</strong><small v-if="scope.scanLimited">本次扫描有界</small></button></div>
@@ -326,7 +332,7 @@ onUnmounted(() => {
 </style>
 
 <style scoped>
-.today-workspace { max-width: none; }.today-display-settings { margin-bottom: 16px; }
+.today-workspace { max-width: none; }.today-display-settings { margin-bottom: 16px; }.today-update-state { width: 66px; color: var(--faint); font-size: 11px; text-align: right; white-space: nowrap; }
 .today-filters { margin: 16px 0; padding: 20px; border: 1px solid var(--studio-divider); border-radius: 8px; background: var(--studio-pane); }.read-context { font-size: 11px; }.today-source-details { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--studio-divider); }.today-source-details summary { color: var(--muted); font-size: 12px; cursor: pointer; }
 @media(max-width:700px) { .today-toolbar { gap: 12px; }.today-toolbar-actions { gap: 4px; }.today-view-switch { gap: 18px; }.today-view-switch > button { margin: 0; font-size: 12px; }.today-filters { padding: 16px; } }
 </style>
