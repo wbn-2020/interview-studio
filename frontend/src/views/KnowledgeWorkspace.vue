@@ -8,6 +8,7 @@ import type { GraphResponse, ItemDetail, Schema, Topic } from '../api/client'
 import type { OpenKnowledge, TextImport } from '../api/knowledge'
 import { queryClient } from '../api/queryClient'
 import { useCommand } from '../composables/useCommand'
+import { useWorkspaceNavigation } from '../navigation/workspaceNavigation'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import RIcon from '../replica/RIcon.vue'
@@ -22,9 +23,10 @@ const KnowledgeTextImportBatch = defineAsyncComponent(() => import('../component
 
 const route = useRoute()
 const router = useRouter()
+const { returnTo, withReturn } = useWorkspaceNavigation()
 const store = useWorkspaceStore()
 const trainingAccess = useTrainingAccessStore()
-const mode = computed<'graph' | 'list' | 'search' | 'detail'>(() => route.query.create === 'NOTE' || route.query.create === 'CONCEPT' ? 'list' : route.query.view === 'detail' ? 'detail' : route.query.view === 'list' ? 'list' : route.query.view === 'search' ? 'search' : 'graph')
+const mode = computed<'graph' | 'list' | 'search' | 'detail'>(() => route.query.create === 'NOTE' || route.query.create === 'CONCEPT' ? 'list' : route.query.view === 'detail' ? 'detail' : route.query.view === 'list' ? 'list' : route.query.view === 'search' ? 'search' : route.query.view === 'graph' ? 'graph' : 'list')
 const filter = ref('ALL')
 const collection = ref('ALL')
 const search = ref('')
@@ -66,11 +68,12 @@ const filters = [{ label: '全部知识', value: 'ALL' }, { label: '知识概念
 const collections = [{ label: '全部资料', value: 'ALL' }, { label: '我的收藏', value: 'FAVORITES' }, { label: '最近访问', value: 'RECENT' }, { label: '尚未分类', value: 'UNCATEGORIZED' }, { label: '断链待整理', value: 'BROKEN_LINKS' }]
 
 const itemsQuery = useQuery({
-  queryKey: computed(() => ['knowledge', store.sessionEpoch, 'items', collection.value, filter.value, query.value, cursor.value]),
+  queryKey: computed(() => ['knowledge', store.sessionEpoch, 'items', collection.value, selectedTopic.value, filter.value, query.value, cursor.value]),
   enabled: computed(() => store.sessionActive),
   queryFn: () => {
     const params = new URLSearchParams({ collection: collection.value, status: filter.value === 'ARCHIVED' ? 'ARCHIVED' : 'ACTIVE', limit: '20', q: query.value })
     if (filter.value === 'CONCEPT' || filter.value === 'NOTE') params.set('kind', filter.value)
+    if (selectedTopic.value) params.set('topicId', selectedTopic.value)
     if (cursor.value) params.set('cursor', cursor.value)
     return read<Schema['LibraryPage']>(`/knowledge/library?${params}`)
   },
@@ -79,13 +82,12 @@ const graphQuery = useQuery({ queryKey: computed(() => ['knowledge', store.sessi
 const topicsQuery = useQuery({ queryKey: computed(() => ['knowledge', store.sessionEpoch, 'topics']), enabled: computed(() => store.sessionActive), queryFn: () => read<Schema['TopicList']>('/knowledge/topics') })
 const topics = computed(() => topicsQuery.data.value?.items ?? graphSnapshot.value?.topics ?? [])
 const displayedItems = computed(() => (itemsQuery.data.value?.items ?? []).filter(item =>
-  (!selectedTopic.value || item.topicIds.includes(selectedTopic.value))
-  && (route.query.edit !== '1' || selectedKind.value !== 'NOTE' || item.kind === 'NOTE')))
+  route.query.edit !== '1' || selectedKind.value !== 'NOTE' || item.kind === 'NOTE'))
 const allGraphTopics = computed(() => graphTopics.value.length === 0)
 const topicOptions = computed(() => topics.value.map(topic => ({ label: topic.name, value: topic.id })))
 watch(graphQuery.data, value => { if (value) graphSnapshot.value = value })
 watch(selectedId, () => { selectedKind.value = undefined })
-watch([filter, collection], () => { cursor.value = undefined; previousCursors.value = [] })
+watch([filter, collection, selectedTopic], () => { cursor.value = undefined; previousCursors.value = [] })
 // 文件预览也属于create守卫；尚未填入字段时，离开仍须明确放弃。
 watch([createOpen, createTitle, createBody, createTopics, importedTags, importDirty, createWriter.locked], () => store.changes.set('create', {
   dirty: createOpen.value && Boolean(createTitle.value || createBody.value || createTopics.value.length || importedTags.value.length || importDirty.value), locked: createWriter.locked.value,
@@ -101,9 +103,9 @@ function nextPage() {
   cursor.value = itemsQuery.data.value.nextCursor
 }
 function previousPage() { cursor.value = previousCursors.value.pop() }
-function openItem(id: string, keepEditor = false) { void router.push({ name: 'knowledge', query: { ...route.query, item: id, edit: keepEditor ? '1' : undefined, panel: undefined, create: undefined, version: undefined, lineStart: undefined, lineEnd: undefined } }) }
-function openTarget(target: OpenKnowledge) { void router.push({ name: 'knowledge', query: { ...route.query, item: target.id, edit: undefined, panel: undefined, create: undefined, version: target.versionId, lineStart: target.lineStart, lineEnd: target.lineEnd } }) }
-function closeItem() { void router.push({ name: 'knowledge', query: { ...route.query, item: undefined, edit: undefined, panel: undefined, version: undefined, lineStart: undefined, lineEnd: undefined } }) }
+function openItem(id: string, keepEditor = false) { void router.push({ name: 'knowledge', query: withReturn({ ...route.query, item: id, edit: keepEditor ? '1' : undefined, panel: undefined, create: undefined, version: undefined, lineStart: undefined, lineEnd: undefined }) }) }
+function openTarget(target: OpenKnowledge) { void router.push({ name: 'knowledge', query: withReturn({ ...route.query, item: target.id, edit: undefined, panel: undefined, create: undefined, version: target.versionId, lineStart: target.lineStart, lineEnd: target.lineEnd }) }) }
+function closeItem() { returnTo({ name: 'knowledge', query: { view: 'list' } }) }
 function changeMode(value: 'graph' | 'list' | 'search') {
   if (mode.value === value && route.query.edit !== '1') return
   void router.push({ name: 'knowledge', query: { ...route.query, view: value, edit: undefined, panel: undefined } })
@@ -209,7 +211,7 @@ function addTopic() {
 
 <template>
   <section class="knowledge-product" :class="[mode === 'list' ? 'knowledge-library' : `knowledge-${mode}`, { 'knowledge-editor-open': route.query.edit === '1', 'knowledge-note-editor': route.query.edit === '1' && selectedKind === 'NOTE' }]">
-  <KnowledgeDetail v-if="mode === 'detail' && selectedId" :key="selectedId" :item-id="selectedId" :topics="topics" @open="openItem" @edit="router.push({ name: 'knowledge', query: { view: 'list', item: selectedId, edit: '1' } })" />
+  <KnowledgeDetail v-if="mode === 'detail' && selectedId" :key="selectedId" :item-id="selectedId" :topics="topics" @open="openItem" @edit="router.push({ name: 'knowledge', query: withReturn({ view: 'list', item: selectedId, edit: '1' }) })" />
   <p v-else-if="mode === 'detail'" class="notice">请从知识目录选择一个对象。<RouterLink class="text-link" :to="{ name: 'knowledge', query: { view: 'list' } }">打开目录</RouterLink></p>
   <template v-else>
   <header class="page-heading"><div><h1>{{ mode === 'graph' ? '知识星图' : mode === 'search' ? '知识搜索' : '知识目录' }}</h1><p class="muted">{{ mode === 'graph' ? '探索知识之间的关系，选择节点查看原文与关联。' : '在同一份知识中整理笔记、概念与来源。' }}</p></div><div class="row-actions"><NPopover v-if="mode === 'list'" trigger="click" placement="bottom-end" :show-arrow="false"><template #trigger><NButton :disabled="!createReadable || createWriter.locked.value">导入<RIcon name="chevron-down" :size="16" /></NButton></template><div class="library-import-menu"><NButton text :disabled="!createReadable || createWriter.locked.value" @click="openCreate('NOTE', true)">导入 Markdown／TXT</NButton><NButton text :disabled="!createReadable || createWriter.locked.value" @click="batchImportOpen = true">多文件导入</NButton><NButton text :disabled="!createReadable || createWriter.locked.value" @click="importHistoryOpen = true">查看导入记录</NButton></div></NPopover><NButton :disabled="!createReadable || createWriter.locked.value" @click="openCreate('NOTE')"><RIcon name="file-plus" />新建笔记</NButton><NButton type="primary" :disabled="!createReadable || createWriter.locked.value" @click="openCreate('CONCEPT')"><RIcon name="plus" />新建知识点</NButton></div></header>
@@ -218,8 +220,8 @@ function addTopic() {
     <aside class="knowledge-catalog" aria-label="知识列表">
       <template v-if="mode === 'list'">
         <p class="library-directory-label">知识分类</p>
-        <button class="library-folder" :class="{ selected: !selectedTopic && collection === 'ALL' }" @click="selectedTopic = null; collection = 'ALL'"><RIcon name="layout-grid" /><span>全部知识</span><small title="当前已载入数量">{{ itemsQuery.data.value?.items.length ?? 0 }}</small></button>
-        <button v-for="topic in topics" :key="topic.id" class="library-folder" :class="{ selected: selectedTopic === topic.id }" @click="selectedTopic = topic.id"><RIcon name="folder" /><span>{{ topic.name }}</span><small>{{ itemsQuery.data.value?.items.filter(item => item.topicIds.includes(topic.id)).length ?? 0 }}</small></button>
+        <button class="library-folder" :class="{ selected: !selectedTopic && collection === 'ALL' }" @click="selectedTopic = null; collection = 'ALL'"><RIcon name="layout-grid" /><span>全部知识</span><small title="当前页已载入数量">本页 {{ itemsQuery.data.value?.items.length ?? 0 }}</small></button>
+        <button v-for="topic in topics" :key="topic.id" class="library-folder" :class="{ selected: selectedTopic === topic.id }" @click="selectedTopic = topic.id"><RIcon name="folder" /><span>{{ topic.name }}</span><small>本页 {{ itemsQuery.data.value?.items.filter(item => item.topicIds.includes(topic.id)).length ?? 0 }}</small></button>
         <hr class="library-rule">
         <button class="library-folder" :class="{ selected: collection === 'UNCATEGORIZED' }" @click="selectedTopic = null; collection = 'UNCATEGORIZED'"><RIcon name="tag" /><span>未归类</span></button>
         <button class="library-folder" :class="{ selected: collection === 'FAVORITES' }" @click="selectedTopic = null; collection = 'FAVORITES'"><RIcon name="star" /><span>我的收藏</span></button>
@@ -300,15 +302,16 @@ function addTopic() {
 </template>
 
 <style scoped>
-.knowledge-product { min-width: 0; }.knowledge-product .workspace-grid { display: grid; grid-template-columns: 210px minmax(0,1fr); min-height: 500px; max-width: none; margin: 0; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: clip; background: var(--surface); }
-.knowledge-product .workspace-grid.with-detail { grid-template-columns: 190px minmax(0,1fr) minmax(300px,.8fr); }
+.knowledge-product { min-width: 0; }
+.knowledge-product .workspace-grid { display: grid; grid-template-columns: 210px minmax(0,1fr); min-height: 500px; max-width: none; margin: 0; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: clip; background: var(--surface); }
+.knowledge-product .workspace-grid.with-detail { grid-template-columns: 210px minmax(0,1fr); }
+.knowledge-product .workspace-grid.with-detail .knowledge-stage { display: none; }
 .knowledge-library .workspace-grid { min-height: 0; grid-template-columns: 184px minmax(0, 1fr); gap: 0; border: 1px solid var(--studio-divider); border-radius: 8px; background: var(--studio-pane); overflow: clip; align-items: start; }
 .knowledge-library .workspace-grid.with-detail { gap: 0; }
 .knowledge-product .knowledge-catalog { padding: 16px 10px; min-width: 0; background: var(--surface-soft); border-right: 1px solid var(--line); }
 .knowledge-product .knowledge-stage { display: block; position: relative; min-width: 0; overflow-x: auto; padding: 0; }
 .knowledge-library .knowledge-catalog { position: sticky; top: calc(var(--topbar) + 56px); padding: 16px 10px; max-height: calc(100dvh - var(--topbar) - 72px); background: none; border: 0; border-right: 1px solid var(--studio-divider); }
 .knowledge-library .knowledge-stage { border: 0; border-radius: 0; background: transparent; align-self: start; }
-.knowledge-product .workspace-grid.list-mode.with-detail .knowledge-stage { display: block; }
 .knowledge-product :deep(.item-editor) { min-width: 0; padding: 20px; border-left: 1px solid var(--line); border-radius: 0; background: var(--surface); }
 .library-directory-label { padding: 0 10px 12px; font-size: 12px; color: var(--faint); }.library-folder { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 9px 10px; border-radius: 6px; text-align: left; font-size: 13px; }.library-folder > svg { width: 17px; flex: none; }.library-folder > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }.library-folder small { font-size: 11px; color: var(--muted); }.library-folder:hover { background: var(--studio-pane); }.library-folder.selected { background: var(--brand-soft); color: var(--brand-strong); }.library-rule { height: 1px; border: 0; background: var(--studio-divider); margin: 20px 8px; }
 .library-management { margin: 18px 4px 0; }.library-management > summary { display: flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; font-size: 12px; }.library-management > :not(summary) { margin-top: 10px; }.library-imports { display: grid; }
@@ -322,7 +325,7 @@ function addTopic() {
 .knowledge-graph :deep(.graph-workspace) { min-height: 570px; }.knowledge-graph :deep(.galaxy) { min-height: 570px; }.knowledge-graph :deep(.galaxy-canvas) { min-height: 570px; }
 .knowledge-editor-open .workspace-grid.with-detail { grid-template-columns: 210px minmax(0,1fr); }.knowledge-editor-open .knowledge-list { display: grid; }
 .knowledge-library :deep(.item-editor) { border: 1px solid var(--studio-divider); border-radius: 10px; background: var(--studio-pane); padding: 24px; }
-@container workspace (max-width: 1080px) { .knowledge-product .workspace-grid.with-detail { grid-template-columns: 190px minmax(0,1fr); }.knowledge-product .workspace-grid.with-detail .knowledge-stage, .knowledge-product .workspace-grid.list-mode.with-detail .knowledge-stage { display: none; } }
+@container workspace (max-width: 1080px) { .knowledge-product .workspace-grid.with-detail { grid-template-columns: 190px minmax(0,1fr); } }
 @media(max-width:840px) { .knowledge-product :deep(.item-editor) { position: static; display: block; inset: auto; z-index: auto; overflow-y: visible; } }
 @media(max-width:700px) {
   .knowledge-product .workspace-grid, .knowledge-product .workspace-grid.with-detail, .knowledge-editor-open .workspace-grid.with-detail { grid-template-columns: minmax(0,1fr); }

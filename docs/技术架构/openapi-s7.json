@@ -2800,6 +2800,15 @@
             "description": "已发布标题字面量筛选。"
           },
           {
+            "name": "topicId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": "只读取关联该确切主题的知识。"
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,

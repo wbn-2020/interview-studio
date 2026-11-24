@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
+import { useRoute } from 'vue-router'
 import { NButton, NInput, NInputNumber, NSelect } from 'naive-ui'
 import { ApiError, errorText, read } from '../../api/client'
 import type { Collection, CollectionPage, CollectionQuestionChoice, CollectionSummary } from '../../api/collections'
+import type { Question } from '../../api/bank'
 import type { PreparationItem, PreparationPage, PreparationSummary } from '../../api/preparation'
 import type { TrainingContextKind, TrainingCreateSession, TrainingSession } from '../../api/training'
 import { emptyTrainingSetup, notifyTrainingChanged, trainingContextLabels, trainingFeedbackOptions, trainingModeLabels, trainingModeOptions, trainingSetupProblem } from '../../api/training'
@@ -15,11 +17,82 @@ import CollectionQuestionPicker from '../bank/CollectionQuestionPicker.vue'
 const props = defineProps<{ disabled?: boolean }>()
 const emit = defineEmits<{ created: [session: TrainingSession]; close: [] }>()
 const store = useWorkspaceStore()
+const route = useRoute()
 const writer = useCommand()
 const initial = emptyTrainingSetup()
 const input = ref<TrainingCreateSession>(structuredClone(initial))
 const source = ref<'DIRECT' | 'COLLECTION'>('DIRECT')
+const restored = ref(false)
+const draftPrefix = 'wenjie:training-setup:'
+let draftKey = draftPrefix + store.sessionEpoch
+let draftTimer: number | undefined
+const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value)
+function validStoredSetup(value: unknown): value is TrainingCreateSession {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const row = value as Record<string, unknown>
+  if (typeof row.title !== 'string' || row.title.length > 200
+    || !['LEARNING', 'FOCUSED', 'MOCK'].includes(String(row.mode))
+    || !['AFTER_ANSWER', 'AFTER_SESSION'].includes(String(row.feedbackTiming))
+    || row.timeBudgetMinutes !== null && (!Number.isInteger(row.timeBudgetMinutes) || Number(row.timeBudgetMinutes) < 1 || Number(row.timeBudgetMinutes) > 240)
+    || !Number.isInteger(row.followUpLimit) || Number(row.followUpLimit) < 0 || Number(row.followUpLimit) > 2
+    || !Array.isArray(row.stages) || row.stages.length < 1 || row.stages.length > 8
+    || row.stages.some(stage => typeof stage !== 'string' || !stage.trim() || stage.length > 80)
+    || new Set(row.stages).size !== row.stages.length
+    || !Array.isArray(row.questions) || row.questions.length > 20
+    || !Array.isArray(row.contextLinks) || row.contextLinks.length > 12) return false
+  const stages = row.stages as string[]
+  const questions = row.questions as unknown[]
+  if (new Set(questions.map(item => (item as Record<string, unknown>)?.sourceQuestionId)).size !== questions.length) return false
+  if (!questions.every(item => item && typeof item === 'object' && !Array.isArray(item)
+    && uuid((item as Record<string, unknown>).sourceQuestionId) && uuid((item as Record<string, unknown>).sourceVersionId)
+    && typeof (item as Record<string, unknown>).stage === 'string' && stages.includes((item as Record<string, unknown>).stage as string))) return false
+  const links = row.contextLinks as unknown[]
+  if (new Set(links.map(item => (item as Record<string, unknown>)?.versionId)).size !== links.length) return false
+  if (!links.every(item => item && typeof item === 'object' && !Array.isArray(item)
+    && ['TARGET', 'PROJECT', 'FACT'].includes(String((item as Record<string, unknown>).kind))
+    && uuid((item as Record<string, unknown>).itemId) && uuid((item as Record<string, unknown>).versionId))) return false
+  if (links.filter(item => (item as Record<string, unknown>).kind === 'TARGET').length > 1
+    || links.filter(item => (item as Record<string, unknown>).kind === 'PROJECT').length > 1
+    || links.filter(item => (item as Record<string, unknown>).kind === 'FACT').length > 10) return false
+  const collectionId = row.collectionId, collectionVersionId = row.collectionVersionId
+  return collectionId === null && collectionVersionId === null || uuid(collectionId) && uuid(collectionVersionId)
+}
+function clearStoredDraft() {
+  if (draftTimer !== undefined) window.clearTimeout(draftTimer)
+  draftTimer = undefined
+  try { sessionStorage.removeItem(draftKey) } catch { /* 隐私模式禁用存储时不影响当前编辑。 */ }
+}
+function restoreDraft() {
+  try {
+    for (let index = sessionStorage.length - 1; index >= 0; index--) {
+      const key = sessionStorage.key(index)
+      if (key?.startsWith(draftPrefix) && key !== draftKey) sessionStorage.removeItem(key)
+    }
+    const raw = sessionStorage.getItem(draftKey)
+    if (!raw) return
+    const saved = JSON.parse(raw) as { input?: unknown; source?: unknown; savedAt?: unknown }
+    if (!validStoredSetup(saved.input) || !['DIRECT', 'COLLECTION'].includes(String(saved.source)) || typeof saved.savedAt !== 'number') throw new Error('INVALID_TRAINING_SETUP_DRAFT')
+    input.value = structuredClone(saved.input)
+    source.value = saved.source as 'DIRECT' | 'COLLECTION'
+    restored.value = true
+  } catch { clearStoredDraft() }
+}
+function discardDraft() {
+  if (dirty.value && !window.confirm('丢弃本标签页恢复的训练设置？')) return
+  input.value = structuredClone(initial)
+  source.value = 'DIRECT'
+  restored.value = false
+  clearStoredDraft()
+}
+function persistDraftNow() {
+  if (!dirty.value || !store.sessionActive) { clearStoredDraft(); return }
+  try { sessionStorage.setItem(draftKey, JSON.stringify({ input: input.value, source: source.value, savedAt: Date.now() })) } catch { /* 存储不可用时仍保留页面内输入。 */ }
+}
+function flushDraft() { if (dirty.value) persistDraftNow() }
+onMounted(() => { window.addEventListener('beforeunload', flushDraft); void preselectQuestion() })
+restoreDraft()
 const questionPicker = ref(false)
+const preselectError = ref('')
 const collection = ref<Collection>()
 const collectionKind = ref<'LIST' | 'ROUTE'>('LIST')
 const collectionTitle = ref('')
@@ -42,6 +115,23 @@ const deferred = shallowRef<TrainingSession>()
 const createdResult = ref<TrainingSession>()
 const modeGuidance = computed(() => input.value.mode === 'LEARNING' ? '学习练习允许查阅资料，提交按学习条件记录。' : input.value.mode === 'MOCK' ? '建议安排 3 道主问，先独立作答；结束前不自动展示参考。' : '建议聚焦 1 道主问，先独立作答，再决定是否查看参考。')
 const dirty = computed(() => JSON.stringify(input.value) !== JSON.stringify(initial))
+watch([input, source], () => {
+  if (draftTimer !== undefined) window.clearTimeout(draftTimer)
+  draftTimer = undefined
+  if (!dirty.value || !store.sessionActive) { if (!dirty.value) clearStoredDraft(); return }
+  // 设置仅保存在当前标签页；刷新可恢复，关闭标签页或切换会话后不继续保留私人输入。
+  draftTimer = window.setTimeout(() => {
+    draftTimer = undefined
+    persistDraftNow()
+  }, 300)
+}, { deep: true, flush: 'post' })
+watch(() => store.sessionEpoch, () => {
+  clearStoredDraft()
+  draftKey = draftPrefix + store.sessionEpoch
+  input.value = structuredClone(initial)
+  source.value = 'DIRECT'
+  restored.value = false
+}, { flush: 'sync' })
 const locked = computed(() => writer.locked.value || Boolean(deferred.value))
 const blocked = computed(() => !store.sessionActive || Boolean(props.disabled) || locked.value)
 const problem = computed(() => trainingSetupProblem(input.value))
@@ -79,10 +169,32 @@ watch(contextPicker, () => { contextRequest++; contextBusy.value = false }, { fl
 watch(() => input.value.mode, mode => { input.value.feedbackTiming = mode === 'MOCK' ? 'AFTER_SESSION' : 'AFTER_ANSWER' })
 onUnmounted(() => {
   alive = false
+  window.removeEventListener('beforeunload', flushDraft)
+  clearStoredDraft()
   collectionRequest++
   contextRequest++
   if (store.changes.get('training-setup') === changeState) store.changes.delete('training-setup')
 })
+
+async function preselectQuestion() {
+  const questionId = route.query.questionId, versionId = route.query.questionVersionId
+  if (questionId === undefined && versionId === undefined) return
+  if (!uuid(questionId) || !uuid(versionId)) { preselectError.value = '题目预选链接缺少有效身份，请从题库重新选择。'; return }
+  const epoch = store.sessionEpoch
+  const selectedBefore = JSON.stringify(input.value.questions)
+  preselectError.value = ''
+  try {
+    const value = await read<Question>(`/bank/questions/${questionId}`)
+    if (!alive || epoch !== store.sessionEpoch || !store.sessionActive) return
+    if (selectedBefore !== JSON.stringify(input.value.questions)) { preselectError.value = '读取期间你调整了主问题，已保留当前选择；请重新从题库进入以预选。'; return }
+    if (value.status !== 'ACTIVE' || value.currentVersion.id !== versionId) { preselectError.value = '这道题已改版或停用，请从题库重新选择当前版本。'; return }
+    source.value = 'DIRECT'
+    input.value.questions = [{ sourceQuestionId: value.id, sourceVersionId: value.currentVersion.id, stage: input.value.stages[0] ?? '' }]
+    input.value.collectionId = null; input.value.collectionVersionId = null; collection.value = undefined
+    questionNames[value.currentVersion.id] = { title: value.currentVersion.content.title, number: value.currentVersion.number }
+    if (!input.value.title.trim()) input.value.title = value.currentVersion.content.title
+  } catch (error) { if (alive && epoch === store.sessionEpoch) preselectError.value = errorText(error) }
+}
 
 function chooseSource(value: 'DIRECT' | 'COLLECTION') {
   if (blocked.value || value === source.value) return
@@ -178,6 +290,8 @@ function nextCollections() { if (collections.data.value?.nextCursor) { collectio
 function searchMaterials() { contextSearch.value = contextTitle.value.trim(); contextCursor.value = undefined; contextCursors.value = [] }
 function nextMaterials() { if (materials.data.value?.nextCursor) { contextCursors.value.push(contextCursor.value); contextCursor.value = materials.data.value.nextCursor } }
 function acceptCreated(value: TrainingSession) {
+  clearStoredDraft()
+  restored.value = false
   createdResult.value = value
   input.value = structuredClone(initial)
   changeState.dirty = false
@@ -204,6 +318,7 @@ function acceptDeferred() { if (!deferred.value || !store.sessionActive) return;
   <section class="training-setup" aria-label="训练条件设置">
     <header class="setup-heading"><div><p class="field-help">新训练</p><h2>先固定练习条件</h2><p class="field-help">保存后得到一份预览，核对题目和材料再开始计时。</p></div><button class="icon-button" aria-label="关闭训练设置" @click="emit('close')">×</button></header>
     <p v-if="disabled" class="notice">请先返回当前训练处理资料访问条件，或结束后再建立新的训练。</p>
+    <p v-if="restored" class="notice" role="status">已恢复本标签页未保存的训练设置；题目和材料仍会在保存前由服务器重新核对。<NButton text size="small" @click="discardDraft">丢弃恢复的设置</NButton></p>
     <div v-if="writer.error.value" class="notice error" role="alert"><p>{{ errorText(writer.error.value) }}</p><NButton v-if="writer.pending.value && !writer.busy.value" size="small" :disabled="!store.sessionActive" @click="retry">用原请求重试</NButton><p v-if="writer.error.value instanceof ApiError && writer.error.value.status === 409" class="field-help">当前选择继续保留。来源变化时请移除旧选择并重新载入，再建立预览。</p></div>
     <p v-if="deferred" class="notice" role="status">预览创建已确认，但登录会话发生变化。<NButton :disabled="!store.sessionActive" size="small" @click="acceptDeferred">接收已创建预览</NButton></p><p v-if="createdResult" class="notice">预览已保存。<button class="text-link" @click="emit('created', createdResult)">打开预览</button></p>
     <div class="setup-form">
@@ -212,12 +327,13 @@ function acceptDeferred() { if (!deferred.value || !store.sessionActive) return;
       <p class="mode-guidance">{{ modeGuidance }}模式说明本次练习条件，不能证明没有使用外部资料。时间到只提示，不自动提交。</p>
        <details class="setup-advanced"><summary>阶段与反馈约定</summary><div class="setup-advanced-fields"><div class="setup-pair"><label>反馈时机<NSelect v-model:value="input.feedbackTiming" :disabled="blocked || input.mode === 'MOCK'" :options="trainingFeedbackOptions" /></label><label>每个主问的追问额度<NSelect v-model:value="input.followUpLimit" :disabled="blocked" :options="[{ value: 0, label: '0 次' }, { value: 1, label: '最多 1 次' }, { value: 2, label: '最多 2 次' }]" /></label></div><p class="field-help">提交回答后可按此额度授权 AI 追问；每个主问及其后续追问共用次数。反馈时机保留为本场约定；打开评价区会记录接触背景，AI 评价需另行预览并明确授权。</p><div class="stage-heading"><h3>自定义阶段</h3><NButton size="small" :disabled="blocked || input.stages.length >= 8" @click="addStage">添加阶段</NButton></div><div v-for="(stage, index) in input.stages" :key="index" class="stage-row"><NInput :value="stage" :disabled="blocked" :maxlength="80" :aria-label="`阶段 ${index + 1} 名称`" @update:value="renameStage(index, $event)" /><NButton size="small" :disabled="blocked || input.stages.length <= 1" @click="removeStage(index)">移除</NButton></div></div></details>
       <section class="setup-section"><header><div><h3>主问题 <span>{{ input.questions.length }} / 20</span></h3><p class="field-help">题目固定到确切版本，默认建议{{ input.mode === 'MOCK' ? '三道' : '一道' }}；可按本次需要调整。</p></div><div class="row-actions"><NButton size="small" :type="source === 'DIRECT' ? 'primary' : 'default'" :disabled="blocked" @click="chooseSource('DIRECT')">从题库选</NButton><NButton size="small" :type="source === 'COLLECTION' ? 'primary' : 'default'" :disabled="blocked" @click="chooseSource('COLLECTION')">从题单／路线选</NButton></div></header>
+        <p v-if="preselectError" class="notice error" role="alert">{{ preselectError }}</p>
         <template v-if="source === 'DIRECT'"><NButton size="small" :disabled="blocked || input.questions.length >= 20" @click="questionPicker = !questionPicker">{{ questionPicker ? '收起题目选择' : '添加主问题' }}</NButton><CollectionQuestionPicker v-if="questionPicker" :disabled="blocked" :exclude-question-ids="input.questions.map(question => question.sourceQuestionId)" @choose="chooseQuestion" @close="questionPicker = false" /></template>
         <div v-else class="setup-picker"><div class="setup-pair"><NSelect v-model:value="collectionKind" :disabled="blocked || collectionBusy" :options="[{ value: 'LIST', label: '题单' }, { value: 'ROUTE', label: '学习路线' }]" aria-label="集合类型" /><form class="title-search" @submit.prevent="searchCollections"><NInput v-model:value="collectionTitle" :disabled="blocked || collectionBusy" :maxlength="100" placeholder="按保存标题筛选" aria-label="集合标题" /><NButton attr-type="submit" :disabled="blocked || collectionBusy">查找</NButton></form></div><p v-if="collections.isPending.value" class="field-help" role="status">正在读取集合…</p><p v-if="collections.error.value || collectionError" class="notice error" role="alert">{{ collectionError || errorText(collections.error.value) }}<NButton text @click="collections.refetch()">刷新列表</NButton></p><div class="setup-picker-results"><button v-for="item in collections.data.value?.items" :key="item.id" :disabled="blocked || collectionBusy" @click="chooseCollection(item)"><strong>{{ item.title }}</strong><span>v{{ item.versionNumber }} · {{ item.stepCount }} 道题{{ collection?.id === item.id ? ' · 已载入' : '' }}</span></button></div><p v-if="collections.data.value && !collections.data.value.items.length" class="field-help">没有匹配的使用中集合。可调整筛选或从题库直接选择。</p><div v-if="collectionCursors.length || collections.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="blocked || collectionBusy || !collectionCursors.length" @click="collectionCursor = collectionCursors.pop()">上一页</NButton><NButton size="small" :disabled="blocked || collectionBusy || !collections.data.value?.nextCursor" @click="nextCollections">下一页</NButton></div><section v-if="collection" class="collection-options"><h4>{{ collection.currentVersion.content.title }} · v{{ collection.currentVersion.number }}</h4><p class="field-help">保留集合中的原题版本和阅读顺序，不自动重排前置依赖。最多选择 20 道；路线检查点不作为题干。</p><label v-for="step in collection.currentVersion.content.steps" :key="step.id" class="collection-check"><input type="checkbox" :checked="input.questions.some(question => question.sourceQuestionId === step.questionId)" :disabled="blocked || (!input.questions.some(question => question.sourceQuestionId === step.questionId) && input.questions.length >= 20)" @change="toggleCollectionQuestion(step.questionId, step.questionVersionId)" /><span>{{ questionNames[step.questionVersionId]?.title ?? '题目版本' }} · v{{ questionNames[step.questionVersionId]?.number }}</span></label><p v-if="!collection.currentVersion.content.steps.length" class="field-help">本集合没有题目，请选择其他集合。</p></section></div>
-        <ol class="selected-questions"><li v-for="(question, index) in input.questions" :key="question.sourceQuestionId"><header><span class="question-number">{{ index + 1 }}</span><div><strong>{{ questionNames[question.sourceVersionId]?.title ?? '已选题目' }}</strong><p class="field-help">v{{ questionNames[question.sourceVersionId]?.number ?? '?' }}</p><p v-if="questionNames[question.sourceVersionId]?.warning" class="source-warning">{{ questionNames[question.sourceVersionId]?.warning }}</p></div><div class="row-actions"><NButton v-if="source === 'DIRECT'" size="tiny" :disabled="blocked || index === 0" @click="moveQuestion(index, -1)">上移</NButton><NButton v-if="source === 'DIRECT'" size="tiny" :disabled="blocked || index === input.questions.length - 1" @click="moveQuestion(index, 1)">下移</NButton><NButton size="tiny" :disabled="blocked" @click="removeQuestion(question.sourceQuestionId)">移除</NButton></div></header><label>所属阶段<NSelect v-model:value="question.stage" :disabled="blocked" :options="stageOptions" /></label></li></ol><p v-if="!input.questions.length" class="field-help">尚未选择主问题。预览和开始训练至少需要一道题。</p>
+        <ol class="selected-questions"><li v-for="(question, index) in input.questions" :key="question.sourceQuestionId"><header><span class="question-number">{{ index + 1 }}</span><div><strong>{{ questionNames[question.sourceVersionId]?.title ?? '已选题目' }}</strong><p class="field-help">v{{ questionNames[question.sourceVersionId]?.number ?? '?' }}</p><p v-if="questionNames[question.sourceVersionId]?.warning" class="source-warning">{{ questionNames[question.sourceVersionId]?.warning }}</p></div><div class="row-actions"><NButton v-if="source === 'DIRECT'" size="tiny" :disabled="blocked || index === 0" @click="moveQuestion(index, -1)">上移</NButton><NButton v-if="source === 'DIRECT'" size="tiny" :disabled="blocked || index === input.questions.length - 1" @click="moveQuestion(index, 1)">下移</NButton><NButton size="tiny" :disabled="blocked" @click="removeQuestion(question.sourceQuestionId)">移除</NButton></div></header><label>所属阶段<NSelect v-model:value="question.stage" :disabled="blocked" :options="stageOptions" /></label></li></ol><p v-if="!input.questions.length" class="field-help">尚未选择主问题。预览和开始训练至少需要一道题。</p><div v-if="!input.questions.length" class="row-actions"><RouterLink class="text-link" :to="{ name: 'bank', query: { create: '1' } }">去题库新建第一道题</RouterLink><RouterLink class="text-link" :to="{ name: 'ai', query: { create: '1', purpose: 'QUESTION_DRAFT' } }">用 AI 生成候选题</RouterLink></div>
       </section>
       <section class="setup-section"><header><div><h3>固定背景 <span>可选</span></h3><p class="field-help">最多 1 个目标、1 个项目与 10 条已核实事实。不自动带入关联知识、附件或表达稿。</p></div><NButton size="small" :disabled="blocked" @click="contextPicker = !contextPicker">{{ contextPicker ? '收起材料选择' : '选择背景材料' }}</NButton></header><div v-for="link in input.contextLinks" :key="link.versionId" class="selected-context"><div><strong>{{ contextNames[link.versionId]?.title ?? trainingContextLabels[link.kind] }}</strong><p>{{ trainingContextLabels[link.kind] }} · v{{ contextNames[link.versionId]?.number ?? '?' }}</p></div><NButton size="small" :disabled="blocked" @click="removeContext(link.versionId)">移除</NButton></div><p v-if="!input.contextLinks.length" class="field-help">不指定目标或项目，也可以独立开始训练。</p><div v-if="contextPicker" class="setup-picker"><NSelect v-model:value="contextKind" :disabled="blocked || contextBusy" :options="contextOptions" aria-label="背景材料类型" /><form class="title-search" @submit.prevent="searchMaterials"><NInput v-model:value="contextTitle" :disabled="blocked || contextBusy" :maxlength="100" placeholder="按已保存标题查找" aria-label="背景材料标题" /><NButton attr-type="submit" :disabled="blocked || contextBusy">查找</NButton></form><p v-if="materials.isPending.value" class="field-help" role="status">正在读取材料…</p><p v-if="materials.error.value || contextError" class="notice error" role="alert">{{ contextError || errorText(materials.error.value) }}<NButton text @click="materials.refetch()">刷新列表</NButton></p><div class="setup-picker-results"><button v-for="item in materials.data.value?.items" :key="item.id" :disabled="blocked || contextBusy || input.contextLinks.some(link => link.itemId === item.id)" @click="chooseContext(item)"><strong>{{ item.title }}</strong><span>v{{ item.versionNumber }}{{ input.contextLinks.some(link => link.itemId === item.id) ? ' · 已选择' : '' }}</span></button></div><p v-if="materials.data.value && !materials.data.value.items.length" class="field-help">没有匹配的有效材料；事实须先核实后才能选择。</p><div v-if="contextCursors.length || materials.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="blocked || contextBusy || !contextCursors.length" @click="contextCursor = contextCursors.pop()">上一页</NButton><NButton size="small" :disabled="blocked || contextBusy || !materials.data.value?.nextCursor" @click="nextMaterials">下一页</NButton></div></div></section>
-      <p v-if="problem && dirty" class="source-warning" role="status">{{ problem }}</p><div class="row-actions"><NButton type="primary" :loading="writer.busy.value" :disabled="blocked || !!problem || collectionBusy || contextBusy" @click="createPreview">保存并查看固定预览</NButton><span class="field-help">{{ trainingModeLabels[input.mode] }} · {{ input.questions.length }} 道主问</span></div><p class="field-help">尚未保存的设置只保留在当前页面，刷新会丢失。预览保存后仍需明确点击开始。</p>
+      <p v-if="problem && dirty" class="source-warning" role="status">{{ problem }}</p><div class="row-actions"><NButton type="primary" :loading="writer.busy.value" :disabled="blocked || !!problem || collectionBusy || contextBusy" @click="createPreview">保存并查看固定预览</NButton><span class="field-help">{{ trainingModeLabels[input.mode] }} · {{ input.questions.length }} 道主问</span></div><p class="field-help">设置会自动保留在当前标签页，刷新后可恢复；关闭标签页、切换会话或明确离开后不保留。预览保存后仍需明确点击开始。</p>
     </div>
   </section>
 </template>

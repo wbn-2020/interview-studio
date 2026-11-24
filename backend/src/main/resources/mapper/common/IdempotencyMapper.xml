@@ -20,7 +20,10 @@
     WHERE owner_id = #{ownerId} AND idempotency_key = #{key}
   </select>
   <insert id="insertReceipt">
-    INSERT INTO command_receipt(owner_id, idempotency_key, operation, request_hash, response_json, created_at)
-    VALUES(#{ownerId}, #{key}, #{operation}, #{requestHash}, #{responseJson}, #{createdAt})
+    INSERT INTO command_receipt(owner_id, idempotency_key, operation, request_hash, response_json, created_at, expires_at)
+    VALUES(#{ownerId}, #{key}, #{operation}, #{requestHash}, #{responseJson}, #{createdAt}, #{expiresAt})
   </insert>
+  <delete id="deleteExpired">
+    DELETE FROM command_receipt WHERE owner_id = #{ownerId} AND expires_at &lt;= #{now}
+  </delete>
 </mapper>

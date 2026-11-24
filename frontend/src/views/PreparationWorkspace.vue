@@ -8,17 +8,20 @@ import type { PreparationFocus, PreparationItem, PreparationKind, PreparationPag
 import { kindLabels, verificationLabels } from '../api/preparation'
 import { queryClient } from '../api/queryClient'
 import { useCommand } from '../composables/useCommand'
+import { useWorkspaceNavigation } from '../navigation/workspaceNavigation'
 import { useWorkspaceStore } from '../state/workspace'
 import RIcon from '../replica/RIcon.vue'
 const PreparationEditor = defineAsyncComponent(() => import('../components/prepare/PreparationEditor.vue'))
 
 const route = useRoute()
 const router = useRouter()
+const { returnTo, withReturn } = useWorkspaceNavigation()
 const store = useWorkspaceStore()
 const focusWriter = useCommand()
 const kinds: PreparationKind[] = ['TARGET', 'PROJECT', 'FACT', 'EXPRESSION']
 const kind = computed<PreparationKind>(() => kinds.includes(route.query.kind as PreparationKind) ? route.query.kind as PreparationKind : 'TARGET')
 const selectedId = computed(() => typeof route.query.item === 'string' ? route.query.item : undefined)
+const selectedSummary = computed(() => list.data.value?.items.find(item => item.id === selectedId.value && item.status === 'ACTIVE'))
 const creating = computed(() => route.query.create === '1')
 const status = ref('ACTIVE')
 const favorites = ref(false)
@@ -59,9 +62,14 @@ watch([kind, status, favorites], () => { cursor.value = undefined; cursors.value
 watch(focusWriter.locked, locked => store.changes.set('prepare-focus', { dirty: false, locked }), { immediate: true })
 onUnmounted(() => store.changes.delete('prepare-focus'))
 
-function open(id: string, itemKind: PreparationKind = kind.value, versionId?: string) { void router.push({ name: 'prepare', query: { kind: itemKind, item: id, version: versionId } }) }
-function close() { void router.push({ name: 'prepare', query: { kind: kind.value } }) }
-function create() { void router.push({ name: 'prepare', query: { kind: kind.value, create: '1' } }) }
+function open(id: string, itemKind: PreparationKind = kind.value, versionId?: string) { void router.push({ name: 'prepare', query: withReturn({ kind: itemKind, item: id, version: versionId }) }) }
+function close() { returnTo({ name: 'prepare', query: { kind: kind.value } }) }
+function create() { void router.push({ name: 'prepare', query: withReturn({ kind: kind.value, create: '1' }) }) }
+function generateQuestion() {
+  const summary = selectedSummary.value
+  if (!summary || summary.kind === 'EXPRESSION') return
+  void router.push({ name: 'ai', query: withReturn({ create: '1', purpose: 'QUESTION_DRAFT', targetItemId: summary.id, targetVersionId: summary.versionId }) })
+}
 function created(value: PreparationItem) { open(value.id, value.kind) }
 function refresh() { void queryClient.invalidateQueries({ queryKey: ['preparation'] }) }
 function reloadFocus() { void focus.refetch(); if (focus.data.value?.targetId) void focusedTarget.refetch() }
@@ -84,7 +92,7 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
 </script>
 
 <template>
-  <header class="page-heading"><div><h1>{{ kind === 'TARGET' ? '目标与岗位' : kindLabels[kind] }}</h1><p class="muted">{{ guidance[kind].intro }}</p></div><NButton type="primary" @click="create"><RIcon name="plus" :size="18" />新建{{ kindLabels[kind] }}</NButton></header>
+  <header class="page-heading"><div><h1>{{ kind === 'TARGET' ? '目标与岗位' : kindLabels[kind] }}</h1><p class="muted">{{ guidance[kind].intro }}</p></div><div class="row-actions"><NButton v-if="selectedSummary && selectedSummary.kind !== 'EXPRESSION'" :disabled="!store.sessionActive" @click="generateQuestion"><RIcon name="sparkles" :size="18" />据此用当前版本生成候选题</NButton><NButton type="primary" @click="create"><RIcon name="plus" :size="18" />新建{{ kindLabels[kind] }}</NButton></div></header>
   <section class="prepare-focus" aria-label="当前关注目标"><div><span class="field-help">当前关注</span><button v-if="focusedTarget.data.value" class="text-link" @click="open(focusedTarget.data.value.id, 'TARGET')">{{ focusedTarget.data.value.currentVersion.content.title }}</button><strong v-else>{{ focus.data.value?.targetId ? '正在读取目标…' : '尚未指定目标' }}</strong><span class="field-help">关注状态不改变材料版本或历史条件。</span></div><NButton v-if="focus.data.value?.targetId" size="small" :disabled="focusWriter.locked.value || !store.sessionActive" @click="changeFocus(null)">取消关注</NButton></section>
   <p v-if="focus.error.value || focusedTarget.error.value" class="notice error" role="alert">{{ errorText(focus.error.value ?? focusedTarget.error.value) }}<NButton text @click="reloadFocus">重试读取</NButton></p><div v-if="focusWriter.error.value" class="notice error" role="alert"><p>{{ errorText(focusWriter.error.value) }}</p><NButton v-if="focusWriter.pending.value && !focusWriter.busy.value" size="small" @click="focusWriter.retry">用原请求重试</NButton><NButton v-else size="small" @click="focus.refetch()">读取最新关注状态</NButton></div><p v-if="focusMessage" class="prepare-focus-message success-text" role="status">{{ focusMessage }}</p>
   <div class="prepare-workspace" :class="{ 'fact-workspace': kind === 'FACT', 'has-detail': selectedId || creating }">
@@ -95,7 +103,13 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
       <div v-if="cursors.length || list.data.value?.nextCursor" class="pagination"><NButton size="small" :disabled="!cursors.length" @click="cursor = cursors.pop()">上一页</NButton><NButton size="small" :disabled="!list.data.value?.nextCursor" @click="next">下一页</NButton></div>
     </aside>
     <PreparationEditor v-if="selectedId || creating" :key="selectedId && !creating ? selectedId : `new-${kind}`" :id="creating ? undefined : selectedId" :kind="kind" @changed="refresh" @created="created" @open="open" @close="close" />
-    <details v-else class="workspace-help"><summary>{{ guidance[kind].title }} · 使用说明</summary><div class="workspace-help-body"><p>{{ guidance[kind].text }}</p><div class="workspace-help-actions"><RouterLink to="/prepare/materials"><RIcon name="file-text" :size="16" />整理附件资料</RouterLink><RouterLink to="/prepare/schedule"><RIcon name="calendar-days" :size="16" />管理面试安排</RouterLink></div></div></details>
+    <section v-else class="prepare-start" aria-labelledby="prepare-start-title">
+      <p class="section-label">准备入口</p>
+      <h2 id="prepare-start-title">{{ guidance[kind].title }}</h2>
+      <p>{{ guidance[kind].text }}</p>
+      <dl class="prepare-start-status"><div><dt>当前类目</dt><dd>{{ list.data.value?.items.length ?? 0 }} 条已载入</dd></div><div><dt>关注目标</dt><dd>{{ focusedTarget.data.value?.currentVersion.content.title ?? '尚未指定' }}</dd></div></dl>
+      <div class="row-actions"><NButton type="primary" @click="create"><RIcon name="plus" :size="18" />新建{{ kindLabels[kind] }}</NButton><RouterLink class="text-link" to="/prepare/materials"><RIcon name="file-text" :size="16" />整理附件资料</RouterLink><RouterLink class="text-link" to="/prepare/schedule"><RIcon name="calendar-days" :size="16" />管理面试安排</RouterLink></div>
+    </section>
   </div>
   <p class="workspace-footnote">内容版本、核实决定和模型用途授权分别记录；手工材料和已核实经历默认不外发。</p>
 </template>
@@ -105,9 +119,13 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
 .prepare-focus > div { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .prepare-focus > div > .field-help:last-child { display: none; }
 .prepare-focus strong { font-size: 13px; }.prepare-focus-message { margin-bottom: 12px; }
-.prepare-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.prepare-workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; }
 .prepare-workspace.has-detail { grid-template-columns: 248px minmax(0, 1fr); gap: 24px; }
 .prepare-catalog { min-width: 0; }
+.prepare-start { display: grid; justify-items: start; gap: 18px; min-height: 340px; padding: clamp(24px, 4vw, 42px); border: 1px solid var(--studio-divider); border-radius: 10px; background: var(--studio-pane); }
+.prepare-start h2 { margin: 0; font-size: 22px; }.prepare-start > p:not(.section-label) { max-width: 62ch; margin: 0; color: var(--muted); }
+.prepare-start-status { display: flex; flex-wrap: wrap; gap: 28px; width: 100%; margin: 4px 0 0; padding: 16px 0; border-top: 1px solid var(--studio-divider); border-bottom: 1px solid var(--studio-divider); }
+.prepare-start-status > div { display: grid; gap: 4px; min-width: 160px; }.prepare-start-status dt { color: var(--muted); font-size: 12px; }.prepare-start-status dd { margin: 0; font-size: 14px; }
 .prepare-catalog-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 16px; }
 .prepare-catalog-filters { margin-bottom: 20px; }.prepare-catalog-filters summary { display: flex; align-items: center; gap: 8px; min-height: 32px; color: var(--muted); cursor: pointer; font-size: 13px; }
 .prepare-list-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }.prepare-list-filters > .n-select { width: 160px; }.prepare-list-filters > label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
@@ -127,5 +145,5 @@ const guidance: Record<PreparationKind, { title: string; intro: string; text: st
 .fact-project-directory details > button { display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); margin: 4px 0 4px 12px; padding: 9px; border-radius: 6px; text-align: left; font-size: 13px; }
 .fact-project-directory details > button.selected { background: var(--brand-soft); }.fact-project-directory details > button > svg { flex: none; width: 17px; }.fact-project-directory details > button > span { min-width: 0; overflow-wrap: anywhere; }
 @container workspace (max-width: 820px) { .prepare-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }.prepare-workspace.has-detail { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; } }
-@media(max-width:700px) { .prepare-workspace.has-detail { grid-template-columns: minmax(0, 1fr); }.has-detail .prepare-catalog { padding-bottom: 20px; border-bottom: 1px solid var(--studio-divider); }.has-detail :is(.prepare-item-list, .fact-project-directory) { max-height: 210px; }.prepare-workspace :deep(.preparation-editor) { padding: 22px 18px; }.prepare-focus { margin-bottom: 24px; } }
+@media(max-width:700px) { .prepare-workspace.has-detail { grid-template-columns: minmax(0, 1fr); }.prepare-start { min-height: 0; padding: 22px 18px; }.has-detail .prepare-catalog { padding-bottom: 20px; border-bottom: 1px solid var(--studio-divider); }.has-detail :is(.prepare-item-list, .fact-project-directory) { max-height: 210px; }.prepare-workspace :deep(.preparation-editor) { padding: 22px 18px; }.prepare-focus { margin-bottom: 24px; } }
 </style>

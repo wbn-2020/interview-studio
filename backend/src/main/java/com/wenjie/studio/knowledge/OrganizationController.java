@@ -58,8 +58,9 @@ public class OrganizationController {
                              @RequestParam(name = "kind", required = false) Kind kind,
                              @RequestParam(name = "status", defaultValue = "ACTIVE") Status status,
                              @RequestParam(name = "q", required = false) String query,
+                             @RequestParam(name = "topicId", required = false) String topicId,
                              @RequestParam(name = "cursor", required = false) String cursor,
                              @RequestParam(name = "limit", defaultValue = "20") int limit) {
-        return organization.library(owner.id(), collection, kind, status, query, cursor, limit);
+        return organization.library(owner.id(), collection, kind, status, query, topicId, cursor, limit);
     }
 }

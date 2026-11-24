@@ -19,6 +19,7 @@ public interface QuestionMapper {
     List<QuestionDtos.VersionSummary> versions(@Param("owner") String owner, @Param("id") String id,
                                               @Param("before") Integer before, @Param("limit") int limit);
     List<String> topics(@Param("owner") String owner, @Param("versionId") String versionId);
+    List<TopicLink> topicLinks(@Param("owner") String owner, @Param("versionIds") List<String> versionIds);
     List<QuestionDtos.KnowledgeLink> knowledgeLinks(@Param("owner") String owner, @Param("versionId") String versionId);
     QuestionRows.ReferenceRow reference(@Param("owner") String owner, @Param("id") String id,
                                         @Param("versionId") String versionId);
@@ -42,4 +43,5 @@ public interface QuestionMapper {
                     @Param("favorite") boolean favorite, @Param("now") Instant now);
     void insertExposure(@Param("owner") String owner, @Param("id") String id, @Param("questionId") String questionId,
                         @Param("versionId") String versionId, @Param("kind") String kind, @Param("now") Instant now);
+    record TopicLink(String versionId, String topicId) { }
 }

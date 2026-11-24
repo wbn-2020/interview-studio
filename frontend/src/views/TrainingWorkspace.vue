@@ -7,6 +7,7 @@ import { errorText, read } from '../api/client'
 import type { TrainingSession, TrainingSessionPage, TrainingStatus } from '../api/training'
 import { trainingModeLabels, trainingStatusLabels } from '../api/training'
 import { queryClient } from '../api/queryClient'
+import { useWorkspaceNavigation } from '../navigation/workspaceNavigation'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import RIcon from '../replica/RIcon.vue'
@@ -15,6 +16,7 @@ const TrainingSetup = defineAsyncComponent(() => import('../components/training/
 const TrainingSessionView = defineAsyncComponent(() => import('../components/training/TrainingSession.vue'))
 const route = useRoute()
 const router = useRouter()
+const { returnTo, withReturn } = useWorkspaceNavigation()
 const store = useWorkspaceStore()
 const access = useTrainingAccessStore()
 const selectedId = computed(() => typeof route.query.item === 'string' ? route.query.item : undefined)
@@ -38,9 +40,9 @@ const changeState = reactive({ dirty: false, locked: false })
 store.changes.set('training-workspace', changeState)
 watch([status, () => store.sessionEpoch], () => { cursor.value = undefined; cursors.value = [] }, { flush: 'sync' })
 onUnmounted(() => { if (store.changes.get('training-workspace') === changeState) store.changes.delete('training-workspace') })
-function open(id: string) { void router.push({ name: 'training', query: { item: id } }) }
-function close() { void router.push({ name: 'training' }) }
-function create() { if (canCreate.value) void router.push({ name: 'training', query: { create: '1' } }) }
+function open(id: string) { void router.push({ name: 'training', query: withReturn({ item: id }) }) }
+function close() { returnTo({ name: 'training' }) }
+function create() { if (canCreate.value) void router.push({ name: 'training', query: withReturn({ create: '1' }) }) }
 function created(session: TrainingSession) { refresh(); open(session.id) }
 function refresh() { void queryClient.invalidateQueries({ queryKey: ['training', store.sessionEpoch, 'sessions'] }) }
 function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.value); cursor.value = list.data.value.nextCursor } }
@@ -63,7 +65,7 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
     <section v-else-if="selectedId" class="training-session-stage"><div class="session-back"><NButton text size="small" @click="close">← 返回训练记录</NButton></div><TrainingSessionView :key="selectedId" :session-id="selectedId" @changed="refresh" /></section>
     <details v-else class="workspace-help"><summary>训练流程与资料使用说明</summary><div class="workspace-help-body"><ol class="workspace-help-steps"><li><strong>选择题目</strong><span>确认范围与练习条件</span></li><li><strong>独立作答</strong><span>保存草稿，准备好后再提交</span></li><li><strong>回看与复练</strong><span>从具体回答找到改进方向</span></li></ol><p>同一时间保留一场进行中或暂停的训练。结束前核对已答、跳过、未答与未提交草稿，结束不会自动提交草稿。</p><p>站内资料查阅通过明确授权记录条件；系统不能监测你已看过、复制或在站外打开的资料。AI 追问从明确选择的已提交回答发起，授权后生成并加入本场训练；评价从确切提交打开，先确认反馈时机，再预览外发清单并单次授权。</p></div></details>
   </div>
-  <p class="workspace-footnote">只在收到服务器回执后显示保存成功。未发送的本地输入不会因刷新自动恢复。</p>
+  <p class="workspace-footnote">只在收到服务器回执后显示保存成功。停止输入后自动保存草稿；刷新恢复最近确认内容，尚未发送的最后一段输入仍可能丢失。</p>
 </template>
 
 <style scoped>
@@ -83,5 +85,5 @@ function next() { if (list.data.value?.nextCursor) { cursors.value.push(cursor.v
 .training-workspace.setup-open { grid-template-columns: 248px minmax(0, 1fr); gap: 24px; }.setup-open .training-catalog-heading { flex-wrap: wrap; }.setup-open .training-session-list { max-height: 540px; overflow-y: auto; }.setup-open .training-session-list > button { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 14px 8px; }.setup-open .training-record-icon, .setup-open .training-session-list > button > svg { display: none; }.setup-open .status-pill { justify-self: start; }
 .training-workspace.session-open { display: block; }
 @container workspace (max-width: 820px) { .training-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }.training-workspace.setup-open { grid-template-columns: 210px minmax(0, 1fr); gap: 20px; } }
-@media(max-width:700px) { .training-workspace.setup-open { grid-template-columns: minmax(0, 1fr); }.setup-open .training-session-list { max-height: 210px; }.training-active { flex-wrap: wrap; }.training-session-list > button { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; padding: 18px 0; }.training-record-icon { width: 30px; height: 34px; }.training-session-list > button > svg { display: none; }.training-record-meta { gap: 4px 8px; }.training-catalog-heading .n-select { width: 132px; } }
+@media(max-width:700px) { .training-workspace.setup-open { grid-template-columns: minmax(0, 1fr); }.setup-open .training-session-list { max-height: 210px; }.training-active { flex-wrap: wrap; }.session-back { margin-bottom: 12px; }.training-session-list > button { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; padding: 18px 0; }.training-record-icon { width: 30px; height: 34px; }.training-session-list > button > svg { display: none; }.training-record-meta { gap: 4px 8px; }.training-catalog-heading .n-select { width: 132px; } }
 </style>

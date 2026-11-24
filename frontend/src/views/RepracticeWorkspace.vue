@@ -13,12 +13,14 @@ import { trainingStatusLabels } from '../api/training'
 import { useWorkspaceStore } from '../state/workspace'
 import { useRecentVisit } from '../composables/useRecentVisit'
 import { useTrainingAccessStore } from '../state/trainingAccess'
+import { useWorkspaceNavigation } from '../navigation/workspaceNavigation'
 import RepracticeCreate from '../components/review/RepracticeCreate.vue'
 import RepracticeDetail from '../components/review/RepracticeDetail.vue'
 import RepracticeComparison from '../components/review/RepracticeComparison.vue'
 import RecollectionRepracticeCreate from '../components/review/RecollectionRepracticeCreate.vue'
 
 const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
+const { returnTo, withReturn } = useWorkspaceNavigation()
 const cursor = ref<string>(), previous = ref<(string | undefined)[]>([])
 const currentDetail = shallowRef<Repractice>()
 let alive = true, generation = 0
@@ -78,14 +80,14 @@ watch([readable, () => store.sessionEpoch, item, comparisonId, judgmentId, judgm
 onUnmounted(() => { alive = false; generation++ })
 function changed() { return new ApiError(0, 'REVIEW_CONTEXT_CHANGED', '复练读取条件已变化。') }
 function baselineLabel(value: RepracticeSummary) { const kind = repracticeSummaryBaselineKind(value); return kind ? repracticeBaselineLabels[kind] : '基线待核对' }
-function open(id: string) { if (readable.value) void router.push({ name: 'repractice', query: { item: id } }) }
-function compare(id: string) { if (readable.value) void router.push({ name: 'repractice', query: { comparison: id } }) }
-function back() { if (readable.value) void router.push({ name: 'review' }) }
+function open(id: string) { if (readable.value) void router.push({ name: 'repractice', query: withReturn({ item: id }) }) }
+function compare(id: string) { if (readable.value) void router.push({ name: 'repractice', query: withReturn({ comparison: id }) }) }
+function back() { if (readable.value) returnTo({ name: 'review' }) }
 function nextPage() { if (readable.value && !list.isFetching.value && list.data.value?.nextCursor) { previous.value.push(cursor.value); cursor.value = list.data.value.nextCursor } }
 </script>
 
 <template>
-  <main class="repractice-workspace">
+  <section class="repractice-workspace">
     <header class="workspace-heading"><div><h1>{{ comparisonId ? '新旧对照' : '独立复练' }}</h1><p class="field-help">保留固定基线、新答与每条来源的验证条件。</p></div><NButton :disabled="!readable" @click="back">查看固定来源</NButton></header>
     <p v-if="routeProblem" class="notice error" role="alert">{{ routeProblem }}</p><p v-else-if="!readable" class="notice">当前登录或独立训练条件限制了复盘资料访问。已有输入保留，结束训练或明确确认辅助后再继续。</p>
     <div v-show="readable" :inert="!readable || undefined" class="workspace-content">
@@ -97,7 +99,7 @@ function nextPage() { if (readable.value && !list.isFetching.value && list.data.
         <div v-else class="empty-state"><h2>从一个具体问题开始复练</h2><p>在复盘里选正式原答、当前回忆版本，或从动作中选择要验证的同一基线来源。新尝试从空白文字和图开始。</p><NButton @click="back">选择基线或动作</NButton></div>
       </section></div>
     </div>
-  </main>
+  </section>
 </template>
 
 <style scoped>

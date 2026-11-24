@@ -28,7 +28,7 @@
     SELECT <include refid="columns"/> FROM data_archive_job WHERE owner_id=#{owner} ORDER BY created_at DESC,id DESC LIMIT 50
   </select>
   <select id="retained" resultType="_int" timeout="5">
-    SELECT COUNT(*) FROM data_archive_job WHERE owner_id=#{owner}
+    SELECT COUNT(*) FROM data_archive_job WHERE owner_id=#{owner} AND state&lt;&gt;'EXPIRED'
   </select>
   <select id="active" resultType="_int" timeout="5">
     SELECT COUNT(*) FROM data_archive_job WHERE owner_id=#{owner} AND state IN ('QUEUED','RUNNING')
@@ -58,8 +58,19 @@
     UPDATE data_archive_job SET state='FAILED',completed_at=#{now},error_code='ARCHIVE_INTERRUPTED'
     WHERE owner_id=#{owner} AND state='RUNNING' AND started_at&lt;#{before}
   </update>
+  <select id="cleanup" resultMap="row" timeout="5">
+    SELECT <include refid="columns"/> FROM data_archive_job
+    WHERE owner_id=#{owner} AND expires_at&lt;=#{now} AND state IN ('QUEUED','READY','FAILED','EXPIRED')
+      AND (state&lt;&gt;'EXPIRED' OR NOT EXISTS (SELECT 1 FROM data_restore_gate g WHERE g.archive_id=data_archive_job.id))
+    ORDER BY expires_at,id LIMIT #{limit}
+  </select>
   <update id="expire" timeout="5">
     UPDATE data_archive_job SET state='EXPIRED'
-    WHERE owner_id=#{owner} AND state IN ('QUEUED','READY') AND expires_at&lt;=#{now}
+    WHERE owner_id=#{owner} AND id=#{id} AND expires_at&lt;=#{now} AND state IN ('QUEUED','READY','FAILED')
   </update>
+  <delete id="deleteExpired" timeout="5">
+    DELETE FROM data_archive_job
+    WHERE owner_id=#{owner} AND id=#{id} AND state='EXPIRED'
+      AND NOT EXISTS (SELECT 1 FROM data_restore_gate g WHERE g.archive_id=data_archive_job.id)
+  </delete>
 </mapper>

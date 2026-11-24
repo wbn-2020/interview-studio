@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { NButton, NCheckbox, NInput, NSelect } from 'naive-ui'
 import { ApiError, read } from '../api/client'
 import type { TodayCalendarPage, TodayCalendarQuery, TodayCapability, TodayContinuation, TodayCount, TodayDayContext, TodayItem,
@@ -23,7 +23,7 @@ import RIcon from '../replica/RIcon.vue'
 type TargetFilter = { itemId: string; title: string }
 type Filters = { zoneId: string; target: TargetFilter | null; includeOverBudget: boolean }
 type View = 'overview' | 'source' | 'calendar' | 'plans'
-const router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
+const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
 const active = ref(true), visible = ref(document.visibilityState === 'visible')
 const readable = computed(() => active.value && visible.value && store.sessionActive && !access.checking && !access.challenge && !access.restricted
   && !store.changes.get('training-access-command')?.locked)
@@ -31,7 +31,11 @@ const initialZone = todayZoneValid(browserZone()) ? browserZone() : 'UTC'
 const input = reactive<Filters>({ zoneId: initialZone, target: null, includeOverBudget: false })
 const applied = shallowRef<Filters>({ ...input }), filterError = ref(''), targetPickerOpen = ref(false), noteOpen = ref(false), noteId = ref('')
 const filterChanged = computed(() => JSON.stringify(input) !== JSON.stringify(applied.value))
-const view = ref<View>('overview'), notice = ref(''), displaySettingsOpen = ref(false)
+const view = computed<View>(() => {
+  const value = route.query.view
+  return value === 'source' || value === 'calendar' || value === 'plans' ? value : 'overview'
+})
+const notice = ref(''), displaySettingsOpen = ref(false)
 const overview = shallowRef<TodayOverview>(), overviewBusy = ref(false), overviewError = shallowRef<unknown>()
 let overviewEpoch = -1
 const planningContext = shallowRef<TodayDayContext>(), planningEpoch = ref(-1), planMounted = ref(false), planRefresh = ref(0)
@@ -206,14 +210,23 @@ function applyFilters() {
 function chooseTarget(value: TargetFilter) { input.target = { ...value }; targetPickerOpen.value = false }
 function changeView(value: View) {
   if (!readable.value || view.value === value) return
-  view.value = value
+  void router.push({ name: 'today', query: { ...route.query, view: value === 'overview' ? undefined : value } })
+}
+watch(view, value => {
+  if (!readable.value) return
   if (value === 'plans') planMounted.value = true
   if (value === 'source') { resetPage(); void loadItems() }
   if (value === 'calendar') { resetCalendar(); void loadCalendar() }
-}
-function showSource(kind: TodaySourceKind, selectedSection = section.value) {
+}, { flush: 'post' })
+async function showSource(kind: TodaySourceKind, selectedSection = section.value) {
   if (!readable.value) return
-  sourceKind.value = kind; section.value = selectedSection; view.value = 'source'; resetPage(); void loadItems()
+  const previousKind = sourceKind.value, previousSection = section.value
+  sourceKind.value = kind; section.value = selectedSection
+  if (view.value === 'source') { resetPage(); void loadItems() }
+  else {
+    await router.push({ name: 'today', query: { ...route.query, view: 'source' } })
+    if (route.query.view !== 'source') { sourceKind.value = previousKind; section.value = previousSection }
+  }
 }
 function changeSection(value: TodaySection) { showSource(sourceKind.value, value) }
 function applyCalendar() {
@@ -226,9 +239,12 @@ function changeCalendarKind(value: TodaySourceKind) { if (readable.value) { cale
 function inspect(source: TodaySourceRef) { if (readable.value) { selectedSource.value = { ...source }; refreshAll('已重新读取当前清单与所选来源。') } }
 function closeSource() { sourceSequence++; selectedSource.value = undefined; sourceDetail.value = undefined; sourceError.value = undefined; sourceBusy.value = false }
 function open(value: TodayContinuation) { const route = todayContinuationRoute(value); if (readable.value && route) void router.push(route) }
-function openPlan(source: TodaySourceRef, mode: 'edit' | 'candidate') {
+async function openPlan(source: TodaySourceRef, mode: 'edit' | 'candidate') {
   if (!readable.value) return
-  planMounted.value = true; view.value = 'plans'; planIntent.value = { source: { ...source }, mode, sequence: ++planSequence }
+  const intent = { source: { ...source }, mode, sequence: ++planSequence }
+  planMounted.value = true
+  if (view.value !== 'plans') await router.push({ name: 'today', query: { ...route.query, view: 'plans' } })
+  if (view.value === 'plans') planIntent.value = intent
 }
 function quick(kind: 'task' | 'training' | 'target' | 'memory' | 'note') {
   if (!readable.value) return

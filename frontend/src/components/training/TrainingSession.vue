@@ -52,6 +52,10 @@ const knowledgeBefore = ref<number>()
 const knowledgeCursors = ref<(number | undefined)[]>([])
 const message = ref('')
 const visible = ref(document.visibilityState === 'visible')
+// 媒体查询与布局断点保持一致；窄屏先展示条件和关键操作，次要面板默认收起。
+const compactControls = ref(window.matchMedia('(max-width: 950px)').matches)
+const controlDetailsOpen = ref(!compactControls.value)
+let controlsMediaQuery: MediaQueryList | undefined
 const changeState = reactive({ dirty: false, locked: false })
 const commandState = reactive({ dirty: false, locked: false })
 let alive = true
@@ -171,6 +175,9 @@ onMounted(() => {
   document.addEventListener('visibilitychange', visibilityChanged)
   window.addEventListener('focus', refreshSession)
   window.addEventListener('studio:training-changed', refreshSession)
+  controlsMediaQuery = window.matchMedia('(max-width: 950px)')
+  syncCompactControls(controlsMediaQuery.matches)
+  controlsMediaQuery.addEventListener('change', compactControlsChanged)
 })
 onUnmounted(() => {
   alive = false
@@ -179,6 +186,7 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', visibilityChanged)
   window.removeEventListener('focus', refreshSession)
   window.removeEventListener('studio:training-changed', refreshSession)
+  controlsMediaQuery?.removeEventListener('change', compactControlsChanged)
   if (store.changes.get('training-editor') === changeState) store.changes.delete('training-editor')
   if (store.changes.get('training-command') === commandState) store.changes.delete('training-command')
 })
@@ -297,6 +305,11 @@ async function pulse(manual = false) {
   })
 }
 function receiveDeferredPulse() { if (store.sessionActive && deferredPulse.value) { receiveTiming(deferredPulse.value); deferredPulse.value = undefined } }
+function syncCompactControls(matches: boolean) {
+  compactControls.value = matches
+  controlDetailsOpen.value = !matches
+}
+function compactControlsChanged(event: MediaQueryListEvent) { syncCompactControls(event.matches) }
 function visibilityChanged() {
   visible.value = document.visibilityState === 'visible'
   if (visible.value) { refreshSession(); void pulse() }
@@ -358,19 +371,25 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
       <p class="field-help" role="status">{{ aiUpdates.message }}</p>
       <div class="session-workbench">
       <aside class="session-control-sidebar" aria-label="本场训练条件与操作">
-      <h3 class="session-sidebar-title">条件</h3>
-      <div class="session-conditions"><span>{{ current.mode === 'LEARNING' ? '学习条件' : current.materialAccess ? '已确认辅助条件' : '尚未确认站内辅助' }}</span><span><template v-if="mainQuestions.length > replayQuestions.length">{{ mainQuestions.length - replayQuestions.length }} 道主问 · </template><template v-if="replayQuestions.length">{{ replayQuestions.length }} 道同题复练 · </template>{{ current.questions.length - mainQuestions.length }} 道追问</span><span>{{ current.config.timeBudgetMinutes ? `时间预算 ${current.config.timeBudgetMinutes} 分钟` : '未设时间预算' }}</span></div>
-      <p class="field-help">资料条件用于记录训练背景。系统只能记录站内操作，不能判断你此前记住、复制或在站外看过的内容。</p>
+      <div class="session-control-primary">
+      <div class="session-control-summary"><h3 class="session-sidebar-title">条件</h3><div class="session-conditions"><span>{{ current.mode === 'LEARNING' ? '学习条件' : current.materialAccess ? '已确认辅助条件' : '尚未确认站内辅助' }}</span><span><template v-if="mainQuestions.length > replayQuestions.length">{{ mainQuestions.length - replayQuestions.length }} 道主问 · </template><template v-if="replayQuestions.length">{{ replayQuestions.length }} 道同题复练 · </template>{{ current.questions.length - mainQuestions.length }} 道追问</span><span>{{ current.config.timeBudgetMinutes ? `时间预算 ${current.config.timeBudgetMinutes} 分钟` : '未设时间预算' }}</span></div></div>
+      <p class="field-help session-condition-note">资料条件用于记录训练背景。系统只能记录站内操作，不能判断你此前记住、复制或在站外看过的内容。</p>
       <p v-if="message" class="notice" role="status">{{ message }}</p><p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :loading="writer.busy.value" :disabled="!store.sessionActive || questionsLocked" @click="retry">用原请求重试</NButton><NButton v-else text :disabled="!store.sessionActive" @click="refreshSession">刷新训练状态</NButton></p><p v-if="deferredReceipt" class="notice" role="status">服务器已确认的结果在会话变化后到达。<NButton text :disabled="!store.sessionActive" @click="receiveDeferred">接收已确认结果</NButton></p>
 
       <section v-if="current.status === 'DRAFT'" class="preview-confirm"><h3>开始前核对</h3><p>{{ replayQuestions.length ? '同题复练沿用原训练保存的历史题面；开始时核对原答绑定及本次选定背景，历史题面不表示题库当前发布状态。' : '下方题干与选定背景来自保存预览时的确切版本。开始时会再检查来源是否仍可使用。' }}同一时间只能保留一场进行中或暂停的训练。</p><p v-if="hasOtherActive" class="notice">当前另有训练「{{ access.active?.title }}」，请先结束那场训练。</p><NCheckbox v-model:checked="previewConfirmed" :disabled="!available">我已核对题目、阶段、背景与练习条件</NCheckbox><div class="row-actions"><NButton type="primary" :loading="writer.busy.value" :disabled="!available || !previewConfirmed || hasOtherActive" @click="changeStatus('start')">确认并开始训练</NButton><NButton :disabled="!available" @click="prepareEnd">结束这个预览</NButton></div></section>
       <div v-else-if="current.status !== 'ENDED'" class="row-actions"><NButton v-if="current.status === 'RUNNING'" :disabled="!available" @click="changeStatus('pause')">暂停训练</NButton><NButton v-else type="primary" :disabled="!available" @click="changeStatus('resume')">恢复训练</NButton><NButton v-if="current.mode !== 'LEARNING' && !current.materialAccess" :disabled="!available" @click="requestAssistance">确认辅助条件</NButton><NButton :disabled="!available" @click="prepareEnd">核对结束清单</NButton><NButton text :disabled="!available" @click="refreshSession">刷新状态</NButton></div>
 
-      <section v-if="timing && current.status !== 'DRAFT'" class="timing-panel" aria-label="服务器计时"><div class="timing-grid"><div><span>已记录可观察时间</span><strong>{{ formatTrainingDuration(timing.observedSeconds) }}</strong></div><div><span>已记录未知间隔</span><strong>{{ formatTrainingDuration(timing.unobservedSeconds) }}</strong></div><div><span>已记录暂停</span><strong>{{ formatTrainingDuration(timing.pausedSeconds) }}</strong></div></div><p class="field-help">服务器更新于 {{ date(timing.asOf) }}{{ timing.pendingUnknownSeconds ? `；距上次记录仍有 ${formatTrainingDuration(timing.pendingUnknownSeconds)} 尚未归类` : '' }}{{ timing.pendingPausedSeconds ? `；当前暂停已持续 ${formatTrainingDuration(timing.pendingPausedSeconds)}` : '' }}。页面可见时每 20 秒发送一次记录，长间隔按未知时间保留；可观察时间不代表持续专注。</p><p v-if="timing.budgetReached" class="notice">时间预算已到，训练不会自动结束；请自行决定继续或核对结束清单。</p><p v-if="pulseWriter.error.value" class="field-help" role="status">计时请求尚未恢复：{{ errorText(pulseWriter.error.value) }}<NButton v-if="pulseWriter.pending.value" text :disabled="!store.sessionActive || pulseWriter.busy.value" @click="pulse(true)">原键重试计时记录</NButton><NButton v-else text :disabled="!store.sessionActive" @click="refreshSession">刷新训练状态</NButton></p><p v-if="deferredPulse" class="field-help">计时回执在会话变化后到达。<NButton text :disabled="!store.sessionActive" @click="receiveDeferredPulse">接收服务器计时</NButton></p></section>
+      <p v-if="timing?.budgetReached && current.status !== 'DRAFT'" class="notice">时间预算已到，训练不会自动结束；请自行决定继续或核对结束清单。</p>
 
       <section v-if="assistanceOpen && current.status !== 'ENDED' && !current.materialAccess" class="assistance-panel"><h3>确认本次训练使用辅助资料</h3><p>确认后可查阅参考、知识和材料，也可导入白板。本场后续提交立即按辅助条件记录，不能恢复成确认前条件；既有提交保留原来的条件。</p><label>查阅目的<NInput v-model:value="assistanceReason" :disabled="!available" type="textarea" :maxlength="1000" placeholder="例如：核对事务隔离级别，再继续完成回答" :autosize="{ minRows: 2, maxRows: 5 }" /></label><NCheckbox v-model:checked="assistanceConfirmed" :disabled="!available">我理解此次确认不可撤销，并同意记录后续答案的辅助条件</NCheckbox><div class="row-actions"><NButton type="primary" :disabled="!available || !assistanceConfirmed || !assistanceReason.trim()" @click="confirmAssistance">确认使用辅助资料</NButton><NButton :disabled="!available" @click="assistanceOpen = false">继续当前条件作答</NButton></div></section>
 
       <section v-if="endOpen" class="end-panel"><h3>结束前的服务器清单</h3><p v-if="endLoading" role="status">正在读取最新清单…</p><p v-if="endError" class="notice error" role="alert">{{ endError }}</p><dl v-if="endReview" class="checklist"><div><dt>已答题</dt><dd>{{ endReview.checklist.answered }}</dd></div><div><dt>已跳过</dt><dd>{{ endReview.checklist.skipped }}</dd></div><div><dt>仍未答</dt><dd>{{ endReview.checklist.unanswered }}</dd></div><div><dt>未提交草稿</dt><dd>{{ endReview.checklist.unsubmittedDrafts }}</dd></div></dl><p>结束会保留服务器上的提交和草稿，不会代为提交草稿，结束后只能读取或另存。</p><p v-if="dirtyQuestions.length" class="notice">另有 {{ dirtyQuestions.length }} 道题存在本地未保存输入，它们不在服务器清单中。请先切回对应题目，保存答案或处理费用核对表单；若答案无法保存，先另存文字和图，再明确撤销本地修改，最后结束训练。</p><p v-if="endStale && !endLoading" class="notice">需要重新读取清单后再确认。题目状态或草稿变化会使先前确认失效。</p><NCheckbox v-model:checked="endConfirmed" :disabled="!available || endStale || !!dirtyQuestions.length">我已核对清单，理解结束后本场不能继续作答</NCheckbox><div class="row-actions"><NButton :disabled="!available" @click="prepareEnd">重新读取清单</NButton><NButton type="primary" :disabled="!available || !endConfirmed || endStale || !!dirtyQuestions.length" @click="end">确认结束训练</NButton><NButton :disabled="!available" @click="endOpen = false">继续处理作答</NButton></div></section>
+      </div>
+      <div class="session-control-details">
+        <NButton v-if="compactControls" text class="session-details-toggle" :aria-expanded="controlDetailsOpen" @click="controlDetailsOpen = !controlDetailsOpen">{{ controlDetailsOpen ? '收起计时与背景' : '查看计时与背景' }}</NButton>
+        <div v-show="!compactControls || controlDetailsOpen" class="session-control-details-body">
+      <section v-if="timing && current.status !== 'DRAFT'" class="timing-panel" aria-label="服务器计时"><div class="timing-grid"><div><span>已记录可观察时间</span><strong>{{ formatTrainingDuration(timing.observedSeconds) }}</strong></div><div><span>已记录未知间隔</span><strong>{{ formatTrainingDuration(timing.unobservedSeconds) }}</strong></div><div><span>已记录暂停</span><strong>{{ formatTrainingDuration(timing.pausedSeconds) }}</strong></div></div><p class="field-help">服务器更新于 {{ date(timing.asOf) }}{{ timing.pendingUnknownSeconds ? `；距上次记录仍有 ${formatTrainingDuration(timing.pendingUnknownSeconds)} 尚未归类` : '' }}{{ timing.pendingPausedSeconds ? `；当前暂停已持续 ${formatTrainingDuration(timing.pendingPausedSeconds)}` : '' }}。页面可见时每 20 秒发送一次记录，长间隔按未知时间保留；可观察时间不代表持续专注。</p><p v-if="pulseWriter.error.value" class="field-help" role="status">计时请求尚未恢复：{{ errorText(pulseWriter.error.value) }}<NButton v-if="pulseWriter.pending.value" text :disabled="!store.sessionActive || pulseWriter.busy.value" @click="pulse(true)">原键重试计时记录</NButton><NButton v-else text :disabled="!store.sessionActive" @click="refreshSession">刷新训练状态</NButton></p><p v-if="deferredPulse" class="field-help">计时回执在会话变化后到达。<NButton text :disabled="!store.sessionActive" @click="receiveDeferredPulse">接收服务器计时</NButton></p></section>
+
       <section v-if="current.status === 'ENDED'" class="ended-panel"><h3>结束时保留的记录</h3><dl class="checklist"><div><dt>已答题</dt><dd>{{ current.endChecklist.answered }}</dd></div><div><dt>已跳过</dt><dd>{{ current.endChecklist.skipped }}</dd></div><div><dt>仍未答</dt><dd>{{ current.endChecklist.unanswered }}</dd></div><div><dt>未提交草稿</dt><dd>{{ current.endChecklist.unsubmittedDrafts }}</dd></div></dl><p class="field-help">结束清单已固定。下方可读取提交、未提交草稿和同题历史，也可另存文字与结构图。</p><p v-if="current.questions.every(question => question.answerCount === 0)" class="field-help">本场没有正式提交，保留的草稿不能作为复练基线或新旧对照的新答案。</p><p class="field-help">独立复练须在结束后明确选择提交建立对照，再逐来源记录判断；结束本身不会生成改善结论。</p><RouterLink class="text-link" :to="{ name: 'training-report', query: { sessionId: current.id } }">查看完整结束报告</RouterLink><RouterLink class="text-link" :to="{ name: 'repractice' }">查看独立复练与对照记录</RouterLink></section>
 
       <section class="context-panel">
@@ -388,7 +407,8 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
           <p class="field-help">上方状态表示现在能否用于新追问，不能替代当时的核实记录。正文保留明确选入训练的固定版本；资料引用、附件与关联知识通过辅助授权后再查阅。</p>
         </div>
       </section>
-
+        </div>
+      </div>
       </aside>
       <div class="session-answer-stage">
       <section v-if="current.status === 'ENDED'" class="evaluation-coverage" aria-label="最新提交评价覆盖">
@@ -428,37 +448,91 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
 </template>
 
 <style scoped>
-.training-session { display: grid; gap: 21px; padding: 18px 27px 30px; min-width: 0; }
+.training-session { display: grid; gap: 16px; padding: 0; min-width: 0; }
 .evaluation-coverage { display: grid; gap: 14px; padding-top: 20px; border-top: 1px solid var(--line); }
 .evaluation-coverage ul { list-style: none; margin: 0; padding: 0; }
 .evaluation-coverage li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .evaluation-coverage li span { color: var(--muted); font-size: 12px; }
-.session-heading { display: grid; gap: 8px; } .session-heading h2 { font-size: 25px; overflow-wrap: anywhere; }
-.session-conditions { display: flex; flex-wrap: wrap; gap: 8px; } .session-conditions > span { padding: 5px 9px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 12px; }
-h3 { margin: 0; font-size: 16px; } h4 { font-size: 14px; margin: 0; }
+.session-heading { display: grid; gap: 8px; }
+.session-heading h2 { font-size: 23px; overflow-wrap: anywhere; }
+.session-conditions { display: flex; flex-wrap: wrap; gap: 8px; }
+.session-conditions > span { padding: 5px 9px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 12px; }
+h3 { margin: 0; font-size: 16px; }
+h4 { font-size: 14px; margin: 0; }
 .preview-confirm, .assistance-panel, .end-panel, .ended-panel { display: grid; gap: 15px; padding: 20px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
 .preview-confirm > p, .assistance-panel > p, .end-panel > p { color: var(--muted); font-size: 13px; max-width: 75ch; }
 .assistance-panel label { display: grid; gap: 7px; color: var(--muted); font-size: 13px; }
 .timing-panel { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 18px; }
-.timing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; } .timing-grid > div { display: grid; gap: 6px; } .timing-grid span { font-size: 12px; color: var(--muted); } .timing-grid strong { font-size: 17px; font-weight: 550; }
+.timing-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.timing-grid > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.timing-grid span { font-size: 12px; color: var(--muted); }
+.timing-grid strong { font-size: 18px; font-weight: 550; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.checklist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0; } .checklist dt { color: var(--muted); font-size: 12px; } .checklist dd { margin: 7px 0 0; font-size: 24px; }
+.checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.checklist dt { color: var(--muted); font-size: 12px; }
+.checklist dd { margin: 7px 0 0; font-size: 24px; }
 .context-panel, .events-panel, .knowledge-panel { display: grid; gap: 15px; padding-top: 20px; border-top: 1px solid var(--line); }
 .knowledge-answer-list { list-style: none; margin: 0; padding: 0; }
 .knowledge-answer-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.knowledge-answer-list li > div { display: grid; gap: 6px; } .knowledge-answer-list strong { font-size: 13px; font-weight: 550; } .knowledge-answer-list span { color: var(--muted); font-size: 12px; }
-.context-list { display: grid; gap: 22px; } .context-list article { display: grid; gap: 14px; } .context-field h5 { margin: 0 0 5px; color: var(--muted); font-size: 12px; } .context-field p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
-.questions-panel { display: grid; gap: 22px; border-top: 1px solid var(--line); padding-top: 22px; min-width: 0; }
-.question-navigation { display: grid; gap: 15px; min-width: 0; } .question-navigation > section { min-width: 0; } .question-navigation h3 { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-.question-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-.question-buttons button { display: grid; gap: 7px; padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 6px; }
-.question-buttons button.selected { border-color: var(--brand); background: var(--surface-soft); } .question-buttons strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 550; } .question-buttons span { color: var(--muted); font-size: 11px; }
-.question-buttons button.followup { margin-left: 15px; border-left-width: 3px; }
-.events-list { display: grid; gap: 15px; list-style: none; margin: 0; padding: 0; } .events-list li { border-bottom: 1px solid var(--line); padding-bottom: 13px; } .events-list li > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; } .events-list time { color: var(--muted); font-size: 12px; } .events-list p { margin: 8px 0; font-size: 13px; overflow-wrap: anywhere; }
-@media (max-width: 800px) { .training-session { padding: 18px 17px 26px; } .session-heading h2 { font-size: 22px; } .question-buttons { grid-template-columns: 1fr; } .timing-grid { grid-template-columns: 1fr; gap: 11px; } .timing-grid > div { display: flex; justify-content: space-between; } .checklist { grid-template-columns: repeat(2, 1fr); } .events-list li > div { flex-wrap: wrap; } }
-</style>
-
-<style scoped>
-.training-session { padding: 0; gap: 16px; }.session-heading h2 { font-size: 23px; }.session-workbench { display: grid; grid-template-columns: minmax(0,1fr) 260px; gap: 20px; align-items: start; }.session-control-sidebar { grid-column: 2; grid-row: 1; display: grid; gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }.session-answer-stage { grid-column: 1; grid-row: 1; min-width: 0; display: grid; gap: 18px; }.session-sidebar-title { font-size: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }.session-control-sidebar .session-conditions { display: flex; flex-wrap: wrap; gap: 7px; }.session-control-sidebar .session-conditions span { font-size: 12px; padding: 5px 8px; border-radius: 5px; }.session-control-sidebar > .row-actions { display: grid; gap: 8px; }.timing-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }.timing-grid > div { display: flex; align-items: center; justify-content: space-between; }.timing-grid strong { font-size: 18px; }.timing-grid span { font-size: 12px; }.context-panel .panel-heading { flex-wrap: wrap; }.context-panel h3 { font-size: 15px; }.session-control-sidebar :is(.assistance-panel,.end-panel,.ended-panel,.preview-confirm) { padding: 12px; }.checklist { grid-template-columns: repeat(2,minmax(0,1fr)); }.questions-panel { border: 0; padding: 0; gap: 18px; }.question-navigation { padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }.question-buttons { display: flex; overflow-x: auto; gap: 7px; padding-bottom: 4px; }.question-buttons button { min-width: 160px; max-width: 300px; flex: 1; padding: 10px; border-radius: 6px; }.question-buttons button.followup { border-left-width: 1px; }.question-buttons strong { font-size: 13px; }.question-buttons span { font-size: 11px; }
-@media(max-width:950px) { .session-workbench { grid-template-columns: minmax(0,1fr); }.session-control-sidebar { grid-column: 1; grid-row: 2; }.session-answer-stage { grid-column: 1; grid-row: 1; }.question-buttons button { flex: 0 0 180px; } }
+.knowledge-answer-list li > div { display: grid; gap: 6px; }
+.knowledge-answer-list strong { font-size: 13px; font-weight: 550; }
+.knowledge-answer-list span { color: var(--muted); font-size: 12px; }
+.context-list { display: grid; gap: 22px; }
+.context-list article { display: grid; gap: 14px; }
+.context-field h5 { margin: 0 0 5px; color: var(--muted); font-size: 12px; }
+.context-field p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.questions-panel { display: grid; gap: 18px; min-width: 0; }
+.question-navigation { display: grid; gap: 15px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.question-navigation > section { min-width: 0; }
+.question-navigation h3 { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.question-buttons { display: flex; overflow-x: auto; gap: 7px; padding-bottom: 4px; }
+.question-buttons button { display: grid; gap: 7px; min-width: 160px; max-width: 300px; flex: 1; padding: 10px; text-align: left; border: 1px solid var(--line); border-radius: 6px; }
+.question-buttons button.selected { border-color: var(--brand); background: var(--surface-soft); }
+.question-buttons strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 550; }
+.question-buttons span { color: var(--muted); font-size: 11px; }
+.question-buttons button.followup { margin-left: 15px; border-left-width: 1px; }
+.events-list { display: grid; gap: 15px; list-style: none; margin: 0; padding: 0; }
+.events-list li { border-bottom: 1px solid var(--line); padding-bottom: 13px; }
+.events-list li > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.events-list time { color: var(--muted); font-size: 12px; }
+.events-list p { margin: 8px 0; font-size: 13px; overflow-wrap: anywhere; }
+.session-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; align-items: start; }
+.session-control-sidebar { grid-column: 2; grid-row: 1; display: grid; gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.session-answer-stage { grid-column: 1; grid-row: 1; min-width: 0; display: grid; gap: 18px; }
+.session-control-primary, .session-control-details, .session-control-details-body { display: grid; min-width: 0; }
+.session-control-primary, .session-control-details-body { gap: 16px; }
+.session-control-details { gap: 12px; }
+.session-control-summary { display: grid; gap: 12px; }
+.session-details-toggle { justify-self: start; }
+.session-sidebar-title { font-size: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.session-control-sidebar .session-conditions { display: flex; flex-wrap: wrap; gap: 7px; }
+.session-control-sidebar .session-conditions span { font-size: 12px; padding: 5px 8px; border-radius: 5px; }
+.session-control-primary > .row-actions { display: grid; gap: 8px; }
+.context-panel .panel-heading { flex-wrap: wrap; }
+.context-panel h3 { font-size: 15px; }
+.session-control-sidebar :is(.assistance-panel, .end-panel, .ended-panel, .preview-confirm) { padding: 12px; }
+@media (max-width: 950px) {
+  .session-workbench { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .session-control-sidebar { grid-column: 1; grid-row: 1; gap: 10px; padding: 12px; border-radius: 8px; }
+  .session-answer-stage { grid-column: 1; grid-row: 2; gap: 16px; }
+  .session-control-primary { gap: 10px; }
+  .session-control-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .session-sidebar-title { padding: 0; border: 0; font-size: 13px; }
+  .session-condition-note { display: none; }
+  .session-control-primary > .row-actions { display: flex; flex-wrap: wrap; }
+  .session-control-sidebar :is(.assistance-panel, .end-panel, .ended-panel, .preview-confirm) { padding: 10px; gap: 10px; }
+  .session-control-details-body { gap: 12px; }
+  .question-navigation { padding: 12px; }
+  .question-buttons button { flex: 0 0 180px; }
+}
+@media (max-width: 800px) {
+  .session-heading h2 { font-size: 22px; }
+  .events-list li > div { flex-wrap: wrap; }
+}
+@media (max-width: 560px) {
+  .session-control-sidebar { padding: 10px; }
+  .session-control-primary { gap: 8px; }
+  .session-control-primary > .row-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .session-control-primary > .row-actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 </style>

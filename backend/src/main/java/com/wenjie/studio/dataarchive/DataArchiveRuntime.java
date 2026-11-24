@@ -30,7 +30,7 @@ public final class DataArchiveRuntime {
             gate.requireOpen();
             Instant now = Instant.now();
             mapper.recover(owner, now.minusSeconds(600), now);
-            mapper.expire(owner, now);
+            cleanupExpired(owner, now);
             row = mapper.queued(owner);
             if (row == null || mapper.claim(owner, row.id(), now) != 1) return;
             service.export(mapper.find(owner, row.id()));
@@ -46,6 +46,21 @@ public final class DataArchiveRuntime {
                         .contains(message) ? message : "ARCHIVE_EXPORT_FAILED";
                 try { mapper.failed(owner, row.id(), Instant.now(), code); }
                 catch (RuntimeException ignored) { LOG.warn("event=data_archive_failure_uncommitted"); }
+                try { service.cleanup(row); }
+                catch (Exception ignored) { LOG.warn("event=data_archive_failure_file_retained"); }
+            }
+        }
+    }
+
+    private void cleanupExpired(String owner, Instant now) {
+        for (var row : mapper.cleanup(owner, now, 20)) {
+            try {
+                service.cleanup(row);
+                mapper.expire(owner, row.id(), now);
+                mapper.deleteExpired(owner, row.id());
+            } catch (Exception exception) {
+                // 文件未删除时不推进状态，下一轮继续精确重试，不递归删除未知目录内容。
+                LOG.warn("event=data_archive_cleanup_failed exceptionType={}", exception.getClass().getSimpleName());
             }
         }
     }

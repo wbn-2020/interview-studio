@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { ApiError, errorText, read } from '../../api/client'
 import { queryClient } from '../../api/queryClient'
@@ -18,7 +18,7 @@ import RepracticeSelectedJudgment from './RepracticeSelectedJudgment.vue'
 
 const props = defineProps<{ comparisonId: string; selectedJudgmentId?: string; selectedSourceId?: string; selectedJudgmentRevision?: number; disabled?: boolean }>()
 const store = useWorkspaceStore()
-const router = useRouter()
+const router = useRouter(), route = useRoute()
 const current = shallowRef<RepracticeComparison>()
 const candidateDrafts = ref<Record<string, AiComparisonDraft>>({})
 const fillMessage = ref('')
@@ -41,7 +41,7 @@ watch([comparison.data, comparison.dataUpdatedAt, readable, () => props.comparis
 watch([readable, () => store.sessionEpoch, () => props.comparisonId], () => { generation++ }, { flush: 'sync' })
 onUnmounted(() => { alive = false; generation++ })
 function refresh() { if (readable.value) void comparison.refetch() }
-function openRepractice() { if (current.value && readable.value) void router.push({ name: 'repractice', query: { item: current.value.repractice.id } }) }
+function openRepractice() { if (current.value && readable.value) void router.push({ name: 'repractice', query: { item: current.value.repractice.id, from: route.fullPath } }) }
 function proposeDraft(draft: AiComparisonDraft) {
   const value = current.value
   if (!readable.value || comparison.isFetching.value || comparison.error.value || !value || repracticeBaselineKind(value.repractice) !== 'ANSWER'

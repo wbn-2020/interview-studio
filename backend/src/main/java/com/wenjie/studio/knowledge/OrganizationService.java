@@ -163,10 +163,11 @@ public class OrganizationService {
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public ItemPage library(String owner, Collection collection, Kind kind, Status status,
-                             String query, String cursor, int limit) {
+                             String query, String topicId, String cursor, int limit) {
         required(collection);
         required(status);
         pageLimit(limit);
+        if (topicId != null) uuid(topicId);
         if (query != null && query.length() > 100) throw invalid("标题筛选不能超过 100 个字符。");
         String pattern = query == null || query.isEmpty() ? null : "%" + query.replace("!", "!!")
                 .replace("%", "!%").replace("_", "!_") + "%";
@@ -186,7 +187,7 @@ public class OrganizationService {
             } else cursorId = uuid(cursor);
         }
         var rows = mapper.library(owner, collection.name(), kind == null ? null : kind.name(), status.name(),
-                pattern, cursorId, cursorTime, limit + 1);
+                pattern, topicId, cursorId, cursorTime, limit + 1);
         boolean more = rows.size() > limit;
         var page = rows.subList(0, Math.min(rows.size(), limit));
         List<String> ids = page.stream().map(OrganizationRows.LibraryItem::id).toList();

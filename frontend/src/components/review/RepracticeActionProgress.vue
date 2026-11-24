@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { ApiError, errorText, read } from '../../api/client'
 import type { ReviewAction, ReviewActionSource, ReviewAnswerLink, ReviewRecollectionSource } from '../../api/review'
@@ -18,7 +18,7 @@ const props = defineProps<{ actionId: string; disabled?: boolean }>()
 const emit = defineEmits<{ open: [id: string] }>()
 type ActionProgress = { action: ReviewAction; page: RepracticeProgressPage }
 type BaselineGroup = { answer: ReviewAnswerLink | null; recollection: ReviewRecollectionSource | null; sources: ReviewActionSource[] }
-const store = useWorkspaceStore(), access = useTrainingAccessStore(), router = useRouter()
+const store = useWorkspaceStore(), access = useTrainingAccessStore(), router = useRouter(), route = useRoute()
 const active = ref(true), current = shallowRef<ActionProgress>()
 let alive = true, generation = 0
 const readable = computed(() => active.value && store.sessionActive && !props.disabled && !access.checking && !access.challenge && !access.restricted
@@ -69,10 +69,10 @@ function canStart(group: BaselineGroup) {
 }
 function start(group: BaselineGroup) {
   if (!canStart(group)) return
-  if (group.recollection) void router.push({ name: 'repractice', query: { recollectionId: group.recollection.recollectionId, versionId: group.recollection.versionId, actionId: props.actionId } })
-  else if (group.answer) void router.push({ name: 'repractice', query: { ...group.answer, actionId: props.actionId } })
+  if (group.recollection) void router.push({ name: 'repractice', query: { recollectionId: group.recollection.recollectionId, versionId: group.recollection.versionId, actionId: props.actionId, from: route.fullPath } })
+  else if (group.answer) void router.push({ name: 'repractice', query: { ...group.answer, actionId: props.actionId, from: route.fullPath } })
 }
-function compare(id: string) { if (readable.value) void router.push({ name: 'repractice', query: { comparison: id } }) }
+function compare(id: string) { if (readable.value) void router.push({ name: 'repractice', query: { comparison: id, from: route.fullPath } }) }
 </script>
 
 <template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { NButton } from 'naive-ui'
+import { useRoute, useRouter } from 'vue-router'
 import type { PrivacyResult } from '../api/dataPrivacy'
 import { privacyActions } from '../api/dataPrivacy'
 import { errorText } from '../api/client'
@@ -9,9 +10,10 @@ import { useTrainingAccessStore } from '../state/trainingAccess'
 import { useWorkspaceStore } from '../state/workspace'
 const DataPrivacyPanel = defineAsyncComponent(() => import('../components/DataPrivacyPanel.vue'))
 const DataArchivePanel = defineAsyncComponent(() => import('../components/DataArchivePanel.vue'))
-const store = useWorkspaceStore(), access = useTrainingAccessStore()
+const route = useRoute(), router = useRouter(), store = useWorkspaceStore(), access = useTrainingAccessStore()
 const element = ref<HTMLElement>(), active = ref(true), elementVisible = ref(false)
-const documentVisible = ref(document.visibilityState === 'visible'), selected = ref<'privacy' | 'archive'>('privacy')
+const documentVisible = ref(document.visibilityState === 'visible')
+const selected = computed(() => route.query.panel === 'archive' ? 'archive' : 'privacy')
 const refreshing = ref(false), message = ref(''), refreshError = ref('')
 const shellReadable = computed(() => active.value && store.sessionActive && documentVisible.value && elementVisible.value && !refreshing.value)
 const readable = computed(() => shellReadable.value && !access.checking && !access.restricted && !access.challenge
@@ -44,7 +46,7 @@ onUnmounted(() => { alive = false; generation++; observer?.disconnect(); documen
 function selectPanel(value: 'privacy' | 'archive') {
   if (!shellReadable.value || selected.value === value
     || !store.canLeave(['data-privacy', 'data-archive-command'])) return
-  selected.value = value
+  void router.push({ name: 'data-management', query: { panel: value === 'archive' ? 'archive' : undefined } })
 }
 async function changed(result: PrivacyResult | null) {
   const ticket = ++generation, session = store.sessionEpoch

@@ -24,5 +24,7 @@ public interface DataArchiveMapper {
               @Param("sequence") long sequence, @Param("ledgerSha") String ledgerSha);
     int failed(@Param("owner") String owner, @Param("id") String id, @Param("now") Instant now, @Param("code") String code);
     int recover(@Param("owner") String owner, @Param("before") Instant before, @Param("now") Instant now);
-    int expire(@Param("owner") String owner, @Param("now") Instant now);
+    List<Row> cleanup(@Param("owner") String owner, @Param("now") Instant now, @Param("limit") int limit);
+    int expire(@Param("owner") String owner, @Param("id") String id, @Param("now") Instant now);
+    int deleteExpired(@Param("owner") String owner, @Param("id") String id);
 }

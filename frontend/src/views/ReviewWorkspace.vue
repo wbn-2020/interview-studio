@@ -66,7 +66,9 @@ const strictAiIdentity = computed(() => {
 })
 const readable = computed(() => store.sessionActive && !access.checking && !access.challenge && !access.restricted && !store.changes.get('training-access-command')?.locked)
 const recordRecentVisit = useRecentVisit('TRAINING', sessionId, readable)
-const tab = ref<'feedback' | 'actions'>(route.query.action ? 'actions' : 'feedback')
+// 顶层视图由地址恢复；旧动作深链接未带 tab 时仍直接进入动作详情。
+const tab = computed<'answers' | 'actions'>(() => routeText('tab') === 'actions'
+  || (routeText('tab') === undefined && Boolean(actionId.value)) ? 'actions' : 'answers')
 const sessionCursor = ref<string>(), sessionCursors = ref<(string | undefined)[]>([])
 const answerBefore = ref<number>(), answerCursors = ref<(number | undefined)[]>([])
 const feedbackCursor = ref<string>(), feedbackCursors = ref<(string | undefined)[]>([])
@@ -195,7 +197,7 @@ const verifiedAiObservation = computed(() => readable.value && allowed.value && 
 
 // 最近访问对应提交复盘中已接纳的训练会话，动作页隐藏的详情须等用户切回后才接纳。
 watch([session.data, session.dataUpdatedAt, readable, sessionId, () => store.sessionEpoch, routeProblem, tab], ([, , canRead, id, epoch]) => {
-  if (!alive || !canRead || routeProblem.value || tab.value !== 'feedback' || !id || epoch !== store.sessionEpoch) return
+  if (!alive || !canRead || routeProblem.value || tab.value !== 'answers' || !id || epoch !== store.sessionEpoch) return
   const value = queryClient.getQueryData<TrainingSession>(['review', epoch, 'session', id])
   if (value?.id === id) recordRecentVisit(value.id)
 }, { immediate: true })
@@ -224,15 +226,11 @@ watch(sourceIdentity, () => {
   accessConfirmed.value = false; earlyConfirmed.value = false; receiptMismatch.value = false; creating.value = false
   feedbackCursor.value = undefined; feedbackCursors.value = []; taskCursor.value = undefined; taskCursors.value = []
   selectedSource.value = null; message.value = ''
-  if (!actionId.value) tab.value = 'feedback'
 }, { flush: 'sync' })
 watch([sessionId, questionId], () => { answerBefore.value = undefined; answerCursors.value = [] }, { flush: 'sync' })
 watch(taskId, () => { currentTask.value = undefined; selectedSource.value = null }, { flush: 'sync' })
 watch(() => route.query.observationId, () => { selectedObservation.value = routeText('observationId') ?? ''; selectedSource.value = null }, { flush: 'sync' })
-watch(feedbackId, () => { creating.value = false; selectedSource.value = null; if (feedbackId.value && !actionId.value) tab.value = 'feedback' }, { flush: 'sync' })
-watch([taskId, () => route.query.observationId, feedbackRevision], () => { if (!actionId.value) tab.value = 'feedback' }, { flush: 'sync' })
-watch(() => route.query.action, value => { if (value) tab.value = 'actions' })
-watch([reviewedObservationId, reviewedRevision], () => { if (reviewedObservationId.value && !actionId.value) tab.value = 'feedback' })
+watch(feedbackId, () => { creating.value = false; selectedSource.value = null }, { flush: 'sync' })
 watch([readable, () => store.sessionEpoch], () => { generation++; accessConfirmed.value = false; earlyConfirmed.value = false; selectedSource.value = null }, { flush: 'sync' })
 watch([strictAiIdentity, strictAiRequested, readable, allowed, () => store.sessionEpoch], ([, requested, canRead, canOpen], previous) => {
   strictAiGeneration++
@@ -295,36 +293,40 @@ async function loadStrictAi() {
   } catch (reason) { if (current()) strictAiError.value = errorText(reason) }
   finally { if (request === strictAiGeneration) strictAiLoading.value = false }
 }
-function selectSession(id: string) { if (!blocked.value) void router.push({ name: 'review', query: { sessionId: id } }) }
-function selectQuestion(id: string) { if (!blocked.value && knownSession()) void router.push({ name: 'review', query: { sessionId: sessionId.value, questionId: id } }) }
+function selectSession(id: string) { if (!blocked.value) void router.push({ name: 'review', query: { sessionId: id, tab: 'answers' } }) }
+function selectQuestion(id: string) { if (!blocked.value && knownSession()) void router.push({ name: 'review', query: { sessionId: sessionId.value, questionId: id, tab: 'answers' } }) }
 function knownSession() { return session.data.value?.id === sessionId.value }
 function selectAnswer(id: string) {
-  if (!blocked.value && !answers.isFetching.value && !answers.error.value && answers.data.value?.items.some(item => item.id === id)) void router.push({ name: 'review', query: { sessionId: sessionId.value, questionId: questionId.value, answerId: id } })
+  if (!blocked.value && !answers.isFetching.value && !answers.error.value && answers.data.value?.items.some(item => item.id === id)) void router.push({ name: 'review', query: { sessionId: sessionId.value, questionId: questionId.value, answerId: id, tab: 'answers' } })
 }
-function openFeedback(id: string) { if (!blocked.value && link.value) void router.push({ name: 'review', query: { ...link.value, feedbackId: id } }) }
+function openFeedback(id: string) { if (!blocked.value && link.value) void router.push({ name: 'review', query: { ...link.value, feedbackId: id, tab: 'answers' } }) }
 function closeFeedback() {
   if (blocked.value || !store.canLeave(['review-feedback', 'review-feedback-command', 'review-decision', 'review-decision-command'])) return
   if (creating.value) creating.value = false
-  else if (link.value) void router.push({ name: 'review', query: { ...link.value } })
+  else if (link.value) void router.push({ name: 'review', query: { ...link.value, tab: 'answers' } })
 }
 function newFeedback() {
   if (blocked.value || !currentInput.value || !store.canLeave(['review-feedback', 'review-feedback-command', 'review-decision', 'review-decision-command'])) return
   creating.value = true
 }
 function createdFeedback(value: ReviewFeedback) { creating.value = false; openFeedback(value.id) }
-function openAction(id: string) { if (readable.value && reviewIdValid(id)) void router.push({ name: 'review', query: { ...route.query, action: id } }) }
-function closeAction() { if (readable.value) { const query = { ...route.query }; delete query.action; void router.push({ name: 'review', query }) } }
-function openTask(id: string) { if (!blocked.value && link.value) void router.push({ name: 'review', query: { ...link.value, taskId: id } }) }
+function selectTab(value: 'answers' | 'actions') {
+  if (tab.value === value) return
+  void router.push({ name: 'review', query: { ...route.query, tab: value } })
+}
+function openAction(id: string) { if (readable.value && reviewIdValid(id)) void router.push({ name: 'review', query: { ...route.query, action: id, tab: 'actions' } }) }
+function closeAction() { if (readable.value) { const query = { ...route.query }; delete query.action; query.tab = 'answers'; void router.push({ name: 'review', query }) } }
+function openTask(id: string) { if (!blocked.value && link.value) void router.push({ name: 'review', query: { ...link.value, taskId: id, tab: 'answers' } }) }
 function createFactDraft() {
   if (blocked.value || !allowed.value || !link.value || !currentInput.value || context.isFetching.value || context.error.value
     || !reviewAnswerMatches(currentInput.value, link.value)) return
   // 入口只固定确切提交身份；题面、评价与个人参考由下一页明确排除。
-  void router.push({ name: 'ai', query: { create: '1', purpose: 'FACT_DRAFT', factSourceKind: 'TRAINING', ...link.value } })
+  void router.push({ name: 'ai', query: { create: '1', purpose: 'FACT_DRAFT', factSourceKind: 'TRAINING', ...link.value, from: route.fullPath } })
 }
 function createRewrite() {
   if (blocked.value || !allowed.value || !link.value || !currentInput.value || context.isFetching.value || context.error.value
     || !reviewAnswerMatches(currentInput.value, link.value)) return
-  void router.push({ name: 'ai', query: { create: '1', purpose: 'ANSWER_REWRITE', ...link.value } })
+  void router.push({ name: 'ai', query: { create: '1', purpose: 'ANSWER_REWRITE', ...link.value, from: route.fullPath } })
 }
 function refreshedFeedback() { selectedSource.value = null; void feedback.refetch() }
 function aiChanged(value: AiTask) {
@@ -342,16 +344,19 @@ function aiChanged(value: AiTask) {
   currentTask.value = value; selectedSource.value = null
   queryClient.setQueryData(['review', store.sessionEpoch, 'ai-task', value.task.id, sourceIdentity.value], value)
 }
-function chooseSource(candidate: ReviewActionCandidate) {
+async function chooseSource(candidate: ReviewActionCandidate) {
   if (blocked.value || !reviewAnswerMatches(candidate.answer, link.value)) return
-  selectedSource.value = { ...candidate.source, verification: '' }; tab.value = 'actions'
+  const source: ReviewSourceRequest = { ...candidate.source, verification: '' }
+  await router.push({ name: 'review', query: { ...route.query, tab: 'actions' } })
+  if (tab.value === 'actions') selectedSource.value = source
 }
-function chooseAiSource() {
+async function chooseAiSource() {
   const saved = currentTask.value, observation = saved?.evaluationReport?.observations.find(item => item.id === selectedObservation.value)
   if (blocked.value || !saved || saved.task.status !== 'SUCCEEDED' || !observation || !reviewAnswerMatches(saved.manifest.evaluation, link.value)) return
   const revision = Math.max(0, ...(saved.evaluationDecisions ?? []).filter(item => item.feedbackId === observation.id).map(item => item.revision))
-  selectedSource.value = { kind: 'AI_EVALUATION', taskId: saved.task.id, observationId: observation.id, feedbackId: null, feedbackRevision: null, expectedDecisionRevision: revision, verification: '' }
-  tab.value = 'actions'
+  const source: ReviewSourceRequest = { kind: 'AI_EVALUATION', taskId: saved.task.id, observationId: observation.id, feedbackId: null, feedbackRevision: null, expectedDecisionRevision: revision, verification: '' }
+  await router.push({ name: 'review', query: { ...route.query, tab: 'actions' } })
+  if (tab.value === 'actions') selectedSource.value = source
 }
 function grantAccess() {
   if (blocked.value || receiptMismatch.value || !link.value || !session.data.value || !accessConfirmed.value || (early.value && !earlyConfirmed.value)) return
@@ -391,11 +396,11 @@ function nextTasks() { if (!blocked.value && !tasks.isFetching.value && tasks.da
 <template>
   <div class="review-product">
   <header class="page-heading"><div><h1>复盘</h1><p class="muted">从一次确切提交出发，保留观察依据，明确下一步如何验证。</p></div></header>
-  <nav class="review-tabs" aria-label="当前复盘内容"><button :class="{ active: tab === 'feedback' }" :aria-pressed="tab === 'feedback'" @click="tab = 'feedback'">回答与反馈</button><button :class="{ active: tab === 'actions' }" :aria-pressed="tab === 'actions'" @click="tab = 'actions'">改进动作</button><RouterLink v-if="link && session.data.value?.status === 'ENDED'" class="text-link" :to="{ name: 'repractice', query: { ...link } }">用这次回答建立复练 →</RouterLink></nav>
+  <nav class="review-tabs" aria-label="当前复盘内容"><button :class="{ active: tab === 'answers' }" :aria-pressed="tab === 'answers'" @click="selectTab('answers')">回答与反馈</button><button :class="{ active: tab === 'actions' }" :aria-pressed="tab === 'actions'" @click="selectTab('actions')">改进动作</button><RouterLink v-if="link && session.data.value?.status === 'ENDED'" class="text-link" :to="{ name: 'repractice', query: { ...link, from: route.fullPath } }">用这次回答建立复练 →</RouterLink></nav>
   <p v-if="!readable" class="review-note notice" role="status">正在核对登录与资料访问条件。当前输入保留，复盘资料暂不可读写。</p>
   <p v-if="routeProblem" class="review-note notice error" role="alert">{{ routeProblem }}</p>
-  <div class="review-body" :class="{ 'has-answer': tab === 'feedback' && link && allowed && currentInput }">
-  <div v-show="tab === 'feedback'" class="review-workspace" :class="{ focused: link, 'has-session': sessionId }" :inert="!readable || undefined">
+  <div class="review-body" :class="{ 'has-answer': tab === 'answers' && link && allowed && currentInput }">
+  <div v-show="tab === 'answers'" class="review-workspace" :class="{ focused: link, 'has-session': sessionId }" :inert="!readable || undefined">
     <details class="review-catalog" :open="!link" aria-label="训练历史">
       <summary>训练记录</summary>
       <p class="field-help">选择一场训练，再查看题目与已提交的回答。</p>

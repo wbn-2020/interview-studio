@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { NButton } from 'naive-ui'
+import { NButton, NCheckbox } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, errorText, read } from '../../api/client'
 import type { QuestionReference } from '../../api/bank'
@@ -50,6 +50,10 @@ const historyOpen = ref(false)
 const historyBefore = ref<number>()
 const historyCursors = ref<(number | undefined)[]>([])
 const historySelection = ref<string>()
+const autoSave = ref(true)
+const autoSaving = ref(false)
+const autoSaveError = ref(false)
+let autoSaveTimer: number | undefined
 const followUpState = ref<EditorState>({ dirty: false, locked: false })
 const evaluationState = ref<EditorState>({ dirty: false, locked: false })
 let alive = true
@@ -79,6 +83,9 @@ const editable = computed(() => available.value && Boolean(current.value) && ['R
 const allowMaterials = computed(() => props.session.materialAccess || props.session.mode === 'LEARNING')
 const conflict = computed(() => Boolean(serverCopy.value && current.value && serverCopy.value.revision > current.value.revision))
 const problem = computed(() => answerProblem(content.value))
+const autoSaveStatus = computed(() => !autoSave.value ? '自动保存已关闭' : autoSaving.value ? '正在保存草稿…'
+  : dirty.value ? autoSaveError.value ? '草稿保存失败，请手动重试' : problem.value || conflict.value ? '有未保存输入，请先处理提示' : '停止输入后自动保存'
+  : current.value?.draft ? '已同步服务器草稿' : '没有未提交草稿')
 const answerLabels: Record<TrainingAnswer['condition'], string> = { LEARNING: '学习条件', BEFORE_ASSISTANCE: '站内辅助确认前', ASSISTED: '已确认辅助条件' }
 const detail = useQuery({
   queryKey: computed(() => ['training-question', store.sessionEpoch, props.session.id, props.questionId]),
@@ -141,8 +148,8 @@ watch(() => store.sessionEpoch, () => {
   historyCursors.value = []
 })
 onActivated(() => { active.value = true })
-onDeactivated(() => { active.value = false; serverRequest++; serverLoading.value = false })
-onUnmounted(() => { alive = false; serverRequest++ })
+onDeactivated(() => { active.value = false; serverRequest++; serverLoading.value = false; clearAutoSave() })
+onUnmounted(() => { alive = false; serverRequest++; clearAutoSave() })
 
 watch([() => route.query.answer, active, () => store.sessionEpoch], () => {
   if (active.value && route.query.item === props.session.id && route.query.question === props.questionId
@@ -196,6 +203,7 @@ function validateQuestionReceipt(value: TrainingQuestion) {
   if (value.id !== props.questionId || value.sessionId !== props.session.id) throw new ApiError(502, 'ANSWER_MISMATCH', '答题回执与当前题目不一致，请用原请求重试。')
 }
 function receive(value: TrainingQuestion, notice: string) {
+  autoSaveError.value = false
   accept(value)
   boardCandidate.value = undefined
   message.value = notice
@@ -207,6 +215,7 @@ function receive(value: TrainingQuestion, notice: string) {
 }
 function run<T>(target: string, method: string, body: unknown, validate: (value: T) => void, apply: (value: T) => void) {
   if (!available.value) return
+  clearAutoSave()
   serverRequest++
   serverLoading.value = false
   message.value = ''
@@ -227,6 +236,7 @@ function retry() {
 }
 function receiveDeferred() { if (store.sessionActive && active.value && !followUpState.value.locked && !evaluationState.value.locked && deferredReceipt.value) { const apply = deferredReceipt.value; deferredReceipt.value = undefined; apply() } }
 function save(submit: boolean) {
+  clearAutoSave()
   if (!editable.value || !current.value || problem.value || conflict.value) return
   if (submit && (props.session.status !== 'RUNNING' || !content.value.text.trim() || current.value.status === 'SKIPPED')) return
   if (!submit && !dirty.value) return
@@ -234,6 +244,26 @@ function save(submit: boolean) {
     expectedSessionRevision: props.session.revision, expectedRevision: current.value.revision, content: clone(content.value),
   }, validateQuestionReceipt, value => receive(value, submit ? `已确认提交第 ${value.latestAnswer?.number ?? ''} 版，原提交继续保留` : '服务器已确认保存草稿'))
 }
+function clearAutoSave() {
+  if (autoSaveTimer !== undefined) window.clearTimeout(autoSaveTimer)
+  autoSaveTimer = undefined
+}
+watch(writer.busy, busy => {
+  if (busy) return
+  if (autoSaving.value) autoSaveError.value = Boolean(writer.error.value)
+  autoSaving.value = false
+})
+watch([content, dirty, autoSave], () => {
+  clearAutoSave()
+  if (!autoSave.value || !dirty.value || document.visibilityState !== 'visible') return
+  // 停止输入后再保存，避免长回答逐键写入；失败不自动重试，下一次编辑或手动保存再恢复。
+  autoSaveTimer = window.setTimeout(() => {
+    autoSaveTimer = undefined
+    if (!editable.value || !dirty.value || problem.value || conflict.value || document.visibilityState !== 'visible') return
+    autoSaving.value = true
+    save(false)
+  }, 1500)
+}, { deep: true, flush: 'post' })
 function skip() {
   if (!available.value || !current.value || dirty.value || conflict.value || props.session.status !== 'RUNNING') return
   const skipped = current.value.status === 'SKIPPED'
@@ -335,7 +365,7 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
       <div v-if="current.snapshot.warnings.length" class="source-warnings"><p v-for="warning in current.snapshot.warnings" :key="warning">{{ warning }}</p></div>
       <article class="question-prompt"><MarkdownPreview :value="current.snapshot.content.prompt" /><template v-for="field in ([['conditions', '适用条件'], ['technology', '技术与版本'], ['scenario', '场景']] as const)" :key="field[0]"><div v-if="current.snapshot.content[field[0]]"><h4>{{ field[1] }}</h4><p class="preserve">{{ current.snapshot.content[field[0]] }}</p></div></template></article>
       <p class="field-help">开始前接触记录：创作 {{ current.priorExposure.authoredCount }} 次、打开参考 {{ current.priorExposure.referenceViewCount }} 次、打开评价区 {{ current.priorExposure.evaluationAccessCount ?? 0 }} 次{{ current.priorExposure.lastExposureAt ? `，最近记录于 ${date(current.priorExposure.lastExposureAt)}` : '' }}。这只是站内记录。</p>
-      <div v-if="session.status !== 'ENDED'" class="answer-save-state"><span :class="{ unsaved: dirty }">{{ dirty ? '有未保存的本地输入' : current.draft ? `草稿已保存于 ${date(current.draft.savedAt)}` : '没有未提交的服务器草稿' }}</span><span>本地编辑基线 · 题目修订 {{ current.revision }}</span></div>
+      <div v-if="session.status !== 'ENDED'" class="answer-save-state"><span :class="{ unsaved: dirty }">{{ dirty ? '有未保存的本地输入' : current.draft ? `草稿已保存于 ${date(current.draft.savedAt)}` : '没有未提交的服务器草稿' }}</span><span>本地编辑基线 · 题目修订 {{ current.revision }}</span><label class="answer-auto-save"><NCheckbox v-model:checked="autoSave" :disabled="!editable" />自动保存草稿</label><span role="status">{{ autoSaveStatus }}</span></div>
       <div v-else class="answer-save-state"><span>{{ confirmedQuestion ? (confirmedQuestion.draft ? `结束时保留的草稿保存于 ${date(confirmedQuestion.draft.savedAt)}` : '结束时没有未提交的服务器草稿') : '正在核对结束时的服务器记录…' }}</span><span v-if="confirmedQuestion">题目修订 {{ confirmedQuestion.revision }}</span></div>
       <p v-if="message" class="notice" role="status">{{ message }}</p>
       <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }}<NButton v-if="writer.pending.value" text :loading="writer.busy.value" :disabled="!store.sessionActive || !!commandLocked" @click="retry">用原请求重试</NButton><NButton v-else text :disabled="!available" @click="compareServer">读取服务器副本</NButton></p>
@@ -351,9 +381,9 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
         <details v-else class="answer-diagram"><summary>架构图 <span class="field-help">{{ content.diagram.nodes.length }} 个节点 · {{ content.diagram.edges.length }} 条连线</span></summary><TrainingDiagram v-model="content.diagram" :disabled="!editable" :allow-materials="allowMaterials" :references="sourceNodes" @import-board="importBoard" /></details>
         <section v-if="boardCandidate" class="board-candidate"><h4>待采用的白板候选</h4><p>{{ boardCandidate.diagram.nodes.length }} 个节点、{{ boardCandidate.diagram.edges.length }} 条连线 · 修订 {{ boardCandidate.revision }}</p><TrainingDiagram :model-value="boardCandidate.diagram" disabled :allow-materials="false" /><div class="row-actions"><NButton size="small" :disabled="!editable || !allowMaterials" @click="adoptBoard">采用候选图</NButton><NButton size="small" :disabled="!available" @click="boardCandidate = undefined">放弃候选</NButton></div></section>
         <p v-if="problem" class="field-help unsaved" role="status">{{ problem }}</p><p v-if="conflict" class="notice">服务器已有更新，请先核对上方服务器副本。</p>
-        <div class="row-actions"><NButton :loading="writer.busy.value" :disabled="!editable || !dirty || !!problem || conflict" @click="save(false)">保存草稿</NButton><NButton type="primary" :disabled="!editable || session.status !== 'RUNNING' || !content.text.trim() || !!problem || conflict || current.status === 'SKIPPED'" @click="save(true)">{{ current.latestAnswer ? '提交同题新修订' : '提交回答' }}</NButton><NButton v-if="dirty" :disabled="!available" @click="discardLocal">撤销本地修改</NButton><NButton quaternary :disabled="!available || dirty || conflict || session.status !== 'RUNNING'" @click="skip">{{ current.status === 'SKIPPED' ? '恢复此题作答' : '跳过此题' }}</NButton></div>
+        <div class="row-actions"><NButton :loading="writer.busy.value" :disabled="!editable || !dirty || !!problem || conflict" @click="save(false)">立即保存草稿</NButton><NButton type="primary" :disabled="!editable || session.status !== 'RUNNING' || !content.text.trim() || !!problem || conflict || current.status === 'SKIPPED'" @click="save(true)">{{ current.latestAnswer ? '提交同题新修订' : '提交回答' }}</NButton><NButton v-if="dirty" :disabled="!available" @click="discardLocal">撤销本地修改</NButton><NButton quaternary :disabled="!available || dirty || conflict || session.status !== 'RUNNING'" @click="skip">{{ current.status === 'SKIPPED' ? '恢复此题作答' : '跳过此题' }}</NButton></div>
         <template v-if="dirty"><div class="row-actions"><NButton size="small" @click="download('text', content, 'local-unsaved')">另存本地文字</NButton><NButton size="small" @click="download('diagram', content, 'local-unsaved')">另存本地图</NButton></div><p class="field-help">另存不会写入服务器，也不会解除未保存提示。若记录容量已满，请先确认文字和图均已另存，再明确撤销本地修改后结束训练。</p></template>
-        <p class="field-help">提交会保存这次明确发送的文字与图，并清空本题服务器草稿。切换题目保留页面内输入；刷新只能恢复已确认的服务器草稿。</p><p v-if="current.status === 'SKIPPED'" class="field-help">本题已跳过，可保存草稿；先恢复作答状态再提交。</p>
+        <p class="field-help">停止输入后会自动保存服务器草稿，刷新可恢复最近一次确认内容；自动保存失败时请手动重试。提交会保存这次明确发送的文字与图，并清空本题服务器草稿。</p><p v-if="current.status === 'SKIPPED'" class="field-help">本题已跳过，可保存草稿；先恢复作答状态再提交。</p>
       </section>
       <section v-else-if="session.status === 'ENDED' && confirmedQuestion?.draft" class="answer-panel"><h4>结束时保留的未提交草稿</h4><MarkdownPreview :value="confirmedQuestion.draft.content.text" /><TrainingDiagram v-if="endedDraft.diagram.nodes.length" :model-value="endedDraft.diagram" disabled :allow-materials="false" :references="confirmedQuestion.draft.content.diagram.nodes" /><div class="row-actions"><NButton size="small" @click="download('text', confirmedQuestion.draft.content, 'draft')">另存草稿文字</NButton><NButton size="small" @click="download('diagram', confirmedQuestion.draft.content, 'draft')">另存草稿结构图</NButton></div></section>
       <section v-if="session.status === 'ENDED' && dirty" class="answer-panel"><h4>页面内尚未保存的副本</h4><p class="field-help">训练已经结束，这些输入未被提交或写入服务器。请先另存，刷新会丢失。</p><MarkdownPreview :value="content.text" /><TrainingDiagram v-if="content.diagram.nodes.length" :model-value="content.diagram" disabled :allow-materials="false" :references="sourceNodes" /><div class="row-actions"><NButton size="small" @click="download('text', content, 'local-unsaved')">另存本地文字</NButton><NButton size="small" @click="download('diagram', content, 'local-unsaved')">另存本地图</NButton><NButton size="small" :disabled="!available" @click="discardLocal">已另存，撤销本地副本</NButton></div></section>
@@ -375,7 +405,7 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
           <TrainingDiagram v-if="displayedInput.diagram.nodes.length" :model-value="displayedInput.diagram" disabled :allow-materials="false" :references="displayedAnswer.content.diagram.nodes" />
           <div class="row-actions"><NButton v-if="session.status !== 'ENDED'" size="small" :disabled="!editable" @click="revise(displayedAnswer)">以此提交为基础修订</NButton><NButton size="small" @click="download('text', displayedAnswer.content, `answer-${displayedAnswer.number}`)">另存文字</NButton><NButton size="small" @click="download('diagram', displayedAnswer.content, `answer-${displayedAnswer.number}`)">另存结构图</NButton></div>
           <RouterLink class="text-link" :to="{ name: 'review', query: { sessionId: session.id, questionId, answerId: displayedAnswer.id } }">复盘这次提交：自检、外部意见与改进动作</RouterLink>
-          <RouterLink v-if="session.status === 'ENDED'" class="text-link" :to="{ name: 'repractice', query: { sessionId: session.id, questionId, answerId: displayedAnswer.id } }">以这次提交为基线，创建空白独立复练</RouterLink>
+          <RouterLink v-if="session.status === 'ENDED'" class="text-link" :to="{ name: 'repractice', query: { sessionId: session.id, questionId, answerId: displayedAnswer.id, from: route.fullPath } }">以这次提交为基线，创建空白独立复练</RouterLink>
           <p class="field-help">提交内容及当时条件保留。同题修订不计作新的独立复练；反馈与复盘均绑定这次确切提交。</p>
         </article>
         <p v-else-if="!(historyOpen && historySelection) && !confirmedQuestion" class="field-help" role="status">尚未核对最新服务器提交，请等待读取或重试；本地输入继续保留。</p>
@@ -397,6 +427,7 @@ const date = (value: string) => new Date(value).toLocaleString('zh-CN')
 .question-prompt, .saved-answer { display: grid; gap: 16px; min-width: 0; }
 .question-prompt h4 { margin-bottom: 7px; } .preserve { white-space: pre-wrap; overflow-wrap: anywhere; }
 .answer-save-state { display: flex; flex-wrap: wrap; gap: 8px 15px; color: var(--muted); font-size: 12px; }
+.answer-auto-save { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .unsaved, .source-warnings { color: var(--warm); }
 .source-warnings { display: grid; gap: 5px; font-size: 12px; }
 .answer-panel, .reference-panel { display: grid; gap: 16px; padding-top: 20px; border-top: 1px solid var(--line); min-width: 0; }

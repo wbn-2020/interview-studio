@@ -121,6 +121,7 @@
     WHERE i.owner_id = #{owner} AND i.status = #{status}
     <if test="kind != null">AND i.kind = #{kind}</if>
     <if test="pattern != null">AND v.title LIKE #{pattern} ESCAPE '!'</if>
+    <if test="topicId != null">AND EXISTS (SELECT 1 FROM knowledge_item_topic t WHERE t.item_id=i.id AND t.topic_id=#{topicId})</if>
     <if test="collection == 'FAVORITES'">AND o.favorite = TRUE</if>
     <if test="collection == 'UNCATEGORIZED'">AND NOT EXISTS (SELECT 1 FROM knowledge_item_topic t WHERE t.item_id = i.id)</if>
     <if test="collection == 'BROKEN_LINKS'">

@@ -165,13 +165,17 @@ function displayTime(value: string) { return preferences.formatDate(value) }
   <section class="preferences-workspace" aria-labelledby="preferences-title">
     <header class="page-heading">
       <div class="preferences-heading-identity"><p>设置 <span>/</span> 外观与数据</p><h1 id="preferences-title">设置</h1></div>
-      <span v-if="baseline && readable" class="status-pill">设置修订 {{ baseline.revision }}{{ dirty ? ' · 有未保存修改' : '' }}</span>
+      <span v-if="baseline && readable" class="status-pill">{{ dirty ? '有未保存修改' : '已保存' }}</span>
     </header>
     <p v-if="!readable" class="notice" role="status">设置暂不可读取。恢复会话或训练访问条件后继续；当前输入与未决请求保留。</p>
+    <nav class="settings-navigation" aria-label="设置分类">
+      <RouterLink to="/settings" :class="{ selected: $route.path === '/settings' }" :aria-current="$route.path === '/settings' ? 'page' : undefined">偏好</RouterLink>
+      <RouterLink to="/settings/data" :class="{ selected: $route.path === '/settings/data' }" :aria-current="$route.path === '/settings/data' ? 'page' : undefined">数据管理</RouterLink>
+      <RouterLink to="/ai/authorizations" :class="{ selected: $route.path === '/ai/authorizations' }" :aria-current="$route.path === '/ai/authorizations' ? 'page' : undefined">安全与授权</RouterLink>
+    </nav>
     <div v-show="readable" :inert="!readable || undefined" class="preferences-content">
-      <nav class="settings-directory" aria-label="设置分类"><a class="selected" href="#appearance-title"><RIcon name="sun" :size="28" />外观与数据</a><a href="#preference-reading"><RIcon name="book-open" :size="28" />阅读与写作</a><a href="#preference-motion"><RIcon name="zap" :size="28" />动效</a><a href="#preference-timezone"><RIcon name="clock" :size="28" />时区</a><a href="#preference-recovery"><RIcon name="refresh-cw" :size="28" />保存与恢复</a><RouterLink to="/settings/data"><RIcon name="upload" :size="28" />导入 / 导出</RouterLink><a href="#usage-title"><RIcon name="chart-no-axes-combined" :size="28" />数据用量</a><RouterLink to="/ai/authorizations"><RIcon name="shield-check" :size="28" />安全与授权</RouterLink></nav>
       <section class="preference-section preference-appearance" aria-labelledby="appearance-title">
-        <header><div><h2 id="appearance-title"><RIcon name="sun" :size="30" />外观</h2></div><NButton text :disabled="blocked" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></header>
+        <header><div><h2 id="appearance-title"><RIcon name="sun" :size="30" />外观</h2></div></header>
         <p v-if="!baseline && reading" class="notice" role="status">正在读取个人设置…</p>
         <p v-if="settingsError" class="notice error" role="alert">{{ settingsError }}</p>
         <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }} <NButton v-if="writer.pending.value" text :disabled="!readable || writer.busy.value" :loading="writer.busy.value" @click="retry">用原请求重试</NButton></p>
@@ -199,12 +203,19 @@ function displayTime(value: string) { return preferences.formatDate(value) }
           <p v-if="problem" class="field-help" role="status">{{ problem }}</p>
           <div class="row-actions"><NButton type="primary" :disabled="!canSave" :loading="writer.busy.value" @click="save">保存个人设置</NButton><span class="field-help">{{ baseline.updatedAt ? `最近保存：${displayTime(baseline.updatedAt)}` : '尚未保存，当前为默认设置。' }}</span></div>
         </template>
-        <section v-if="serverCopy" class="preference-server-copy" aria-labelledby="preference-server-title">
-          <h3 id="preference-server-title">服务器设置 · 修订 {{ serverCopy.revision }}</h3>
-          <dl><div><dt>主题与动态效果</dt><dd>{{ preferenceThemes.find(item => item.value === serverCopy?.theme)?.label }} · {{ preferenceMotions.find(item => item.value === serverCopy?.motion)?.label }}</dd></div><div><dt>字号与宽度</dt><dd>{{ serverCopy.fontSize }} px · {{ serverCopy.contentWidth }} px</dd></div><div><dt>显示时区</dt><dd>{{ serverCopy.timeZone }}</dd></div><div><dt>待保存提醒</dt><dd>{{ serverCopy.saveRecoveryNotice ? '开启' : '关闭' }}</dd></div></dl>
-          <NCheckbox v-if="dirty" v-model:checked="replaceConfirmed" :disabled="blocked">允许用服务器设置替换当前未保存输入</NCheckbox>
-          <div class="row-actions"><NButton :disabled="blocked || !readReady" @click="adoptServer(true)">保留输入，采用服务器修订</NButton><NButton :disabled="blocked || !readReady || (dirty && !replaceConfirmed)" @click="adoptServer(false)">采用服务器设置</NButton></div>
-        </section>
+        <details class="preference-advanced">
+          <summary>高级：服务器设置与修订</summary>
+          <div class="preference-advanced-content">
+            <p v-if="baseline" class="field-help">当前设置修订：{{ baseline.revision }}</p>
+            <div class="row-actions"><NButton text :disabled="blocked" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></div>
+            <section v-if="serverCopy" class="preference-server-copy" aria-labelledby="preference-server-title">
+              <h3 id="preference-server-title">服务器设置 · 修订 {{ serverCopy.revision }}</h3>
+              <dl><div><dt>主题与动态效果</dt><dd>{{ preferenceThemes.find(item => item.value === serverCopy?.theme)?.label }} · {{ preferenceMotions.find(item => item.value === serverCopy?.motion)?.label }}</dd></div><div><dt>字号与宽度</dt><dd>{{ serverCopy.fontSize }} px · {{ serverCopy.contentWidth }} px</dd></div><div><dt>显示时区</dt><dd>{{ serverCopy.timeZone }}</dd></div><div><dt>待保存提醒</dt><dd>{{ serverCopy.saveRecoveryNotice ? '开启' : '关闭' }}</dd></div></dl>
+              <NCheckbox v-if="dirty" v-model:checked="replaceConfirmed" :disabled="blocked">允许用服务器设置替换当前未保存输入</NCheckbox>
+              <div class="row-actions"><NButton :disabled="blocked || !readReady" @click="adoptServer(true)">保留输入，采用服务器修订</NButton><NButton :disabled="blocked || !readReady || (dirty && !replaceConfirmed)" @click="adoptServer(false)">采用服务器设置</NButton></div>
+            </section>
+          </div>
+        </details>
       </section>
       <section class="preference-section preference-usage" aria-labelledby="usage-title">
         <header><div><h2 id="usage-title"><RIcon name="database" :size="28" />数据概览</h2></div><NButton text :loading="usageLoading" :disabled="!readable || usageLoading" @click="loadUsage">刷新</NButton></header>
@@ -222,15 +233,51 @@ function displayTime(value: string) { return preferences.formatDate(value) }
 </template>
 
 <style scoped>
-.preferences-heading-identity > p { display: none; }.preferences-workspace { max-width: none; }.preferences-content { display: grid; grid-template-columns: 180px minmax(0,1fr) 280px; gap: 20px; align-items: start; }
-.settings-directory { position: sticky; top: 124px; display: grid; gap: 4px; }.settings-directory a { display: flex; gap: 9px; align-items: center; min-height: 36px; font-size: 13px; padding: 8px 10px; border-radius: 6px; }.settings-directory a svg { width: 17px; height: 17px; }.settings-directory a:hover { background: var(--brand-soft); color: var(--brand-strong); }
-.preference-section { padding: 22px; border-radius: 10px; background: var(--surface); min-width: 0; display: grid; gap: 22px; }.preference-section h2 { display: flex; align-items: center; gap: 9px; font-size: 18px; }.preference-section h2 svg { width: 20px; color: var(--brand); }.preference-section h3 { font-size: 15px; }
-.preferences-workspace .preference-fields { grid-template-columns: minmax(0,1fr); gap: 22px; }.preference-control { display: grid; grid-template-columns: 85px minmax(0,1fr); align-items: center; gap: 12px; font-size: 13px; }
-.settings-segment { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); }.settings-segment > button { display: flex; flex: 1; gap: 6px; align-items: center; justify-content: center; min-height: 30px; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }.settings-segment > button svg { width: 15px; height: 15px; }.settings-segment > button.selected { color: var(--brand-strong); background: var(--brand-soft); }
-.settings-exact-values { font-size: 12px; }.settings-exact-values label { display: grid; gap: 7px; margin-top: 10px; }.preference-timezone { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }.preference-timezone > label { display: grid; gap: 8px; font-size: 13px; }
-.preference-recovery,.preference-reading-sample { display: grid; gap: 10px; }.preference-reading-sample { padding: 16px 0; }.preference-usage-grid { display: block; margin: 0; }.preference-usage-grid > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; border-bottom: 1px solid var(--line); }.preference-usage-grid dt { font-size: 12px; color: var(--muted); }.preference-usage-grid dd { margin: 0; font-size: 15px; }
-.settings-export { padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }.settings-export a { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }.settings-export a.settings-export-primary { color: var(--brand-strong); background: var(--brand-soft); }
+.preferences-heading-identity > p { display: none; }
+.preferences-workspace { max-width: none; }
+.settings-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
+.settings-navigation a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 13px; }
+.settings-navigation a:hover { background: var(--brand-soft); color: var(--brand-strong); }
+.settings-navigation a.selected { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-soft); }
+.preferences-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 300px); gap: 20px; align-items: start; }
+.preference-section { padding: 22px; border-radius: 10px; background: var(--surface); min-width: 0; display: grid; gap: 22px; }
+.preference-section h2 { display: flex; align-items: center; gap: 9px; font-size: 18px; }
+.preference-section h2 svg { width: 20px; color: var(--brand); }
+.preference-section h3 { font-size: 15px; }
+.preferences-workspace .preference-fields { grid-template-columns: minmax(0,1fr); gap: 22px; }
+.preference-control { display: grid; grid-template-columns: 85px minmax(0,1fr); align-items: center; gap: 12px; font-size: 13px; }
+.settings-segment { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); }
+.settings-segment > button { display: flex; flex: 1; gap: 6px; align-items: center; justify-content: center; min-height: 30px; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+.settings-segment > button svg { width: 15px; height: 15px; }
+.settings-segment > button.selected { color: var(--brand-strong); background: var(--brand-soft); }
+.settings-exact-values { font-size: 12px; }
+.settings-exact-values label { display: grid; gap: 7px; margin-top: 10px; }
+.preference-timezone { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+.preference-timezone > label { display: grid; gap: 8px; font-size: 13px; }
+.preference-recovery,.preference-reading-sample { display: grid; gap: 10px; }
+.preference-reading-sample { padding: 16px 0; }
+.preference-usage-grid { display: block; margin: 0; }
+.preference-usage-grid > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; border-bottom: 1px solid var(--line); }
+.preference-usage-grid dt { font-size: 12px; color: var(--muted); }
+.preference-usage-grid dd { margin: 0; font-size: 15px; }
+.settings-export { padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.settings-export a { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+.settings-export a.settings-export-primary { color: var(--brand-strong); background: var(--brand-soft); }
+.preference-advanced { border-top: 1px solid var(--line); padding-top: 18px; }
+.preference-advanced > summary { cursor: pointer; font-size: 13px; }
+.preference-advanced-content { display: grid; gap: 16px; padding-top: 16px; }
+.preference-server-copy { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); }
+.preference-server-copy dl { display: grid; gap: 10px; margin: 0; }
+.preference-server-copy dl > div { display: grid; gap: 4px; }
+.preference-server-copy dt { font-size: 12px; color: var(--muted); }
+.preference-server-copy dd { margin: 0; font-size: 13px; }
 .preference-section :is([id],label) { scroll-margin-top: 124px; }
-@media(max-width:1300px) { .preferences-content { grid-template-columns: 170px minmax(0,1fr); }.preference-usage { grid-column: 2; } }
-@media(max-width:750px) { .preferences-content { grid-template-columns: minmax(0,1fr); }.preference-usage { grid-column: 1; }.settings-directory { position: static; grid-template-columns: repeat(2,minmax(0,1fr)); }.preference-control { grid-template-columns: minmax(0,1fr); gap: 8px; }.preference-section { padding: 18px; } }
+@media(max-width:900px) {
+  .preferences-content { grid-template-columns: minmax(0,1fr); }
+}
+@media(max-width:750px) {
+  .settings-navigation a { padding-inline: 8px; }
+  .preference-control { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .preference-section { padding: 18px; }
+}
 </style>

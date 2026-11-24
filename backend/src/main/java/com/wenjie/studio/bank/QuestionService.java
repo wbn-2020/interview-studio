@@ -18,9 +18,12 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -59,10 +62,18 @@ public class QuestionService {
                 difficulty, dimension == null ? null : dimension.name(), topicId, knowledgeId,
                 pattern(scene), favorite, cursor, limit + 1);
         boolean more = rows.size() > limit;
-        List<QuestionSummary> page = rows.stream().limit(limit).map(row -> new QuestionSummary(row.id(), row.title(),
+        var pageRows = rows.stream().limit(limit).toList();
+        Map<String, List<String>> topicsByVersion = new HashMap<>();
+        if (!pageRows.isEmpty()) {
+            var versionIds = pageRows.stream().map(SummaryRow::versionId).toList();
+            for (var link : mapper.topicLinks(owner, versionIds)) {
+                topicsByVersion.computeIfAbsent(link.versionId(), ignored -> new ArrayList<>()).add(link.topicId());
+            }
+        }
+        List<QuestionSummary> page = pageRows.stream().map(row -> new QuestionSummary(row.id(), row.title(),
                 Type.valueOf(row.type()), row.difficulty(), Status.valueOf(row.status()), row.revision(), row.favorite(),
                 row.versionId(), row.versionNumber(), StandardStatus.valueOf(row.standardStatus()),
-                mapper.topics(owner, row.versionId()), row.updatedAt())).toList();
+                List.copyOf(topicsByVersion.getOrDefault(row.versionId(), List.of())), row.updatedAt())).toList();
         return new QuestionPage(page, more ? page.getLast().id() : null);
     }
 

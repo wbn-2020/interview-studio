@@ -247,7 +247,7 @@ function selectVersion(versionId: string) { if (readable.value && props.id) void
 function openRepractice() {
   if (!readable.value || locked.value || dirty.value || stale.value || needsReview.value || serverLoading.value
     || interviewBusy.value || otherChanges.value || current.value?.status !== 'ACTIVE') return
-  void router.push({ name: 'repractice', query: { recollectionId: current.value.id, versionId: current.value.currentVersion.id } })
+  void router.push({ name: 'repractice', query: { recollectionId: current.value.id, versionId: current.value.currentVersion.id, from: route.fullPath } })
 }
 function displayTime(instant: string, zone?: string) { try { return new Date(instant).toLocaleString('zh-CN', zone ? { timeZone: zone } : undefined) } catch { return instant } }
 </script>

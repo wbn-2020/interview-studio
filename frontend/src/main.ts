@@ -16,7 +16,10 @@ const router = createRouter({
   history: createWebHistory(),
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
-    if (to.path !== from.path) return { top: 0 }
+    const viewKey = to.name === 'review' ? 'tab' : to.name === 'data-management' || to.name === 'growth' ? 'panel' : 'view'
+    const viewChanged = to.name === from.name && ['today', 'review', 'growth', 'data-management', 'knowledge', 'schedule'].includes(String(to.name))
+      && to.query[viewKey] !== from.query[viewKey]
+    if (to.path !== from.path || viewChanged) return { top: 0 }
   },
   routes: [
     { path: '/', redirect: '/today' },
@@ -201,8 +204,11 @@ router.beforeEach(async (to, from) => {
   if (to.name === 'ai-authorizations' || to.name === 'data-management') return true
   if (!workspace.sessionActive || to.fullPath === from.fullPath) return true
   const access = useTrainingAccessStore(pinia)
-  const ready = await access.refresh({ preservePage: true })
-  if (!ready) return false
+  // 已核实的访问状态可复用于站内切页；跨窗口、训练变更和会话边界仍会立即将其标记为需重核。
+  if (access.checking) {
+    const ready = await access.refresh({ preservePage: true })
+    if (!ready) return false
+  }
   if (access.restricted && access.needsGuard(to.name, to.query.item, to.query.create)) {
     access.challenge = true
     return false

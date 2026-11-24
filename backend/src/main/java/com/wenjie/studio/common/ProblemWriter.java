@@ -28,6 +28,7 @@ public final class ProblemWriter {
             case 404 -> "内容不存在";
             case 405 -> "请求方法不支持";
             case 409 -> "内容发生冲突";
+            case 408 -> "请求读取超时";
             case 413 -> "请求内容过大";
             case 415 -> "请求格式不支持";
             case 422 -> "当前操作超出限制";

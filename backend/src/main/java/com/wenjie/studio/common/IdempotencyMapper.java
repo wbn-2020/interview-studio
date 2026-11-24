@@ -15,7 +15,10 @@ public interface IdempotencyMapper {
 
     void insertReceipt(@Param("ownerId") String ownerId, @Param("key") String key,
                        @Param("operation") String operation, @Param("requestHash") String requestHash,
-                       @Param("responseJson") String responseJson, @Param("createdAt") LocalDateTime createdAt);
+                       @Param("responseJson") String responseJson, @Param("createdAt") LocalDateTime createdAt,
+                       @Param("expiresAt") LocalDateTime expiresAt);
+
+    void deleteExpired(@Param("ownerId") String ownerId, @Param("now") LocalDateTime now);
 
     record Receipt(String operation, String requestHash, String responseJson) { }
 }

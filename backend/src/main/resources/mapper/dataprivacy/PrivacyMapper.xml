@@ -53,58 +53,62 @@
       (SELECT COUNT(*) FROM privacy_object_state WHERE owner_id=#{owner})
   </select>
   <select id="unavailableIdentities" resultType="java.lang.String">
-    SELECT object_id FROM privacy_object_state WHERE owner_id=#{owner} AND state IN ('TRASHED','PURGED')
+    WITH blocked_privacy AS (
+      SELECT object_kind, object_id FROM privacy_object_state
+      WHERE owner_id=#{owner} AND state IN ('TRASHED','PURGED')
+    )
+    SELECT object_id FROM blocked_privacy
     UNION
-    SELECT v.id FROM knowledge_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='KNOWLEDGE' AND s.object_id=v.item_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM knowledge_version v JOIN blocked_privacy s
+      ON s.object_kind='KNOWLEDGE' AND s.object_id=v.item_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM preparation_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='PREPARATION' AND s.object_id=v.item_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM preparation_version v JOIN blocked_privacy s
+      ON s.object_kind='PREPARATION' AND s.object_id=v.item_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM question_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='QUESTION' AND s.object_id=v.question_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM question_version v JOIN blocked_privacy s
+      ON s.object_kind='QUESTION' AND s.object_id=v.question_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM memory_card_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM memory_card_version v JOIN blocked_privacy s
+      ON s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM memory_recall_attempt v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM memory_recall_attempt v JOIN blocked_privacy s
+      ON s.object_kind='MEMORY_CARD' AND s.object_id=v.card_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM training_question v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='TRAINING' AND s.object_id=v.session_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM training_question v JOIN blocked_privacy s
+      ON s.object_kind='TRAINING' AND s.object_id=v.session_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM training_answer v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='TRAINING' AND s.object_id=v.session_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM training_answer v JOIN blocked_privacy s
+      ON s.object_kind='TRAINING' AND s.object_id=v.session_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM material_upload v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM material_upload v JOIN blocked_privacy s
+      ON s.object_kind='MATERIAL' AND s.object_id=v.attachment_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM material_parse_run v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM material_parse_run v JOIN blocked_privacy s
+      ON s.object_kind='MATERIAL' AND s.object_id=v.attachment_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM material_excerpt v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM material_excerpt v JOIN blocked_privacy s
+      ON s.object_kind='MATERIAL' AND s.object_id=v.attachment_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM material_segment v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='MATERIAL' AND s.object_id=v.attachment_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM material_segment v JOIN blocked_privacy s
+      ON s.object_kind='MATERIAL' AND s.object_id=v.attachment_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM question_collection_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='QUESTION_COLLECTION' AND s.object_id=v.collection_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM question_collection_version v JOIN blocked_privacy s
+      ON s.object_kind='QUESTION_COLLECTION' AND s.object_id=v.collection_id
     WHERE v.owner_id=#{owner}
     UNION
-    SELECT v.id FROM review_recollection_version v JOIN privacy_object_state s
-      ON s.owner_id=v.owner_id AND s.object_kind='RECOLLECTION' AND s.object_id=v.recollection_id AND s.state IN ('TRASHED','PURGED')
+    SELECT v.id FROM review_recollection_version v JOIN blocked_privacy s
+      ON s.object_kind='RECOLLECTION' AND s.object_id=v.recollection_id
     WHERE v.owner_id=#{owner}
   </select>
 </mapper>

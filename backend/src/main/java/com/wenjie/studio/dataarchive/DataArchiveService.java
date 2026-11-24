@@ -12,6 +12,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 import javax.sql.DataSource;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -163,6 +165,14 @@ public class DataArchiveService {
         Path root = ArchivePaths.root(properties.directory());
         Path directory = ArchivePaths.childDirectory(root, ArchivePaths.uuid(owner), create);
         return directory.resolve(ArchivePaths.uuid(id) + ".zip");
+    }
+
+    void cleanup(DataArchiveMapper.Row row) throws IOException {
+        Path root = ArchivePaths.root(properties.directory());
+        Path ownerDirectory = root.resolve(ArchivePaths.uuid(row.ownerId()));
+        if (!Files.exists(ownerDirectory, LinkOption.NOFOLLOW_LINKS)) return;
+        Path file = ArchivePaths.childDirectory(root, row.ownerId(), false).resolve(ArchivePaths.uuid(row.id()) + ".zip");
+        ArchivePaths.delete(file);
     }
 
     ArchiveFormat format() { return new ArchiveFormat(json, properties.maximumBytes(), properties.maximumRows()); }

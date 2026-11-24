@@ -91,6 +91,7 @@ export async function logout(): Promise<void> {
 }
 
 async function request<T>(path: string, init: RequestInit, timeoutMs = 30_000): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase()
   const epoch = requestSessionEpoch
   const trainingEpoch = trainingAccessEpoch
   const controller = new AbortController()
@@ -110,16 +111,22 @@ async function request<T>(path: string, init: RequestInit, timeoutMs = 30_000): 
     const result = response.status === 204 ? undefined as T : await response.json() as T
     // 成功响应也可能晚于退出／重新登录；写入结果仍未知，原键必须保留到当前会话恢复。
     if (epoch !== requestSessionEpoch) {
-      throw new ApiError(0, 'SESSION_CHANGED', '会话已变化。本次响应暂不展示，写入请在重新登录后用原请求恢复。')
+      throw new ApiError(0, 'SESSION_CHANGED', method === 'GET'
+        ? '会话已变化，请重新读取当前内容。'
+        : '会话已变化。本次响应暂不展示，写入请在重新登录后用原请求恢复。')
     }
     // 资料请求可能先于另一标签开始训练发出；成功写入仍保留原键重试，不能当作明确未执行。
-    if (carriesReference(path, init.method ?? 'GET') && trainingEpoch !== trainingAccessEpoch) {
-      throw new ApiError(0, 'TRAINING_ACCESS_CHANGED', '训练条件已变化。本次响应暂不展示，写入请在确认资料权限后用原请求恢复。')
+    if (carriesReference(path, method) && trainingEpoch !== trainingAccessEpoch) {
+      throw new ApiError(0, 'TRAINING_ACCESS_CHANGED', method === 'GET'
+        ? '训练条件已变化，请重新读取当前内容。'
+        : '训练条件已变化。本次响应暂不展示，写入请在确认资料权限后用原请求恢复。')
     }
     return result
   } catch (error) {
     if (error instanceof ApiError) throw error
-    throw new ApiError(0, 'CONNECTION_UNCERTAIN', '连接中断或响应超时。写入结果尚未确认，请使用原请求重试。')
+    throw new ApiError(0, 'CONNECTION_UNCERTAIN', method === 'GET'
+      ? '读取失败或响应超时，请检查连接后重试。'
+      : '连接中断或响应超时。写入结果尚未确认，请使用原请求重试。')
   } finally {
     clearTimeout(timer)
   }

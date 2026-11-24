@@ -1,5 +1,6 @@
 package com.wenjie.studio.dataprivacy;
 
+import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.CurrentOwner;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -7,6 +8,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.util.UriUtils;
+
+import java.nio.charset.StandardCharsets;
 
 /** 入口处先核对账本，再由出站过滤器去掉回收站和无正文墓碑。 */
 @Configuration
@@ -24,7 +28,7 @@ public class PrivacyHttpConfiguration implements WebMvcConfigurer {
         registry.addInterceptor(new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-                String path = request.getRequestURI();
+                String path = requestPath(request);
                 if (!path.startsWith("/api/v1/") || path.startsWith("/api/v1/data-privacy")
                         || path.startsWith("/api/v1/auth/") || path.startsWith("/api/v1/session/")
                         || request.getUserPrincipal() == null) return true;
@@ -39,6 +43,15 @@ public class PrivacyHttpConfiguration implements WebMvcConfigurer {
                 return true;
             }
         }).addPathPatterns("/api/v1/**");
+    }
+
+    private static String requestPath(HttpServletRequest request) {
+        try {
+            // 路由变量会解码百分号转义；隐私守卫必须对同一路径形态核对身份，不能留下编码 UUID 旁路。
+            return UriUtils.decode(request.getRequestURI(), StandardCharsets.UTF_8).replaceAll(";[^/]*", "");
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(400, "REQUEST_PATH_INVALID", "请求路径包含无效编码。");
+        }
     }
 
     private static final class SetHolder {

@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 @Service
 public class IdempotencyService {
     private static final int MAX_RESPONSE_BYTES = 2_097_152;
+    private static final int RETENTION_DAYS = 30;
     private final IdempotencyMapper receipts;
     private final JsonMapper json;
     private final JsonMapper canonical;
@@ -63,6 +64,9 @@ public class IdempotencyService {
         if (receipts.lockWorkspace(ownerId) == null) {
             throw new IllegalStateException("未能锁定个人工作区");
         }
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        // 回执只保证有界重放；过期正文在 owner 锁内清理，隐私清除仍会立即脱敏相关回执。
+        receipts.deleteExpired(ownerId, now);
         boolean pendingPrivacy = privacy.isMatchingPendingPrivacyCommand(ownerId, key, operation, request);
         boolean pendingPermission = privacy.isMatchingPendingPermissionCommand(ownerId, key, operation, request);
         boolean nestedPrivacy = privacy.isVerifiedPendingContinuation(ownerId);
@@ -98,7 +102,7 @@ public class IdempotencyService {
         if (responseJson.getBytes(StandardCharsets.UTF_8).length > MAX_RESPONSE_BYTES) {
             throw new ApiException(422, "RECEIPT_TOO_LARGE", "操作结果超出保存上限，本次变更未提交。");
         }
-        receipts.insertReceipt(ownerId, key, operation, digest, responseJson, LocalDateTime.now(ZoneOffset.UTC));
+        receipts.insertReceipt(ownerId, key, operation, digest, responseJson, now, now.plusDays(RETENTION_DAYS));
         return response;
     }
 

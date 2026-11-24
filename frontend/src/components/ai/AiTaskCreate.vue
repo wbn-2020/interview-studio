@@ -7,6 +7,7 @@ import type { ItemDetail, ItemSummary } from '../../api/client'
 import type { AiMaterialDraftPreviewRequest, AiPreparationDraftPreviewRequest, AiPreparationSelection, AiPreview, AiPreviewRequest, AiSettings, AiSource, AiTask } from '../../api/ai'
 import { aiCandidateManifestFingerprint, aiDraftPromptVersion, aiExpressionSourceContent, aiMaterialDraftSourcesMatch, aiPreparationChecksMatch, aiPurposeLabels, aiSourceKindLabel, formatAiAmount, isAiPreparationKind } from '../../api/ai'
 import type { MaterialExcerpt, MaterialStatus } from '../../api/material'
+import type { PreparationItem } from '../../api/preparation'
 import { expressionOptions, referenceLabels } from '../../api/preparation'
 import { useCommand } from '../../composables/useCommand'
 import { useWorkspaceStore } from '../../state/workspace'
@@ -18,7 +19,7 @@ import { aiAuthorizationRequestFields } from '../../api/aiAuthorization'
 import AiPreparationSourcePicker from './AiPreparationSourcePicker.vue'
 import MaterialExcerptPicker from '../material/MaterialExcerptPicker.vue'
 
-const props = defineProps<{ settings?: AiSettings; disabled?: boolean; initialPurpose?: AiPreviewRequest['purpose'] }>()
+const props = defineProps<{ settings?: AiSettings; disabled?: boolean; initialPurpose?: AiPreviewRequest['purpose']; initialPreparation?: { itemId: string; versionId: string } }>()
 const emit = defineEmits<{ created: [task: AiTask]; close: []; refresh: [] }>()
 const store = useWorkspaceStore()
 const writer = useCommand()
@@ -61,6 +62,24 @@ const materialStatus = useQuery({
   queryFn: () => read<MaterialStatus>('/materials/status'),
 })
 const materialReady = computed(() => !excerpts.value.length || materialStatus.data.value?.enabled === true)
+const initialPreparation = useQuery({
+  queryKey: computed(() => ['preparation', store.sessionEpoch, 'ai-initial-source', props.initialPreparation?.itemId, props.initialPreparation?.versionId]),
+  enabled: computed(() => store.sessionActive && !props.disabled && Boolean(props.initialPreparation)),
+  queryFn: () => read<PreparationItem>(`/prepare/items/${props.initialPreparation!.itemId}`),
+})
+watch(initialPreparation.error, error => { if (props.initialPreparation && error) selectionError.value = errorText(error) })
+watch(initialPreparation.data, value => {
+  const target = props.initialPreparation
+  if (!target || !value || value.status !== 'ACTIVE' || value.currentVersion.id !== target.versionId
+    || !(value.kind === 'TARGET' || value.kind === 'PROJECT' || value.kind === 'FACT')) {
+    if (target && value) selectionError.value = '预选准备材料已改版、归档或类型不符，请重新选择来源。'
+    return
+  }
+  if (selectedIds.value.includes(value.id)) return
+  if (sourceCount.value >= 5) { selectionError.value = '预选材料加入后超过 5 份来源上限，请先移出其他来源。'; return }
+  preparationSources.value.push({ kind: value.kind, itemId: value.id, versionId: value.currentVersion.id,
+    title: value.currentVersion.content.title, number: value.currentVersion.number })
+}, { immediate: true })
 type CandidateRequest = AiPreviewRequest | AiPreparationDraftPreviewRequest | AiMaterialDraftPreviewRequest
 const request = computed<CandidateRequest>(() => {
   const knowledge = { purpose: purpose.value, instruction: instruction.value.trim(), sources: sources.value.map(source => ({ itemId: source.itemId, versionId: source.versionId })) }

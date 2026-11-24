@@ -21741,6 +21741,8 @@ export interface operations {
                 status?: "ACTIVE" | "ARCHIVED";
                 /** @description 已发布标题字面量筛选。 */
                 q?: string;
+                /** @description 只读取关联该确切主题的知识。 */
+                topicId?: components["schemas"]["Id"];
                 /** @description RECENT为访问时间~UUID，其余集合为UUID。 */
                 cursor?: string;
                 limit?: number;

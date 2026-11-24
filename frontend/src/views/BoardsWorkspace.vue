@@ -352,7 +352,7 @@ function download(format: 'json' | 'md', value = board.value) {
         <button v-for="item in listQuery.data.value?.items" :key="item.id" class="board-list-item" :class="{ active: item.id === boardId }" @click="navigate(item.id)"><strong>{{ item.title }}</strong><small>{{ item.kind === 'MIND_MAP' ? '脑图' : '白板' }} · 修订 {{ item.revision }}</small></button>
         <div class="row-actions"><NButton v-if="cursor" size="small" @click="cursor = undefined">第一页</NButton><NButton v-if="listQuery.data.value?.nextCursor" size="small" @click="cursor = listQuery.data.value.nextCursor">下一页</NButton></div>
       </aside>
-      <main class="board-main">
+      <section class="board-main">
         <p v-if="boardId && boardQuery.isPending.value && !board" class="loading-block">正在读取画布与知识引用…</p>
         <p v-if="boardQuery.error.value" class="notice error">{{ errorText(boardQuery.error.value) }}</p>
         <div v-if="!boardId" class="list-empty-detail"><h2>让知识形成可编辑的结构</h2><p>从左侧打开画布，或创建一个新的思考空间。画布卡片可以引用同一份知识原文。</p></div>
@@ -407,7 +407,7 @@ function download(format: 'json' | 'md', value = board.value) {
             <div v-if="historyPreview" class="comparison-panel"><h3>{{ historyPreview.title }} · 修订 {{ historyPreview.revision }}</h3><p>{{ historyPreview.nodes.length }} 个节点，{{ historyPreview.edges.length }} 条线。以下为当时引用预览，来源当前可读性仍受服务器检查。</p><div class="row-actions"><NButton size="small" @click="download('json', historyPreview)">导出此历史快照</NButton><NButton size="small" @click="download('md', historyPreview)">导出历史脑图</NButton><NButton size="small" :disabled="locked || dirty || transferPending" @click="restore">恢复为新修订</NButton></div><div v-for="node in historyPreview.nodes" :key="node.id" class="history-node"><strong>{{ node.type === 'TEXT' ? '临时文本' : reference(node, historyPreview)?.title }}</strong><p v-if="node.type === 'REFERENCE'" class="field-help">{{ nodeTypeLabel(node) }} · {{ referenceVersion(node, historyPreview) }}</p><pre>{{ node.type === 'TEXT' ? node.text : reference(node, historyPreview)?.body }}</pre><RouterLink v-if="node.itemId" class="text-link" :to="referenceLocation(node, historyPreview, true)">{{ node.referenceKind === 'QUESTION' ? '打开题目当前版；旧版请按上方版本 ID 在题目历史中核对' : node.referenceKind === 'ATTACHMENT' ? '打开附件详情与原件' : '打开当时的完整知识版本' }}</RouterLink></div></div>
           </details>
         </div>
-      </main>
+      </section>
     </div>
   </section>
 </template>

@@ -78,6 +78,7 @@ async function choose(item: QuestionSummary) {
     <div v-if="results.error.value || chooseError" class="notice error" role="alert"><p>{{ chooseError || errorText(results.error.value) }}</p><NButton size="small" text :disabled="locked" @click="results.refetch()">刷新题目</NButton></div>
     <div class="collection-picker-results"><button v-for="item in results.data.value?.items" :key="item.id" type="button" :disabled="locked || !!exclusion(item)" @click="choose(item)"><strong>{{ item.title }}</strong><span>{{ questionTypeLabels[item.type] }} · v{{ item.versionNumber }}{{ exclusion(item) ? ` · ${exclusion(item)}` : '' }}</span></button></div>
     <p v-if="results.data.value && !results.data.value.items.length" class="field-help">没有匹配的活跃题目。可调整标题或题型，或先到题库保存一道题目。</p>
+    <div v-if="results.data.value && !results.data.value.items.length && !search && !type" class="row-actions"><RouterLink class="text-link" :to="{ name: 'bank', query: { create: '1' } }">新建第一道题</RouterLink><RouterLink class="text-link" :to="{ name: 'ai', query: { create: '1', purpose: 'QUESTION_DRAFT' } }">用 AI 生成候选</RouterLink></div>
     <div v-if="cursors.length || results.data.value?.nextCursor" class="row-actions"><NButton size="small" :disabled="locked || !cursors.length" @click="cursor = cursors.pop()">上一页</NButton><NButton size="small" :disabled="locked || !results.data.value?.nextCursor" @click="next">下一页</NButton></div>
   </section>
 </template>

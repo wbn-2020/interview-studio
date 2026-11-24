@@ -67,7 +67,7 @@ with zipfile.ZipFile(jar) as archive:
             destination.chmod(0o644)
 
 versions = sorted(int(name[1:name.index("__")]) for name in sql)
-if versions != list(range(1, 90)):
-    raise SystemExit("Expected exactly V1 through V89; no migration was executed")
+if versions != list(range(1, 91)):
+    raise SystemExit("Expected exactly V1 through V90; no migration was executed")
 print(json.dumps({"verifiedWebFiles": len(expected["web"]), "libraries": libraries,
                   "migrationVersions": versions, "applicationSha256": expected["jar"]}))

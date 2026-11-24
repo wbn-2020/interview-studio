@@ -3,6 +3,11 @@ map $request_method $studio_login_limit_key {
     POST $binary_remote_addr;
 }
 limit_req_zone $studio_login_limit_key zone=studio_login:1m rate=5r/m;
+map $request_method $studio_csrf_limit_key {
+    default "";
+    GET $binary_remote_addr;
+}
+limit_req_zone $studio_csrf_limit_key zone=studio_csrf:1m rate=10r/m;
 map $status $studio_login_retry_after {
     default "";
     429 12;
@@ -44,9 +49,26 @@ server {
         proxy_set_header Connection "";
     }
 
+    location = /api/v1/auth/csrf {
+        limit_req zone=studio_csrf burst=5 nodelay;
+        limit_req_status 429;
+        error_page 429 = @studio_csrf_throttled;
+        proxy_pass http://application:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+    }
+
     location @studio_login_throttled {
         default_type application/problem+json;
         return 429 '{"status":429,"code":"LOGIN_RATE_LIMITED","detail":"登录尝试过于频繁，请稍后重试。"}';
+    }
+
+    location @studio_csrf_throttled {
+        default_type application/problem+json;
+        return 429 '{"status":429,"code":"CSRF_RATE_LIMITED","detail":"会话令牌请求过于频繁，请稍后重试。"}';
     }
 
     location /api/ {

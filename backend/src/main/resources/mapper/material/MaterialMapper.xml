@@ -19,7 +19,8 @@
   <update id="description">UPDATE material_attachment SET description=#{description},revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}</update>
   <update id="touchAttachment">UPDATE material_attachment SET revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND revision=#{expected}</update>
   <update id="ready">UPDATE material_attachment SET status='READY',ready_upload_id=#{uploadId},revision=revision+1,updated_at=#{now} WHERE owner_id=#{owner} AND id=#{id} AND status='RESERVED' AND revision&lt;9007199254740991</update>
-  <select id="usedBytes" resultType="long">SELECT COALESCE((SELECT SUM(reserved_bytes) FROM material_upload WHERE owner_id=#{owner}),0)+COALESCE((SELECT SUM(reserved_bytes) FROM material_parse_run WHERE owner_id=#{owner}),0)</select>
+  <!-- 附件意图按件计一次；上传历史不重复占额，解析只保留执行中的工作区预留。 -->
+  <select id="usedBytes" resultType="long">SELECT COALESCE((SELECT SUM(byte_size) FROM material_attachment WHERE owner_id=#{owner}),0)+COALESCE((SELECT SUM(reserved_bytes) FROM material_parse_run WHERE owner_id=#{owner} AND status IN ('QUEUED','RUNNING')),0)</select>
   <select id="upload" resultType="com.wenjie.studio.material.MaterialRows$Upload">SELECT <include refid="uploadColumns"/> FROM material_upload WHERE owner_id=#{owner} AND id=#{id}</select>
   <select id="uploads" resultType="com.wenjie.studio.material.MaterialRows$Upload">SELECT <include refid="uploadColumns"/> FROM material_upload WHERE owner_id=#{owner} AND attachment_id=#{id} ORDER BY created_at,id</select>
   <insert id="insertUpload">

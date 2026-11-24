@@ -27,7 +27,8 @@ public interface OrganizationMapper {
                                  @Param("limit") int limit);
     List<LibraryItem> library(@Param("owner") String owner, @Param("collection") String collection,
                               @Param("kind") String kind, @Param("status") String status,
-                              @Param("pattern") String pattern, @Param("cursorId") String cursorId,
+                              @Param("pattern") String pattern, @Param("topicId") String topicId,
+                              @Param("cursorId") String cursorId,
                               @Param("cursorTime") Instant cursorTime, @Param("limit") int limit);
     List<String> availableTargetIds(@Param("owner") String owner, @Param("ids") List<String> ids);
     List<UnscannedVersion> unscannedVersions(@Param("owner") String owner, @Param("limit") int limit);

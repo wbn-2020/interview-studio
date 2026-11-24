@@ -96,6 +96,12 @@ final class ArchivePaths {
         }
     }
 
+    static void delete(Path path) throws IOException {
+        directories(path.getParent());
+        // 只删除精确目录项，不跟随链接，也不递归清理未知文件。
+        Files.deleteIfExists(path);
+    }
+
     static MessageDigest digest() {
         try { return MessageDigest.getInstance("SHA-256"); }
         catch (NoSuchAlgorithmException exception) { throw new IllegalStateException("SHA-256 不可用", exception); }

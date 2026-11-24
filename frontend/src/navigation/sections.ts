@@ -38,8 +38,8 @@ export function tabsFor(route: RouteLocationNormalizedLoaded): WorkspaceTab[] {
       const knowledgeTo = (view: string): RouteLocationRaw => ({ name: 'knowledge', query: name === 'knowledge'
         ? { ...query, view, edit: undefined, panel: undefined, create: undefined } : { view } })
       return [
-        { label: '知识目录', to: knowledgeTo('list'), active: name === 'knowledge' && (['list', 'search', 'detail'].includes(String(query.view)) || Boolean(query.create)) },
-        { label: '知识星图', to: knowledgeTo('graph'), active: name === 'knowledge' && !['list', 'search', 'detail'].includes(String(query.view)) && !query.create },
+        { label: '知识目录', to: knowledgeTo('list'), active: name === 'knowledge' && query.view !== 'graph' },
+        { label: '知识星图', to: knowledgeTo('graph'), active: name === 'knowledge' && query.view === 'graph' },
         { label: '白板', to: '/knowledge/boards', active: name === 'boards' },
         { label: '回忆卡', to: '/knowledge/cards', active: ['memory-cards', 'memory-recall', 'memory-cram'].includes(String(name)) },
         { label: '收件箱', to: '/knowledge/inbox', active: name === 'knowledge-inbox' },

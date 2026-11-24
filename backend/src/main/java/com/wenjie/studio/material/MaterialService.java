@@ -2,6 +2,7 @@ package com.wenjie.studio.material;
 
 import com.wenjie.studio.common.ApiException;
 import com.wenjie.studio.common.IdempotencyService;
+import com.wenjie.studio.dataprivacy.PrivacyLifecycle;
 import com.wenjie.studio.material.MaterialDtos.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -29,12 +30,14 @@ public class MaterialService {
     private final IdempotencyService commands;
     private final JsonMapper json;
     private final MaterialLifecycleService lifecycle;
+    private final PrivacyLifecycle privacy;
 
     public MaterialService(MaterialMapper mapper, MaterialProperties properties, MaterialStorage storage,
                            MaterialTransactions transactions, IdempotencyService commands, JsonMapper json,
-                           MaterialLifecycleService lifecycle) {
+                           MaterialLifecycleService lifecycle, PrivacyLifecycle privacy) {
         this.mapper = mapper; this.properties = properties; this.storage = storage;
         this.transactions = transactions; this.commands = commands; this.json = json; this.lifecycle = lifecycle;
+        this.privacy = privacy;
     }
 
     public Status status(String owner) {
@@ -100,7 +103,6 @@ public class MaterialService {
             var attempts = mapper.uploads(owner, id);
             if (attempts.stream().anyMatch(item -> Set.of("RESERVED", "RECEIVING").contains(item.status()))) throw new ApiException(409, "UPLOAD_IN_PROGRESS", "已有尚未结束的上传尝试，请先读取其状态。");
             if (attempts.size() >= 3) throw new ApiException(409, "UPLOAD_ATTEMPT_LIMIT", "此附件已达到三次上传尝试上限，保留文件仍计入容量。");
-            reserve(owner, row.byteSize());
             Instant now = now(); var attempt = newUpload(owner, row, now);
             mapper.insertUpload(attempt); changed(mapper.touchAttachment(owner, id, row.revision(), now));
             return uploadView(attempt);
@@ -281,7 +283,13 @@ public class MaterialService {
     }
 
     MaterialRows.Attachment requireAttachment(String owner, String id) { var value = mapper.attachment(owner, id); if (value == null) throw missing(); return value; }
-    MaterialRows.Attachment readyAttachment(String owner, String id) { var value = requireAttachment(owner, id); if (!value.status().equals("READY")) throw new ApiException(409, "ATTACHMENT_NOT_READY", "原附件尚未确认完成。"); return value; }
+    MaterialRows.Attachment readyAttachment(String owner, String id) {
+        // 文件流和解析结果都必须重新核对隐私生命周期，不能只依赖 HTTP 路径拦截。
+        privacy.requireAvailable(owner, "MATERIAL", id);
+        var value = requireAttachment(owner, id);
+        if (!value.status().equals("READY")) throw new ApiException(409, "ATTACHMENT_NOT_READY", "原附件尚未确认完成。");
+        return value;
+    }
     MaterialRows.Upload requireUpload(String owner, String id) { var value = mapper.upload(owner, id); if (value == null) throw missing(); return value; }
     MaterialRows.Run requireRun(String owner, String id) { var value = mapper.run(owner, id); if (value == null) throw missing(); return value; }
     private MaterialRows.Excerpt requireExcerpt(String owner, String id) { var value = mapper.excerpt(owner, id); if (value == null) throw missing(); return value; }
@@ -294,7 +302,7 @@ public class MaterialService {
         return new Attachment(row.id(), row.fileName(), Kind.valueOf(row.kind()), row.byteSize(), row.sha256(), row.description(), row.status(), row.revision(), row.createdAt(), row.updatedAt(), mapper.uploads(row.ownerId(), row.id()).stream().map(this::uploadView).toList(), runs.isEmpty() ? null : runView(runs.getFirst()));
     }
     private MaterialRows.Upload newUpload(String owner, MaterialRows.Attachment row, Instant now) { return new MaterialRows.Upload(id(), owner, row.id(), "RESERVED", row.byteSize(), 0, null, null, null, now, null, null); }
-    private void reserve(String owner, long bytes) { if (properties.quotaBytes() < bytes || mapper.usedBytes(owner) > properties.quotaBytes() - bytes) throw new ApiException(409, "MATERIAL_QUOTA_EXCEEDED", "保留容量不足；失败尝试和历史解析仍计入预留容量。"); }
+    private void reserve(String owner, long bytes) { if (properties.quotaBytes() < bytes || mapper.usedBytes(owner) > properties.quotaBytes() - bytes) throw new ApiException(409, "MATERIAL_QUOTA_EXCEEDED", "保留容量不足；当前附件与执行中的解析占用配额。"); }
     private void enabled() { if (!properties.enabled()) throw new ApiException(503, "MATERIALS_DISABLED", "服务器尚未启用附件资料，请先配置私有目录。"); }
     private static void required(Object value) { if (value == null) throw invalid("请求内容不能为空。"); }
     private static void changed(int rows) { if (rows != 1) throw new ApiException(409, "REVISION_CONFLICT", "资料状态已变化，请读取最新状态并保留本地输入。"); }
