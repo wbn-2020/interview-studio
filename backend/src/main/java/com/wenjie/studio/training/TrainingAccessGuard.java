@@ -52,6 +52,8 @@ public class TrainingAccessGuard {
 
     private void check(String owner, String method, String path, String sessionId) {
         if (!guarded(path)) return;
+        // 运行时配置只含供应商公开参数与密钥状态，不读取训练资料；固定连通性测试也不外发用户内容。
+        if ("/api/v1/ai/config".equals(path) || "/api/v1/ai/config/test".equals(path)) return;
         // 此出口只有不透明通知游标；任何任务正文仍须经过原资料出口的动态守卫。
         if ("GET".equals(method) && "/api/v1/ai/events".equals(path)) return;
         // 只含无正文账本检查点，用于恢复管理；回收站清单和范围预览仍按资料访问处理。

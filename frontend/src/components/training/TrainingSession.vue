@@ -51,7 +51,9 @@ const knowledgeOpen = ref(false)
 const knowledgeBefore = ref<number>()
 const knowledgeCursors = ref<(number | undefined)[]>([])
 const message = ref('')
-const visible = ref(document.visibilityState === 'visible')
+const pageVisible = ref(document.visibilityState === 'visible')
+const focused = ref(document.hasFocus())
+const visible = computed(() => pageVisible.value && focused.value)
 // 媒体查询与布局断点保持一致；窄屏先展示条件和关键操作，次要面板默认收起。
 const compactControls = ref(window.matchMedia('(max-width: 950px)').matches)
 const controlDetailsOpen = ref(!compactControls.value)
@@ -173,7 +175,8 @@ watch(() => store.sessionEpoch, () => {
 onMounted(() => {
   timer = window.setInterval(() => void pulse(), 20000)
   document.addEventListener('visibilitychange', visibilityChanged)
-  window.addEventListener('focus', refreshSession)
+  window.addEventListener('focus', windowFocusChanged)
+  window.addEventListener('blur', windowFocusChanged)
   window.addEventListener('studio:training-changed', refreshSession)
   controlsMediaQuery = window.matchMedia('(max-width: 950px)')
   syncCompactControls(controlsMediaQuery.matches)
@@ -184,7 +187,8 @@ onUnmounted(() => {
   requestGeneration++
   if (timer !== undefined) window.clearInterval(timer)
   document.removeEventListener('visibilitychange', visibilityChanged)
-  window.removeEventListener('focus', refreshSession)
+  window.removeEventListener('focus', windowFocusChanged)
+  window.removeEventListener('blur', windowFocusChanged)
   window.removeEventListener('studio:training-changed', refreshSession)
   controlsMediaQuery?.removeEventListener('change', compactControlsChanged)
   if (store.changes.get('training-editor') === changeState) store.changes.delete('training-editor')
@@ -310,8 +314,12 @@ function syncCompactControls(matches: boolean) {
   controlDetailsOpen.value = !matches
 }
 function compactControlsChanged(event: MediaQueryListEvent) { syncCompactControls(event.matches) }
+function windowFocusChanged() {
+  focused.value = document.hasFocus()
+  if (visible.value) { refreshSession(); void pulse() }
+}
 function visibilityChanged() {
-  visible.value = document.visibilityState === 'visible'
+  pageVisible.value = document.visibilityState === 'visible'
   if (visible.value) { refreshSession(); void pulse() }
 }
 function nextEvents() { if (events.data.value?.nextCursor !== null && events.data.value?.nextCursor !== undefined) { eventCursors.value.push(eventBefore.value); eventBefore.value = events.data.value.nextCursor } }

@@ -9,10 +9,10 @@ export const primarySections: SectionLink[] = [
   { key: 'practice', label: '训练', icon: 'play', to: '/practice/sessions' },
   { key: 'review', label: '复盘', icon: 'refresh-cw', to: '/review' },
   { key: 'growth', label: '成长', icon: 'chart-no-axes-combined', to: '/growth' },
+  { key: 'ai', label: 'AI', icon: 'sparkles', to: '/ai' },
 ]
 export const utilitySections: SectionLink[] = [
   { key: 'recent', label: '最近访问', icon: 'clock', to: '/recent' },
-  { key: 'ai', label: 'AI 任务', icon: 'sparkles', to: '/ai' },
   { key: 'settings', label: '设置', icon: 'settings', to: '/settings' },
 ]
 const searchSection: SectionLink = { key: 'search', label: '搜索', icon: 'search', to: '/search' }
@@ -60,7 +60,12 @@ export function tabsFor(route: RouteLocationNormalizedLoaded): WorkspaceTab[] {
       ...(name === 'training-report' ? [{ label: '训练报告', to: route.fullPath, active: true }] : []),
     ]
     case 'ai': return [{ label: '任务记录', to: '/ai', active: name === 'ai' }, { label: '授权管理', to: '/ai/authorizations', active: name === 'ai-authorizations' }]
-    case 'settings': return [{ label: '个人偏好', to: '/settings', active: name === 'settings' }, { label: '数据管理', to: '/settings/data', active: name === 'data-management' }]
+    case 'settings': return [
+      { label: '外观与阅读', to: '/settings', active: name === 'settings' },
+      { label: 'AI 模型', to: '/settings/ai', active: name === 'ai-model-settings' },
+      { label: '数据与隐私', to: '/settings/data', active: name === 'data-management' },
+      { label: '安全与授权', to: '/settings/security', active: name === 'settings-security' },
+    ]
     default: return []
   }
 }

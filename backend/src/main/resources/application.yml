@@ -86,6 +86,7 @@ studio:
     endpoint: ${STUDIO_AI_ENDPOINT:}
     model: ${STUDIO_AI_MODEL:}
     api-key: ${STUDIO_AI_API_KEY:}
+    config-key: ${STUDIO_AI_CONFIG_KEY:}
     config-version: ${STUDIO_AI_CONFIG_VERSION:}
     price-version: ${STUDIO_AI_PRICE_VERSION:}
     currency: ${STUDIO_AI_CURRENCY:}

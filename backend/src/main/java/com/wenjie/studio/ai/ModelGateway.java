@@ -17,6 +17,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayOutputStream;
+import java.net.InetAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.SocketAddress;
@@ -744,7 +745,15 @@ public final class ModelGateway {
         } catch (ApiException exception) { return failure(exception.code() + "_BEFORE_SEND"); }
         catch (RuntimeException exception) { return failure("AI_REQUEST_INVALID_BEFORE_SEND"); }
 
-        if (Boolean.TRUE.equals(manifest.configuration().streaming())) return generateStreaming(body, manifest, preview);
+        // 数据库配置每次发送前重核公网地址，并固定使用该次核验结果；环境变量配置仍保留服务器管理员既有边界。
+        List<InetAddress> pinnedAddresses = null;
+        if (properties.source() == AiProperties.Source.DATABASE) {
+            try { pinnedAddresses = AiEndpointPolicy.resolve(properties.endpoint()); }
+            catch (AiEndpointPolicy.EndpointException exception) { return failure("AI_CONFIG_ENDPOINT_FORBIDDEN_BEFORE_SEND"); }
+        }
+        if (Boolean.TRUE.equals(manifest.configuration().streaming()))
+            return generateStreaming(body, manifest, preview, pinnedAddresses);
+        if (pinnedAddresses != null) return generatePinned(body, manifest, pinnedAddresses);
         HttpClient client = null;
         CompletableFuture<HttpResponse<byte[]>> pending = null;
         AtomicReference<LimitedBody> receiver = new AtomicReference<>();
@@ -790,7 +799,67 @@ public final class ModelGateway {
         }
     }
 
-    private Result generateStreaming(byte[] body, Manifest manifest, Consumer<String> preview) {
+    private Result generatePinned(byte[] body, Manifest manifest, List<InetAddress> addresses) {
+        try {
+            AiPinnedHttps.Response response = AiPinnedHttps.post(properties.endpoint(), addresses, body,
+                    properties.apiKey(), manifest.configuration().timeoutSeconds(), "application/json",
+                    MAX_RESPONSE_BYTES, head -> new LimitedBody());
+            return parse(response.head().status(), response.head().headers(), response.body(), manifest);
+        } catch (AiPinnedHttps.ExchangeException exception) {
+            return failure(exception.code());
+        } catch (RuntimeException exception) {
+            return failure("AI_NETWORK_UNKNOWN");
+        }
+    }
+
+    private Result generateStreamingPinned(byte[] body, Manifest manifest, Consumer<String> preview,
+                                           List<InetAddress> addresses) {
+        AtomicReference<LimitedBody> regular = new AtomicReference<>();
+        AtomicReference<AiProviderStream> streamed = new AtomicReference<>();
+        AtomicReference<String> providerId = new AtomicReference<>();
+        AtomicBoolean unsupported = new AtomicBoolean();
+        try {
+            if (Thread.currentThread().isInterrupted()) return streamFailure(null, manifest, null, "AI_CANCELED_UNKNOWN");
+            AiPinnedHttps.Response response = AiPinnedHttps.post(properties.endpoint(), addresses, body,
+                    properties.apiKey(), manifest.configuration().timeoutSeconds(), "text/event-stream, application/json",
+                    AiProviderStream.MAX_WIRE, head -> {
+                        providerId.set(safeId(firstHeader(head.headers(), "x-request-id")));
+                        boolean success = head.status() >= 200 && head.status() < 300;
+                        String contentType = firstHeader(head.headers(), "content-type");
+                        contentType = contentType == null ? "" : contentType.split(";", 2)[0].strip();
+                        String encoding = firstHeader(head.headers(), "content-encoding");
+                        encoding = encoding == null ? "identity" : encoding;
+                        if (success && "text/event-stream".equalsIgnoreCase(contentType) && "identity".equalsIgnoreCase(encoding)) {
+                            AiProviderStream subscriber = new AiProviderStream(strict,
+                                    "RESPONSES".equals(manifest.configuration().protocol()), preview);
+                            streamed.set(subscriber);
+                            return subscriber;
+                        }
+                        unsupported.set(success && (!"application/json".equalsIgnoreCase(contentType)
+                                || !"identity".equalsIgnoreCase(encoding)));
+                        LimitedBody subscriber = new LimitedBody();
+                        regular.set(subscriber);
+                        return subscriber;
+                    });
+            AiProviderStream subscriber = streamed.get();
+            if (subscriber != null && subscriber.failureCode() != null)
+                return streamFailure(subscriber, manifest, providerId.get(), subscriber.failureCode());
+            if (unsupported.get()) return streamFailure(null, manifest, providerId.get(), "AI_STREAM_CONTENT_TYPE");
+            return parse(response.head().status(), response.head().headers(), response.body(), manifest);
+        } catch (AiPinnedHttps.ExchangeException exception) {
+            AiProviderStream subscriber = streamed.get();
+            String code = subscriber != null && subscriber.failureCode() != null ? subscriber.failureCode()
+                    : regular.get() != null && regular.get().exceeded() ? "AI_RESPONSE_TOO_LARGE" : exception.code();
+            if ("AI_STREAM_BODY_FAILED".equals(code)) code = "AI_NETWORK_UNKNOWN";
+            return streamFailure(subscriber, manifest, providerId.get(), code);
+        } catch (RuntimeException exception) {
+            return streamFailure(streamed.get(), manifest, providerId.get(), "AI_NETWORK_UNKNOWN");
+        }
+    }
+
+    private Result generateStreaming(byte[] body, Manifest manifest, Consumer<String> preview,
+                                     List<InetAddress> pinnedAddresses) {
+        if (pinnedAddresses != null) return generateStreamingPinned(body, manifest, preview, pinnedAddresses);
         HttpClient client = null;
         CompletableFuture<HttpResponse<byte[]>> pending = null;
         AtomicReference<LimitedBody> regular = new AtomicReference<>();
@@ -1020,14 +1089,18 @@ public final class ModelGateway {
     }
 
     private Result parse(HttpResponse<byte[]> response, Manifest manifest) {
-        String providerId = safeId(response.headers().firstValue("x-request-id").orElse(null));
-        String httpError = response.statusCode() >= 200 && response.statusCode() < 300 ? null : switch (response.statusCode()) {
+        return parse(response.statusCode(), response.headers().map(), response.body(), manifest);
+    }
+
+    private Result parse(int statusCode, Map<String, List<String>> headers, byte[] body, Manifest manifest) {
+        String providerId = safeId(firstHeader(headers, "x-request-id"));
+        String httpError = statusCode >= 200 && statusCode < 300 ? null : switch (statusCode) {
             case 401, 403 -> "AI_PROVIDER_AUTH";
             case 429 -> "AI_PROVIDER_RATE_LIMIT";
             default -> "AI_PROVIDER_HTTP_ERROR";
         };
         JsonNode root;
-        try { root = strict.readTree(utf8(response.body())); }
+        try { root = strict.readTree(utf8(body)); }
         catch (RuntimeException | CharacterCodingException exception) {
             // 非成功状态可能携带反代 HTML 或空正文；正文损坏不能覆盖 HTTP 错误，也不能据此假定零费用。
             return new Result(null, null, null, null, null, null, null, providerId,
@@ -2340,6 +2413,10 @@ public final class ModelGateway {
     }
 
     private static String textOrNull(JsonNode value) { return value != null && value.isTextual() ? value.stringValue() : null; }
+    private static String firstHeader(Map<String, List<String>> headers, String name) {
+        List<String> values = headers.get(name);
+        return values == null || values.isEmpty() ? null : values.getFirst();
+    }
     private static String safeId(String value) { return value != null && value.matches("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}") ? value : null; }
     private static String utf8(byte[] value) throws CharacterCodingException {
         return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)

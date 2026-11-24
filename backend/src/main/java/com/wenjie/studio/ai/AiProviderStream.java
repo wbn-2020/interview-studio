@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 
 /** 单次供应商响应的有界解析器；暂态文字不等于通过用途及引用校验的候选。 */
 final class AiProviderStream implements HttpResponse.BodySubscriber<byte[]> {
-    private static final int MAX_WIRE = 4 * 1024 * 1024;
+    static final int MAX_WIRE = 4 * 1024 * 1024;
     private static final int MAX_FRAME = 512 * 1024;
     private static final int MAX_TEXT = 256 * 1024;
     private final JsonMapper json;

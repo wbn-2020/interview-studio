@@ -39,6 +39,8 @@ export const useAiUpdatesStore = defineStore('ai-updates', () => {
   let nextConnect = 0
   let failures = 0
   let refreshPending = false
+  let resumeSnapshot = false
+  let resumeEpoch = -1
   let authChecking = false
 
   function current(expected: number) {
@@ -56,6 +58,10 @@ export const useAiUpdatesStore = defineStore('ai-updates', () => {
     const nextPage = workspace.sessionActive && document.visibilityState === 'visible' ? target : undefined
     if (nextPage === page && sessionId === trainingSessionId && comparisonId === reviewComparisonId
         && epoch === workspace.sessionEpoch) return
+    if (!nextPage) {
+      resumeSnapshot = Boolean(page)
+      resumeEpoch = epoch
+    } else if (resumeEpoch !== workspace.sessionEpoch) resumeSnapshot = false
     generation++
     closeConnection()
     if (timer !== undefined) window.clearInterval(timer)
@@ -69,7 +75,7 @@ export const useAiUpdatesStore = defineStore('ai-updates', () => {
     nextConnect = 0
     lastRead = 0
     authChecking = false
-    refreshPending = Boolean(page)
+    refreshPending = Boolean(page) && !resumeSnapshot
     state.value = page ? 'connecting' : 'idle'
     if (!page) return
     timer = window.setInterval(tick, 1000)
@@ -160,8 +166,9 @@ export const useAiUpdatesStore = defineStore('ai-updates', () => {
         lastSignal = performance.now()
         failures = 0
         state.value = 'live'
-        // 快照总要重新同步；游标是变化标记，不能按大小排序，也不能跳过恢复后的同值快照。
-        if (event.type === 'snapshot' || changed) refreshPending = true
+        // 恢复快照只在游标确实变化时重读；同值快照不把普通 Alt+Tab 变成全页刷新。
+        if (changed || event.type === 'snapshot' && !resumeSnapshot) refreshPending = true
+        if (event.type === 'snapshot') resumeSnapshot = false
       } catch { recover(expected, connection) }
     }
     connection.addEventListener('snapshot', receive)

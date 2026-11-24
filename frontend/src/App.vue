@@ -31,7 +31,7 @@ const preferences = usePreferencesStore()
 const unsavedCount = computed(() => [...workspace.changes.values()].filter(value => value.dirty).length)
 const unresolvedCount = computed(() => [...workspace.changes.values()].filter(value => value.locked).length)
 const route = useRoute()
-const authorizationManagement = computed(() => route.name === 'ai-authorizations')
+const authorizationManagement = computed(() => route.name === 'ai-authorizations' || route.name === 'settings-security')
 const safeManagementShell = computed(() => authorizationManagement.value || route.name === 'data-management')
 const trainingBlocked = computed(() => !safeManagementShell.value && (trainingAccess.checking || trainingAccess.challenge
   || workspace.changes.get('training-access-command')?.locked
@@ -105,21 +105,30 @@ async function signOut() {
 }
 let windowActive = document.visibilityState === 'visible' && document.hasFocus()
 let windowSuspended = false
-function leaveWindow() { windowActive = false }
+let blurredAt = 0, hiddenAt = 0
+function leaveWindow() { if (windowActive) blurredAt = performance.now(); windowActive = false }
 function suspendTraining() {
   leaveWindow()
   if (windowSuspended) return
   windowSuspended = true
-  trainingAccess.invalidate({ refreshData: false })
+  hiddenAt = performance.now()
 }
 function checkTraining() {
   if (document.visibilityState !== 'visible') { suspendTraining(); return }
   if (!document.hasFocus() || windowActive) return
-  // 一次前台恢复只核对一次；后续 focus/pageshow 不再次遮挡已经核实的页面。
+  const resumedAt = performance.now(), wasSuspended = windowSuspended
   windowActive = true
-  if (!windowSuspended && !trainingAccess.checking) trainingAccess.invalidate({ refreshData: false })
   windowSuspended = false
-  if (workspace.sessionActive) void trainingAccess.refresh()
+  if (!workspace.sessionActive) return
+  // 快速 Alt+Tab 不改变权限状态；跨标签训练变化仍由 BroadcastChannel 立即失效。
+  const awayFrom = wasSuspended ? hiddenAt : blurredAt
+  if (!awayFrom || resumedAt - awayFrom < 1500) {
+    // 隐藏期间发生的跨标签失效仍需恢复；快速 Alt+Tab 只跳过未变化的常规复核。
+    if (trainingAccess.checking) void trainingAccess.refresh({ preservePage: true })
+    return
+  }
+  // 真正离开较久才后台复核；未变化时不遮挡、不取消查询，变化或失败仍进入原有安全守卫。
+  void trainingAccess.refresh({ preservePage: true })
 }
 function invalidateTraining() {
   trainingAccess.invalidate()
@@ -180,7 +189,6 @@ onUnmounted(() => {
   <NConfigProvider :theme="preferences.isDark ? darkTheme : null" :theme-overrides="theme" :locale="zhCN" :date-locale="dateZhCN">
     <NMessageProvider>
       <StudioShell v-if="entered" :inert="!session?.authenticated || undefined" :username="session?.username" :unsaved="unsavedCount" :unresolved="unresolvedCount" :busy="busy" @command="commandPalette?.open()" @signout="signOut">
-          <div v-if="preferences.current.saveRecoveryNotice && (unsavedCount || unresolvedCount)" class="preference-save-notice" role="status">{{ unsavedCount }} 处未保存输入，{{ unresolvedCount }} 个保存中或结果待确认操作。请完成保存或用原请求恢复；关闭页面可能丢失尚未保存的内容。</div>
           <p v-if="recent.message" class="notice" role="status">{{ recent.message }}</p>
           <div class="studio-route-area">
           <TrainingAccessNotice v-show="!authorizationManagement" :class="{ 'studio-access-refresh': retainingLayout && guardedHeight > 0 }" />

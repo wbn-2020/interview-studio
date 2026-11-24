@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.ai.AiConfigMapper">
+  <select id="config" resultType="com.wenjie.studio.ai.AiConfigRows$RuntimeConfig">
+    SELECT owner_id,revision,enabled,protocol,provider,endpoint,model,api_key_ciphertext,config_version,
+      price_version,currency,input_price_micros_per_million,output_price_micros_per_million,daily_budget_micros,
+      max_output_tokens,timeout_seconds,max_tokens_field,json_mode,streaming,created_at,updated_at
+    FROM ai_runtime_config WHERE owner_id=#{owner}
+  </select>
+  <select id="pendingTaskCount" resultType="int">
+    SELECT COUNT(*) FROM ai_task
+    WHERE owner_id=#{owner} AND status IN ('QUEUED','RUNNING','VALIDATING','CANCEL_REQUESTED')
+  </select>
+  <insert id="insertConfig">
+    INSERT INTO ai_runtime_config
+      (owner_id,revision,enabled,protocol,provider,endpoint,model,api_key_ciphertext,config_version,price_version,
+       currency,input_price_micros_per_million,output_price_micros_per_million,daily_budget_micros,max_output_tokens,
+       timeout_seconds,max_tokens_field,json_mode,streaming,created_at,updated_at)
+    VALUES
+      (#{config.ownerId},1,#{config.enabled},#{config.protocol},#{config.provider},#{config.endpoint},#{config.model},
+       #{config.apiKeyCiphertext},#{config.configVersion},#{config.priceVersion},#{config.currency},
+       #{config.inputPriceMicrosPerMillion},#{config.outputPriceMicrosPerMillion},#{config.dailyBudgetMicros},
+       #{config.maxOutputTokens},#{config.timeoutSeconds},#{config.maxTokensField},#{config.jsonMode},#{config.streaming},
+       #{config.createdAt},#{config.updatedAt})
+  </insert>
+  <update id="updateConfig">
+    UPDATE ai_runtime_config SET revision=#{config.revision},enabled=#{config.enabled},protocol=#{config.protocol},
+      provider=#{config.provider},endpoint=#{config.endpoint},model=#{config.model},api_key_ciphertext=#{config.apiKeyCiphertext},
+      config_version=#{config.configVersion},price_version=#{config.priceVersion},currency=#{config.currency},
+      input_price_micros_per_million=#{config.inputPriceMicrosPerMillion},
+      output_price_micros_per_million=#{config.outputPriceMicrosPerMillion},daily_budget_micros=#{config.dailyBudgetMicros},
+      max_output_tokens=#{config.maxOutputTokens},timeout_seconds=#{config.timeoutSeconds},
+      max_tokens_field=#{config.maxTokensField},json_mode=#{config.jsonMode},streaming=#{config.streaming},
+      updated_at=#{config.updatedAt}
+    WHERE owner_id=#{config.ownerId} AND revision=#{expectedRevision}
+  </update>
+</mapper>

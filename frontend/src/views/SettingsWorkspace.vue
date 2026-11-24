@@ -2,33 +2,48 @@
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { NButton, NCheckbox, NInput, NInputNumber } from 'naive-ui'
 import { ApiError, currentTrainingAccessEpoch, errorText } from '../api/client'
-import { defaultPreferences, formatPreferenceBytes, preferenceMotions, preferenceReceiptValid, preferenceThemes,
-  readPreferences, readPreferenceUsage, samePreferences, savePreferencesProblem } from '../api/preferences'
-import type { Preferences, PreferenceUsage, SavePreferences } from '../api/preferences'
-import { useCommand } from '../composables/useCommand'
+import { defaultPreferences, formatPreferenceBytes, preferenceMotions, preferenceThemes,
+  readPreferenceUsage, samePreferences, savePreferencesProblem } from '../api/preferences'
+import type { PreferenceValues, Preferences, PreferenceUsage } from '../api/preferences'
 import { usePreferencesStore } from '../state/preferences'
 import { useWorkspaceStore } from '../state/workspace'
 import { useTrainingAccessStore } from '../state/trainingAccess'
 import RIcon from '../replica/RIcon.vue'
 
-type Draft = Omit<SavePreferences, 'expectedRevision' | 'fontSize' | 'contentWidth'> & { fontSize: number | null; contentWidth: number | null }
-const workspace = useWorkspaceStore(), access = useTrainingAccessStore(), preferences = usePreferencesStore(), writer = useCommand()
+type Draft = Omit<PreferenceValues, 'fontSize' | 'contentWidth'> & { fontSize: number | null; contentWidth: number | null }
+const workspace = useWorkspaceStore(), access = useTrainingAccessStore(), preferences = usePreferencesStore()
 const draft = reactive<Draft>(formOf(defaultPreferences))
-const baseline = shallowRef<Preferences>(), current = shallowRef<Preferences>(), serverCopy = shallowRef<Preferences>()
-const usage = shallowRef<PreferenceUsage>(), reading = ref(false), usageLoading = ref(false)
-const settingsError = ref(''), usageError = ref(''), message = ref(''), readReady = ref(false), needsReview = ref(false)
+const baseline = shallowRef<Preferences>(), serverCopy = shallowRef<Preferences>()
+const usage = shallowRef<PreferenceUsage>(), usageLoading = ref(false)
+const usageError = ref(''), message = ref(''), needsReview = ref(false)
 const replaceConfirmed = ref(false), visible = ref(document.visibilityState === 'visible')
-const changes = reactive({ dirty: false, locked: false }), stateKey = 'preferences'
-let alive = true, generation = 0, readSequence = 0, usageSequence = 0
-let commandEpoch = -1, commandGeneration = -1, commandTraining = -1
+let alive = true, generation = 0, usageSequence = 0
 const readable = computed(() => workspace.sessionActive && visible.value && !access.checking && !access.challenge && !access.restricted
   && !workspace.changes.get('training-access-command')?.locked)
+const reading = computed(() => preferences.loading), readReady = computed(() => preferences.loaded)
+const settingsError = computed(() => preferences.error)
 const dirty = computed(() => Boolean(baseline.value && signature(draft) !== signature(formOf(baseline.value))))
-const blocked = computed(() => !readable.value || writer.locked.value || reading.value)
-const editable = computed(() => Boolean(baseline.value) && !blocked.value)
-const problem = computed(() => baseline.value ? savePreferencesProblem({ expectedRevision: baseline.value.revision, ...draft }) : undefined)
-const stale = computed(() => Boolean(baseline.value && current.value && !samePreferences(baseline.value, current.value)))
-const canSave = computed(() => editable.value && dirty.value && readReady.value && !needsReview.value && !stale.value && !problem.value && !settingsError.value)
+const blocked = computed(() => !readable.value || reading.value || preferences.saving || preferences.requestPending)
+const editable = computed(() => Boolean(baseline.value) && readable.value)
+const problem = computed(() => {
+  const issue = baseline.value ? savePreferencesProblem({ expectedRevision: baseline.value.revision, ...draft }) : undefined
+  return issue ?? (baseline.value && !previewZone(draft.timeZone) ? '请填写有效的时区名称，例如 Asia/Shanghai 或 UTC。' : undefined)
+})
+const serverMatches = computed(() => Boolean(serverCopy.value && preferences.server && samePreferences(serverCopy.value, preferences.server)))
+const autoStatus = computed(() => {
+  if (!baseline.value) return reading.value ? '正在读取' : '等待读取'
+  if (preferences.syncError) return '同步失败'
+  if (settingsError.value) return '读取失败'
+  if (preferences.saving) return '自动保存中'
+  if (problem.value) return '等待有效输入'
+  if (dirty.value || preferences.hasPending) return '等待自动保存'
+  return baseline.value.updatedAt ? '已自动保存' : '默认设置'
+})
+const saveSummary = computed(() => {
+  if (!baseline.value) return '正在读取个人设置。'
+  const saved = baseline.value.updatedAt ? `最近自动保存：${displayTime(baseline.value.updatedAt)}。` : '尚未保存，当前为默认设置。'
+  return `${saved}修改后会自动同步，无需手动提交。`
+})
 const usageRows: { key: keyof Pick<PreferenceUsage, 'notes' | 'concepts' | 'knowledgeVersions' | 'boards' | 'preparationItems'
   | 'questions' | 'trainingSessions' | 'submittedAnswers' | 'memoryCards' | 'attachments' | 'aiTasks'>; label: string }[] = [
   { key: 'notes', label: '笔记' }, { key: 'concepts', label: '知识点' }, { key: 'knowledgeVersions', label: '知识历史版本' },
@@ -38,27 +53,32 @@ const usageRows: { key: keyof Pick<PreferenceUsage, 'notes' | 'concepts' | 'know
 ]
 
 watch([readable, () => workspace.sessionEpoch], () => {
-  generation++; readSequence++; usageSequence++; reading.value = false; usageLoading.value = false; readReady.value = false
+  generation++; usageSequence++; usageLoading.value = false
   serverCopy.value = undefined; replaceConfirmed.value = false
-  if (baseline.value && (dirty.value || writer.locked.value)) needsReview.value = true
-  if (readable.value) { void loadSettings(false); void loadUsage() }
+  if (baseline.value && dirty.value) needsReview.value = true
+  if (readable.value) { void preferences.refresh(); void loadUsage() }
 }, { immediate: true, flush: 'sync' })
-watch([dirty, writer.locked], ([changed, locked]) => {
-  changes.dirty = changed; changes.locked = locked; workspace.changes.set(stateKey, changes)
-}, { immediate: true, flush: 'sync' })
-watch(draft, () => { replaceConfirmed.value = false; message.value = '' }, { deep: true, flush: 'sync' })
-watch(writer.error, reason => {
-  if (reason instanceof ApiError && reason.status === 409 && !writer.pending.value) {
-    needsReview.value = true; readReady.value = false
-    if (readable.value) void loadSettings(true)
+watch(() => preferences.server, value => {
+  if (!value) {
+    baseline.value = undefined; serverCopy.value = undefined; needsReview.value = false; replaceConfirmed.value = false
+    Object.assign(draft, formOf(preferences.current))
+    return
   }
-})
-watch(writer.locked, locked => { if (!locked && readable.value && !readReady.value && !reading.value) void loadSettings(true) })
+  const wasDirty = dirty.value, first = !baseline.value
+  baseline.value = { ...value }
+  // 首次读取优先展示标签页恢复的本地最终值；后续服务器回执不能覆盖期间的新输入。
+  if (first) Object.assign(draft, formOf(preferences.current))
+  else if (!wasDirty && !needsReview.value) Object.assign(draft, formOf(value))
+  if (!problem.value && !dirty.value) needsReview.value = false
+}, { immediate: true, flush: 'sync' })
+watch(draft, () => {
+  replaceConfirmed.value = false; message.value = ''
+  if (baseline.value && !dirty.value) needsReview.value = false
+}, { deep: true, flush: 'sync' })
 onMounted(() => document.addEventListener('visibilitychange', visibilityChanged))
 onUnmounted(() => {
-  alive = false; generation++; readSequence++; usageSequence++
+  alive = false; generation++; usageSequence++
   document.removeEventListener('visibilitychange', visibilityChanged)
-  if (workspace.changes.get(stateKey) === changes) workspace.changes.delete(stateKey)
 })
 
 function formOf(value: Readonly<Preferences>): Draft {
@@ -71,49 +91,42 @@ function signature(value: Draft): string {
 function visibilityChanged() { visible.value = document.visibilityState === 'visible' }
 function requireCurrent(epoch: number, stamp: number, training: number) {
   if (!alive || !readable.value || epoch !== workspace.sessionEpoch || stamp !== generation || training !== currentTrainingAccessEpoch())
-    throw new ApiError(0, 'PREFERENCES_CONTEXT_CHANGED', '会话或训练访问条件已变化。输入与原请求保留，请恢复访问后重试。')
+    throw new ApiError(0, 'PREFERENCES_CONTEXT_CHANGED', '会话或训练访问条件已变化。')
 }
-function adopt(value: Preferences, keepLocal: boolean) {
-  baseline.value = { ...value }
-  if (!keepLocal) Object.assign(draft, formOf(value))
-  needsReview.value = false; replaceConfirmed.value = false
+function previewZone(value: string): boolean {
+  try { new Intl.DateTimeFormat('zh-CN', { timeZone: value }); return true }
+  catch { return false }
 }
-function updateTheme(value: unknown) { if (editable.value && (value === 'SYSTEM' || value === 'LIGHT' || value === 'DARK')) draft.theme = value }
-function updateMotion(value: unknown) { if (editable.value && (value === 'SYSTEM' || value === 'REDUCED' || value === 'FULL')) draft.motion = value }
-function updateNumber(field: 'fontSize' | 'contentWidth', value: number | null) { if (editable.value) draft[field] = value }
-function updateZone(value: string) { if (editable.value) draft.timeZone = value }
-function updateNotice(value: boolean) { if (editable.value) draft.saveRecoveryNotice = value }
+function preview(patch: Partial<PreferenceValues> = {}) {
+  if (!editable.value || !baseline.value) return
+  const value: PreferenceValues = { theme: preferences.current.theme, fontSize: preferences.current.fontSize,
+    contentWidth: preferences.current.contentWidth, motion: preferences.current.motion,
+    timeZone: preferences.current.timeZone, saveRecoveryNotice: preferences.current.saveRecoveryNotice, ...patch }
+  if (!savePreferencesProblem({ expectedRevision: baseline.value.revision, ...value })) preferences.update(value)
+}
+function updateTheme(value: unknown) { if (editable.value && (value === 'SYSTEM' || value === 'LIGHT' || value === 'DARK')) { draft.theme = value; preview({ theme: value }) } }
+function updateMotion(value: unknown) { if (editable.value && (value === 'SYSTEM' || value === 'REDUCED' || value === 'FULL')) { draft.motion = value; preview({ motion: value }) } }
+function updateNumber(field: 'fontSize' | 'contentWidth', value: number | null) {
+  if (!editable.value) return
+  draft[field] = value
+  if (value !== null) preview(field === 'fontSize' ? { fontSize: value } : { contentWidth: value })
+}
+function updateZone(value: string) { if (editable.value) { draft.timeZone = value; if (previewZone(value)) preview({ timeZone: value }) } }
 function chooseBrowserZone() {
   if (!editable.value) return
-  try { draft.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone }
+  try { draft.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; preview({ timeZone: draft.timeZone }) }
   catch { message.value = '当前浏览器无法提供时区，请手动填写。' }
 }
-
 async function loadSettings(compare: boolean) {
-  if (!readable.value || writer.locked.value) return
-  const epoch = workspace.sessionEpoch, stamp = generation, training = currentTrainingAccessEpoch(), sequence = ++readSequence
-  reading.value = true; settingsError.value = ''; replaceConfirmed.value = false
-  try {
-    const value = await readPreferences()
-    requireCurrent(epoch, stamp, training)
-    if (sequence !== readSequence) return
-    if (current.value && (value.revision < current.value.revision
-      || value.revision === current.value.revision && !samePreferences(value, current.value)))
-      throw new ApiError(502, 'PREFERENCES_RESPONSE_INVALID', '服务器设置修订与已读取内容不一致，已保留本地输入。')
-    if (!preferences.apply(value)) throw new ApiError(502, 'PREFERENCES_RESPONSE_INVALID', '服务器返回较旧修订，请重新核对设置。')
-    current.value = { ...value }; readReady.value = true
-    // 重读只刷新服务器对照；已有本地改动不能被后台响应覆盖。
-    if (!baseline.value || !dirty.value && !needsReview.value && !compare) adopt(value, false)
-    else {
-      if (!samePreferences(baseline.value, value)) needsReview.value = true
-      serverCopy.value = { ...value }
-    }
-    if (compare) serverCopy.value = { ...value }
-  } catch (reason) {
-    if (alive && sequence === readSequence && epoch === workspace.sessionEpoch && stamp === generation && readable.value) {
-      settingsError.value = errorText(reason); readReady.value = false
-    }
-  } finally { if (alive && sequence === readSequence) reading.value = false }
+  if (!readable.value || reading.value) return
+  const epoch = workspace.sessionEpoch, stamp = generation, training = currentTrainingAccessEpoch()
+  const value = await preferences.refresh()
+  if (!alive || !readable.value || epoch !== workspace.sessionEpoch || stamp !== generation
+    || training !== currentTrainingAccessEpoch() || !value) return
+  if (compare) {
+    serverCopy.value = { ...value }
+    needsReview.value = dirty.value && signature(draft) !== signature(formOf(value))
+  }
 }
 async function loadUsage() {
   if (!readable.value || usageLoading.value) return
@@ -127,36 +140,16 @@ async function loadUsage() {
     if (alive && sequence === usageSequence && epoch === workspace.sessionEpoch && stamp === generation && readable.value) usageError.value = errorText(reason)
   } finally { if (alive && sequence === usageSequence) usageLoading.value = false }
 }
-function save() {
-  if (!canSave.value || !baseline.value || draft.fontSize === null || draft.contentWidth === null) return
-  const body: SavePreferences = { ...draft, fontSize: draft.fontSize, contentWidth: draft.contentWidth, expectedRevision: baseline.value.revision }
-  if (savePreferencesProblem(body)) return
-  commandEpoch = workspace.sessionEpoch; commandGeneration = generation; commandTraining = currentTrainingAccessEpoch(); message.value = ''
-  void writer.run<unknown>('/preferences', 'PUT', body, value => {
-    requireCurrent(commandEpoch, commandGeneration, commandTraining)
-    if (!preferenceReceiptValid(value, body)) throw new ApiError(502, 'PREFERENCES_RECEIPT_INVALID', '保存回执与原请求不一致。请保留输入，用原请求核对结果。')
-    if (current.value?.revision === value.revision && !samePreferences(current.value, value))
-      throw new ApiError(502, 'PREFERENCES_RECEIPT_INVALID', '同一修订的保存回执出现不同内容，请用原请求核对。')
-    const applied = preferences.apply(value)
-    if (!current.value || value.revision >= current.value.revision) {
-      current.value = { ...value }
-    }
-    adopt(value, false); settingsError.value = ''; serverCopy.value = undefined; readReady.value = applied
-    needsReview.value = Boolean(current.value && !samePreferences(value, current.value)) || !applied
-    message.value = `个人设置已保存（修订 ${value.revision}）。${needsReview.value ? '服务器已有更新，请再核对最新设置。' : ''}`
-    if (needsReview.value) void loadSettings(true)
-  })
-}
-function retry() {
-  if (!readable.value || writer.busy.value || !writer.pending.value) return
-  commandEpoch = workspace.sessionEpoch; commandGeneration = generation; commandTraining = currentTrainingAccessEpoch()
-  void writer.retry()
-}
+function retry() { if (readable.value) preferences.retry() }
 function adoptServer(keepLocal: boolean) {
-  if (blocked.value || !readReady.value || !serverCopy.value || !current.value || !samePreferences(serverCopy.value, current.value)
+  const value = serverCopy.value
+  if (blocked.value || !readReady.value || !value || !preferences.server || !samePreferences(value, preferences.server)
     || !keepLocal && dirty.value && !replaceConfirmed.value) return
-  adopt(serverCopy.value, keepLocal); serverCopy.value = undefined; writer.error.value = undefined
-  message.value = keepLocal ? '本地输入已保留，保存基线已更新；请核对后保存。' : '已采用服务器设置。'
+  if (keepLocal) preview()
+  if (!preferences.adopt(value, keepLocal)) return
+  if (!keepLocal) Object.assign(draft, formOf(value))
+  serverCopy.value = undefined; needsReview.value = false
+  message.value = keepLocal ? '本地输入已保留，将按最新服务器修订自动保存。' : '已采用服务器设置。'
 }
 function displayTime(value: string) { return preferences.formatDate(value) }
 </script>
@@ -164,23 +157,24 @@ function displayTime(value: string) { return preferences.formatDate(value) }
 <template>
   <section class="preferences-workspace" aria-labelledby="preferences-title">
     <header class="page-heading">
-      <div class="preferences-heading-identity"><p>设置 <span>/</span> 外观与数据</p><h1 id="preferences-title">设置</h1></div>
-      <span v-if="baseline && readable" class="status-pill">{{ dirty ? '有未保存修改' : '已保存' }}</span>
+      <div class="preferences-heading-identity"><p>设置 <span>/</span> 外观与阅读</p><h1 id="preferences-title">设置</h1></div>
+      <span v-if="baseline && readable" class="status-pill" role="status" aria-live="polite">{{ autoStatus }}</span>
     </header>
-    <p v-if="!readable" class="notice" role="status">设置暂不可读取。恢复会话或训练访问条件后继续；当前输入与未决请求保留。</p>
+    <p v-if="!readable" class="notice" role="status">设置暂不可读取。恢复会话或训练访问条件后继续；当前输入与未决同步会保留。</p>
     <nav class="settings-navigation" aria-label="设置分类">
-      <RouterLink to="/settings" :class="{ selected: $route.path === '/settings' }" :aria-current="$route.path === '/settings' ? 'page' : undefined">偏好</RouterLink>
-      <RouterLink to="/settings/data" :class="{ selected: $route.path === '/settings/data' }" :aria-current="$route.path === '/settings/data' ? 'page' : undefined">数据管理</RouterLink>
-      <RouterLink to="/ai/authorizations" :class="{ selected: $route.path === '/ai/authorizations' }" :aria-current="$route.path === '/ai/authorizations' ? 'page' : undefined">安全与授权</RouterLink>
+      <RouterLink to="/settings" :class="{ selected: $route.path === '/settings' }" :aria-current="$route.path === '/settings' ? 'page' : undefined">外观与阅读</RouterLink>
+      <RouterLink to="/settings/ai" :class="{ selected: $route.path === '/settings/ai' }" :aria-current="$route.path === '/settings/ai' ? 'page' : undefined">AI 模型</RouterLink>
+      <RouterLink to="/settings/data" :class="{ selected: $route.path === '/settings/data' }" :aria-current="$route.path === '/settings/data' ? 'page' : undefined">数据与隐私</RouterLink>
+      <RouterLink to="/settings/security" :class="{ selected: $route.path === '/settings/security' }" :aria-current="$route.path === '/settings/security' ? 'page' : undefined">安全与授权</RouterLink>
     </nav>
     <div v-show="readable" :inert="!readable || undefined" class="preferences-content">
       <section class="preference-section preference-appearance" aria-labelledby="appearance-title">
         <header><div><h2 id="appearance-title"><RIcon name="sun" :size="30" />外观</h2></div></header>
         <p v-if="!baseline && reading" class="notice" role="status">正在读取个人设置…</p>
         <p v-if="settingsError" class="notice error" role="alert">{{ settingsError }}</p>
-        <p v-if="writer.error.value" class="notice error" role="alert">{{ errorText(writer.error.value) }} <NButton v-if="writer.pending.value" text :disabled="!readable || writer.busy.value" :loading="writer.busy.value" @click="retry">用原请求重试</NButton></p>
+        <p v-if="preferences.syncError" class="notice error" role="alert">同步失败：{{ errorText(preferences.syncError) }} <NButton text :disabled="!readable || preferences.saving" :loading="preferences.saving" @click="retry">重试</NButton></p>
         <p v-if="message" class="notice" role="status">{{ message }}</p>
-        <p v-if="needsReview || stale" class="notice" role="status">设置修订或访问条件已变化，输入已保留。请读取服务器设置后，选择保留输入或采用服务器值。</p>
+        <p v-if="needsReview" class="notice" role="status">设置修订或访问条件已变化，输入已保留。系统会按最新修订继续自动同步；也可核对服务器设置后选择保留输入或采用服务器值。</p>
         <template v-if="baseline">
           <div class="preference-fields">
             <div class="preference-control"><span>主题外观</span><div class="settings-segment" role="group" aria-label="工作台主题"><button v-for="option in [{ value: 'SYSTEM', label: '跟随系统', icon: 'monitor' }, { value: 'DARK', label: '深色', icon: 'moon' }, { value: 'LIGHT', label: '浅色', icon: 'sun' }]" :key="option.value" :class="{ selected: draft.theme === option.value }" :aria-pressed="draft.theme === option.value" :disabled="!editable" @click="updateTheme(option.value)"><RIcon :name="option.icon" :size="23" />{{ option.label }}</button></div></div>
@@ -195,24 +189,19 @@ function displayTime(value: string) { return preferences.formatDate(value) }
             <NButton :disabled="!editable" @click="chooseBrowserZone">使用浏览器时区</NButton>
             <p class="field-help">用于设置与用量记录的时间显示；不会移动历史 UTC 时刻。回忆排程的复习日时区请在回忆设置中单独维护。</p>
           </div>
-          <div id="preference-recovery" class="preference-recovery">
-            <h3>保存与恢复提醒</h3>
-            <NCheckbox :checked="draft.saveRecoveryNotice" :disabled="!editable" @update:checked="updateNotice">显示全局待保存与未决请求提醒</NCheckbox>
-            <p class="field-help">各编辑器仍需按原流程明确保存。开启提醒不代表自动保存或刷新恢复；关闭提醒也不关闭离开页面时的草稿与未决请求保护。</p>
-          </div>
           <p v-if="problem" class="field-help" role="status">{{ problem }}</p>
-          <div class="row-actions"><NButton type="primary" :disabled="!canSave" :loading="writer.busy.value" @click="save">保存个人设置</NButton><span class="field-help">{{ baseline.updatedAt ? `最近保存：${displayTime(baseline.updatedAt)}` : '尚未保存，当前为默认设置。' }}</span></div>
+          <div class="row-actions"><span class="field-help">{{ saveSummary }}</span></div>
         </template>
         <details class="preference-advanced">
           <summary>高级：服务器设置与修订</summary>
           <div class="preference-advanced-content">
             <p v-if="baseline" class="field-help">当前设置修订：{{ baseline.revision }}</p>
-            <div class="row-actions"><NButton text :disabled="blocked" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></div>
+            <div class="row-actions"><NButton text :disabled="!readable || reading" :loading="reading" @click="loadSettings(true)">核对服务器设置</NButton></div>
             <section v-if="serverCopy" class="preference-server-copy" aria-labelledby="preference-server-title">
               <h3 id="preference-server-title">服务器设置 · 修订 {{ serverCopy.revision }}</h3>
               <dl><div><dt>主题与动态效果</dt><dd>{{ preferenceThemes.find(item => item.value === serverCopy?.theme)?.label }} · {{ preferenceMotions.find(item => item.value === serverCopy?.motion)?.label }}</dd></div><div><dt>字号与宽度</dt><dd>{{ serverCopy.fontSize }} px · {{ serverCopy.contentWidth }} px</dd></div><div><dt>显示时区</dt><dd>{{ serverCopy.timeZone }}</dd></div><div><dt>待保存提醒</dt><dd>{{ serverCopy.saveRecoveryNotice ? '开启' : '关闭' }}</dd></div></dl>
-              <NCheckbox v-if="dirty" v-model:checked="replaceConfirmed" :disabled="blocked">允许用服务器设置替换当前未保存输入</NCheckbox>
-              <div class="row-actions"><NButton :disabled="blocked || !readReady" @click="adoptServer(true)">保留输入，采用服务器修订</NButton><NButton :disabled="blocked || !readReady || (dirty && !replaceConfirmed)" @click="adoptServer(false)">采用服务器设置</NButton></div>
+              <NCheckbox v-if="dirty" v-model:checked="replaceConfirmed" :disabled="blocked">允许用服务器设置替换当前本地输入</NCheckbox>
+              <div class="row-actions"><NButton :disabled="blocked || !readReady || !serverMatches" @click="adoptServer(true)">保留输入，采用服务器修订</NButton><NButton :disabled="blocked || !readReady || !serverMatches || (dirty && !replaceConfirmed)" @click="adoptServer(false)">采用服务器设置</NButton></div>
             </section>
           </div>
         </details>
@@ -235,7 +224,7 @@ function displayTime(value: string) { return preferences.formatDate(value) }
 <style scoped>
 .preferences-heading-identity > p { display: none; }
 .preferences-workspace { max-width: none; }
-.settings-navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
+.settings-navigation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
 .settings-navigation a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 13px; }
 .settings-navigation a:hover { background: var(--brand-soft); color: var(--brand-strong); }
 .settings-navigation a.selected { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-soft); }
@@ -276,6 +265,7 @@ function displayTime(value: string) { return preferences.formatDate(value) }
   .preferences-content { grid-template-columns: minmax(0,1fr); }
 }
 @media(max-width:750px) {
+  .settings-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-navigation a { padding-inline: 8px; }
   .preference-control { grid-template-columns: minmax(0,1fr); gap: 8px; }
   .preference-section { padding: 18px; }

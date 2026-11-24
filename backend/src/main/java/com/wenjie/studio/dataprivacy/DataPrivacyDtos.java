@@ -20,4 +20,7 @@ public final class DataPrivacyDtos {
     public record TrashEntry(String objectKind, String objectId, String state, long revision,
                              String previousStatus, LocalDateTime trashedAt, LocalDateTime updatedAt) { }
     public record TrashPage(List<TrashEntry> items, String nextCursor) { }
+    public record PrivacyObjectItem(PrivacyScope.PrivacyActionableKind objectKind, String objectId,
+                                    String title, String subtitle, LocalDateTime updatedAt, String privacyState) { }
+    public record PrivacyObjectPage(List<PrivacyObjectItem> items, String nextCursor) { }
 }

@@ -30,7 +30,9 @@ const router = createRouter({
     { path: '/knowledge/packages', name: 'knowledge-packages', component: () => import('./views/KnowledgePackagesWorkspace.vue') },
     { path: '/knowledge/merge', name: 'knowledge-merge', component: () => import('./views/KnowledgeMergeWorkspace.vue') },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsWorkspace.vue') },
+    { path: '/settings/ai', name: 'ai-model-settings', component: () => import('./views/AiModelSettingsWorkspace.vue') },
     { path: '/settings/data', name: 'data-management', component: () => import('./views/DataManagementWorkspace.vue') },
+    { path: '/settings/security', name: 'settings-security', component: () => import('./views/AiAuthorizationsWorkspace.vue') },
     { path: '/knowledge/boards', name: 'boards', component: () => import('./views/BoardsWorkspace.vue') },
     { path: '/knowledge/cards', name: 'memory-cards', component: () => import('./views/MemoryWorkspace.vue') },
     { path: '/knowledge/recall', name: 'memory-recall', component: () => import('./views/MemoryRecallWorkspace.vue') },
@@ -201,7 +203,7 @@ router.beforeEach((to, from) => {
 router.beforeEach(async (to, from) => {
   const workspace = useWorkspaceStore(pinia)
   // 管理外壳在训练状态不可用时仍可进入；敏感详情由各自守卫遮挡，前一层离开保护保持。
-  if (to.name === 'ai-authorizations' || to.name === 'data-management') return true
+  if (to.name === 'ai-authorizations' || to.name === 'settings-security' || to.name === 'data-management') return true
   if (!workspace.sessionActive || to.fullPath === from.fullPath) return true
   const access = useTrainingAccessStore(pinia)
   // 已核实的访问状态可复用于站内切页；跨窗口、训练变更和会话边界仍会立即将其标记为需重核。

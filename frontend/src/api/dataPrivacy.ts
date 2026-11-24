@@ -8,7 +8,7 @@ export const privacyKinds = {
   QUESTION_COLLECTION: '题单／学习路线', INTERVIEW_EVENT: '面试安排', AI_AUTHORIZATION: '模型范围授权',
 } as const
 export type PrivacyKind = keyof typeof privacyKinds
-export type PrivacyActionableKind = Exclude<PrivacyKind, 'AI_AUTHORIZATION'>
+export type PrivacyActionableKind = Exclude<PrivacyKind, 'AI_AUTHORIZATION' | 'BOARD' | 'AI_TASK'>
 export type PrivacyAction = 'TRASH' | 'RESTORE' | 'PURGE'
 export type PrivacySelection = { objectKind: PrivacyKind; objectId: string }
 export type PrivacyHead = { sequence: number; hash: string }
@@ -31,6 +31,11 @@ export type PrivacyTrashEntry = PrivacySelection & {
   state: 'TRASHED'; revision: number; previousStatus: string | null; trashedAt: string; updatedAt: string
 }
 export type PrivacyTrashPage = { items: PrivacyTrashEntry[]; nextCursor: string | null }
+export type PrivacyObjectCandidate = {
+  objectKind: PrivacyActionableKind; objectId: string; title: string; subtitle: string
+  updatedAt: string; privacyState: string
+}
+export type PrivacyObjectPage = { items: PrivacyObjectCandidate[]; nextCursor: string | null }
 export const privacyActions: Record<PrivacyAction, string> = { TRASH: '移入回收站', RESTORE: '从回收站恢复', PURGE: '彻底清除正文' }
 export const privacyStates: Record<PrivacyStatus['state'], string> = {
   NOT_CONFIGURED: '服务器尚未配置独立账本', NOT_INITIALIZED: '独立账本尚未初始化',
@@ -49,7 +54,8 @@ const hash = /^[0-9a-f]{64}$/
 export const privacyIdValid = (value: unknown): value is string => typeof value === 'string'
   && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value)
 export const privacyKindValid = (value: unknown): value is PrivacyKind => typeof value === 'string' && Object.hasOwn(privacyKinds, value)
-export const privacyActionableKindValid = (value: unknown): value is PrivacyActionableKind => privacyKindValid(value) && value !== 'AI_AUTHORIZATION'
+export const privacyActionableKindValid = (value: unknown): value is PrivacyActionableKind =>
+  privacyKindValid(value) && value !== 'AI_AUTHORIZATION' && value !== 'BOARD' && value !== 'AI_TASK'
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const text = (value: unknown): value is string => typeof value === 'string'
@@ -116,6 +122,26 @@ export function checkedPrivacyTrash(value: unknown): PrivacyTrashPage {
     if (!last || value.nextCursor !== `${last.objectKind}~${last.objectId}`) invalid('回收站游标与当前页最后一项身份不一致，请重新读取首页。')
   }
   return value as PrivacyTrashPage
+}
+export function checkedPrivacyObjects(value: unknown): PrivacyObjectPage {
+  if (!record(value) || !Array.isArray(value.items) || value.items.length > 50
+    || value.items.some(item => !record(item) || !privacyActionableKindValid(item.objectKind) || !privacyIdValid(item.objectId)
+      || !text(item.title) || !text(item.subtitle) || !text(item.updatedAt) || !text(item.privacyState))
+    || value.nextCursor !== null && (!text(value.nextCursor) || value.nextCursor.length > 512)) {
+    invalid('对象清单或分页游标无法核对，请重新读取首页。')
+  }
+  const keys = value.items.map(item => `${item.objectKind}:${item.objectId}`)
+  if (new Set(keys).size !== keys.length) invalid('对象清单含重复身份，请重新读取首页。')
+  return value as PrivacyObjectPage
+}
+export async function readPrivacyObjects(kind?: PrivacyActionableKind, query = '', cursor?: string, ids?: string[]): Promise<PrivacyObjectPage> {
+  const parameters = new URLSearchParams()
+  if (kind) parameters.set('kind', kind)
+  if (query) parameters.set('q', query)
+  if (cursor) parameters.set('cursor', cursor)
+  if (ids) parameters.set('ids', ids.join(','))
+  if (!ids) parameters.set('limit', '20')
+  return checkedPrivacyObjects(await read<unknown>(`${base}/objects?${parameters}`))
 }
 export async function readPrivacyStatus(): Promise<PrivacyStatus> { return checkedPrivacyStatus(await read<unknown>(`${base}/status`)) }
 export async function readPrivacyTrash(cursor?: string): Promise<PrivacyTrashPage> {

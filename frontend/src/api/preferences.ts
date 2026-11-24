@@ -6,7 +6,13 @@ export type Preferences = {
   revision: number; theme: PreferenceTheme; fontSize: number; contentWidth: number; motion: PreferenceMotion
   timeZone: string; saveRecoveryNotice: boolean; updatedAt: string | null
 }
-export type SavePreferences = Omit<Preferences, 'revision' | 'updatedAt'> & { expectedRevision: number }
+export type PreferenceValues = Omit<Preferences, 'revision' | 'updatedAt'>
+export type SavePreferences = PreferenceValues & { expectedRevision: number }
+export type PreferencesCacheRequest = SavePreferences & { base: PreferenceValues }
+export type PreferencesCache = {
+  version: 1; values: PreferenceValues; revision: number; updatedAt: string | null
+  request?: PreferencesCacheRequest; key?: string
+}
 export type PreferenceUsage = {
   notes: number; concepts: number; knowledgeVersions: number; boards: number; preparationItems: number
   questions: number; trainingSessions: number; submittedAnswers: number; memoryCards: number; attachments: number
@@ -24,6 +30,8 @@ export const defaultPreferences: Readonly<Preferences> = Object.freeze({
   timeZone: 'UTC', saveRecoveryNotice: true, updatedAt: null,
 })
 const names = ['revision', 'theme', 'fontSize', 'contentWidth', 'motion', 'timeZone', 'saveRecoveryNotice', 'updatedAt'] as const
+const valueNames = ['theme', 'fontSize', 'contentWidth', 'motion', 'timeZone', 'saveRecoveryNotice'] as const
+const cacheNames = ['version', 'values', 'revision', 'updatedAt'] as const
 const usageCounts = ['notes', 'concepts', 'knowledgeVersions', 'boards', 'preparationItems', 'questions',
   'trainingSessions', 'submittedAnswers', 'memoryCards', 'attachments', 'aiTasks', 'materialReservedBytes', 'materialQuotaBytes'] as const
 const fields = (value: unknown, keys: readonly string[]): value is Record<string, unknown> => Boolean(value && typeof value === 'object'
@@ -56,6 +64,29 @@ export function savePreferencesProblem(value: unknown): string | undefined {
     || !integer(value.expectedRevision, 0) || !settingValues(value)) return '请选择有效的显示选项，字号为12至24，宽度为720至1600，并填写时区名称。'
   if (value.expectedRevision === Number.MAX_SAFE_INTEGER) return '个人设置修订已达到上限。'
   return undefined
+}
+export function preferenceValuesValid(value: unknown): value is PreferenceValues {
+  return fields(value, valueNames) && settingValues(value)
+}
+export function samePreferenceValues(left: PreferenceValues, right: PreferenceValues): boolean {
+  return valueNames.every(name => left[name] === right[name])
+}
+export function preferencesCacheValid(value: unknown): value is PreferencesCache {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>, hasRequest = Object.hasOwn(record, 'request'), hasKey = Object.hasOwn(record, 'key')
+  if (hasRequest !== hasKey || !fields(record, hasRequest ? [...cacheNames, 'request', 'key'] : cacheNames) || record.version !== 1
+    || !preferenceValuesValid(record.values) || !integer(record.revision, 0)) return false
+  if (record.revision === 0 ? record.updatedAt !== null : !timestamp(record.updatedAt)) return false
+  if (!hasRequest) return true
+  if (typeof record.key !== 'string'
+      || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(record.key)
+      || !record.request || typeof record.request !== 'object'
+      || !fields(record.request, ['expectedRevision', ...valueNames, 'base'])
+      || !preferenceValuesValid(record.request.base)) return false
+  const request = record.request
+  return !savePreferencesProblem({ expectedRevision: request.expectedRevision, theme: request.theme,
+    fontSize: request.fontSize, contentWidth: request.contentWidth, motion: request.motion,
+    timeZone: request.timeZone, saveRecoveryNotice: request.saveRecoveryNotice })
 }
 export function preferenceUsageValid(value: unknown): value is PreferenceUsage {
   return fields(value, [...usageCounts, 'materialsEnabled', 'checkedAt']) && usageCounts.every(key => integer(value[key], 0))

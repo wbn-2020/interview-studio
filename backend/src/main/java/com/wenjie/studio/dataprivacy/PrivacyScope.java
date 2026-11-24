@@ -37,6 +37,12 @@ import static com.wenjie.studio.dataprivacy.DataPrivacyDtos.*;
  */
 @Component
 public class PrivacyScope {
+    /** Web 对象选择只开放本契约列出的回收站身份；白板、AI 任务与用途授权仍走各自管理入口。 */
+    public enum PrivacyActionableKind {
+        KNOWLEDGE, PREPARATION, QUESTION, MEMORY_CARD, QUESTION_COLLECTION, RECOLLECTION,
+        TRAINING, REVIEW_FEEDBACK, REVIEW_ACTION, PREPARATION_TASK, INTERVIEW_EVENT, MATERIAL
+    }
+
     private static final int MAX_IDENTITIES = 1_000;
     private static final int MAX_ROWS = 20_000;
     private static final int MAX_ROWS_PER_TABLE = 5_000;
@@ -589,6 +595,17 @@ public class PrivacyScope {
     private static boolean containsValue(Map<String, Object> row, Set<String> ids) {
         return ids != null && row.values().stream().anyMatch(value -> value instanceof String text && ids.contains(text));
     }
+    public static PrivacyActionableKind actionableKind(String value) {
+        try {
+            if (value == null) throw new IllegalArgumentException();
+            PrivacyActionableKind kind = PrivacyActionableKind.valueOf(value);
+            if (!SPECS.containsKey(kind.name())) throw new IllegalArgumentException();
+            return kind;
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(400, "INVALID_PRIVACY_KIND", "不支持此隐私对象类型。");
+        }
+    }
+
     private static Spec spec(String kind) {
         Spec spec = SPECS.get(kind);
         if (spec == null) throw new ApiException(400, "INVALID_PRIVACY_KIND", "不支持此隐私对象类型。");

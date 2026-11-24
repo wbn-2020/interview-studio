@@ -73,10 +73,10 @@ async function changed(result: PrivacyResult | null) {
 
 <template>
   <section ref="element" class="data-management" aria-label="个人数据管理工作台">
-    <header class="page-heading"><div><p class="section-label">个人 / 数据管理</p><h1>管理自己的数据与保留边界</h1><p class="muted">回收站、彻底清除、独立删除账本和完整导出，在同一个工作台明确处理。</p></div></header>
+    <header class="page-heading"><div><p class="section-label">个人 / 数据与隐私</p><h1>数据与隐私</h1><p class="muted">管理导出、回收站和彻底删除。业务数据保存在服务器数据库与私有目录，浏览器只保留当前页面输入。</p></div></header>
     <p v-if="message" class="notice" role="status">{{ message }}</p><p v-if="refreshError" class="notice error" role="alert">{{ refreshError }}</p>
     <p v-if="!readable" class="notice" role="status">{{ refreshing ? '正在刷新隐私状态与资料资格，敏感详情暂时遮挡。' : '当前页面、登录或训练资料权限不允许展示数据管理详情。恢复条件后将重新读取敏感清单。' }} <NButton v-if="access.error && store.sessionActive" text :disabled="refreshing || !documentVisible" @click="access.refresh()">重新核对资料访问</NButton></p>
-    <nav class="data-tabs" role="tablist" aria-label="数据管理分区"><NButton id="privacy-tab" role="tab" aria-controls="privacy-panel" :aria-selected="selected === 'privacy'" :type="selected === 'privacy' ? 'primary' : 'default'" :disabled="!shellReadable" @click="selectPanel('privacy')">回收站与隐私清除</NButton><NButton id="archive-tab" role="tab" aria-controls="archive-panel" :aria-selected="selected === 'archive'" :type="selected === 'archive' ? 'primary' : 'default'" :disabled="!shellReadable" @click="selectPanel('archive')">完整导出与恢复说明</NButton></nav>
+    <nav class="data-tabs" role="tablist" aria-label="数据管理分区"><NButton id="privacy-tab" role="tab" aria-controls="privacy-panel" :aria-selected="selected === 'privacy'" :type="selected === 'privacy' ? 'primary' : 'default'" :disabled="!shellReadable" @click="selectPanel('privacy')">回收站与清除</NButton><NButton id="archive-tab" role="tab" aria-controls="archive-panel" :aria-selected="selected === 'archive'" :type="selected === 'archive' ? 'primary' : 'default'" :disabled="!shellReadable" @click="selectPanel('archive')">导出与恢复</NButton></nav>
     <div id="privacy-panel" v-show="showPrivacy" role="tabpanel" aria-labelledby="privacy-tab" :aria-hidden="!showPrivacy" :inert="!showPrivacy"><DataPrivacyPanel :enabled="readable && selected === 'privacy'" :recovery-enabled="showPrivacy" @changed="changed" /></div>
     <div id="archive-panel" v-show="showArchive" role="tabpanel" aria-labelledby="archive-tab" :aria-hidden="!showArchive" :inert="!showArchive"><DataArchivePanel :enabled="readable && selected === 'archive'" :recovery-enabled="showArchive" /></div>
   </section>

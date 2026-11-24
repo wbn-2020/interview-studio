@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wenjie.studio.dataprivacy.PrivacyObjectMapper">
+  <resultMap id="privacyObject" type="com.wenjie.studio.dataprivacy.PrivacyObjectMapper$Row">
+    <constructor>
+      <arg column="object_kind" javaType="java.lang.String"/>
+      <arg column="object_id" javaType="java.lang.String"/>
+      <arg column="title" javaType="java.lang.String"/>
+      <arg column="subtitle" javaType="java.lang.String"/>
+      <arg column="updated_at" javaType="java.time.LocalDateTime"/>
+      <arg column="privacy_state" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
+  <!-- 文件只作为标题元数据返回，先去掉用户可能录入的目录部分，避免把私有路径带进目录响应。 -->
+  <sql id="materialTitle">
+    COALESCE(NULLIF(SUBSTRING_INDEX(SUBSTRING_INDEX(a.file_name,CHAR(92),-1),'/',-1),''),
+      CONCAT('MATERIAL · ',a.id))
+  </sql>
+
+  <!-- 各分支只选标题与固定状态元数据；正文、JSON、地址、密钥及存储路径均不进入选择列。
+       PURGED 只返回类型与身份占位，且不参与标题查询，避免用隐藏旧标题推断清除前内容。 -->
+  <select id="objects" resultMap="privacyObject" timeout="5">
+    SELECT object_kind,object_id,title,subtitle,updated_at,privacy_state FROM (
+      <if test="kind == null or kind == 'KNOWLEDGE'">
+        SELECT 'KNOWLEDGE' AS object_kind,i.id AS object_id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('KNOWLEDGE · ',i.id)
+            ELSE COALESCE(v.title,CONCAT('KNOWLEDGE · ',i.id)) END AS title,
+          CONCAT(i.kind,' · v',i.version_number) AS subtitle,i.updated_at,
+          COALESCE(ps.state,'AVAILABLE') AS privacy_state
+        FROM knowledge_item i
+        LEFT JOIN knowledge_version v ON v.owner_id=i.owner_id AND v.item_id=i.id
+          AND v.id=i.current_version_id AND v.version_number=i.version_number
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=i.owner_id AND ps.object_kind='KNOWLEDGE' AND ps.object_id=i.id
+        WHERE i.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND COALESCE(v.title,CONCAT('KNOWLEDGE · ',i.id)) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'PREPARATION'">
+        UNION ALL
+        SELECT 'PREPARATION',i.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('PREPARATION · ',i.id) ELSE i.title END,
+          CONCAT(i.kind,' · v',i.version_number,
+            CASE WHEN i.kind='FACT' THEN CONCAT(' · ',i.verification) ELSE '' END),
+          i.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM preparation_item i
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=i.owner_id AND ps.object_kind='PREPARATION' AND ps.object_id=i.id
+        WHERE i.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND i.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'QUESTION'">
+        UNION ALL
+        SELECT 'QUESTION',q.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('QUESTION · ',q.id)
+            ELSE COALESCE(v.title,CONCAT('QUESTION · ',q.id)) END,
+          CONCAT(COALESCE(v.question_type,'QUESTION'),' · v',q.version_number),
+          q.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM question q
+        LEFT JOIN question_version v ON v.owner_id=q.owner_id AND v.question_id=q.id
+          AND v.id=q.current_version_id AND v.version_number=q.version_number
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=q.owner_id AND ps.object_kind='QUESTION' AND ps.object_id=q.id
+        WHERE q.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND COALESCE(v.title,CONCAT('QUESTION · ',q.id)) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'MEMORY_CARD'">
+        UNION ALL
+        SELECT 'MEMORY_CARD',c.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('MEMORY_CARD · ',c.id)
+            ELSE COALESCE(v.title,CONCAT('MEMORY_CARD · ',c.id)) END,
+          CONCAT(COALESCE(v.card_kind,'MEMORY_CARD'),' · v',c.version_number),
+          c.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM memory_card c
+        LEFT JOIN memory_card_version v ON v.owner_id=c.owner_id AND v.card_id=c.id
+          AND v.id=c.current_version_id AND v.version_number=c.version_number
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=c.owner_id AND ps.object_kind='MEMORY_CARD' AND ps.object_id=c.id
+        WHERE c.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND COALESCE(v.title,CONCAT('MEMORY_CARD · ',c.id)) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'QUESTION_COLLECTION'">
+        UNION ALL
+        SELECT 'QUESTION_COLLECTION',c.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('QUESTION_COLLECTION · ',c.id) ELSE c.title END,
+          CONCAT(c.kind,' · ',c.step_count,' 题'),c.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM question_collection c
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=c.owner_id AND ps.object_kind='QUESTION_COLLECTION' AND ps.object_id=c.id
+        WHERE c.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND c.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'RECOLLECTION'">
+        UNION ALL
+        SELECT 'RECOLLECTION',r.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('RECOLLECTION · ',r.id)
+            ELSE COALESCE(v.title,CONCAT('RECOLLECTION · ',r.id)) END,
+          CONCAT('v',r.version_number),r.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM review_recollection r
+        LEFT JOIN review_recollection_version v ON v.owner_id=r.owner_id AND v.recollection_id=r.id
+          AND v.id=r.current_version_id AND v.version_number=r.version_number
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=r.owner_id AND ps.object_kind='RECOLLECTION' AND ps.object_id=r.id
+        WHERE r.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND COALESCE(v.title,CONCAT('RECOLLECTION · ',r.id)) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'TRAINING'">
+        UNION ALL
+        SELECT 'TRAINING',t.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('TRAINING · ',t.id) ELSE t.title END,
+          CONCAT(t.mode,' · ',t.status,' · ',t.question_count,' 题'),t.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM training_session t
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=t.owner_id AND ps.object_kind='TRAINING' AND ps.object_id=t.id
+        WHERE t.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND t.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'REVIEW_FEEDBACK'">
+        UNION ALL
+        SELECT 'REVIEW_FEEDBACK',f.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('REVIEW_FEEDBACK · ',f.id)
+            ELSE COALESCE(tq.title,CONCAT('REVIEW_FEEDBACK · ',f.id)) END,
+          CONCAT('反馈修订 ',f.revision),f.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM review_feedback f
+        LEFT JOIN training_question tq ON tq.owner_id=f.owner_id AND tq.session_id=f.session_id AND tq.id=f.question_id
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=f.owner_id AND ps.object_kind='REVIEW_FEEDBACK' AND ps.object_id=f.id
+        WHERE f.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND COALESCE(tq.title,CONCAT('REVIEW_FEEDBACK · ',f.id)) COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'REVIEW_ACTION'">
+        UNION ALL
+        SELECT 'REVIEW_ACTION',a.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('REVIEW_ACTION · ',a.id) ELSE a.title END,
+          CONCAT(a.status,' · v',a.revision),a.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM review_action a
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=a.owner_id AND ps.object_kind='REVIEW_ACTION' AND ps.object_id=a.id
+        WHERE a.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND a.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'PREPARATION_TASK'">
+        UNION ALL
+        SELECT 'PREPARATION_TASK',t.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('PREPARATION_TASK · ',t.id) ELSE t.title END,
+          CONCAT(t.status,' · ',t.minutes,' 分钟'),t.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM preparation_task t
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=t.owner_id AND ps.object_kind='PREPARATION_TASK' AND ps.object_id=t.id
+        WHERE t.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND t.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'INTERVIEW_EVENT'">
+        UNION ALL
+        SELECT 'INTERVIEW_EVENT',e.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('INTERVIEW_EVENT · ',e.id) ELSE e.title END,
+          CONCAT(e.status,' · ',DATE_FORMAT(e.start_at,'%Y-%m-%d %H:%i')),e.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM interview_event e
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=e.owner_id AND ps.object_kind='INTERVIEW_EVENT' AND ps.object_id=e.id
+        WHERE e.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND e.title COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+      <if test="kind == null or kind == 'MATERIAL'">
+        UNION ALL
+        SELECT 'MATERIAL',a.id,
+          CASE WHEN COALESCE(ps.state,'AVAILABLE')='PURGED' THEN CONCAT('MATERIAL · ',a.id)
+            ELSE <include refid="materialTitle"/> END,
+          CONCAT(a.kind,' · ',a.status),a.updated_at,COALESCE(ps.state,'AVAILABLE')
+        FROM material_attachment a
+        LEFT JOIN privacy_object_state ps ON ps.owner_id=a.owner_id AND ps.object_kind='MATERIAL' AND ps.object_id=a.id
+        WHERE a.owner_id=#{owner}
+        <if test="pattern != null">
+          AND COALESCE(ps.state,'AVAILABLE') &lt;&gt; 'PURGED'
+          AND <include refid="materialTitle"/> COLLATE utf8mb4_0900_ai_ci LIKE #{pattern} ESCAPE '!'
+        </if>
+      </if>
+    ) privacy_objects
+    <if test="afterUpdatedAt != null or ids != null">
+      WHERE
+      <if test="afterUpdatedAt != null">
+        (updated_at &lt; #{afterUpdatedAt}
+          OR (updated_at=#{afterUpdatedAt} AND object_kind &gt; #{afterKind})
+          OR (updated_at=#{afterUpdatedAt} AND object_kind=#{afterKind} AND object_id &gt; #{afterId}))
+      </if>
+      <if test="afterUpdatedAt != null and ids != null">AND</if>
+      <if test="ids != null">
+        object_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+      </if>
+    </if>
+    ORDER BY updated_at DESC,object_kind ASC,object_id ASC
+    LIMIT #{limit}
+  </select>
+</mapper>

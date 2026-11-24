@@ -30,6 +30,7 @@ public class DataPrivacyService {
     private final PrivacyScope scope;
     private final PrivacyLifecycle lifecycle;
     private final PrivacyMapper mapper;
+    private final PrivacyObjectQueryService objectQuery;
     private final PrivacyStorageEffects effects;
     private final IdempotencyService commands;
     private final TrainingAccessGuard training;
@@ -41,17 +42,31 @@ public class DataPrivacyService {
     private final RecollectionService recollections;
 
     public DataPrivacyService(PrivacyScope scope, PrivacyLifecycle lifecycle, PrivacyMapper mapper,
-                              PrivacyStorageEffects effects, IdempotencyService commands,
+                              PrivacyObjectQueryService objectQuery, PrivacyStorageEffects effects, IdempotencyService commands,
                               TrainingAccessGuard training, KnowledgeService knowledge,
                               PreparationService preparation, QuestionService questions, MemoryService memory,
                               CollectionService collections, RecollectionService recollections) {
-        this.scope = scope; this.lifecycle = lifecycle; this.mapper = mapper; this.effects = effects;
+        this.scope = scope; this.lifecycle = lifecycle; this.mapper = mapper; this.objectQuery = objectQuery;
+        this.effects = effects;
         this.commands = commands; this.training = training; this.knowledge = knowledge;
         this.preparation = preparation; this.questions = questions; this.memory = memory;
         this.collections = collections; this.recollections = recollections;
     }
 
     public PrivacyLifecycle.Status status(String owner) { return lifecycle.status(owner); }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, timeout = 5)
+    public PrivacyObjectPage objects(String owner, PrivacyScope.PrivacyActionableKind kind,
+                                     String query, String cursor, int limit) {
+        lifecycle.requireSynchronized(owner);
+        return objectQuery.list(owner, kind, query, cursor, limit);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, timeout = 5)
+    public PrivacyObjectPage objectsByIds(String owner, java.util.List<String> ids) {
+        lifecycle.requireSynchronized(owner);
+        return objectQuery.listByIds(owner, ids);
+    }
 
     public PrivacyLifecycle.Status initialize(String owner, String key, InitializeLedger request) {
         if (request == null || request.acknowledgeCurrentBaseline() == null) throw invalid();
